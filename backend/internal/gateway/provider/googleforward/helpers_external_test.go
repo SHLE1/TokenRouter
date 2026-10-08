@@ -34,8 +34,58 @@ import (
 	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
+const (
+	geminiSkippedTestUpstreamMsg = "antigravity executor: invalid Gemini function call history"
+
+	geminiTestPNG = "iVBORw0KGgoAAAANSUhEUg=="
+)
+
 type antigravityCompatTokenCache struct {
 	token string
+}
+
+type httpUpstreamStub struct {
+	resp *http.Response
+	err  error
+}
+
+type queuedHTTPUpstreamStub struct {
+	responses     []*http.Response
+	errors        []error
+	requestBodies [][]byte
+	callCount     int
+	onCall        func(*http.Request, *queuedHTTPUpstreamStub)
+}
+
+type antigravitySettingRepoStub struct{}
+
+// geminiDependencies 包含测试所需的令牌源、传输和健康观测器。
+type geminiDependencies struct {
+	cfg                  *googleforward.Options
+	providerRepo         gatewayprovider.ExecutionProviderStore
+	tokenProvider        *providercore.GeminiTokenSource
+	httpUpstream         httpclient.UpstreamTransport
+	healthObserver       *provideradapter.UpstreamHealth
+	quotaPrecheck        *providercore.GeminiPrecheck
+	responseHeaderFilter *egress.CompiledHeaderFilter
+}
+
+type antigravityDependencies struct {
+	options          googleforward.Options
+	settingService   *gatewayprovider.RuntimeReaders
+	providerRepo     gatewayprovider.ExecutionProviderStore
+	tokenProvider    *providercore.AntigravityTokenSource
+	httpUpstream     httpclient.UpstreamTransport
+	healthObserver   *provideradapter.UpstreamHealth
+	cache            session.GatewayCache
+	internal500Cache providercore.Internal500CounterCache
+}
+
+type geminiCompatHTTPUpstreamStub struct {
+	response *http.Response
+	err      error
+	calls    int
+	lastReq  *http.Request
 }
 
 func (c *antigravityCompatTokenCache) GetAccessToken(context.Context, string) (string, error) {
@@ -81,25 +131,12 @@ func newAntigravityStreamFixture(cfg *googleforward.Options) *googleforward.Anti
 	})
 }
 
-type httpUpstreamStub struct {
-	resp *http.Response
-	err  error
-}
-
 func (s *httpUpstreamStub) Do(_ *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
 	return s.resp, s.err
 }
 
 func (s *httpUpstreamStub) DoWithTLS(_ *http.Request, _ string, _ int64, _ int, _ *tlsfingerprint.Profile) (*http.Response, error) {
 	return s.resp, s.err
-}
-
-type queuedHTTPUpstreamStub struct {
-	responses     []*http.Response
-	errors        []error
-	requestBodies [][]byte
-	callCount     int
-	onCall        func(*http.Request, *queuedHTTPUpstreamStub)
 }
 
 func (s *queuedHTTPUpstreamStub) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
@@ -135,8 +172,6 @@ func (s *queuedHTTPUpstreamStub) DoWithTLS(req *http.Request, proxyURL string, p
 	return s.Do(req, proxyURL, providerID, concurrency)
 }
 
-type antigravitySettingRepoStub struct{}
-
 func (s *antigravitySettingRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
 	panic("unexpected Get call")
 }
@@ -163,28 +198,6 @@ func (s *antigravitySettingRepoStub) GetAll(ctx context.Context) (map[string]str
 
 func (s *antigravitySettingRepoStub) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
-}
-
-// geminiDependencies 包含测试所需的令牌源、传输和健康观测器。
-type geminiDependencies struct {
-	cfg                  *googleforward.Options
-	providerRepo         gatewayprovider.ExecutionProviderStore
-	tokenProvider        *providercore.GeminiTokenSource
-	httpUpstream         httpclient.UpstreamTransport
-	healthObserver       *provideradapter.UpstreamHealth
-	quotaPrecheck        *providercore.GeminiPrecheck
-	responseHeaderFilter *egress.CompiledHeaderFilter
-}
-
-type antigravityDependencies struct {
-	options          googleforward.Options
-	settingService   *gatewayprovider.RuntimeReaders
-	providerRepo     gatewayprovider.ExecutionProviderStore
-	tokenProvider    *providercore.AntigravityTokenSource
-	httpUpstream     httpclient.UpstreamTransport
-	healthObserver   *provideradapter.UpstreamHealth
-	cache            session.GatewayCache
-	internal500Cache providercore.Internal500CounterCache
 }
 
 func fixtureOptions(cfg *googleforward.Options) googleforward.Options {
@@ -304,8 +317,6 @@ func newExecutionReadersFixture(repo settingscore.Repository) *gatewayprovider.R
 	return value
 }
 
-const geminiSkippedTestUpstreamMsg = "antigravity executor: invalid Gemini function call history"
-
 func geminiSkippedTestUpstreamBody() string {
 	return `{"error":{"code":null,"message":"` + geminiSkippedTestUpstreamMsg + `","param":"","type":"invalid_request_error"}}`
 }
@@ -369,8 +380,6 @@ func geminiCustomCodesAPIKeyProvider() *gatewayprovider.ExecutionProvider {
 	}
 }
 
-const geminiTestPNG = "iVBORw0KGgoAAAANSUhEUg=="
-
 func newGeminiImageTestContext(t *testing.T) *googleforward.AttemptForTest {
 	t.Helper()
 
@@ -382,13 +391,6 @@ func newGeminiImageTestContext(t *testing.T) *googleforward.AttemptForTest {
 
 func geminiImageResponse(parts string) string {
 	return `{"candidates":[{"content":{"role":"model","parts":[` + parts + `]},"finishReason":"STOP"}]}`
-}
-
-type geminiCompatHTTPUpstreamStub struct {
-	response *http.Response
-	err      error
-	calls    int
-	lastReq  *http.Request
 }
 
 func (s *geminiCompatHTTPUpstreamStub) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {

@@ -13,6 +13,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// NewModelAvailabilityForTest 为集成测试构造模型诊断组件。
+var NewModelAvailabilityForTest = provideGatewayModelAvailability
+
 // TestModelAvailabilityUsesPersistentProviderStore 检查诊断读取持久配置，处于瞬时冷却的已配置模型仍可被查到。
 func TestModelAvailabilityUsesPersistentProviderStore(t *testing.T) {
 	f := newDatabaseFixture(t)
@@ -66,6 +69,3 @@ func TestModelAvailabilityUsesPersistentProviderStore(t *testing.T) {
 	result := diagnoser.Compatible.DiagnoseModelAvailabilityForPlatform(ctx, &group.ID, "public-known", capability.PlatformOpenAI)
 	require.False(t, result.HasProvidersInPool)
 }
-
-// NewModelAvailabilityForTest 为集成测试构造模型诊断组件。
-var NewModelAvailabilityForTest = provideGatewayModelAvailability

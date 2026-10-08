@@ -27,6 +27,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// qoderHTTPObservation 同步记录请求观测数据，数据在请求内使用。
+type qoderHTTPObservation struct {
+	c               *gin.Context
+	stream, started bool
+}
+
+// qoderRequestActivity 统一跟踪 Chat、兼容入口和平台执行的结束状态。
+type qoderRequestActivity struct{ *lifecycle.Operations }
+
 // provideQoderChat 在 app 中为 Qoder Chat 入口绑定业务回调。
 func provideQoderChat(planner *gatewayprovider.RoutePlanner, q *gatewayprovider.QoderRuntime, refresh *provideradapter.QoderRequestRefresh, c *scheduler.ConcurrencyService, b *admission.FundingAdmission, k *apikey.APIKeyService, r *errorpolicy.ErrorPassthroughService, pool *completion.UsageRecordWorkerPool, recorders GatewayCompletionRecorders, activity *qoderRequestActivity, requests *gatewayRequestActivity, choices *selection.Generic) *gatewayhttp.QoderChatHandler {
 	runtime := &qoderRuntime{Routes: planner, Choices: choices, Qoder: q, Refresh: refresh, Billing: b, Keys: k, Completions: pool, Recorder: recorders.Forward}
@@ -87,12 +96,6 @@ func qoderPreflight(c *gin.Context) error {
 	return nil
 }
 
-// qoderHTTPObservation 同步记录请求观测数据，数据在请求内使用。
-type qoderHTTPObservation struct {
-	c               *gin.Context
-	stream, started bool
-}
-
 func (o *qoderHTTPObservation) Prepared(request gateway.Request) {
 	o.c.Request = o.c.Request.WithContext(requeststate.WithRoutePlan(o.c.Request.Context(), request.Route))
 	gatewayhttp.SetOpsLatencyMs(o.c, gatewayhttp.OpsAuthLatencyMsKey, time.Since(request.Metadata.StartedAt).Milliseconds())
@@ -105,9 +108,6 @@ func (o *qoderHTTPObservation) Selected(snapshot provider.ProviderSnapshot) {
 func (o *qoderHTTPObservation) Waiting(string) scheduler.WaitObserver {
 	return gatewayhttp.WaitObserver(o.c, gatewayhttp.SSEPingFormatComment, 10*time.Second, o.stream, &o.started, true)
 }
-
-// qoderRequestActivity 统一跟踪 Chat、兼容入口和平台执行的结束状态。
-type qoderRequestActivity struct{ *lifecycle.Operations }
 
 func provideQoderRequestActivity(manager *lifecycle.Manager, runtime *gatewayprovider.QoderRuntime) *qoderRequestActivity {
 	activity := lifecycle.NewOperations("QoderRequestsAndAttempts")

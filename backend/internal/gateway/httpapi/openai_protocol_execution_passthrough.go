@@ -47,7 +47,7 @@ func logOpenAIPassthroughInstructionsRejected(
 	if provider != nil {
 		providerID = provider.Record.ID
 		providerName = strings.TrimSpace(provider.Record.Name)
-		providerType = strings.TrimSpace(string(provider.Record.Type))
+		providerType = strings.TrimSpace(provider.Record.Type)
 	}
 	fields := []zap.Field{
 		zap.String("component", "service.openai_gateway"),

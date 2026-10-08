@@ -17,6 +17,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// CompletionModels 提供用量结算时的候选型号。
+type CompletionModels struct{}
+
 // ChatForwardResult 将供应商用量和模型名称转换为网关完成处理所需的结果。
 func ChatForwardResult(result *openai.CompatResponseResult, billingModel string) *forwardcore.OpenAIResult {
 	if result == nil {
@@ -24,9 +27,6 @@ func ChatForwardResult(result *openai.CompatResponseResult, billingModel string)
 	}
 	return &forwardcore.OpenAIResult{RequestID: result.RequestID, ReasoningEffort: result.ReasoningEffort, ServiceTier: result.ResolvedTier, ResponseID: result.ResponseID, ClientDisconnect: result.ClientDisconnect, UpstreamHeaders: result.UpstreamHeaders, Usage: result.Usage, Model: result.Model, BillingModel: billingModel, UpstreamModel: result.UpstreamModel, UpstreamResponseServiceTier: result.ServiceTier, Stream: result.Stream, Duration: result.Duration, FirstTokenMs: result.FirstTokenMs, SearchCount: result.SearchCount}
 }
-
-// CompletionModels 提供用量结算时的候选型号。
-type CompletionModels struct{}
 
 func (CompletionModels) Candidates(model string, alternates ...string) []string {
 	return modelidentity.UsageCandidates(model, alternates...)

@@ -65,6 +65,10 @@ type providerGroupWire struct {
 	Group      *groupWire
 }
 
+// recordSnapshot 包装提供商记录，调度器通过 SnapshotMetadata 读取重建元数据。
+// 执行适配器通过 RecordValue 取得含凭据的完整记录。
+type recordSnapshot struct{ value *provider.Record }
+
 func encodeGroup(group *accessview.GroupConfig) *groupWire {
 	if group == nil {
 		return nil
@@ -208,10 +212,6 @@ func recordFromWire(value *providerWire) *provider.Record {
 	}
 	return out
 }
-
-// recordSnapshot 包装提供商记录，调度器通过 SnapshotMetadata 读取重建元数据。
-// 执行适配器通过 RecordValue 取得含凭据的完整记录。
-type recordSnapshot struct{ value *provider.Record }
 
 func (s recordSnapshot) SnapshotMetadata() scheduler.SnapshotMetadata {
 	return scheduler.SnapshotMetadata{

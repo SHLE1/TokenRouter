@@ -28,6 +28,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// noSlotSchedulerTestConcurrencyCache 在辅助选择操作并发槽时使测试失败。
+type noSlotSchedulerTestConcurrencyCache struct {
+	schedulerTestConcurrencyCache
+	acquireCalls int
+}
+
+type groupAwareStubOpenAIProviderRepo struct {
+	selectionProviderFixture
+}
+
+// Codex 配额读取测试通过写入哨兵检查意外的持久化操作。
+type openAICodexExtraListRepo struct {
+	selectionProviderFixture
+	rateLimitCh chan time.Time
+}
+
 // TestOpenAIGetSchedulableProvider_AppliesGrokFreeSoftGate 检查 OpenAI 兼容选择入口是否执行 Grok 免费层门禁。
 func TestOpenAIGetSchedulableProvider_AppliesGrokFreeSoftGate(t *testing.T) {
 	// 基础调度的 OpenAI 兼容粘性路径也执行 Grok 免费层门禁。
@@ -1045,12 +1061,6 @@ func TestOpenAISelectProviderForModelWithExclusions_StickyRestrictedUpstreamFall
 	require.Equal(t, int64(2), cache.sessionBindings["openai:sticky-session"])
 }
 
-// noSlotSchedulerTestConcurrencyCache 在辅助选择操作并发槽时使测试失败。
-type noSlotSchedulerTestConcurrencyCache struct {
-	schedulerTestConcurrencyCache
-	acquireCalls int
-}
-
 func (c *noSlotSchedulerTestConcurrencyCache) AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
 	c.acquireCalls++
 	return false, errors.New("辅助选择不应申请并发槽")
@@ -1725,10 +1735,6 @@ func TestOpenAIGatewayService_ListSchedulableProviders_FiltersThresholdBlockedPr
 	require.Equal(t, 1, providerRepo.TempCalls)
 }
 
-type groupAwareStubOpenAIProviderRepo struct {
-	selectionProviderFixture
-}
-
 func (r groupAwareStubOpenAIProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	var result []gatewayprovider.ExecutionProvider
 	for _, acc := range r.providers {
@@ -1747,12 +1753,6 @@ func (r groupAwareStubOpenAIProviderRepo) ListSchedulableUngroupedByPlatform(ctx
 		}
 	}
 	return result, nil
-}
-
-// Codex 配额读取测试通过写入哨兵检查意外的持久化操作。
-type openAICodexExtraListRepo struct {
-	selectionProviderFixture
-	rateLimitCh chan time.Time
 }
 
 func (r *openAICodexExtraListRepo) SetRateLimited(_ context.Context, _ int64, at time.Time) error {

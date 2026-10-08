@@ -140,7 +140,7 @@ func (r *errorPassthroughRepository) Delete(ctx context.Context, id int64) error
 // toModel 将 Ent 实体转换为服务模型
 func (r *errorPassthroughRepository) toModel(e *ent.ErrorPassthroughRule) *errorpolicy.ErrorPassthroughRule {
 	rule := &errorpolicy.ErrorPassthroughRule{
-		ID:              int64(e.ID),
+		ID:              e.ID,
 		Name:            e.Name,
 		Enabled:         e.Enabled,
 		Priority:        e.Priority,

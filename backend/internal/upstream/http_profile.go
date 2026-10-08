@@ -2,14 +2,14 @@ package upstream
 
 import "context"
 
-// HTTPUpstreamProfile 标记需要 provider 专用传输策略的 HTTP 上游请求。
-type HTTPUpstreamProfile string
-
 const (
 	HTTPUpstreamProfileDefault HTTPUpstreamProfile = ""
 	HTTPUpstreamProfileOpenAI  HTTPUpstreamProfile = "openai"
 	HTTPUpstreamProfileGrok    HTTPUpstreamProfile = "grok"
 )
+
+// HTTPUpstreamProfile 标记需要 provider 专用传输策略的 HTTP 上游请求。
+type HTTPUpstreamProfile string
 
 type (
 	httpUpstreamProfileContextKey          struct{}

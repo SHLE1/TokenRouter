@@ -26,6 +26,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// openAIWSPolicyRepo 记录 WebSocket 配置策略触发的提供商错误写入。
+type openAIWSPolicyRepo struct {
+	transientCooldownProviderRepo
+	setErrorCalls int
+}
+
 func TestOpenAIWSTerminalEvent_ResponseFailedRecordsModelTransient(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{})
 	setWSFixtureHealth(svc, newUpstreamHealthForTest(transientCooldownProviderRepo{}, &wsFixtureOptions{}, nil, providercore.HealthOptions{}, nil))
@@ -173,12 +179,6 @@ func TestOpenAIWSPoolModeErrorUsesConfiguredRetry(t *testing.T) {
 	require.Equal(t, providercore.ErrorPolicyPoolBypassed, decision.Policy)
 	require.True(t, decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), http.StatusBadGateway))
 	require.False(t, wsFixtureModelBlocked(svc, provider, "gpt-5.5"))
-}
-
-// openAIWSPolicyRepo 记录 WebSocket 配置策略触发的提供商错误写入。
-type openAIWSPolicyRepo struct {
-	transientCooldownProviderRepo
-	setErrorCalls int
 }
 
 func (r *openAIWSPolicyRepo) SetError(context.Context, int64, string) error {

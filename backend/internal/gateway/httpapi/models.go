@@ -45,6 +45,29 @@ type (
 	}
 )
 
+type (
+	ClaudeModel      = modeldisplay.ClaudeModel
+	OpenAIModel      = modeldisplay.OpenAIModel
+	GrokModel        = modeldisplay.GrokModel
+	GeminiModel      = modeldisplay.GeminiModel
+	GeminiModelsList = modeldisplay.GeminiModelsList
+)
+
+type grokReasoningEffortOption struct {
+	Value   string `json:"value"`
+	Label   string `json:"label"`
+	Default bool   `json:"default,omitempty"`
+}
+
+type grokModelListItem struct {
+	GrokModel
+	SupportsReasoningEffort bool                        `json:"supportsReasoningEffort,omitempty"`
+	ReasoningEffort         string                      `json:"reasoningEffort,omitempty"`
+	ReasoningEfforts        []grokReasoningEffortOption `json:"reasoningEfforts,omitempty"`
+	Type                    string                      `json:"type"`
+	CreatedAt               string                      `json:"created_at"`
+}
+
 func NewModelsHandler(backend ModelsBackend, catalog ModelsCatalog) *ModelsHandler {
 	return &ModelsHandler{backend: backend, catalog: catalog}
 }
@@ -56,14 +79,6 @@ func customListEnabled(g *routing.Group) bool {
 	}
 	return (&routing.Group{ModelsListConfig: g.ModelsListConfig}).CustomModelsListEnabled()
 }
-
-type (
-	ClaudeModel      = modeldisplay.ClaudeModel
-	OpenAIModel      = modeldisplay.OpenAIModel
-	GrokModel        = modeldisplay.GrokModel
-	GeminiModel      = modeldisplay.GeminiModel
-	GeminiModelsList = modeldisplay.GeminiModelsList
-)
 
 func (h *ModelsHandler) Models(c *gin.Context) {
 	done, accepted := h.BeginRequest(c, "openai")
@@ -371,19 +386,4 @@ func CompositeGroupAvailableToUser(apiKey *apikey.APIKey, preferredSubscription 
 		return false
 	}
 	return apiKey.User.CanBindGroup(group.ID, group.IsExclusive)
-}
-
-type grokReasoningEffortOption struct {
-	Value   string `json:"value"`
-	Label   string `json:"label"`
-	Default bool   `json:"default,omitempty"`
-}
-
-type grokModelListItem struct {
-	GrokModel
-	SupportsReasoningEffort bool                        `json:"supportsReasoningEffort,omitempty"`
-	ReasoningEffort         string                      `json:"reasoningEffort,omitempty"`
-	ReasoningEfforts        []grokReasoningEffortOption `json:"reasoningEfforts,omitempty"`
-	Type                    string                      `json:"type"`
-	CreatedAt               string                      `json:"created_at"`
 }

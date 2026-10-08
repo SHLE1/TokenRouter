@@ -49,16 +49,107 @@ type cancelingLiveStore struct {
 	cancel context.CancelFunc
 }
 
-func (s *cancelingLiveStore) ClaimLiveController(ctx context.Context, hash, controller, owner string) (bool, error) {
-	ok, err := s.liveTestStore.ClaimLiveController(ctx, hash, controller, owner)
-	s.cancel()
-	return ok, err
-}
-
 type countingLiveProviders struct {
 	gatewayprovider.ExecutionProviderStore
 
 	reads atomic.Int32
+}
+
+// liveFixtureInputs 提供 Live 测试使用的存储、帧连接和身份接口。
+type liveFixtureInputs struct {
+	transport   httpclient.UpstreamTransport
+	providers   gatewayprovider.ExecutionProviderStore
+	store       gatewaysession.LiveCallStore
+	concurrency *scheduler.ConcurrencyService
+	logs        usage.UsageLogRepository
+	profiles    *egressadapter.TLSProfiles
+	routers     *egress.TLSFingerprintRouterService
+	dialer      openai.WSClientDialer
+	attestation liveattestation.Provider
+	cipher      identity.SecretEncryptor
+	duration    time.Duration
+}
+
+// TLS替身仅提供预热读取，实际模板及规则匹配由原生实现执行。
+type liveProfileStore struct {
+	egress.TLSFingerprintProfileRepository
+	values []*egress.TLSFingerprintProfile
+}
+
+type liveRouterStore struct {
+	egress.TLSFingerprintRouterRepository
+	values []*egress.TLSFingerprintRouter
+}
+
+type liveTestFrame struct {
+	messageType coderws.MessageType
+	payload     []byte
+	err         error
+}
+
+type liveTestFrameConn struct {
+	reads     chan liveTestFrame
+	writes    chan liveTestFrame
+	closed    chan struct{}
+	closeOnce sync.Once
+}
+
+type liveTestDialer struct {
+	conn       *liveTestFrameConn
+	url        string
+	headers    http.Header
+	tlsProfile *tlsfingerprint.Profile
+}
+
+type liveTestProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	provider *gatewayprovider.ExecutionProvider
+}
+
+type liveTestStore struct {
+	gatewaysession.GatewayCache
+	mu     sync.Mutex
+	record *gatewaysession.LiveCallRecord
+	// 这些错误用于区分 Redis 抖动与记录确实不存在。
+	claimErr         error
+	getCallErr       error
+	getControllerErr error
+}
+
+type liveTestConcurrencyCache struct {
+	scheduler.ConcurrencyCache
+	mu       sync.Mutex
+	releases int
+}
+
+type liveTestUsageRepo struct {
+	usage.UsageLogRepository
+	mu   sync.Mutex
+	logs []*usage.UsageLog
+}
+
+type liveTestBestEffortUsageRepo struct {
+	liveTestUsageRepo
+	bestEffortErr   error
+	bestEffortCalls int
+}
+
+type liveHTTPUpstreamStub struct {
+	request    *http.Request
+	body       []byte
+	tlsProfile *tlsfingerprint.Profile
+}
+
+type liveAttestationStub struct {
+	header string
+	err    error
+}
+
+func (s *cancelingLiveStore) ClaimLiveController(ctx context.Context, hash, controller, owner string) (bool, error) {
+	ok, err := s.liveTestStore.ClaimLiveController(ctx, hash, controller, owner)
+	s.cancel()
+	return ok, err
 }
 
 func (r *countingLiveProviders) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
@@ -87,21 +178,6 @@ func TestLiveHandoffCancellationStopsBeforeProviderLookup(t *testing.T) {
 	}
 }
 
-// liveFixtureInputs 提供 Live 测试使用的存储、帧连接和身份接口。
-type liveFixtureInputs struct {
-	transport   httpclient.UpstreamTransport
-	providers   gatewayprovider.ExecutionProviderStore
-	store       gatewaysession.LiveCallStore
-	concurrency *scheduler.ConcurrencyService
-	logs        usage.UsageLogRepository
-	profiles    *egressadapter.TLSProfiles
-	routers     *egress.TLSFingerprintRouterService
-	dialer      openai.WSClientDialer
-	attestation liveattestation.Provider
-	cipher      identity.SecretEncryptor
-	duration    time.Duration
-}
-
 func newLiveFixture(v liveFixtureInputs) *OpenAILiveExecutor {
 	aux := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: v.transport, store: v.providers, profiles: v.profiles})
 	aux.Requests.Routers = v.routers
@@ -116,36 +192,12 @@ func newLiveFixture(v liveFixtureInputs) *OpenAILiveExecutor {
 	return out
 }
 
-// TLS替身仅提供预热读取，实际模板及规则匹配由原生实现执行。
-type liveProfileStore struct {
-	egress.TLSFingerprintProfileRepository
-	values []*egress.TLSFingerprintProfile
-}
-
 func (s *liveProfileStore) List(context.Context) ([]*egress.TLSFingerprintProfile, error) {
 	return s.values, nil
 }
 
-type liveRouterStore struct {
-	egress.TLSFingerprintRouterRepository
-	values []*egress.TLSFingerprintRouter
-}
-
 func (s *liveRouterStore) List(context.Context) ([]*egress.TLSFingerprintRouter, error) {
 	return s.values, nil
-}
-
-type liveTestFrame struct {
-	messageType coderws.MessageType
-	payload     []byte
-	err         error
-}
-
-type liveTestFrameConn struct {
-	reads     chan liveTestFrame
-	writes    chan liveTestFrame
-	closed    chan struct{}
-	closeOnce sync.Once
 }
 
 func newLiveTestFrameConn() *liveTestFrameConn {
@@ -199,13 +251,6 @@ func (c *liveTestFrameConn) Close() error {
 	return nil
 }
 
-type liveTestDialer struct {
-	conn       *liveTestFrameConn
-	url        string
-	headers    http.Header
-	tlsProfile *tlsfingerprint.Profile
-}
-
 func (d *liveTestDialer) Dial(
 	_ context.Context,
 	wsURL string,
@@ -219,24 +264,8 @@ func (d *liveTestDialer) Dial(
 	return d.conn, http.StatusSwitchingProtocols, nil, nil
 }
 
-type liveTestProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	provider *gatewayprovider.ExecutionProvider
-}
-
 func (r *liveTestProviderRepo) GetByID(context.Context, int64) (*gatewayprovider.ExecutionProvider, error) {
 	return r.provider, nil
-}
-
-type liveTestStore struct {
-	gatewaysession.GatewayCache
-	mu     sync.Mutex
-	record *gatewaysession.LiveCallRecord
-	// 这些错误用于区分 Redis 抖动与记录确实不存在。
-	claimErr         error
-	getCallErr       error
-	getControllerErr error
 }
 
 func (s *liveTestStore) SaveLiveCall(_ context.Context, record *gatewaysession.LiveCallRecord, _ time.Duration) error {
@@ -314,12 +343,6 @@ func (s *liveTestStore) MarkLiveCallClosed(_ context.Context, callHash string, _
 	return true, nil
 }
 
-type liveTestConcurrencyCache struct {
-	scheduler.ConcurrencyCache
-	mu       sync.Mutex
-	releases int
-}
-
 func (c *liveTestConcurrencyCache) AcquireLiveLease(
 	context.Context,
 	int64,
@@ -354,12 +377,6 @@ func (c *liveTestConcurrencyCache) ReleaseLiveLease(
 	c.releases++
 	c.mu.Unlock()
 	return nil
-}
-
-type liveTestUsageRepo struct {
-	usage.UsageLogRepository
-	mu   sync.Mutex
-	logs []*usage.UsageLog
 }
 
 func (r *liveTestUsageRepo) Create(_ context.Context, log *usage.UsageLog) (bool, error) {
@@ -728,12 +745,6 @@ func TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize(t *testing.T) {
 	}
 }
 
-type liveTestBestEffortUsageRepo struct {
-	liveTestUsageRepo
-	bestEffortErr   error
-	bestEffortCalls int
-}
-
 func (r *liveTestBestEffortUsageRepo) CreateBestEffort(_ context.Context, _ *usage.UsageLog) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -797,17 +808,6 @@ func TestStopLiveObserversPreservesRemoteCall(t *testing.T) {
 	svc.liveObserverMu.Lock()
 	require.Empty(t, svc.liveObserverCancels)
 	svc.liveObserverMu.Unlock()
-}
-
-type liveHTTPUpstreamStub struct {
-	request    *http.Request
-	body       []byte
-	tlsProfile *tlsfingerprint.Profile
-}
-
-type liveAttestationStub struct {
-	header string
-	err    error
 }
 
 // newLiveTLSRoutingServices 构造同时覆盖 TLS 模板和身份头的 Live 路由规则。

@@ -13,6 +13,13 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
+// providerHealthRuntime 保存同一次装配创建的健康状态组件。
+type providerHealthRuntime struct {
+	Health   *provider.HealthService
+	Recovery *provider.RecoveryService
+	Observer *provideradapter.UpstreamHealth
+}
+
 // provideUpstreamHealth 返回 app 已构造的共享健康状态组件。
 func provideUpstreamHealth(runtime *providerHealthRuntime) *provideradapter.UpstreamHealth {
 	return runtime.Observer
@@ -90,13 +97,6 @@ func provideProviderHealthRuntime(
 	return &providerHealthRuntime{
 		Health: health, Recovery: recovery, Observer: &provideradapter.UpstreamHealth{Core: health, Team: team, Limits: limits, Models: models},
 	}
-}
-
-// providerHealthRuntime 保存同一次装配创建的健康状态组件。
-type providerHealthRuntime struct {
-	Health   *provider.HealthService
-	Recovery *provider.RecoveryService
-	Observer *provideradapter.UpstreamHealth
 }
 
 // provideProviderRecovery 返回共享的提供商恢复用例。

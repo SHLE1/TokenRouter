@@ -16,6 +16,311 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const (
+	StatusActive   = "active"
+	StatusDisabled = "disabled"
+)
+
+var batchQueryBenchmarkProviderCount int
+
+type batchProviderQueryKey struct {
+	groupID  int64
+	platform string
+	mixed    bool
+}
+
+type batchProviderQueryResult struct {
+	providers []SnapshotProvider
+	err       error
+}
+
+type batchProviderQueryRepo struct {
+	SnapshotProviderSource
+
+	mu        sync.Mutex
+	calls     map[batchProviderQueryKey]int
+	results   map[batchProviderQueryKey][]batchProviderQueryResult
+	beforeRun func(batchProviderQueryKey)
+}
+
+type batchSnapshotWrite struct {
+	token     SchedulerBucketWriteToken
+	providers []SnapshotProvider
+}
+
+type batchSnapshotCache struct {
+	SnapshotCache
+
+	mu          sync.Mutex
+	nextEpoch   int64
+	captures    []SchedulerBucket
+	captured    map[SchedulerBucket]SchedulerBucketWriteToken
+	locks       map[SchedulerBucket]int
+	lockBusy    map[SchedulerBucket]bool
+	lockErrors  map[SchedulerBucket]error
+	setErrors   map[SchedulerBucket]error
+	setAttempts map[SchedulerBucket]int
+	writes      map[SchedulerBucket][]batchSnapshotWrite
+	versions    map[SchedulerBucket]int
+	beforeSet   func()
+}
+
+type batchSnapshotProviderIDCache struct {
+	*batchSnapshotCache
+
+	reuseMu     sync.Mutex
+	fullCalls   map[SchedulerBucket]int
+	idOnlyCalls map[SchedulerBucket]int
+	idOnlyError map[SchedulerBucket]error
+	fullLateErr map[SchedulerBucket]error
+	returnEmpty bool
+}
+
+type batchQueryBenchmarkRepo struct {
+	SnapshotProviderSource
+	providers []SnapshotProvider
+}
+
+type batchQueryBenchmarkCache struct {
+	SnapshotCache
+}
+
+type bulkEventProviderRepo struct {
+	*batchProviderQueryRepo
+	providers []SnapshotProvider
+}
+
+type bulkEventSnapshotCache struct {
+	*batchSnapshotCache
+
+	providerMu        sync.Mutex
+	setProviderIDs    []int64
+	deleteProviderIDs []int64
+}
+
+type fullRebuildLifecycleCache struct {
+	*groupLifecycleTestCache
+
+	mu              sync.Mutex
+	captureAttempts []SchedulerBucket
+	captureErrors   map[string]error
+	lockBusyOnce    map[string]bool
+	watermark       int64
+	watermarkWrites []int64
+}
+
+type fullRebuildLifecycleGroupRepo struct {
+	SnapshotGroupSource
+
+	mu              sync.Mutex
+	activeIDs       []int64
+	activeIDsErr    error
+	listActiveErr   error
+	fresh           map[int64]*SnapshotGroup
+	freshErr        map[int64]error
+	activeIDCalls   int
+	listActiveCalls int
+	freshCalls      []int64
+}
+
+type fullRebuildFallbackGroupRepo struct {
+	SnapshotGroupSource
+
+	mu        sync.Mutex
+	groups    []SnapshotGroup
+	err       error
+	listCalls int
+}
+
+type fullRebuildProviderCall struct {
+	groupID  int64
+	platform string
+}
+
+type fullRebuildProviderRepo struct {
+	SnapshotProviderSource
+
+	mu          sync.Mutex
+	calls       []fullRebuildProviderCall
+	beforeFirst func()
+	once        sync.Once
+}
+
+type schedulerFullRebuildTestCache struct {
+	SnapshotCache
+
+	mu        sync.Mutex
+	listErr   error
+	listCalls int
+	captures  int
+	lockCalls int
+}
+
+type groupLifecycleTestCache struct {
+	*retirementRaceCache
+
+	stateMu sync.Mutex
+
+	leaseHeld       bool
+	lease           SchedulerGroupLifecycleLease
+	leaseSequence   int
+	leaseBusy       bool
+	leaseAcquireErr error
+	leaseReleaseErr error
+	acquireCalls    int
+	releaseCalls    int
+	acquireTTL      time.Duration
+	acquireDeadline bool
+	releaseDeadline bool
+	releaseCtxErr   error
+
+	listErr   error
+	listCalls int
+
+	retireCalls  []SchedulerBucket
+	reopenTokens []SchedulerBucketWriteToken
+	retireHeld   []bool
+	reopenHeld   []bool
+	retireErr    error
+	retireErrAt  int
+	reopenErr    error
+	reopenErrAt  int
+
+	bucketLockBusy bool
+	bucketLockErr  error
+	bucketLockTTLs []time.Duration
+	unlockCalls    int
+	setErr         error
+}
+
+type groupLifecycleTestGroupRepo struct {
+	SnapshotGroupSource
+
+	mu       sync.Mutex
+	group    *SnapshotGroup
+	err      error
+	calls    int
+	afterGet func()
+}
+
+type groupLifecycleTestProviderRepo struct {
+	SnapshotProviderSource
+
+	mu              sync.Mutex
+	calls           int
+	callsByPlatform map[string]int
+	err             error
+	started         chan struct{}
+	release         chan struct{}
+	once            sync.Once
+	beforeLoad      func()
+	beforeLoadOnce  sync.Once
+}
+
+type outboxCleanupCache struct {
+	watermark       int64
+	setWatermarks   []int64
+	updateErr       error
+	listBucketErr   error
+	listBuckets     []SchedulerBucket
+	listBucketCalls int
+}
+
+type outboxCleanupDeleteCall struct {
+	watermark int64
+	limit     int
+}
+
+type outboxCleanupRepo struct {
+	events              []SchedulerOutboxEvent
+	rows                []int64
+	maxIDCalls          int
+	maxIDErr            error
+	lockAcquired        bool
+	lockAttempts        int
+	releaseCount        int
+	deleteCalls         []outboxCleanupDeleteCall
+	firstCreatedAfterID []int64
+}
+
+type outboxCleanupProviderRepo struct {
+	SnapshotProviderSource
+}
+
+type blockingOutboxCleanupCache struct {
+	*outboxCleanupCache
+	mu      sync.Mutex
+	calls   int
+	started chan struct{}
+	release chan struct{}
+}
+
+type outboxCleanupLease struct {
+	release func()
+}
+
+type retirementRaceCache struct {
+	SnapshotCache
+
+	mu          sync.Mutex
+	epochs      map[string]int64
+	retired     map[string]bool
+	listBuckets []SchedulerBucket
+	captures    []SchedulerBucket
+	reopens     []SchedulerBucket
+	setAttempts map[string]int
+	published   map[string]int
+	versions    map[string]int
+	beforeSet   func()
+}
+
+type retirementGroupRepo struct {
+	SnapshotGroupSource
+	groups []SnapshotGroup
+	err    error
+}
+
+type schedulerSnapshotContextCacheStub struct {
+	SnapshotCache
+}
+
+type schedulerSnapshotFallbackRepoStub struct {
+	SnapshotProviderSource
+	calls int
+}
+
+type snapshotTestProvider struct {
+	ID          int64
+	Name        string
+	Platform    string
+	Status      string
+	Schedulable bool
+	GroupIDs    []int64
+}
+
+// retirementProviderSource 按平台过滤夹具，并通过屏障控制数据库查询完成时机。
+type retirementProviderSource struct {
+	SnapshotProviderSource
+	providers        []SnapshotProvider
+	listPlatformFunc func(context.Context, string) ([]SnapshotProvider, error)
+}
+
+// planSnapshotCache 记录并控制快照重建调用，供停止流程测试使用。
+type planSnapshotCache struct {
+	SnapshotCache
+	calls chan struct{}
+	block chan struct{}
+}
+
+// updateSnapshotValue 为快照更新测试提供重建元数据。
+type updateSnapshotValue struct{ id int64 }
+
+type updateSnapshotCache struct {
+	SnapshotCache
+	values []SnapshotProvider
+	err    error
+}
+
 func TestSchedulerRebuildBatchReusesSingleForcedQueryAndKeepsSnapshotsIndependent(t *testing.T) {
 	const groupID int64 = 201
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
@@ -498,7 +803,7 @@ func BenchmarkSchedulerRebuildBatchQueryReuse(b *testing.B) {
 			)
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				if err := svc.rebuildBuckets(context.Background(), buckets, "benchmark"); err != nil {
 					b.Fatal(err)
 				}
@@ -2364,26 +2669,6 @@ func TestSchedulerSnapshotService_UpdateProviderInCache(t *testing.T) {
 	})
 }
 
-type batchProviderQueryKey struct {
-	groupID  int64
-	platform string
-	mixed    bool
-}
-
-type batchProviderQueryResult struct {
-	providers []SnapshotProvider
-	err       error
-}
-
-type batchProviderQueryRepo struct {
-	SnapshotProviderSource
-
-	mu        sync.Mutex
-	calls     map[batchProviderQueryKey]int
-	results   map[batchProviderQueryKey][]batchProviderQueryResult
-	beforeRun func(batchProviderQueryKey)
-}
-
 func newBatchProviderQueryRepo() *batchProviderQueryRepo {
 	return &batchProviderQueryRepo{
 		calls:   make(map[batchProviderQueryKey]int),
@@ -2447,39 +2732,6 @@ func (r *batchProviderQueryRepo) callCount(key batchProviderQueryKey) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.calls[key]
-}
-
-type batchSnapshotWrite struct {
-	token     SchedulerBucketWriteToken
-	providers []SnapshotProvider
-}
-
-type batchSnapshotCache struct {
-	SnapshotCache
-
-	mu          sync.Mutex
-	nextEpoch   int64
-	captures    []SchedulerBucket
-	captured    map[SchedulerBucket]SchedulerBucketWriteToken
-	locks       map[SchedulerBucket]int
-	lockBusy    map[SchedulerBucket]bool
-	lockErrors  map[SchedulerBucket]error
-	setErrors   map[SchedulerBucket]error
-	setAttempts map[SchedulerBucket]int
-	writes      map[SchedulerBucket][]batchSnapshotWrite
-	versions    map[SchedulerBucket]int
-	beforeSet   func()
-}
-
-type batchSnapshotProviderIDCache struct {
-	*batchSnapshotCache
-
-	reuseMu     sync.Mutex
-	fullCalls   map[SchedulerBucket]int
-	idOnlyCalls map[SchedulerBucket]int
-	idOnlyError map[SchedulerBucket]error
-	fullLateErr map[SchedulerBucket]error
-	returnEmpty bool
 }
 
 func newBatchSnapshotProviderIDCache() *batchSnapshotProviderIDCache {
@@ -2611,17 +2863,8 @@ func newBatchQueryTestService(cache SnapshotCache, providers SnapshotProviderSou
 	return NewSnapshotService(cache, nil, providers, nil, &SnapshotOptions{})
 }
 
-type batchQueryBenchmarkRepo struct {
-	SnapshotProviderSource
-	providers []SnapshotProvider
-}
-
 func (r *batchQueryBenchmarkRepo) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]SnapshotProvider, error) {
 	return r.providers, nil
-}
-
-type batchQueryBenchmarkCache struct {
-	SnapshotCache
 }
 
 func (c *batchQueryBenchmarkCache) CaptureBucketWriteToken(_ context.Context, bucket SchedulerBucket) (SchedulerBucketWriteToken, error) {
@@ -2635,8 +2878,6 @@ func (c *batchQueryBenchmarkCache) TryLockBucket(context.Context, SchedulerBucke
 func (c *batchQueryBenchmarkCache) UnlockBucket(context.Context, SchedulerBucket) error {
 	return nil
 }
-
-var batchQueryBenchmarkProviderCount int
 
 func (c *batchQueryBenchmarkCache) SetSnapshot(_ context.Context, _ SchedulerBucket, _ SchedulerBucketWriteToken, providers []SnapshotProvider) error {
 	batchQueryBenchmarkProviderCount = len(providers)
@@ -2661,11 +2902,6 @@ func (c *batchQueryBenchmarkCache) AcquireBucketLease(ctx context.Context, bucke
 	return NewBucketLease(func(cleanup context.Context) error { return c.UnlockBucket(cleanup, bucket) }), true, nil
 }
 
-type bulkEventProviderRepo struct {
-	*batchProviderQueryRepo
-	providers []SnapshotProvider
-}
-
 func newBulkEventProviderRepo(providers ...SnapshotProvider) *bulkEventProviderRepo {
 	return &bulkEventProviderRepo{
 		batchProviderQueryRepo: newBatchProviderQueryRepo(),
@@ -2675,14 +2911,6 @@ func newBulkEventProviderRepo(providers ...SnapshotProvider) *bulkEventProviderR
 
 func (r *bulkEventProviderRepo) GetByIDs(context.Context, []int64) ([]SnapshotProvider, error) {
 	return append([]SnapshotProvider(nil), r.providers...), nil
-}
-
-type bulkEventSnapshotCache struct {
-	*batchSnapshotCache
-
-	providerMu        sync.Mutex
-	setProviderIDs    []int64
-	deleteProviderIDs []int64
 }
 
 func newBulkEventSnapshotCache() *bulkEventSnapshotCache {
@@ -2748,17 +2976,6 @@ func schedulerBucketsForTest(groupIDs []int64, platforms ...string) []SchedulerB
 		}
 	}
 	return buckets
-}
-
-type fullRebuildLifecycleCache struct {
-	*groupLifecycleTestCache
-
-	mu              sync.Mutex
-	captureAttempts []SchedulerBucket
-	captureErrors   map[string]error
-	lockBusyOnce    map[string]bool
-	watermark       int64
-	watermarkWrites []int64
 }
 
 func newFullRebuildLifecycleCache(buckets ...SchedulerBucket) *fullRebuildLifecycleCache {
@@ -2845,20 +3062,6 @@ func (c *fullRebuildLifecycleCache) totalSetAttempts() int {
 	return total
 }
 
-type fullRebuildLifecycleGroupRepo struct {
-	SnapshotGroupSource
-
-	mu              sync.Mutex
-	activeIDs       []int64
-	activeIDsErr    error
-	listActiveErr   error
-	fresh           map[int64]*SnapshotGroup
-	freshErr        map[int64]error
-	activeIDCalls   int
-	listActiveCalls int
-	freshCalls      []int64
-}
-
 func (r *fullRebuildLifecycleGroupRepo) ListActiveIDs(context.Context) ([]int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -2894,34 +3097,11 @@ func (r *fullRebuildLifecycleGroupRepo) stats() (activeIDs, listActive int, fres
 	return r.activeIDCalls, r.listActiveCalls, append([]int64(nil), r.freshCalls...)
 }
 
-type fullRebuildFallbackGroupRepo struct {
-	SnapshotGroupSource
-
-	mu        sync.Mutex
-	groups    []SnapshotGroup
-	err       error
-	listCalls int
-}
-
 func (r *fullRebuildFallbackGroupRepo) ListActive(context.Context) ([]SnapshotGroup, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.listCalls++
 	return append([]SnapshotGroup(nil), r.groups...), r.err
-}
-
-type fullRebuildProviderCall struct {
-	groupID  int64
-	platform string
-}
-
-type fullRebuildProviderRepo struct {
-	SnapshotProviderSource
-
-	mu          sync.Mutex
-	calls       []fullRebuildProviderCall
-	beforeFirst func()
-	once        sync.Once
 }
 
 func (r *fullRebuildProviderRepo) record(groupID int64, platform string) ([]SnapshotProvider, error) {
@@ -3014,16 +3194,6 @@ func (c *fullRebuildLifecycleCache) AcquireBucketLease(ctx context.Context, buck
 	return NewBucketLease(func(cleanup context.Context) error { return c.UnlockBucket(cleanup, bucket) }), true, nil
 }
 
-type schedulerFullRebuildTestCache struct {
-	SnapshotCache
-
-	mu        sync.Mutex
-	listErr   error
-	listCalls int
-	captures  int
-	lockCalls int
-}
-
 func (c *schedulerFullRebuildTestCache) ListBuckets(context.Context) ([]SchedulerBucket, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -3059,43 +3229,6 @@ func schedulerFullRebuildState(svc *SnapshotService) (requested uint64, complete
 func (c *schedulerFullRebuildTestCache) AcquireBucketLease(ctx context.Context, bucket SchedulerBucket, ttl time.Duration) (*BucketLease, bool, error) {
 	ok, err := c.TryLockBucket(ctx, bucket, ttl)
 	return nil, ok, err
-}
-
-type groupLifecycleTestCache struct {
-	*retirementRaceCache
-
-	stateMu sync.Mutex
-
-	leaseHeld       bool
-	lease           SchedulerGroupLifecycleLease
-	leaseSequence   int
-	leaseBusy       bool
-	leaseAcquireErr error
-	leaseReleaseErr error
-	acquireCalls    int
-	releaseCalls    int
-	acquireTTL      time.Duration
-	acquireDeadline bool
-	releaseDeadline bool
-	releaseCtxErr   error
-
-	listErr   error
-	listCalls int
-
-	retireCalls  []SchedulerBucket
-	reopenTokens []SchedulerBucketWriteToken
-	retireHeld   []bool
-	reopenHeld   []bool
-	retireErr    error
-	retireErrAt  int
-	reopenErr    error
-	reopenErrAt  int
-
-	bucketLockBusy bool
-	bucketLockErr  error
-	bucketLockTTLs []time.Duration
-	unlockCalls    int
-	setErr         error
 }
 
 func newGroupLifecycleTestCache(buckets ...SchedulerBucket) *groupLifecycleTestCache {
@@ -3255,16 +3388,6 @@ func (c *groupLifecycleTestCache) lifecycleMutationLeaseStates() (retire, reopen
 	return append([]bool(nil), c.retireHeld...), append([]bool(nil), c.reopenHeld...)
 }
 
-type groupLifecycleTestGroupRepo struct {
-	SnapshotGroupSource
-
-	mu       sync.Mutex
-	group    *SnapshotGroup
-	err      error
-	calls    int
-	afterGet func()
-}
-
 func (r *groupLifecycleTestGroupRepo) GetByIDLite(context.Context, int64) (*SnapshotGroup, error) {
 	r.mu.Lock()
 	r.calls++
@@ -3297,20 +3420,6 @@ func (r *groupLifecycleTestGroupRepo) callCount() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.calls
-}
-
-type groupLifecycleTestProviderRepo struct {
-	SnapshotProviderSource
-
-	mu              sync.Mutex
-	calls           int
-	callsByPlatform map[string]int
-	err             error
-	started         chan struct{}
-	release         chan struct{}
-	once            sync.Once
-	beforeLoad      func()
-	beforeLoadOnce  sync.Once
 }
 
 func (r *groupLifecycleTestProviderRepo) load(ctx context.Context, platform string) ([]SnapshotProvider, error) {
@@ -3424,15 +3533,6 @@ func (c *groupLifecycleTestCache) AcquireBucketLease(ctx context.Context, bucket
 	return NewBucketLease(func(cleanup context.Context) error { return c.UnlockBucket(cleanup, bucket) }), true, nil
 }
 
-type outboxCleanupCache struct {
-	watermark       int64
-	setWatermarks   []int64
-	updateErr       error
-	listBucketErr   error
-	listBuckets     []SchedulerBucket
-	listBucketCalls int
-}
-
 func (c *outboxCleanupCache) GetSnapshot(ctx context.Context, bucket SchedulerBucket) ([]SnapshotProvider, bool, error) {
 	return nil, false, nil
 }
@@ -3500,37 +3600,8 @@ func (c *outboxCleanupCache) SetOutboxWatermark(ctx context.Context, id int64) e
 	return nil
 }
 
-type outboxCleanupDeleteCall struct {
-	watermark int64
-	limit     int
-}
-
-type outboxCleanupRepo struct {
-	events              []SchedulerOutboxEvent
-	rows                []int64
-	maxIDCalls          int
-	maxIDErr            error
-	lockAcquired        bool
-	lockAttempts        int
-	releaseCount        int
-	deleteCalls         []outboxCleanupDeleteCall
-	firstCreatedAfterID []int64
-}
-
-type outboxCleanupProviderRepo struct {
-	SnapshotProviderSource
-}
-
 func (r *outboxCleanupProviderRepo) ListSchedulableUngroupedByPlatform(context.Context, string) ([]SnapshotProvider, error) {
 	return nil, nil
-}
-
-type blockingOutboxCleanupCache struct {
-	*outboxCleanupCache
-	mu      sync.Mutex
-	calls   int
-	started chan struct{}
-	release chan struct{}
 }
 
 func (c *blockingOutboxCleanupCache) ListBuckets(context.Context) ([]SchedulerBucket, error) {
@@ -3621,10 +3692,6 @@ func (r *outboxCleanupRepo) TryAcquireCleanupLock(ctx context.Context) (Schedule
 	}}, true, nil
 }
 
-type outboxCleanupLease struct {
-	release func()
-}
-
 func (l outboxCleanupLease) Release() {
 	if l.release != nil {
 		l.release()
@@ -3646,21 +3713,6 @@ func (c *outboxCleanupCache) AcquireBucketLease(ctx context.Context, bucket Sche
 		return nil, ok, err
 	}
 	return NewBucketLease(func(cleanup context.Context) error { return c.UnlockBucket(cleanup, bucket) }), true, nil
-}
-
-type retirementRaceCache struct {
-	SnapshotCache
-
-	mu          sync.Mutex
-	epochs      map[string]int64
-	retired     map[string]bool
-	listBuckets []SchedulerBucket
-	captures    []SchedulerBucket
-	reopens     []SchedulerBucket
-	setAttempts map[string]int
-	published   map[string]int
-	versions    map[string]int
-	beforeSet   func()
 }
 
 func newRetirementRaceCache(buckets ...SchedulerBucket) *retirementRaceCache {
@@ -3770,12 +3822,6 @@ func (c *retirementRaceCache) version(bucket SchedulerBucket) int {
 	return c.versions[bucket.String()]
 }
 
-type retirementGroupRepo struct {
-	SnapshotGroupSource
-	groups []SnapshotGroup
-	err    error
-}
-
 func (r *retirementGroupRepo) ListActive(context.Context) ([]SnapshotGroup, error) {
 	return r.groups, r.err
 }
@@ -3789,17 +3835,8 @@ func (c *retirementRaceCache) AcquireBucketLease(ctx context.Context, bucket Sch
 	return NewBucketLease(func(cleanup context.Context) error { return c.UnlockBucket(cleanup, bucket) }), true, nil
 }
 
-type schedulerSnapshotContextCacheStub struct {
-	SnapshotCache
-}
-
 func (s schedulerSnapshotContextCacheStub) GetSnapshot(ctx context.Context, bucket SchedulerBucket) ([]SnapshotProvider, bool, error) {
 	return nil, false, ctx.Err()
-}
-
-type schedulerSnapshotFallbackRepoStub struct {
-	SnapshotProviderSource
-	calls int
 }
 
 func (r *schedulerSnapshotFallbackRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]SnapshotProvider, error) {
@@ -3810,15 +3847,6 @@ func (r *schedulerSnapshotFallbackRepoStub) ListSchedulableByPlatform(ctx contex
 func (r *schedulerSnapshotFallbackRepoStub) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]SnapshotProvider, error) {
 	r.calls++
 	return nil, nil
-}
-
-type snapshotTestProvider struct {
-	ID          int64
-	Name        string
-	Platform    string
-	Status      string
-	Schedulable bool
-	GroupIDs    []int64
 }
 
 func (a snapshotTestProvider) SnapshotMetadata() SnapshotMetadata {
@@ -3836,20 +3864,8 @@ func snapshotTestData(value SnapshotProvider) *snapshotTestProvider {
 	}
 }
 
-const (
-	StatusActive   = "active"
-	StatusDisabled = "disabled"
-)
-
 // ptrInt64 构造测试所需的可选分组 ID。
 func ptrInt64(value int64) *int64 { return &value }
-
-// retirementProviderSource 按平台过滤夹具，并通过屏障控制数据库查询完成时机。
-type retirementProviderSource struct {
-	SnapshotProviderSource
-	providers        []SnapshotProvider
-	listPlatformFunc func(context.Context, string) ([]SnapshotProvider, error)
-}
 
 func (r *retirementProviderSource) ListSchedulableByPlatform(ctx context.Context, platform string) ([]SnapshotProvider, error) {
 	if r.listPlatformFunc != nil {
@@ -3893,13 +3909,6 @@ func (r *retirementProviderSource) ListSchedulableUngroupedByPlatforms(ctx conte
 	return r.ListSchedulableByPlatforms(ctx, platforms)
 }
 
-// planSnapshotCache 记录并控制快照重建调用，供停止流程测试使用。
-type planSnapshotCache struct {
-	SnapshotCache
-	calls chan struct{}
-	block chan struct{}
-}
-
 func (s *planSnapshotCache) ListBuckets(ctx context.Context) ([]SchedulerBucket, error) {
 	s.calls <- struct{}{}
 	if s.block != nil {
@@ -3912,17 +3921,8 @@ func (s *planSnapshotCache) ListBuckets(ctx context.Context) ([]SchedulerBucket,
 	return nil, errors.New("snapshot probe failed")
 }
 
-// updateSnapshotValue 为快照更新测试提供重建元数据。
-type updateSnapshotValue struct{ id int64 }
-
 func (v updateSnapshotValue) SnapshotMetadata() SnapshotMetadata {
 	return SnapshotMetadata{ID: v.id}
-}
-
-type updateSnapshotCache struct {
-	SnapshotCache
-	values []SnapshotProvider
-	err    error
 }
 
 func (c *updateSnapshotCache) SetProvider(_ context.Context, value SnapshotProvider) error {

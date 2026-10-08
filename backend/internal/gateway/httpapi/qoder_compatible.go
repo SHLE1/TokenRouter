@@ -19,14 +19,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// QoderEndpoint 保留三种 HTTP 外形，不作为任意供应商识别规则。
-type QoderEndpoint string
-
 const (
 	QoderChat      QoderEndpoint = "chat_completions"
 	QoderMessages  QoderEndpoint = "messages"
 	QoderResponses QoderEndpoint = "responses"
 )
+
+// QoderEndpoint 保留三种 HTTP 外形，不作为任意供应商识别规则。
+type QoderEndpoint string
 
 type QoderCompatibleCall struct {
 	Endpoint           QoderEndpoint

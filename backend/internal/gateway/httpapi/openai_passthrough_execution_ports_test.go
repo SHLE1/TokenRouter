@@ -20,7 +20,7 @@ func TestOpenAIResponsesRejectedFieldRetryStateRejectsDuplicateBodyAndCap(t *tes
 	state := openai.NewOpenAIResponsesRejectedFieldRetryState(initialBody)
 
 	require.False(t, state.Allow(initialBody))
-	for attempt := 0; attempt < openai.MaxResponsesRejectedFieldRetries; attempt++ {
+	for attempt := range openai.MaxResponsesRejectedFieldRetries {
 		nextBody := []byte(fmt.Sprintf(`{"model":"gpt-5.5","variant":%d}`, attempt))
 		require.True(t, state.Allow(nextBody))
 		require.False(t, state.Allow(nextBody))
@@ -435,7 +435,7 @@ func TestOpenAIResponsesRejectedFieldRetryStateAllowsPromptCacheBreakpointVarian
 // 一次拒绝应清理全部同类型项目，否则逐个索引重试会耗尽有限预算。
 func TestNormalizeOpenAIResponsesRejectedFieldRetryBodyClearsStatusForWholeType(t *testing.T) {
 	input := make([]string, 0, 12)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		input = append(input, `{"type":"tool_search_output","status":"completed","call_id":"call_`+strconv.Itoa(i)+`","tools":[]}`)
 	}
 	input = append(input, `{"type":"message","role":"user","status":"completed","content":"hi"}`)
@@ -447,7 +447,7 @@ func TestNormalizeOpenAIResponsesRejectedFieldRetryBodyClearsStatusForWholeType(
 	require.True(t, changed)
 	require.NotEmpty(t, reason)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.False(t, gjson.GetBytes(retryBody, "input."+strconv.Itoa(i)+".status").Exists(),
 			"every tool_search_output must lose its status in a single retry, index %d did not", i)
 		require.Equal(t, "call_"+strconv.Itoa(i), gjson.GetBytes(retryBody, "input."+strconv.Itoa(i)+".call_id").String(),
@@ -486,7 +486,7 @@ func TestOpenAIResponsesRejectedFieldRetryStateForRequestAllowsSameTransformAcro
 
 func TestOpenAIResponsesRejectedFieldRetryStateForRequestSharesBoundedBudgetAcrossProviders(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	for attempt := 0; attempt < openai.MaxResponsesRejectedFieldRetries; attempt++ {
+	for attempt := range openai.MaxResponsesRejectedFieldRetries {
 		state := openAIResponsesRejectedFieldRetryStateForRequest(c, []byte(fmt.Sprintf(`{"provider":%d}`, attempt)))
 		require.True(t, state.Allow([]byte(`{"same":"retry"}`)))
 	}

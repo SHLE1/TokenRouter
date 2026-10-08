@@ -254,7 +254,7 @@ func splitChain(chain string) []string {
 	}
 	var parts []string
 	start := 0
-	for i := 0; i < len(chain); i++ {
+	for i := range len(chain) {
 		if chain[i] == '-' {
 			parts = append(parts, chain[start:i])
 			start = i + 1

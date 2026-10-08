@@ -14,6 +14,9 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+// DefaultSSELineLimit 是 SSE 单行数据的默认字节上限。
+const DefaultSSELineLimit = 500 * 1024 * 1024
+
 type responsesClientToolStreamBody struct {
 	*io.PipeReader
 	source io.Closer
@@ -184,6 +187,3 @@ func transformResponsesClientToolStream(
 	}
 	_ = destination.Close()
 }
-
-// DefaultSSELineLimit 是 SSE 单行数据的默认字节上限。
-const DefaultSSELineLimit = 500 * 1024 * 1024

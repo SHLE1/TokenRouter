@@ -25,29 +25,7 @@ const (
 	rateLimitWindow5h = 5 * time.Hour
 	rateLimitWindow1d = 24 * time.Hour
 	rateLimitWindow7d = 7 * 24 * time.Hour
-)
 
-// jitteredTTL 返回带随机抖动的 TTL，防止缓存雪崩
-func jitteredTTL() time.Duration {
-	// 只做“减法抖动”，确保实际 TTL 不会超过 billingCacheTTL（避免上界预期被打破）。
-	if billingCacheJitter <= 0 {
-		return billingCacheTTL
-	}
-	jitter := time.Duration(rand.IntN(int(billingCacheJitter)))
-	return billingCacheTTL - jitter
-}
-
-// billingBalanceKey generates the Redis key for user balance cache.
-func billingBalanceKey(userID int64) string {
-	return fmt.Sprintf("%s%d", billingBalanceKeyPrefix, userID)
-}
-
-// billingRateLimitKey generates the Redis key for API key rate limit cache.
-func billingRateLimitKey(keyID int64) string {
-	return fmt.Sprintf("%s%d", billingRateLimitKeyPrefix, keyID)
-}
-
-const (
 	rateLimitFieldUsage5h  = "usage_5h"
 	rateLimitFieldUsage1d  = "usage_1d"
 	rateLimitFieldUsage7d  = "usage_7d"
@@ -109,6 +87,26 @@ var (
 
 type Cache struct {
 	rdb *redis.Client
+}
+
+// jitteredTTL 返回带随机抖动的 TTL，防止缓存雪崩
+func jitteredTTL() time.Duration {
+	// 只做“减法抖动”，确保实际 TTL 不会超过 billingCacheTTL（避免上界预期被打破）。
+	if billingCacheJitter <= 0 {
+		return billingCacheTTL
+	}
+	jitter := time.Duration(rand.IntN(int(billingCacheJitter)))
+	return billingCacheTTL - jitter
+}
+
+// billingBalanceKey generates the Redis key for user balance cache.
+func billingBalanceKey(userID int64) string {
+	return fmt.Sprintf("%s%d", billingBalanceKeyPrefix, userID)
+}
+
+// billingRateLimitKey generates the Redis key for API key rate limit cache.
+func billingRateLimitKey(keyID int64) string {
+	return fmt.Sprintf("%s%d", billingRateLimitKeyPrefix, keyID)
 }
 
 func NewBillingCache(rdb *redis.Client) *Cache {

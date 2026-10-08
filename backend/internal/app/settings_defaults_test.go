@@ -18,6 +18,10 @@ type settingOIDCRepoStub struct {
 	values map[string]string
 }
 
+type settingWeChatRepoStub struct {
+	values map[string]string
+}
+
 func (s *settingOIDCRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
 	panic("unexpected Get call")
 }
@@ -254,10 +258,6 @@ func TestGetOIDCConnectOAuthConfig_DefaultsCompatibilityFlagsToSafeValuesWhenSet
 // readOAuthAdminSettings 为认证设置夹具提供默认并发值，展示规则由身份模块拥有。
 func readOAuthAdminSettings(source *identity.OAuthSettings, values map[string]string) *identity.AdminReadSettings {
 	return source.ReadAdminSettings(values, func() int { return 0 })
-}
-
-type settingWeChatRepoStub struct {
-	values map[string]string
 }
 
 func (s *settingWeChatRepoStub) Get(context.Context, string) (*settingscore.Setting, error) {

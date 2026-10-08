@@ -1,5 +1,8 @@
 package requeststate
 
+// benchmarkIntSink 保存请求解析和字段视图基准的计数结果。
+var benchmarkIntSink int
+
 // benchmarkBodySizes 指定请求解析和字段读取基准的目标输入大小。
 func benchmarkBodySizes() []struct {
 	name  string
@@ -15,6 +18,3 @@ func benchmarkBodySizes() []struct {
 		{name: "32MB", bytes: 32 << 20},
 	}
 }
-
-// benchmarkIntSink 保存请求解析和字段视图基准的计数结果。
-var benchmarkIntSink int

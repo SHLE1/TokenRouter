@@ -23,6 +23,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+// grokVideoObserver 记录视频任务日志，media 判断完成资格并认领结算。
+type grokVideoObserver struct{ log *zap.Logger }
+
 func (h *Runtime) resolveCompositeGrokVideoAPIKey(
 	ctx context.Context,
 	apiKey *apikey.APIKey,
@@ -198,9 +201,6 @@ func recordGrokMediaUsage(
 		}
 	})
 }
-
-// grokVideoObserver 记录视频任务日志，media 判断完成资格并认领结算。
-type grokVideoObserver struct{ log *zap.Logger }
 
 func (o grokVideoObserver) ObserveVideo(n gatewaymedia.VideoNotice) {
 	switch n.Kind {

@@ -11,6 +11,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+// ExecutionProvider 保存提供商记录和本次请求的路线。
+// Route 用于本次请求，provider.Record 提供提供商规则。
+type ExecutionProvider struct {
+	Record provider.Record           `json:"-"`
+	Route  requeststate.AttemptRoute `json:"-"`
+}
+
 // BindExecutionHeaders 返回绑定提供商的 Header 设置函数，调用时读取最新字段。
 func BindExecutionHeaders(value *ExecutionProvider) func(http.Header) {
 	return func(headers http.Header) {
@@ -25,21 +32,6 @@ func BindExecutionHeaderValue(value *ExecutionProvider) func(string) (string, bo
 	}
 }
 
-// ExecutionProvider 保存提供商记录和本次请求的路线。
-// Route 用于本次请求，provider.Record 提供提供商规则。
-type ExecutionProvider struct {
-	Record provider.Record           `json:"-"`
-	Route  requeststate.AttemptRoute `json:"-"`
-}
-
-// View 返回提供商记录，接收者为 nil 时返回 nil。
-func (value *ExecutionProvider) View() *provider.Record {
-	if value == nil {
-		return nil
-	}
-	return &value.Record
-}
-
 // NewExecutionProvider 复制提供商记录并设置时钟函数。
 func NewExecutionProvider(value *provider.Record) *ExecutionProvider {
 	if value == nil {
@@ -50,6 +42,14 @@ func NewExecutionProvider(value *provider.Record) *ExecutionProvider {
 	out.Record.Now = time.Now
 	out.Record.LoadLocation = time.LoadLocation
 	return out
+}
+
+// View 返回提供商记录，接收者为 nil 时返回 nil。
+func (value *ExecutionProvider) View() *provider.Record {
+	if value == nil {
+		return nil
+	}
+	return &value.Record
 }
 
 func ExecutionRecord(value *ExecutionProvider) *provider.Record {

@@ -30,6 +30,17 @@ type redeemRepoStub struct {
 	batchUpdateCalled bool
 }
 
+// settingsPrices 保存计费测试的设置与价卡。
+type settingsPrices struct {
+	settings pricing.BillingSettings
+	cards    []routing.ModelPricingEntry
+}
+
+// catalogFixture 保存测试提供的模型价格目录。
+type catalogFixture struct {
+	pricingData map[string]*pricing.CatalogModelPricing
+}
+
 func (s *redeemRepoStub) Create(ctx context.Context, code *billing.RedeemCode) error {
 	panic("unexpected Create call")
 }
@@ -135,12 +146,6 @@ func newCalculatorWithPrices(catalog *provider.Service, prices map[string]*prici
 	return testkit.Calculator(catalog, prices)
 }
 
-// settingsPrices 保存计费测试的设置与价卡。
-type settingsPrices struct {
-	settings pricing.BillingSettings
-	cards    []routing.ModelPricingEntry
-}
-
 func (s *settingsPrices) GetEffectiveBillingSettings(context.Context, int64) pricing.BillingSettings {
 	return s.settings.Clone()
 }
@@ -152,11 +157,6 @@ func (s *settingsPrices) GetEffectiveConfigModelPricing(_ context.Context, _ int
 func settingsResolver(calculator *billing.Calculator, settings pricing.BillingSettings, cards []routing.ModelPricingEntry) (*billing.PriceResolver, *settingsPrices) {
 	source := &settingsPrices{settings: settings, cards: cards}
 	return billing.NewPriceResolver(source, calculator, nil, nil), source
-}
-
-// catalogFixture 保存测试提供的模型价格目录。
-type catalogFixture struct {
-	pricingData map[string]*pricing.CatalogModelPricing
 }
 
 func newCatalogFixture(fixture catalogFixture) *provider.Service {

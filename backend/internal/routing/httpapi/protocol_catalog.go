@@ -33,6 +33,22 @@ type ProtocolCatalogResponse struct {
 	AuxiliaryOperations []AuxiliaryOperation      `json:"auxiliary_operations"`
 }
 
+// AuxiliaryOperation 登记主协议的辅助操作；资源生命周期不会生成新的协议复选框。
+type AuxiliaryOperation struct {
+	Operation     string              `json:"operation"`
+	Protocol      protocol.ProtocolID `json:"protocol,omitempty"`
+	Authorization string              `json:"authorization"`
+}
+
+// Protocol 保留管理员目录的 JSON 顺序和字段。
+type Protocol struct {
+	ID           protocol.ProtocolID `json:"id"`
+	Name         string              `json:"name"`
+	Endpoint     string              `json:"endpoint"`
+	UpstreamOnly bool                `json:"upstream_only"`
+	Platforms    []string            `json:"platforms"`
+}
+
 // AdminProtocolCatalog 生成管理端使用的协议能力目录。
 func AdminProtocolCatalog(endpoints map[protocol.ProtocolID]string) ProtocolCatalogResponse {
 	providers := []ProtocolProviderProfile{}
@@ -64,13 +80,6 @@ func AdminProtocolCatalog(endpoints map[protocol.ProtocolID]string) ProtocolCata
 	}
 }
 
-// AuxiliaryOperation 登记主协议的辅助操作；资源生命周期不会生成新的协议复选框。
-type AuxiliaryOperation struct {
-	Operation     string              `json:"operation"`
-	Protocol      protocol.ProtocolID `json:"protocol,omitempty"`
-	Authorization string              `json:"authorization"`
-}
-
 func AuxiliaryOperations() []AuxiliaryOperation {
 	return []AuxiliaryOperation{
 		{"/messages/count_tokens", protocol.ProtocolAnthropicMessages, "protocol"},
@@ -85,15 +94,6 @@ func AuxiliaryOperations() []AuxiliaryOperation {
 		{"Live sideband", protocol.ProtocolLive, "session"},
 		{"custom voice read/update/delete/audio", protocol.ProtocolCustomVoices, "protocol_and_resource"},
 	}
-}
-
-// Protocol 保留管理员目录的 JSON 顺序和字段。
-type Protocol struct {
-	ID           protocol.ProtocolID `json:"id"`
-	Name         string              `json:"name"`
-	Endpoint     string              `json:"endpoint"`
-	UpstreamOnly bool                `json:"upstream_only"`
-	Platforms    []string            `json:"platforms"`
 }
 
 func publicProtocols(endpoints map[protocol.ProtocolID]string) []Protocol {

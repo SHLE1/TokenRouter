@@ -36,7 +36,7 @@ func TestTeamInvitationLimiterHourlyLimit(t *testing.T) {
 	limiter := NewTeamInvitationLimiter(client)
 	ctx := context.Background()
 
-	for index := 0; index < TeamInvitationHourlyLimit; index++ {
+	for index := range TeamInvitationHourlyLimit {
 		allowed, retryAfter, err := limiter.CheckAndRecord(ctx, 22, fmt.Sprintf("member-%d@example.com", index))
 		require.NoError(t, err)
 		require.True(t, allowed)

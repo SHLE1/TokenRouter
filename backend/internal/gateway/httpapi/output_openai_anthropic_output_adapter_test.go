@@ -18,6 +18,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
+// nativeAnthropicReaderFixture 为协议读取测试提供输出参数。
+type nativeAnthropicReaderFixture struct{ output *OpenAIResponseOutput }
+
 func newNativeAnthropicHangTestService(intervalSec int) *nativeAnthropicReaderFixture {
 	return &nativeAnthropicReaderFixture{output: &OpenAIResponseOutput{Options: OpenAIResponseOptions{Configured: true, StreamDataIntervalTimeout: intervalSec, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}}
 }
@@ -304,9 +307,6 @@ func TestResponsesBufferedFromNativeAnthropic_ToolArgumentsAreValidJSON(t *testi
 		t.Fatalf("expected valid tool arguments, got %q", args)
 	}
 }
-
-// nativeAnthropicReaderFixture 为协议读取测试提供输出参数。
-type nativeAnthropicReaderFixture struct{ output *OpenAIResponseOutput }
 
 // handleCCBufferedFromNativeAnthropic 读取 Anthropic SSE 事件并组装完整响应，
 // 再按 Anthropic → Responses → Chat Completions 转换。

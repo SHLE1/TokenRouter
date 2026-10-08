@@ -19,9 +19,23 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-const PlatformGemini = "gemini"
 const (
+	PlatformGemini = "gemini"
+
 	BillingModelSourceUpstream = routing.BillingModelSourceUpstream
+
+	DefaultBatchImageMaxItems           = 200
+	DefaultBatchImageMaxOutputImages    = 200
+	DefaultBatchImageMaxOutputCount     = 4
+	DefaultBatchImageMaxPromptChars     = 8000
+	DefaultBatchImageResponseMime       = "image/png"
+	DefaultBatchImageImageSize          = "1K"
+	DefaultBatchImageDiscountMultiplier = 0.5
+	DefaultBatchImageHoldMultiplier     = 0.6
+
+	MaxBatchImageReferenceImageBytes    = 10 * 1024 * 1024
+	DefaultBatchImageMaxReferenceImages = 1000
+	DefaultBatchImageMaxReferenceBytes  = 128 * 1024 * 1024
 )
 
 type (
@@ -123,21 +137,6 @@ func mappedCandidateModel(c *Candidate, m string) string {
 	}
 	return strings.TrimSpace(value)
 }
-
-const (
-	DefaultBatchImageMaxItems           = 200
-	DefaultBatchImageMaxOutputImages    = 200
-	DefaultBatchImageMaxOutputCount     = 4
-	DefaultBatchImageMaxPromptChars     = 8000
-	DefaultBatchImageResponseMime       = "image/png"
-	DefaultBatchImageImageSize          = "1K"
-	DefaultBatchImageDiscountMultiplier = 0.5
-	DefaultBatchImageHoldMultiplier     = 0.6
-
-	MaxBatchImageReferenceImageBytes    = 10 * 1024 * 1024
-	DefaultBatchImageMaxReferenceImages = 1000
-	DefaultBatchImageMaxReferenceBytes  = 128 * 1024 * 1024
-)
 
 // Submit 批量图片作业的提交、预占和后续状态生命周期由对应工程文档维护。
 // @project-doc docs/domains/batch_image_jobs.md#job_lifecycle

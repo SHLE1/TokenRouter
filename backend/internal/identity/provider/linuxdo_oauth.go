@@ -23,6 +23,9 @@ type (
 // LinuxDoClient 交换 LinuxDo 授权码并读取用户资料。
 type LinuxDoClient struct{}
 
+// LinuxDoOptions 是 identity.LinuxDoOAuthOptions 的类型别名。
+type LinuxDoOptions = identity.LinuxDoOAuthOptions
+
 func (LinuxDoClient) ExchangeCode(ctx context.Context, o LinuxDoOptions, code, redirect, verifier string) (*LinuxDoTokenResponse, error) {
 	return LinuxDoExchangeCode(ctx, o, code, redirect, verifier)
 }
@@ -291,6 +294,3 @@ func BuildBearerAuthorization(tokenType, accessToken string) (string, error) {
 	}
 	return "Bearer " + accessToken, nil
 }
-
-// LinuxDoOptions 是 identity.LinuxDoOAuthOptions 的类型别名。
-type LinuxDoOptions = identity.LinuxDoOAuthOptions

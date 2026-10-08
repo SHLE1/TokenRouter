@@ -24,6 +24,32 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+// groupAdminFixture 提供分组管理 HTTP 测试的数据和调用记录。
+type groupAdminFixture struct {
+	GroupAdministration
+	groups        []routing.Group
+	getGroupCalls int
+}
+
+type duplicateGroupAdminServiceStub struct {
+	GroupAdministration
+	group        *routing.Group
+	calls        int
+	recoverCalls int
+	groupID      int64
+	actorScope   string
+	operationKey string
+	recoverScope string
+	recoverKey   string
+	created      bool
+}
+
+// failOnceMarkSucceededRepo 在首次保存成功响应时返回错误，供测试检查幂等恢复。
+type failOnceMarkSucceededRepo struct {
+	*idempotencytest.MemoryStore
+	failNext bool
+}
+
 func TestDuplicateGroupHandlerReturnsAdminDTOWithoutOperationMetadata(t *testing.T) {
 	svc := &duplicateGroupAdminServiceStub{group: duplicateGroupHandlerFixture()}
 	router := setupDuplicateGroupRouter(t, svc)
@@ -274,13 +300,6 @@ func TestUpdateGroupRequestAdvancedSchedulerOverridesTriState(t *testing.T) {
 	})
 }
 
-// groupAdminFixture 提供分组管理 HTTP 测试的数据和调用记录。
-type groupAdminFixture struct {
-	GroupAdministration
-	groups        []routing.Group
-	getGroupCalls int
-}
-
 func setupGroupAdminContractRouter() (*gin.Engine, *groupAdminFixture) {
 	now := time.Now().UTC()
 	source := &groupAdminFixture{groups: []routing.Group{{ID: 2, Name: "group", Status: billing.StatusActive, CreatedAt: now, UpdatedAt: now}}}
@@ -345,19 +364,6 @@ func (s *groupAdminFixture) DeleteGroup(ctx context.Context, id int64) error {
 	return nil
 }
 
-type duplicateGroupAdminServiceStub struct {
-	GroupAdministration
-	group        *routing.Group
-	calls        int
-	recoverCalls int
-	groupID      int64
-	actorScope   string
-	operationKey string
-	recoverScope string
-	recoverKey   string
-	created      bool
-}
-
 func (s *duplicateGroupAdminServiceStub) DuplicateGroup(_ context.Context, groupID int64, actorScope, operationKey string) (*routing.Group, error) {
 	s.calls++
 	s.groupID = groupID
@@ -407,12 +413,6 @@ func duplicateGroupHandlerFixture() *routing.Group {
 	}
 }
 
-// failOnceMarkSucceededRepo 在首次保存成功响应时返回错误，供测试检查幂等恢复。
-type failOnceMarkSucceededRepo struct {
-	*idempotencytest.MemoryStore
-	failNext bool
-}
-
 func (r *failOnceMarkSucceededRepo) MarkSucceeded(ctx context.Context, id int64, responseStatus int, responseBody string, expiresAt time.Time) error {
 	if r.failNext {
 		r.failNext = false
@@ -425,7 +425,7 @@ func (r *failOnceMarkSucceededRepo) MarkSucceeded(ctx context.Context, id int64,
 func bindGroupPlatformJSON(t *testing.T, target any, body string) error {
 	t.Helper()
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest("POST", "/", bytes.NewBufferString(body))
+	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 	return httpx.BindJSONStrict(c, target)
 }

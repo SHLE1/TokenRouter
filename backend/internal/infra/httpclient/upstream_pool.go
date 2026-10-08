@@ -35,8 +35,12 @@ const (
 	http2PingTimeout                   = 15 * time.Second
 )
 
-// ErrUpstreamClientLimitReached 表示所有缓存条目仍被在途请求占用。
-var ErrUpstreamClientLimitReached = errors.New("upstream client cache limit reached")
+var (
+	// ErrUpstreamClientLimitReached 表示所有缓存条目仍被在途请求占用。
+	ErrUpstreamClientLimitReached = errors.New("upstream client cache limit reached")
+
+	errResponseHeaderTimeout = &responseHeaderTimeoutError{}
+)
 
 // TransportProtocol 只描述传输能力；CacheVariant 保留调用方已有的隔离标识。
 type TransportProtocol struct {
@@ -68,6 +72,59 @@ type UpstreamRequestOptions struct {
 type UpstreamPool struct {
 	mu      sync.RWMutex
 	clients map[string]*upstreamClientEntry
+}
+
+// UpstreamSettings 包含已解析的连接池参数和响应头超时。
+type UpstreamSettings struct {
+	MaxIdleConns          int           // 最大空闲连接总数
+	MaxIdleConnsPerHost   int           // 每主机最大空闲连接数
+	MaxConnsPerHost       int           // 每主机最大连接数（含活跃）
+	IdleConnTimeout       time.Duration // 空闲连接超时时间
+	ResponseHeaderTimeout time.Duration // 等待响应头超时时间
+}
+
+// upstreamClientEntry 上游客户端缓存条目
+// 记录客户端实例及其元数据，用于连接池管理和淘汰策略
+type upstreamClientEntry struct {
+	client       *http.Client // HTTP 客户端实例
+	proxyKey     string       // 代理标识（用于检测代理变更）
+	poolKey      string       // 连接池配置标识（用于检测配置变更）
+	protocolMode string       // 协议模式（default/openai_h1/openai_h2/openai_h1_fallback）
+	lastUsed     int64        // 最后使用时间戳（纳秒），用于 LRU 淘汰
+	inFlight     int64        // 当前进行中的请求数，>0 时不可淘汰
+}
+
+type responseHeaderTimeoutError struct{}
+
+// responseHeaderTimeoutRoundTripper 为裸 http2.Transport 补齐等待响应头超时。
+// 请求拿到响应头后会停止计时，避免长时间 SSE 响应在读取 Body 阶段被误取消。
+type responseHeaderTimeoutRoundTripper struct {
+	base    http.RoundTripper
+	timeout time.Duration
+}
+
+type cancelOnCloseReadCloser struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+// trackedBody 带跟踪功能的响应体包装器
+// 在 Close 时执行回调，用于更新请求计数
+type trackedBody struct {
+	io.ReadCloser // 原始响应体
+	once          sync.Once
+	onClose       func() // 关闭时的回调函数
+}
+
+type zstdResponseReader struct {
+	io.ReadCloser
+	warnOnce sync.Once
+}
+
+// decompressedBody 组合解压 reader 和原始 body 的 close。
+type decompressedBody struct {
+	reader io.Reader
+	closer io.Closer
 }
 
 // NewUpstreamPool 创建独立的上游池，不与通用或 req 客户端池合并状态。
@@ -107,26 +164,6 @@ func (s *UpstreamPool) Do(req *http.Request, opts UpstreamRequestOptions) (*http
 	decompressResponseBody(resp)
 	resp.Body = wrapTrackedBody(resp.Body, release)
 	return resp, nil
-}
-
-// UpstreamSettings 包含已解析的连接池参数和响应头超时。
-type UpstreamSettings struct {
-	MaxIdleConns          int           // 最大空闲连接总数
-	MaxIdleConnsPerHost   int           // 每主机最大空闲连接数
-	MaxConnsPerHost       int           // 每主机最大连接数（含活跃）
-	IdleConnTimeout       time.Duration // 空闲连接超时时间
-	ResponseHeaderTimeout time.Duration // 等待响应头超时时间
-}
-
-// upstreamClientEntry 上游客户端缓存条目
-// 记录客户端实例及其元数据，用于连接池管理和淘汰策略
-type upstreamClientEntry struct {
-	client       *http.Client // HTTP 客户端实例
-	proxyKey     string       // 代理标识（用于检测代理变更）
-	poolKey      string       // 连接池配置标识（用于检测配置变更）
-	protocolMode string       // 协议模式（default/openai_h1/openai_h2/openai_h1_fallback）
-	lastUsed     int64        // 最后使用时间戳（纳秒），用于 LRU 淘汰
-	inFlight     int64        // 当前进行中的请求数，>0 时不可淘汰
 }
 
 // acquire 保持读锁快速路径、写锁重查和只逐出空闲条目的原有顺序。
@@ -532,10 +569,6 @@ func buildUpstreamTransportWithTLSFingerprint(settings UpstreamSettings, proxyUR
 	return transport, nil
 }
 
-var errResponseHeaderTimeout = &responseHeaderTimeoutError{}
-
-type responseHeaderTimeoutError struct{}
-
 func (e *responseHeaderTimeoutError) Error() string {
 	return "net/http: timeout awaiting response headers"
 }
@@ -546,13 +579,6 @@ func (e *responseHeaderTimeoutError) Timeout() bool {
 
 func (e *responseHeaderTimeoutError) Temporary() bool {
 	return true
-}
-
-// responseHeaderTimeoutRoundTripper 为裸 http2.Transport 补齐等待响应头超时。
-// 请求拿到响应头后会停止计时，避免长时间 SSE 响应在读取 Body 阶段被误取消。
-type responseHeaderTimeoutRoundTripper struct {
-	base    http.RoundTripper
-	timeout time.Duration
 }
 
 // RoundTrip 在等待响应头超时后取消请求，收到响应头后停止计时。
@@ -609,11 +635,6 @@ func (r *responseHeaderTimeoutRoundTripper) CloseIdleConnections() {
 	}
 }
 
-type cancelOnCloseReadCloser struct {
-	io.ReadCloser
-	cancel context.CancelFunc
-}
-
 // Close 关闭响应体并执行回调
 // 使用 sync.Once 确保回调只执行一次
 func (r *cancelOnCloseReadCloser) Close() error {
@@ -622,14 +643,6 @@ func (r *cancelOnCloseReadCloser) Close() error {
 		r.cancel()
 	}
 	return err
-}
-
-// trackedBody 带跟踪功能的响应体包装器
-// 在 Close 时执行回调，用于更新请求计数
-type trackedBody struct {
-	io.ReadCloser // 原始响应体
-	once          sync.Once
-	onClose       func() // 关闭时的回调函数
 }
 
 // Close 关闭响应体并执行回调
@@ -710,11 +723,6 @@ func decompressResponseBody(resp *http.Response) {
 	resp.ContentLength = -1
 }
 
-type zstdResponseReader struct {
-	io.ReadCloser
-	warnOnce sync.Once
-}
-
 func (r *zstdResponseReader) Read(p []byte) (int, error) {
 	n, err := r.ReadCloser.Read(p)
 	if err != nil && !errors.Is(err, io.EOF) {
@@ -723,12 +731,6 @@ func (r *zstdResponseReader) Read(p []byte) (int, error) {
 		})
 	}
 	return n, err
-}
-
-// decompressedBody 组合解压 reader 和原始 body 的 close。
-type decompressedBody struct {
-	reader io.Reader
-	closer io.Closer
 }
 
 func (d *decompressedBody) Read(p []byte) (int, error) {

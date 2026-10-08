@@ -16,6 +16,35 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// sparkShadowValidatingGroupRepoStub 实现 groupExistenceBatchReader(ExistsByIDs),
+// 使 validateGroupIDsExist 走批量存在性校验路径。
+type sparkShadowValidatingGroupRepoStub struct {
+	routing.GroupRepository
+	existing map[int64]bool
+}
+
+// shadowGroupsFixture 通过分组查询和校验返回提供商需要的字段。
+type shadowGroupsFixture struct{ routing.GroupRepository }
+
+// sparkShadowRepoStub 为 CreateShadow 测试保存提供商、分组和递增 ID。
+// 它嵌入 AdminStore 接口，提供本测试使用的存取方法。
+type sparkShadowRepoStub struct {
+	providercore.AdminStore
+	providersByID map[int64]*providercore.Record
+	nextID        int64
+	providers     map[int64]*providercore.Record
+	groupsOf      map[int64][]int64 // providerID → []groupIDs
+}
+
+// providerServiceTestRepo 为提供商服务测试提供最小内存仓储。
+type providerServiceTestRepo struct {
+	providercore.AdminStore
+	mu          sync.Mutex
+	providers   map[int64]*providercore.Record
+	updates     map[int64][]map[string]any
+	bulkUpdates []providercore.ProviderBulkUpdate
+}
+
 // cnProviderTestCredentials 模拟前端提交的自定义端点，验证保存时不会改成官方地址。
 func cnProviderTestCredentials(platform, mode, protocol string) map[string]any {
 	credentials := map[string]any{
@@ -48,13 +77,6 @@ func newProviderEditorForTest(repo providercore.AdminStore, groupPorts ...provid
 	return providercore.NewAdmin(repo, providercore.AdminOptions{Duplicates: duplicates, Groups: groups, Quotas: quota, ShadowModels: provideradapter.DefaultSparkShadowModels, Creation: providercore.CreationOptions{Now: time.Now, LoadLocation: time.LoadLocation, NewSeed: uuid.NewString}, Credentials: provideradapter.CreateCredentialHooks(nil, nil)})
 }
 
-// sparkShadowValidatingGroupRepoStub 实现 groupExistenceBatchReader(ExistsByIDs),
-// 使 validateGroupIDsExist 走批量存在性校验路径。
-type sparkShadowValidatingGroupRepoStub struct {
-	routing.GroupRepository
-	existing map[int64]bool
-}
-
 func (s *sparkShadowValidatingGroupRepoStub) ExistsByIDs(_ context.Context, ids []int64) (map[int64]bool, error) {
 	out := make(map[int64]bool, len(ids))
 	for _, id := range ids {
@@ -62,9 +84,6 @@ func (s *sparkShadowValidatingGroupRepoStub) ExistsByIDs(_ context.Context, ids 
 	}
 	return out, nil
 }
-
-// shadowGroupsFixture 通过分组查询和校验返回提供商需要的字段。
-type shadowGroupsFixture struct{ routing.GroupRepository }
 
 func (g shadowGroupsFixture) GetGroup(ctx context.Context, id int64) (*providercore.GroupReference, error) {
 	v, err := g.GetByID(ctx, id)
@@ -92,16 +111,6 @@ func shadowGroupReferenceFixture(v *routing.Group) *providercore.GroupReference 
 		return nil
 	}
 	return &providercore.GroupReference{ID: v.ID, Name: v.Name, RequireOAuthOnly: v.RequireOAuthOnly}
-}
-
-// sparkShadowRepoStub 为 CreateShadow 测试保存提供商、分组和递增 ID。
-// 它嵌入 AdminStore 接口，提供本测试使用的存取方法。
-type sparkShadowRepoStub struct {
-	providercore.AdminStore
-	providersByID map[int64]*providercore.Record
-	nextID        int64
-	providers     map[int64]*providercore.Record
-	groupsOf      map[int64][]int64 // providerID → []groupIDs
 }
 
 func newSparkShadowRepoStub() *sparkShadowRepoStub {
@@ -213,15 +222,6 @@ func (*sparkShadowRepoStub) BulkUpdate(context.Context, []int64, providercore.Pr
 
 func (*sparkShadowRepoStub) ResetQuotaUsedAndClearRateLimitCooldown(context.Context, int64) error {
 	return nil
-}
-
-// providerServiceTestRepo 为提供商服务测试提供最小内存仓储。
-type providerServiceTestRepo struct {
-	providercore.AdminStore
-	mu          sync.Mutex
-	providers   map[int64]*providercore.Record
-	updates     map[int64][]map[string]any
-	bulkUpdates []providercore.ProviderBulkUpdate
 }
 
 func (r *providerServiceTestRepo) Create(_ context.Context, provider *providercore.Record) error {

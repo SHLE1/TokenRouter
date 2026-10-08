@@ -7,6 +7,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const (
+	PlatformAnthropic   = capability.PlatformAnthropic
+	PlatformOpenAI      = capability.PlatformOpenAI
+	PlatformGemini      = capability.PlatformGemini
+	PlatformAntigravity = capability.PlatformAntigravity
+	PlatformQoder       = capability.PlatformQoder
+	PlatformGrok        = capability.PlatformGrok
+)
+
 // runtimeSlotCache 用通道控制槽位释放，检查停止成功前已完成租约释放。
 type runtimeSlotCache struct {
 	ConcurrencyCache
@@ -28,12 +37,3 @@ func (c *runtimeSlotCache) ReleaseProviderSlot(context.Context, int64, string) e
 	}
 	return nil
 }
-
-const (
-	PlatformAnthropic   = capability.PlatformAnthropic
-	PlatformOpenAI      = capability.PlatformOpenAI
-	PlatformGemini      = capability.PlatformGemini
-	PlatformAntigravity = capability.PlatformAntigravity
-	PlatformQoder       = capability.PlatformQoder
-	PlatformGrok        = capability.PlatformGrok
-)

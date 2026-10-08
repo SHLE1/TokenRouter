@@ -12,6 +12,11 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+type GrokToolOutputImage struct {
+	callID string
+	url    string
+}
+
 func (m BodyCodec) SanitizeGrokResponsesModelInput(body []byte) ([]byte, error) {
 	input := gjson.GetBytes(body, "input")
 	if !input.Exists() || input.Type == gjson.String {
@@ -158,11 +163,6 @@ func (m BodyCodec) SanitizeGrokResponsesModelInput(body []byte) ([]byte, error) 
 		return nil, fmt.Errorf("set Grok Responses model input: %w", err)
 	}
 	return updated, nil
-}
-
-type GrokToolOutputImage struct {
-	callID string
-	url    string
 }
 
 // NormalizeGrokToolOutput 提取工具输出中的图片，并将其余内容转成字符串。

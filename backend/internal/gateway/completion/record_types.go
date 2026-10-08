@@ -11,6 +11,21 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+const (
+	BillingModeToken              = pricing.BillingModeToken
+	BillingModeImage              = pricing.BillingModeImage
+	BillingModeVideo              = pricing.BillingModeVideo
+	BillingModePerRequest         = pricing.BillingModePerRequest
+	BillingTypeBalance            = usage.BillingTypeBalance
+	BillingTypeSubscription       = usage.BillingTypeSubscription
+	RequestTypeCyberBlocked       = usage.RequestTypeCyberBlocked
+	BillingModelSourceRequested   = routing.BillingModelSourceRequested
+	BillingModelSourceUpstream    = routing.BillingModelSourceUpstream
+	BillingModelSourceGroupMapped = routing.BillingModelSourceGroupMapped
+)
+
+var ErrModelPricingUnavailable = pricing.ErrModelPricingUnavailable
+
 // Result 仅保留完成处理需要的已观测结果，不携带响应体、HTTP Header 或平台执行器。
 type Result struct {
 	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
@@ -91,13 +106,6 @@ type GroupSnapshot struct {
 	AudioPrice                              *pricing.AudioPriceConfig
 }
 
-func (g *GroupSnapshot) PeakMultiplierAt(at time.Time) float64 {
-	if g.Location != nil {
-		at = at.In(g.Location)
-	}
-	return (&pricing.BillingSettings{PeakRateEnabled: g.PeakRateEnabled, PeakStart: g.PeakStart, PeakEnd: g.PeakEnd, PeakRateMultiplier: g.PeakRateMultiplier}).PeakMultiplierAt(at)
-}
-
 // Input 保存异步完成所需的数据，调用方先调用 Snapshot 再提交队列。
 type Input struct {
 	Result                                                                   *Result
@@ -122,21 +130,6 @@ type (
 	CostInput          = billing.CostInput
 	PricingInput       = billing.PricingInput
 )
-
-const (
-	BillingModeToken              = pricing.BillingModeToken
-	BillingModeImage              = pricing.BillingModeImage
-	BillingModeVideo              = pricing.BillingModeVideo
-	BillingModePerRequest         = pricing.BillingModePerRequest
-	BillingTypeBalance            = usage.BillingTypeBalance
-	BillingTypeSubscription       = usage.BillingTypeSubscription
-	RequestTypeCyberBlocked       = usage.RequestTypeCyberBlocked
-	BillingModelSourceRequested   = routing.BillingModelSourceRequested
-	BillingModelSourceUpstream    = routing.BillingModelSourceUpstream
-	BillingModelSourceGroupMapped = routing.BillingModelSourceGroupMapped
-)
-
-var ErrModelPricingUnavailable = pricing.ErrModelPricingUnavailable
 
 type PricingOptions struct{ PricingAt time.Time }
 
@@ -229,6 +222,13 @@ type Recorder struct {
 	observe           func(string, string)
 	defaultMultiplier float64
 	now               func() time.Time
+}
+
+func (g *GroupSnapshot) PeakMultiplierAt(at time.Time) float64 {
+	if g.Location != nil {
+		at = at.In(g.Location)
+	}
+	return (&pricing.BillingSettings{PeakRateEnabled: g.PeakRateEnabled, PeakStart: g.PeakStart, PeakEnd: g.PeakEnd, PeakRateMultiplier: g.PeakRateMultiplier}).PeakMultiplierAt(at)
 }
 
 // NewRecorder 使用 app 传入的缓存、队列和服务实例构造记录器。

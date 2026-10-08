@@ -208,11 +208,11 @@ func (h *QoderCompatibleRuntime) writeQoderFailoverExhaustedError(c *gin.Context
 }
 
 func (h *QoderCompatibleRuntime) streamingAwareError(c *gin.Context, status int, errType, message string, streamStarted bool, endpoint QoderEndpoint) {
-	WriteQoderStreamError(c, status, errType, message, streamStarted, QoderEndpoint(endpoint))
+	WriteQoderStreamError(c, status, errType, message, streamStarted, endpoint)
 }
 
 func (h *QoderCompatibleRuntime) errorResponse(c *gin.Context, status int, errType, message string, endpoint QoderEndpoint) {
-	WriteQoderError(c, status, errType, message, QoderEndpoint(endpoint))
+	WriteQoderError(c, status, errType, message, endpoint)
 }
 
 // qoderGatewayErrorDetails 复用同一原生错误展示器。

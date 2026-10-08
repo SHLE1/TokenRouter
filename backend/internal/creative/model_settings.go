@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+// CreativeOperationOrder 保证设置、候选和公开目录中的能力顺序稳定。
+var CreativeOperationOrder = []string{
+	CreativeOperationGenerate,
+	CreativeOperationEdit,
+	CreativeOperationInpaint,
+}
+
 // CreativeModelSetting 是管理员配置的创作台分组、模型和能力白名单项。
 type CreativeModelSetting struct {
 	GroupID    int64    `json:"group_id"`
@@ -46,13 +53,6 @@ func (s *Public) NormalizeCreativeModelSettingsForSave(ctx context.Context, inpu
 		}
 	}
 	return out, nil
-}
-
-// CreativeOperationOrder 保证设置、候选和公开目录中的能力顺序稳定。
-var CreativeOperationOrder = []string{
-	CreativeOperationGenerate,
-	CreativeOperationEdit,
-	CreativeOperationInpaint,
 }
 
 // NormalizeCreativeModelSettings 校验并规范化管理员配置。

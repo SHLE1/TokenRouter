@@ -14,6 +14,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const (
+	SettingKeyMarketplaceAvailabilityWindowDays    = "marketplace_availability_window_days"
+	SettingKeyMarketplaceAvailabilityBucketMinutes = "marketplace_availability_bucket_minutes"
+	SettingKeyReasoningPointRMBUnitPrice           = "reasoning_point_rmb_unit_price"
+	SettingKeyUSDExchangeRate                      = "usd_exchange_rate"
+)
+
 type ModelMarketplaceGroup struct {
 	SearchTerms []string
 	Resolution  locale.Resolution
@@ -50,6 +57,70 @@ type ModelMarketplaceModel struct {
 // MarketplaceListOptions 指定市场查询需要附带的观测数据。
 type MarketplaceListOptions struct {
 	IncludeCapacity bool
+}
+
+type marketplaceDiscountConfig struct {
+	reasoningPointRMBUnitPrice float64
+	usdExchangeRate            float64
+}
+
+type MarketplaceModelDef struct {
+	UpstreamModels   []string
+	Protocols        []capability.ProtocolID
+	NativeProtocols  []capability.ProtocolID
+	ID               string
+	DisplayName      string
+	PricingModel     string
+	PricingAmbiguous bool
+}
+
+type MarketplaceGroups interface {
+	ListActive(context.Context) ([]Group, error)
+}
+type MarketplaceSettings interface {
+	GetMultiple(context.Context, []string) (map[string]string, error)
+}
+type MarketplaceModels interface {
+	Prefetch(context.Context) ([]CatalogueProvider, bool, error)
+	ResolveRequestableModels(context.Context, *int64, string) RequestableModelsResult
+}
+type MarketplaceCapacity interface {
+	GetGroupCapacityByIDs(context.Context, []int64) (map[int64]GroupCapacitySummary, error)
+}
+type MarketplaceAvailability interface {
+	GetSummaryByGroupIDs(context.Context, []int64, int, int, string, time.Time) (map[int64]*GroupAvailabilitySummary, error)
+}
+type MarketplaceQuoteRequest struct {
+	Model              string
+	GroupID            int64
+	RateMultiplier     float64
+	FreeFastApplicable bool
+}
+type MarketplacePrices interface {
+	Quote(context.Context, MarketplaceQuoteRequest) pricing.ModelDisplayPricing
+	GetModelModalities(string) ([]string, []string)
+}
+type MarketplaceOptions struct {
+	Attributes func(context.Context, map[int64][]RequestableModel) (map[int64]map[string]EffectiveModelAttributes, error)
+	Timezone   string
+	Now        func() time.Time
+	Warn       func(string, ...any)
+}
+
+// Marketplace 拥有公开模型市场的编排，辅助观测失败不阻断模型及价格展示。
+type Marketplace struct {
+	groups       MarketplaceGroups
+	settings     MarketplaceSettings
+	models       MarketplaceModels
+	requestable  RequestableResolver
+	prices       MarketplacePrices
+	capacity     MarketplaceCapacity
+	availability MarketplaceAvailability
+	options      MarketplaceOptions
+}
+
+func NewMarketplace(groups MarketplaceGroups, settings MarketplaceSettings, models MarketplaceModels, resolver RequestableResolver, prices MarketplacePrices, capacity MarketplaceCapacity, availability MarketplaceAvailability, options MarketplaceOptions) *Marketplace {
+	return &Marketplace{groups: groups, settings: settings, models: models, requestable: resolver, prices: prices, capacity: capacity, availability: availability, options: options}
 }
 
 // ListPublic 批量读取可见分组的属性，并按需附带容量。
@@ -283,11 +354,6 @@ func marketplaceGroupDisplayBrand(group *Group) string {
 	return group.Name
 }
 
-type marketplaceDiscountConfig struct {
-	reasoningPointRMBUnitPrice float64
-	usdExchangeRate            float64
-}
-
 func (c marketplaceDiscountConfig) officialPriceRatio(rateMultiplier float64) *float64 {
 	ratio := rateMultiplier * c.reasoningPointRMBUnitPrice / c.usdExchangeRate
 	if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
@@ -475,16 +541,6 @@ func (s *Marketplace) resolveGroupModelsWithProviders(ctx context.Context, group
 	return buildMarketplaceModelDefsFromRequestable(resolution.Models)
 }
 
-type MarketplaceModelDef struct {
-	UpstreamModels   []string
-	Protocols        []capability.ProtocolID
-	NativeProtocols  []capability.ProtocolID
-	ID               string
-	DisplayName      string
-	PricingModel     string
-	PricingAmbiguous bool
-}
-
 func buildMarketplaceModelDefsFromRequestable(models []RequestableModel) []MarketplaceModelDef {
 	defs := make([]MarketplaceModelDef, 0, len(models))
 	for _, model := range models {
@@ -500,59 +556,3 @@ func buildMarketplaceModelDefsFromRequestable(models []RequestableModel) []Marke
 	}
 	return defs
 }
-
-type MarketplaceGroups interface {
-	ListActive(context.Context) ([]Group, error)
-}
-type MarketplaceSettings interface {
-	GetMultiple(context.Context, []string) (map[string]string, error)
-}
-type MarketplaceModels interface {
-	Prefetch(context.Context) ([]CatalogueProvider, bool, error)
-	ResolveRequestableModels(context.Context, *int64, string) RequestableModelsResult
-}
-type MarketplaceCapacity interface {
-	GetGroupCapacityByIDs(context.Context, []int64) (map[int64]GroupCapacitySummary, error)
-}
-type MarketplaceAvailability interface {
-	GetSummaryByGroupIDs(context.Context, []int64, int, int, string, time.Time) (map[int64]*GroupAvailabilitySummary, error)
-}
-type MarketplaceQuoteRequest struct {
-	Model              string
-	GroupID            int64
-	RateMultiplier     float64
-	FreeFastApplicable bool
-}
-type MarketplacePrices interface {
-	Quote(context.Context, MarketplaceQuoteRequest) pricing.ModelDisplayPricing
-	GetModelModalities(string) ([]string, []string)
-}
-type MarketplaceOptions struct {
-	Attributes func(context.Context, map[int64][]RequestableModel) (map[int64]map[string]EffectiveModelAttributes, error)
-	Timezone   string
-	Now        func() time.Time
-	Warn       func(string, ...any)
-}
-
-// Marketplace 拥有公开模型市场的编排，辅助观测失败不阻断模型及价格展示。
-type Marketplace struct {
-	groups       MarketplaceGroups
-	settings     MarketplaceSettings
-	models       MarketplaceModels
-	requestable  RequestableResolver
-	prices       MarketplacePrices
-	capacity     MarketplaceCapacity
-	availability MarketplaceAvailability
-	options      MarketplaceOptions
-}
-
-func NewMarketplace(groups MarketplaceGroups, settings MarketplaceSettings, models MarketplaceModels, resolver RequestableResolver, prices MarketplacePrices, capacity MarketplaceCapacity, availability MarketplaceAvailability, options MarketplaceOptions) *Marketplace {
-	return &Marketplace{groups: groups, settings: settings, models: models, requestable: resolver, prices: prices, capacity: capacity, availability: availability, options: options}
-}
-
-const (
-	SettingKeyMarketplaceAvailabilityWindowDays    = "marketplace_availability_window_days"
-	SettingKeyMarketplaceAvailabilityBucketMinutes = "marketplace_availability_bucket_minutes"
-	SettingKeyReasoningPointRMBUnitPrice           = "reasoning_point_rmb_unit_price"
-	SettingKeyUSDExchangeRate                      = "usd_exchange_rate"
-)

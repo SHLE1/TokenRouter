@@ -14,6 +14,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+type searchProxies struct{ proxies *egresspg.ProxyStore }
+
 func provideSearchRegistry() *search.Registry {
 	registry := search.NewRegistry()
 	return registry
@@ -34,8 +36,6 @@ func provideSearchRuntime(store *settings.Store, proxies *egresspg.ProxyStore, r
 func provideSearchHTTP(runtime *search.ConfigService) *searchhttp.Handler {
 	return searchhttp.New(runtime)
 }
-
-type searchProxies struct{ proxies *egresspg.ProxyStore }
 
 func (s searchProxies) URLs(ctx context.Context, ids []int64) (map[int64]string, error) {
 	values, err := s.proxies.ListByIDs(ctx, ids)

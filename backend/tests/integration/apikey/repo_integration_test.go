@@ -335,7 +335,7 @@ func (s *APIKeyRepoSuite) TestListByUserID() {
 
 func (s *APIKeyRepoSuite) TestListByUserID_Pagination() {
 	user := s.mustCreateUser("paging@test.com")
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		s.mustCreateApiKey(user.ID, "sk-page-"+string(rune('a'+i)), "Key", nil)
 	}
 
@@ -591,7 +591,7 @@ func TestIncrementQuotaUsed_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, goroutines)
 
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()

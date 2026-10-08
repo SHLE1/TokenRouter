@@ -51,7 +51,7 @@ func TestJitteredTTL(t *testing.T) {
 		maxTTL = 5*time.Minute + 30*time.Second // 330s = 5min + 30s
 	)
 
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		ttl := jitteredTTL()
 		require.GreaterOrEqual(t, ttl, minTTL, "jitteredTTL() 返回值低于下限: %v", ttl)
 		require.LessOrEqual(t, ttl, maxTTL, "jitteredTTL() 返回值超过上限: %v", ttl)
@@ -61,7 +61,7 @@ func TestJitteredTTL(t *testing.T) {
 func TestJitteredTTL_HasVariation(t *testing.T) {
 	// 多次调用应该产生不同的值（验证抖动存在）
 	seen := make(map[time.Duration]struct{}, 50)
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		seen[jitteredTTL()] = struct{}{}
 	}
 	// 50 次调用中应该至少有 2 个不同的值
@@ -74,7 +74,7 @@ func TestJitteredTTL_WithinExpectedRange(t *testing.T) {
 	lowerBound := billingCacheTTL - billingCacheJitter // 5min - 30s = 4min30s
 	upperBound := billingCacheTTL                      // 5min
 
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		ttl := jitteredTTL()
 		assert.GreaterOrEqual(t, int64(ttl), int64(lowerBound),
 			"TTL 不应低于 %v，实际得到 %v", lowerBound, ttl)
@@ -85,7 +85,7 @@ func TestJitteredTTL_WithinExpectedRange(t *testing.T) {
 
 func TestJitteredTTL_NeverExceedsBase(t *testing.T) {
 	// 减法抖动产生的 TTL 不超过 billingCacheTTL。
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		ttl := jitteredTTL()
 		assert.LessOrEqual(t, int64(ttl), int64(billingCacheTTL),
 			"jitteredTTL 不应超过基础 TTL（上界预期不被打破）")
@@ -95,7 +95,7 @@ func TestJitteredTTL_NeverExceedsBase(t *testing.T) {
 func TestJitteredTTL_HasVariance(t *testing.T) {
 	// 验证抖动确实产生了不同的值
 	results := make(map[time.Duration]bool)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		ttl := jitteredTTL()
 		results[ttl] = true
 	}
@@ -108,7 +108,7 @@ func TestJitteredTTL_AverageNearCenter(t *testing.T) {
 	// 验证平均值大约在抖动范围中间
 	var sum time.Duration
 	runs := 1000
-	for i := 0; i < runs; i++ {
+	for range runs {
 		sum += jitteredTTL()
 	}
 
@@ -129,7 +129,7 @@ func TestBillingKeyGeneration(t *testing.T) {
 }
 
 func BenchmarkJitteredTTL(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = jitteredTTL()
 	}
 }

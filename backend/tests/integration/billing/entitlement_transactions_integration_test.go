@@ -20,6 +20,10 @@ import (
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 )
 
+type failedRedeemUsage struct{ billing.RedeemCodeRepository }
+
+type redeemAuthObservation struct{ count atomic.Int32 }
+
 // TestSubscriptionParticipantReadsUncommittedAndRollsBack 验证外层新建的用户和套餐尚未提交，读得到它们即证明初始读取和锁都在同一连接。
 func TestSubscriptionParticipantReadsUncommittedAndRollsBack(t *testing.T) {
 	for _, explicit := range []bool{false, true} {
@@ -84,16 +88,12 @@ func TestValidityChangeParticipatesInOuterTransaction(t *testing.T) {
 	require.True(t, outside.ExpiresAt.Equal(expires))
 }
 
-type failedRedeemUsage struct{ billing.RedeemCodeRepository }
-
 func (r failedRedeemUsage) CreateUsage(ctx context.Context, usage *billing.RedeemCodeUsage) error {
 	if err := r.RedeemCodeRepository.CreateUsage(ctx, usage); err != nil {
 		return err
 	}
 	return errors.New("test usage audit failed after actual insert")
 }
-
-type redeemAuthObservation struct{ count atomic.Int32 }
 
 func (o *redeemAuthObservation) InvalidateAuthCacheByUserID(context.Context, int64) { o.count.Add(1) }
 

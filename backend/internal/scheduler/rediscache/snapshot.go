@@ -9,8 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 const (
@@ -33,14 +34,13 @@ const (
 	// snapshotGraceTTLSeconds 旧快照过期的宽限期（秒）。
 	// 替代立即 DEL，让正在读取旧版本的 reader 有足够时间完成 ZRANGE。
 	snapshotGraceTTLSeconds = 60
-)
 
-const (
 	schedulerGroupLifecycleLockPrefix      = "sched:v5:group:lifecycle-lock:"
 	schedulerGroupLifecycleOwnerTokenBytes = 16
 )
 
-var updateSchedulerLastUsedScript = redis.NewScript(`
+var (
+	updateSchedulerLastUsedScript = redis.NewScript(`
 local updated = 0
 for index = 1, #ARGV do
     local key_index = (index - 1) * 2 + 1
@@ -59,7 +59,6 @@ end
 return updated
 `)
 
-var (
 	// epoch 标识 bucket writer 的代际，retired key 是持久退休标记。
 	// Capture、allocate、activate 都在 Lua 内同时校验两者：-1 表示已退休，-2 表示 epoch 无效或与 token 代际不匹配；
 	// allocate 与 activate 的双重校验可拦截快照写入期间发生的 Retire。

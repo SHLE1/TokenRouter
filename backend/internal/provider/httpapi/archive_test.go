@@ -23,6 +23,56 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// archiveHTTPFixture 组合提供商和代理测试接口，记录导入参数及列表查询。
+type archiveHTTPFixture struct {
+	*managementMutationFixture
+	egress.ProxyAdministrator
+	proxies         []egress.Proxy
+	createdProxies  []*egress.CreateProxyInput
+	updatedProxies  []*egress.UpdateProxyInput
+	updatedProxyIDs []int64
+	list            managementListFixture
+	lastListProxies struct {
+		protocol, status, search, sortBy, sortOrder string
+		calls                                       int
+	}
+}
+
+type dataResponse struct {
+	Code int         `json:"code"`
+	Data dataPayload `json:"data"`
+}
+
+type dataPayload struct {
+	Type           string         `json:"type"`
+	Version        int            `json:"version"`
+	Proxies        []dataProxy    `json:"proxies"`
+	Providers      []dataProvider `json:"providers"`
+	SkippedShadows int            `json:"skipped_shadows"`
+}
+
+type dataProxy struct {
+	ProxyKey string `json:"proxy_key"`
+	Name     string `json:"name"`
+	Protocol string `json:"protocol"`
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Status   string `json:"status"`
+}
+
+type dataProvider struct {
+	Name        string         `json:"name"`
+	Platform    string         `json:"platform"`
+	Type        string         `json:"type"`
+	Credentials map[string]any `json:"credentials"`
+	Extra       map[string]any `json:"extra"`
+	ProxyKey    *string        `json:"proxy_key"`
+	Concurrency int            `json:"concurrency"`
+	Priority    int            `json:"priority"`
+}
+
 func TestExportDataIncludesSecrets(t *testing.T) {
 	router, adminSvc := setupProviderDataRouter()
 
@@ -508,21 +558,6 @@ func (s *archiveHTTPFixture) UpdateProxy(ctx context.Context, id int64, input *e
 	return &proxy, nil
 }
 
-// archiveHTTPFixture 组合提供商和代理测试接口，记录导入参数及列表查询。
-type archiveHTTPFixture struct {
-	*managementMutationFixture
-	egress.ProxyAdministrator
-	proxies         []egress.Proxy
-	createdProxies  []*egress.CreateProxyInput
-	updatedProxies  []*egress.UpdateProxyInput
-	updatedProxyIDs []int64
-	list            managementListFixture
-	lastListProxies struct {
-		protocol, status, search, sortBy, sortOrder string
-		calls                                       int
-	}
-}
-
 func newArchiveHTTPFixture() *archiveHTTPFixture {
 	source := &archiveHTTPFixture{managementMutationFixture: newManagementMutationFixture()}
 	source.providers = newManagementListFixture().providers
@@ -534,41 +569,6 @@ func newArchiveHTTPFixture() *archiveHTTPFixture {
 func (s *archiveHTTPFixture) ListProviders(ctx context.Context, page, size int, platform, kind, status, search string, gid int64, privacy, sortBy, order string) ([]providercore.Record, int64, error) {
 	s.list.providers = s.providers
 	return s.list.ListProviders(ctx, page, size, platform, kind, status, search, gid, privacy, sortBy, order)
-}
-
-type dataResponse struct {
-	Code int         `json:"code"`
-	Data dataPayload `json:"data"`
-}
-
-type dataPayload struct {
-	Type           string         `json:"type"`
-	Version        int            `json:"version"`
-	Proxies        []dataProxy    `json:"proxies"`
-	Providers      []dataProvider `json:"providers"`
-	SkippedShadows int            `json:"skipped_shadows"`
-}
-
-type dataProxy struct {
-	ProxyKey string `json:"proxy_key"`
-	Name     string `json:"name"`
-	Protocol string `json:"protocol"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Status   string `json:"status"`
-}
-
-type dataProvider struct {
-	Name        string         `json:"name"`
-	Platform    string         `json:"platform"`
-	Type        string         `json:"type"`
-	Credentials map[string]any `json:"credentials"`
-	Extra       map[string]any `json:"extra"`
-	ProxyKey    *string        `json:"proxy_key"`
-	Concurrency int            `json:"concurrency"`
-	Priority    int            `json:"priority"`
 }
 
 func setupProviderDataRouter(coordinators ...*idempotency.IdempotencyCoordinator) (*gin.Engine, *archiveHTTPFixture) {

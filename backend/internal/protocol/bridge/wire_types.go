@@ -8,6 +8,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+const minMaxOutputTokens = 128
+
 // 桥接通过别名使用各 wire 包的协议类型和编解码。
 type (
 	AnthropicRequest      = anthropic.AnthropicRequest
@@ -64,20 +66,6 @@ type (
 	ChatDelta               = openai.ChatDelta
 )
 
-func AnthropicStopReasonPtr(s string) *string {
-	return anthropic.AnthropicStopReasonPtr(s)
-}
-
-func AnthropicStopReasonString(p *string) string {
-	return anthropic.AnthropicStopReasonString(p)
-}
-
-const minMaxOutputTokens = 128
-
-func toolSearchCallArgumentsJSON(arguments string) json.RawMessage {
-	return openai.ToolSearchCallArgumentsJSON(arguments)
-}
-
 type ClaudeRequest = anthropic.ClaudeRequest
 
 type ClaudeMessage = anthropic.ClaudeMessage
@@ -123,3 +111,15 @@ type GeminiResponse = gemini.GeminiResponse
 type GeminiGroundingMetadata = gemini.GeminiGroundingMetadata
 
 type GeminiGroundingChunk = gemini.GeminiGroundingChunk
+
+func AnthropicStopReasonPtr(s string) *string {
+	return anthropic.AnthropicStopReasonPtr(s)
+}
+
+func AnthropicStopReasonString(p *string) string {
+	return anthropic.AnthropicStopReasonString(p)
+}
+
+func toolSearchCallArgumentsJSON(arguments string) json.RawMessage {
+	return openai.ToolSearchCallArgumentsJSON(arguments)
+}

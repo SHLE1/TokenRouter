@@ -16,16 +16,6 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-type EmailOAuthHandler struct {
-	*PendingHandler
-	client     identity.EmailOAuthClient
-	loadConfig func(context.Context, string) (identity.EmailOAuthOptions, error)
-}
-
-func NewEmailOAuthHandler(p *PendingHandler, client identity.EmailOAuthClient, load func(context.Context, string) (identity.EmailOAuthOptions, error)) *EmailOAuthHandler {
-	return &EmailOAuthHandler{p, client, load}
-}
-
 const (
 	EmailOAuthCookiePath        = "/api/v1/auth/oauth"
 	EmailOAuthStateCookieName   = "email_oauth_state"
@@ -36,6 +26,22 @@ const (
 	EmailOAuthDefaultRedirect   = "/dashboard"
 	EmailOAuthDefaultFrontendCB = "/auth/oauth/callback"
 )
+
+type EmailOAuthHandler struct {
+	*PendingHandler
+	client     identity.EmailOAuthClient
+	loadConfig func(context.Context, string) (identity.EmailOAuthOptions, error)
+}
+
+type CompleteEmailOAuthRequest struct {
+	Password       string `json:"password" binding:"required,min=6"`
+	InvitationCode string `json:"invitation_code,omitempty"`
+	AffCode        string `json:"aff_code,omitempty"`
+}
+
+func NewEmailOAuthHandler(p *PendingHandler, client identity.EmailOAuthClient, load func(context.Context, string) (identity.EmailOAuthOptions, error)) *EmailOAuthHandler {
+	return &EmailOAuthHandler{p, client, load}
+}
 
 func (h *EmailOAuthHandler) GitHubOAuthStart(c *gin.Context)    { h.EmailOAuthStart(c, "github") }
 func (h *EmailOAuthHandler) GoogleOAuthStart(c *gin.Context)    { h.EmailOAuthStart(c, "google") }
@@ -275,12 +281,6 @@ func (h *EmailOAuthHandler) CompleteEmailOAuthRegistration(c *gin.Context, provi
 	h.authService.RecordSuccessfulLogin(c.Request.Context(), user.ID)
 	clearCookies()
 	WriteOAuthTokenPairResponse(c, tokenPair)
-}
-
-type CompleteEmailOAuthRequest struct {
-	Password       string `json:"password" binding:"required,min=6"`
-	InvitationCode string `json:"invitation_code,omitempty"`
-	AffCode        string `json:"aff_code,omitempty"`
 }
 
 func BuildEmailOAuthAuthorizeURL(cfg identity.EmailOAuthOptions, state string) (string, error) {

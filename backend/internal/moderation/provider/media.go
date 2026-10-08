@@ -40,7 +40,7 @@ func SnapshotMedia(ctx context.Context, media []contract.ContentModerationMedia)
 	var wg sync.WaitGroup
 	var retainedBytes atomic.Int64
 	workerCount := min(contentModerationSnapshotConcurrency, len(out))
-	for worker := 0; worker < workerCount; worker++ {
+	for range workerCount {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

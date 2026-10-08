@@ -10,6 +10,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 成功用量查询的迟到恢复只能清理本轮观察到的错误身份。
+type usageRecoveryRaceRepo struct {
+	OAuthUsageReader
+	current *Record
+	writes  int
+}
+
 // ClearUsageErrorIfUnchanged 比较当前行的身份字段，发生冲突时返回 false。
 func (r *usageRecoveryRaceRepo) ClearUsageErrorIfUnchanged(ctx context.Context, v UsageRecoveryVersion) (bool, error) {
 	c := r.current
@@ -17,13 +24,6 @@ func (r *usageRecoveryRaceRepo) ClearUsageErrorIfUnchanged(ctx context.Context, 
 		return false, nil
 	}
 	return true, r.ClearError(ctx, v.ID)
-}
-
-// 成功用量查询的迟到恢复只能清理本轮观察到的错误身份。
-type usageRecoveryRaceRepo struct {
-	OAuthUsageReader
-	current *Record
-	writes  int
 }
 
 func (r *usageRecoveryRaceRepo) ClearError(context.Context, int64) error {

@@ -33,6 +33,14 @@ type processOutput struct {
 	buffer bytes.Buffer
 }
 
+type testProcess struct {
+	cmd    *exec.Cmd
+	done   chan struct{}
+	err    error
+	output *processOutput
+	stdin  io.WriteCloser
+}
+
 // Write 通过具名 Buffer 字段写入，io.Copy 调用此方法时会先获取输出锁。
 func (o *processOutput) Write(p []byte) (int, error) {
 	o.mu.Lock()
@@ -44,14 +52,6 @@ func (o *processOutput) text() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	return o.buffer.String()
-}
-
-type testProcess struct {
-	cmd    *exec.Cmd
-	done   chan struct{}
-	err    error
-	output *processOutput
-	stdin  io.WriteCloser
 }
 
 func startTestProcess(t *testing.T, binary, dir string, env []string, args ...string) *testProcess {

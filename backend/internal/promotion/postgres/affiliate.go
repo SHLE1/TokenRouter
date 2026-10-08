@@ -19,11 +19,8 @@ import (
 const (
 	affiliateCodeLength      = 12
 	affiliateCodeMaxAttempts = 12
-)
 
-var affiliateCodeCharset = []byte("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
-
-const affiliateUserOverviewSQL = `
+	affiliateUserOverviewSQL = `
 SELECT ua.user_id,
        COALESCE(u.email, ''),
        COALESCE(u.username, ''),
@@ -50,6 +47,9 @@ LEFT JOIN (
 ) matured ON matured.user_id = ua.user_id
 WHERE ua.user_id = $1
 LIMIT 1`
+)
+
+var affiliateCodeCharset = []byte("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
 
 type affiliateQueryExecer interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
@@ -59,6 +59,13 @@ type affiliateQueryExecer interface {
 type affiliateRepository struct {
 	client   *dbent.Client
 	balances TransferBalanceFactory
+}
+
+type affiliateTransferSnapshot struct {
+	BalanceAfter        float64
+	AvailableQuotaAfter float64
+	FrozenQuotaAfter    float64
+	HistoryQuotaAfter   float64
 }
 
 func NewAffiliateRepository(client *dbent.Client, balances TransferBalanceFactory) promotion.AffiliateRepository {
@@ -774,7 +781,7 @@ func ensureUserAffiliateWithClient(ctx context.Context, client affiliateQueryExe
 		return nil, err
 	}
 
-	for i := 0; i < affiliateCodeMaxAttempts; i++ {
+	for range affiliateCodeMaxAttempts {
 		code, codeErr := generateAffiliateCode()
 		if codeErr != nil {
 			return nil, codeErr
@@ -927,13 +934,6 @@ func queryUserBalance(ctx context.Context, client affiliateQueryExecer, userID i
 	return balance, nil
 }
 
-type affiliateTransferSnapshot struct {
-	BalanceAfter        float64
-	AvailableQuotaAfter float64
-	FrozenQuotaAfter    float64
-	HistoryQuotaAfter   float64
-}
-
 func queryAffiliateTransferSnapshot(ctx context.Context, client affiliateQueryExecer, userID int64) (*affiliateTransferSnapshot, error) {
 	rows, err := client.QueryContext(ctx, `
 SELECT u.balance::double precision,
@@ -1039,7 +1039,7 @@ func (r *affiliateRepository) ResetUserAffCode(ctx context.Context, userID int64
 		if _, err := ensureUserAffiliateWithClient(txCtx, txClient, userID); err != nil {
 			return err
 		}
-		for i := 0; i < affiliateCodeMaxAttempts; i++ {
+		for range affiliateCodeMaxAttempts {
 			candidate, codeErr := generateAffiliateCode()
 			if codeErr != nil {
 				return codeErr

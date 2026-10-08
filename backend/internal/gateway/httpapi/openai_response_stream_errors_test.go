@@ -20,6 +20,43 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type openAIAuthPolicyProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	tempCalls     int
+	setErrorCalls int
+}
+
+type openAIAuthPolicy403Counter struct {
+	counts []int64
+}
+
+type capacityShedProviderRepoStub struct {
+	gatewayprovider.ExecutionProviderStore
+	// 嵌入接口，未实现的方法会 panic（不应被调用）
+
+	tempUnschedCalls int
+}
+
+// 转换读取数据后，冷却操作使用同一存储替身。
+type capacityRetryStore struct{ *capacityShedProviderRepoStub }
+
+type oauth429RateLimitRepo struct {
+	gatewaytestkit.HealthStoreBase
+	setRateLimitedCalls       int
+	lastRateLimitedUntil      time.Time
+	setModelRateLimitCalls    int
+	lastModelRateLimitKey     string
+	lastModelRateLimitedUntil time.Time
+}
+
+type rateLimit429ProviderRepoStub struct {
+	gatewaytestkit.HealthStoreBase
+	rateLimitCalls     int
+	lastRateLimitID    int64
+	lastRateLimitReset time.Time
+}
+
 func TestOpenAIHandleErrorResponsePassthrough_InvalidRequest400PassesThrough(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -73,13 +110,6 @@ func wsFixtureRequestBlocked(s *wsExecutionFixture, value *gatewayprovider.Execu
 	return wsFixtureProviderBlocked(s, value) || wsFixtureModelBlocked(s, value, model)
 }
 
-type openAIAuthPolicyProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	tempCalls     int
-	setErrorCalls int
-}
-
 func (r *openAIAuthPolicyProviderRepo) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
 	r.tempCalls++
 	return nil
@@ -88,10 +118,6 @@ func (r *openAIAuthPolicyProviderRepo) SetTempUnschedulable(context.Context, int
 func (r *openAIAuthPolicyProviderRepo) SetError(context.Context, int64, string) error {
 	r.setErrorCalls++
 	return nil
-}
-
-type openAIAuthPolicy403Counter struct {
-	counts []int64
 }
 
 func (s *openAIAuthPolicy403Counter) IncrementOpenAI403Count(context.Context, int64, int) (int64, error) {
@@ -333,13 +359,6 @@ func TestOpenAIStreamOAuthLike429GetsDeadlineWithoutImmediateRuntimeBlock(t *tes
 	}
 }
 
-type capacityShedProviderRepoStub struct {
-	gatewayprovider.ExecutionProviderStore
-	// 嵌入接口，未实现的方法会 panic（不应被调用）
-
-	tempUnschedCalls int
-}
-
 func (r *capacityShedProviderRepoStub) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, _ string) error {
 	r.tempUnschedCalls++
 	return nil
@@ -484,9 +503,6 @@ func TestSanitizeOpenAICapacityShedErrorCodeForClient(t *testing.T) {
 	}
 }
 
-// 转换读取数据后，冷却操作使用同一存储替身。
-type capacityRetryStore struct{ *capacityShedProviderRepoStub }
-
 func (s capacityRetryStore) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
 	value, err := s.capacityShedProviderRepoStub.GetByID(ctx, id)
 	return gatewayprovider.ExecutionRecord(value), err
@@ -517,15 +533,6 @@ func TestNonStreamingTerminalFailureFailover_NilProviderProposesNothing(t *testi
 	require.Nil(t, svc.nonStreamingTerminalFailure(
 		c, newNonStreamingSSEResponse(), nil, false, "response.failed", payload,
 		"Selected model is at capacity. Please try a different model."))
-}
-
-type oauth429RateLimitRepo struct {
-	gatewaytestkit.HealthStoreBase
-	setRateLimitedCalls       int
-	lastRateLimitedUntil      time.Time
-	setModelRateLimitCalls    int
-	lastModelRateLimitKey     string
-	lastModelRateLimitedUntil time.Time
 }
 
 func (r *oauth429RateLimitRepo) SetRateLimited(_ context.Context, _ int64, until time.Time) error {
@@ -797,7 +804,7 @@ func TestOpenAIPoolModeRetryable5xx_DoesNotCreateModelTransientBlock(t *testing.
 		},
 	}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		shouldDisable := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), gateway.Output.Health, provider, 524, http.Header{}, []byte(`{"error":{"message":"upstream timeout"}}`), false, "gpt-5.4").StopScheduling
 		require.False(t, shouldDisable)
 	}
@@ -822,7 +829,7 @@ func TestOpenAIPoolModeNonRetryable5xx_DoesNotCreateModelTransientBlock(t *testi
 		},
 	}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		shouldDisable := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), gateway.Output.Health, provider, http.StatusServiceUnavailable, http.Header{}, []byte(`{"error":{"message":"upstream unavailable"}}`), false, "gpt-5.4").StopScheduling
 		require.False(t, shouldDisable)
 	}
@@ -843,7 +850,7 @@ func TestOpenAINonPoolAPIKey5xx_StillCreatesModelTransientBlock(t *testing.T) {
 		},
 	}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		shouldDisable := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), gateway.Output.Health, provider, http.StatusGatewayTimeout, http.Header{}, []byte(`{"error":{"message":"upstream timeout"}}`), false, "gpt-5.4").StopScheduling
 		require.False(t, shouldDisable)
 	}
@@ -958,13 +965,6 @@ func expireRuntimeRetryForTest(s *OpenAIResponsesExecutor, id int64) *httpRuntim
 	state.RetryWindowActive(id)
 	clock.nanos.Store(0)
 	return clock
-}
-
-type rateLimit429ProviderRepoStub struct {
-	gatewaytestkit.HealthStoreBase
-	rateLimitCalls     int
-	lastRateLimitID    int64
-	lastRateLimitReset time.Time
 }
 
 func (r *rateLimit429ProviderRepoStub) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {

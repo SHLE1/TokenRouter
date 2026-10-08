@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type billingCacheMissStub struct {
+	setBalanceCalls atomic.Int64
+}
+
 func TestCheckBillingEligibilityRejectsBalanceBelowMinimumReserve(t *testing.T) {
 	cache := &balanceEligibilityCacheStub{balance: 0.005}
 	cfg := &EligibilityOptions{}
@@ -42,7 +46,7 @@ func TestBillingCacheServiceQueueHighLoad(t *testing.T) {
 	t.Cleanup(svc.Stop)
 
 	start := time.Now()
-	for i := 0; i < cacheWriteBufferSize*2; i++ {
+	for range cacheWriteBufferSize * 2 {
 		svc.QueueDeductBalance(1, 1)
 	}
 	require.Less(t, time.Since(start), 2*time.Second)
@@ -88,7 +92,7 @@ func TestBillingCacheServiceGetUserBalance_Singleflight(t *testing.T) {
 	errCh := make(chan error, goroutines)
 	balCh := make(chan float64, goroutines)
 
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -236,10 +240,6 @@ func TestBillingEligibility_UnlimitedSubscriptionDoesNotRequireBalance(t *testin
 	)
 
 	require.NoError(t, err)
-}
-
-type billingCacheMissStub struct {
-	setBalanceCalls atomic.Int64
 }
 
 func (s *billingCacheMissStub) GetUserBalance(ctx context.Context, userID int64) (float64, error) {

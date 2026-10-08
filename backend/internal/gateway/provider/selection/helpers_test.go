@@ -28,6 +28,149 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+var _ Groups = (*mockGroupRepoForGemini)(nil)
+
+type grokFreeQuotaUsageRepoStub struct {
+	usage.UsageLogRepository
+
+	mu      sync.Mutex
+	stats   map[int64]*usage.ProviderStats
+	err     error
+	calls   int
+	lastIDs []int64
+	start   time.Time
+}
+
+// mockProviderRepoForPlatform 单平台测试用的 mock
+type mockProviderRepoForPlatform struct {
+	providers        []gatewayprovider.ExecutionProvider
+	providersByID    map[int64]*gatewayprovider.ExecutionProvider
+	listPlatformFunc func(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error)
+	getByIDCalls     int
+}
+
+// mockGatewayCacheForPlatform 单平台测试用的 cache mock
+type mockGatewayCacheForPlatform struct {
+	sessionBindings map[string]int64
+	deletedSessions map[string]int
+}
+
+type mockGroupRepoForGateway struct {
+	groups           map[int64]*routing.Group
+	getByIDCalls     int
+	getByIDLiteCalls int
+}
+
+type mockConcurrencyCache struct {
+	acquireProviderCalls int
+	loadBatchCalls       int
+	acquireResults       map[int64]bool
+	loadBatchErr         error
+	loadMap              map[int64]*schedulercore.ProviderLoadInfo
+	waitCounts           map[int64]int
+	skipDefaultLoad      bool
+}
+
+// mockGroupRepoForGemini Gemini 测试用的 group repo mock
+type mockGroupRepoForGemini struct {
+	groups           map[int64]*routing.Group
+	getByIDCalls     int
+	getByIDLiteCalls int
+}
+
+type selectionFixtureGroups struct{}
+
+type mixedGroupProviders struct {
+	Providers
+	values       []gatewayprovider.ExecutionProvider
+	groupQueries []int64
+}
+
+type openAISnapshotCacheStub struct {
+	schedulercore.SnapshotCache
+	snapshotProviders []*gatewayprovider.ExecutionProvider
+	providersByID     map[int64]*gatewayprovider.ExecutionProvider
+}
+
+type schedulerTestOpenAIProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	providers []gatewayprovider.
+
+		// withAdvancedSchedulerTestGroup 为高级调度测试明确注入最终目标分组。
+		// 分组的调度类型决定是否启用高级调度。
+		ExecutionProvider
+}
+
+type schedulerGroupAwareOpenAIProviderRepo struct {
+	schedulerTestOpenAIProviderRepo
+}
+
+type schedulerTestConcurrencyCache struct {
+	schedulercore.ConcurrencyCache
+	loadBatchErr    error
+	loadMap         map[int64]*schedulercore.ProviderLoadInfo
+	acquireResults  map[int64]bool
+	waitCounts      map[int64]int
+	skipDefaultLoad bool
+	acquiredIDs     *[]int64
+	releasedIDs     *[]int64
+}
+
+type schedulerTestGatewayCache struct {
+	sessionBindings map[string]int64
+	deletedSessions map[string]int
+}
+
+type advancedSchedulerSettingRepoStub struct {
+	values map[string]string
+}
+
+type thresholdSelectionProviderRepoStub struct {
+	gatewaytestkit.HealthStoreRecorder
+
+	providers []gatewayprovider.ExecutionProvider
+}
+
+// 以下替身仅实现选择合同实际使用的读取；意外访问其他能力直接暴露测试缺口。
+type selectionProviderFixture struct {
+	Providers
+	providers []gatewayprovider.ExecutionProvider
+}
+
+type responseCacheFixture struct {
+	stickyCacheFixture
+	session.GatewayCache
+}
+
+type selectionConcurrencyFixture struct {
+	schedulercore.ConcurrencyCache
+	acquireResults  map[int64]bool
+	waitCounts      map[int64]int
+	loadBatchErr    error
+	loadMap         map[int64]*schedulercore.ProviderLoadInfo
+	skipDefaultLoad bool
+}
+
+// hydrationProviderSource 将回源读取错误交给提供商补全流程。
+type hydrationProviderSource struct {
+	schedulercore.SnapshotProviderSource
+	source Providers
+}
+
+// snapshotHydrationCache 为 SnapshotService 提供轻量和完整提供商快照。
+type snapshotHydrationCache struct {
+	schedulercore.SnapshotCache
+	snapshot  []*gatewayprovider.ExecutionProvider
+	providers map[int64]*gatewayprovider.ExecutionProvider
+}
+
+// stickyCacheFixture 实现测试使用的粘性缓存方法和未命中错误。
+type stickyCacheFixture struct {
+	sessionBindings map[string]int64
+	deletedSessions map[string]int
+}
+
 func (m *mockProviderRepoForPlatform) availabilityRecords(_ context.Context, groupID *int64, platforms []string, includeGrouped bool) ([]gatewayprovider.ExecutionProvider, error) {
 	platformSet := make(map[string]struct{}, len(platforms))
 	for _, platform := range platforms {
@@ -78,17 +221,6 @@ func diagnosticParameterDefaults(cfg *config.Config) schedulercore.ParameterDefa
 	defaults.Runtime.EwmaTTFTAlpha = value.EWMATTFTAlpha
 	defaults.Runtime.StickyEscape = policy.NormalizeStickyEscape(policy.StickyEscapeConfig{Enabled: value.StickyEscapeEnabled, TtftMs: float64(value.StickyEscapeTTFTMs), ErrorRate: value.StickyEscapeErrorRate})
 	return defaults
-}
-
-type grokFreeQuotaUsageRepoStub struct {
-	usage.UsageLogRepository
-
-	mu      sync.Mutex
-	stats   map[int64]*usage.ProviderStats
-	err     error
-	calls   int
-	lastIDs []int64
-	start   time.Time
 }
 
 func (r *grokFreeQuotaUsageRepoStub) GetProviderWindowStatsBatch(_ context.Context, providerIDs []int64, start time.Time) (map[int64]*usage.ProviderStats, error) {
@@ -156,14 +288,6 @@ func testConfig() *config.Config {
 	return &config.Config{}
 }
 
-// mockProviderRepoForPlatform 单平台测试用的 mock
-type mockProviderRepoForPlatform struct {
-	providers        []gatewayprovider.ExecutionProvider
-	providersByID    map[int64]*gatewayprovider.ExecutionProvider
-	listPlatformFunc func(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error)
-	getByIDCalls     int
-}
-
 func (m *mockProviderRepoForPlatform) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	m.getByIDCalls++
 	if acc, ok := m.providersByID[id]; ok {
@@ -226,12 +350,6 @@ func (m *mockProviderRepoForPlatform) ListSchedulableUngroupedByPlatforms(ctx co
 	return m.ListSchedulableByPlatforms(ctx, platforms)
 }
 
-// mockGatewayCacheForPlatform 单平台测试用的 cache mock
-type mockGatewayCacheForPlatform struct {
-	sessionBindings map[string]int64
-	deletedSessions map[string]int
-}
-
 func (m *mockGatewayCacheForPlatform) GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {
 	if id, ok := m.sessionBindings[sessionHash]; ok {
 		return id, nil
@@ -263,12 +381,6 @@ func (m *mockGatewayCacheForPlatform) DeleteSessionProviderID(ctx context.Contex
 	return nil
 }
 
-type mockGroupRepoForGateway struct {
-	groups           map[int64]*routing.Group
-	getByIDCalls     int
-	getByIDLiteCalls int
-}
-
 func (m *mockGroupRepoForGateway) GetByID(ctx context.Context, id int64) (*routing.Group, error) {
 	m.getByIDCalls++
 	if g, ok := m.groups[id]; ok {
@@ -283,16 +395,6 @@ func (m *mockGroupRepoForGateway) GetByIDLite(ctx context.Context, id int64) (*r
 		return g, nil
 	}
 	return nil, routing.ErrGroupNotFound
-}
-
-type mockConcurrencyCache struct {
-	acquireProviderCalls int
-	loadBatchCalls       int
-	acquireResults       map[int64]bool
-	loadBatchErr         error
-	loadMap              map[int64]*schedulercore.ProviderLoadInfo
-	waitCounts           map[int64]int
-	skipDefaultLoad      bool
 }
 
 func (m *mockConcurrencyCache) AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
@@ -414,13 +516,6 @@ func (m *mockConcurrencyCache) GetUsersLoadBatch(ctx context.Context, users []sc
 	return result, nil
 }
 
-// mockGroupRepoForGemini Gemini 测试用的 group repo mock
-type mockGroupRepoForGemini struct {
-	groups           map[int64]*routing.Group
-	getByIDCalls     int
-	getByIDLiteCalls int
-}
-
 func (m *mockGroupRepoForGemini) GetByID(ctx context.Context, id int64) (*routing.Group, error) {
 	m.getByIDCalls++
 	if g, ok := m.groups[id]; ok {
@@ -442,8 +537,6 @@ func (m *mockGroupRepoForGemini) GetByIDLite(ctx context.Context, id int64) (*ro
 	}
 	return nil, errors.New("group not found")
 }
-
-var _ Groups = (*mockGroupRepoForGemini)(nil)
 
 // newGenericSelectionForTest 构造通用选择器，使用各测试传入的配置值。
 func newGenericSelectionForTest(deps GenericDependencies, cfg *config.Config) *Generic {
@@ -549,20 +642,12 @@ func prepareSelectionFixtureProvider(ctx context.Context, value *gatewayprovider
 	}
 }
 
-type selectionFixtureGroups struct{}
-
 func (selectionFixtureGroups) GetByID(_ context.Context, id int64) (*routing.Group, error) {
 	return &routing.Group{ID: id, Hydrated: true, Status: routing.StatusActive}, nil
 }
 
 func (s selectionFixtureGroups) GetByIDLite(ctx context.Context, id int64) (*routing.Group, error) {
 	return s.GetByID(ctx, id)
-}
-
-type mixedGroupProviders struct {
-	Providers
-	values       []gatewayprovider.ExecutionProvider
-	groupQueries []int64
 }
 
 func (s *mixedGroupProviders) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
@@ -593,22 +678,6 @@ func (s *mixedGroupProviders) ListSchedulableByGroupIDAndPlatform(ctx context.Co
 func mixedGroupProvider(id int64, platform, model string, groupID int64) gatewayprovider.ExecutionProvider {
 	value := providercore.Record{ID: id, Platform: platform, Type: capability.ProviderTypeAPIKey, Status: providercore.StatusActive, Schedulable: true, Concurrency: 2, GroupIDs: []int64{groupID}, Credentials: map[string]any{"api_key": "test-key", "model_whitelist": []string{model}}}
 	return *gatewayprovider.NewExecutionProvider(&value)
-}
-
-type openAISnapshotCacheStub struct {
-	schedulercore.SnapshotCache
-	snapshotProviders []*gatewayprovider.ExecutionProvider
-	providersByID     map[int64]*gatewayprovider.ExecutionProvider
-}
-
-type schedulerTestOpenAIProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	providers []gatewayprovider.
-
-		// withAdvancedSchedulerTestGroup 为高级调度测试明确注入最终目标分组。
-		// 分组的调度类型决定是否启用高级调度。
-		ExecutionProvider
 }
 
 func withAdvancedSchedulerTestGroup(ctx context.Context, groupID int64) context.Context {
@@ -671,10 +740,6 @@ func (r schedulerTestOpenAIProviderRepo) ListModelAvailabilityCandidates(_ conte
 	return result, nil
 }
 
-type schedulerGroupAwareOpenAIProviderRepo struct {
-	schedulerTestOpenAIProviderRepo
-}
-
 func (r schedulerGroupAwareOpenAIProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	var result []gatewayprovider.ExecutionProvider
 	for _, acc := range r.providers {
@@ -693,17 +758,6 @@ func (r schedulerGroupAwareOpenAIProviderRepo) ListSchedulableUngroupedByPlatfor
 		}
 	}
 	return result, nil
-}
-
-type schedulerTestConcurrencyCache struct {
-	schedulercore.ConcurrencyCache
-	loadBatchErr    error
-	loadMap         map[int64]*schedulercore.ProviderLoadInfo
-	acquireResults  map[int64]bool
-	waitCounts      map[int64]int
-	skipDefaultLoad bool
-	acquiredIDs     *[]int64
-	releasedIDs     *[]int64
 }
 
 func (c schedulerTestConcurrencyCache) AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
@@ -759,11 +813,6 @@ func (c schedulerTestConcurrencyCache) GetProviderWaitingCount(ctx context.Conte
 	return 0, nil
 }
 
-type schedulerTestGatewayCache struct {
-	sessionBindings map[string]int64
-	deletedSessions map[string]int
-}
-
 func (c *schedulerTestGatewayCache) GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {
 	if id, ok := c.sessionBindings[sessionHash]; ok {
 		return id, nil
@@ -811,10 +860,6 @@ func newSchedulerTestOpenAIWSV2Config() *config.Config {
 	cfg := &config.Config{}
 	cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds = 3600
 	return cfg
-}
-
-type advancedSchedulerSettingRepoStub struct {
-	values map[string]string
 }
 
 func (s *advancedSchedulerSettingRepoStub) Get(ctx context.Context, key string) (*settings.Setting, error) {
@@ -939,12 +984,6 @@ func (r schedulerGroupAwareOpenAIProviderRepo) GetByID(ctx context.Context, id i
 	return nil, errors.New("provider not found")
 }
 
-type thresholdSelectionProviderRepoStub struct {
-	gatewaytestkit.HealthStoreRecorder
-
-	providers []gatewayprovider.ExecutionProvider
-}
-
 func (r *thresholdSelectionProviderRepoStub) ListSchedulableByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	filtered := make([]gatewayprovider.ExecutionProvider, 0, len(r.providers))
 	for _, provider := range r.providers {
@@ -975,12 +1014,6 @@ func responseSelectionParameters() *schedulercore.Parameters {
 	return schedulercore.NewParameters(schedulercore.NewSettingsRuntime(schedulercore.Diagnostics{}), nil, diagnosticParameterDefaults(&config.Config{}))
 }
 
-// 以下替身仅实现选择合同实际使用的读取；意外访问其他能力直接暴露测试缺口。
-type selectionProviderFixture struct {
-	Providers
-	providers []gatewayprovider.ExecutionProvider
-}
-
 func (r selectionProviderFixture) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	for i := range r.providers {
 		if r.providers[i].Record.ID == id {
@@ -1009,11 +1042,6 @@ func (r selectionProviderFixture) ListSchedulableUngroupedByPlatform(ctx context
 	return r.ListSchedulableByPlatform(ctx, platform)
 }
 
-type responseCacheFixture struct {
-	stickyCacheFixture
-	session.GatewayCache
-}
-
 func (c *responseCacheFixture) GetSessionProviderID(ctx context.Context, group int64, key string) (int64, error) {
 	return c.stickyCacheFixture.GetSessionProviderID(ctx, group, key)
 }
@@ -1028,15 +1056,6 @@ func (c *responseCacheFixture) RefreshSessionTTL(ctx context.Context, group int6
 
 func (c *responseCacheFixture) DeleteSessionProviderID(ctx context.Context, group int64, key string) error {
 	return c.stickyCacheFixture.DeleteSessionProviderID(ctx, group, key)
-}
-
-type selectionConcurrencyFixture struct {
-	schedulercore.ConcurrencyCache
-	acquireResults  map[int64]bool
-	waitCounts      map[int64]int
-	loadBatchErr    error
-	loadMap         map[int64]*schedulercore.ProviderLoadInfo
-	skipDefaultLoad bool
 }
 
 func (c selectionConcurrencyFixture) AcquireProviderSlot(_ context.Context, id int64, _ int, _ string) (bool, error) {
@@ -1079,12 +1098,6 @@ func (c selectionConcurrencyFixture) GetProvidersLoadBatch(ctx context.Context, 
 	return out, nil
 }
 
-// hydrationProviderSource 将回源读取错误交给提供商补全流程。
-type hydrationProviderSource struct {
-	schedulercore.SnapshotProviderSource
-	source Providers
-}
-
 func (s hydrationProviderSource) GetByID(ctx context.Context, id int64) (schedulercore.SnapshotProvider, error) {
 	value, err := s.source.GetByID(ctx, id)
 	return codec.WrapRecord(gatewayprovider.ExecutionRecord(value)), err
@@ -1099,13 +1112,6 @@ func (r selectionProviderFixture) ListSchedulableByGroupIDAndPlatforms(ctx conte
 		}
 	}
 	return result, nil
-}
-
-// snapshotHydrationCache 为 SnapshotService 提供轻量和完整提供商快照。
-type snapshotHydrationCache struct {
-	schedulercore.SnapshotCache
-	snapshot  []*gatewayprovider.ExecutionProvider
-	providers map[int64]*gatewayprovider.ExecutionProvider
 }
 
 func (c *snapshotHydrationCache) GetSnapshot(ctx context.Context, bucket schedulercore.SchedulerBucket) ([]schedulercore.SnapshotProvider, bool, error) {
@@ -1128,12 +1134,6 @@ func newHydrationSnapshotForTest(cache *snapshotHydrationCache, source Providers
 		read = hydrationProviderSource{source: source}
 	}
 	return schedulercore.NewSnapshotService(cache, nil, read, nil, nil, schedulercore.SnapshotBindings{ProviderNotFound: providercore.ErrProviderNotFound, GroupNotFound: routing.ErrGroupNotFound, Diagnostics: schedulercore.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event}})
-}
-
-// stickyCacheFixture 实现测试使用的粘性缓存方法和未命中错误。
-type stickyCacheFixture struct {
-	sessionBindings map[string]int64
-	deletedSessions map[string]int
 }
 
 func (c *stickyCacheFixture) GetSessionProviderID(_ context.Context, _ int64, key string) (int64, error) {

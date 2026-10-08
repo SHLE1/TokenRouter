@@ -18,6 +18,21 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
+// OpenAITextExecutor 绑定文本协议执行、请求构造和会话状态。
+type OpenAITextExecutor struct {
+	Compact        *CompactExecutor
+	Requests       *OpenAIRequests
+	Output         *OpenAIResponseOutput
+	Grok           *GrokExecutor
+	Credentials    *gatewayprovider.RequestCredentials
+	FastPolicy     *gatewayprovider.ExecutionFastPolicy
+	Continuation   *session.CompatResponses
+	PromptCache    *session.AnthropicPromptCache
+	CodexUsage     *provideradapter.CodexUsageObserver
+	ForcedTemplate string
+	ResponseTTL    func() time.Duration
+}
+
 // Chat 接收 Chat Completions 请求，按客户端首选协议、提供商协议配置和 Responses 探测结果选择上游协议。
 // Responses 路径转换请求与响应，Chat 路径调用 Chat Completions 端点。OAuth 的 ChatGPT 内部 API 使用 Responses，DeepSeek、Kimi、GLM 等兼容上游可使用 Chat。
 func (s *OpenAITextExecutor) Chat(
@@ -77,19 +92,4 @@ func (s *OpenAITextExecutor) chatError(
 	requestedModel ...string,
 ) (*forwardcore.OpenAIResult, error) {
 	return s.Output.CompatError(resp, c, provider, WriteForwardChatError, WriteForwardChatErrorBody, requestedModel...)
-}
-
-// OpenAITextExecutor 绑定文本协议执行、请求构造和会话状态。
-type OpenAITextExecutor struct {
-	Compact        *CompactExecutor
-	Requests       *OpenAIRequests
-	Output         *OpenAIResponseOutput
-	Grok           *GrokExecutor
-	Credentials    *gatewayprovider.RequestCredentials
-	FastPolicy     *gatewayprovider.ExecutionFastPolicy
-	Continuation   *session.CompatResponses
-	PromptCache    *session.AnthropicPromptCache
-	CodexUsage     *provideradapter.CodexUsageObserver
-	ForcedTemplate string
-	ResponseTTL    func() time.Duration
 }

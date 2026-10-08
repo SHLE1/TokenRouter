@@ -24,6 +24,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
+type antigravityCompatErrorReader struct {
+	data []byte
+	off  int
+	err  error
+}
+
+// antigravityFailingWriter 模拟客户端断开连接的 gin.ResponseWriter
+type antigravityFailingWriter struct {
+	gin.ResponseWriter
+	failAfter int // 允许成功写入的次数，之后所有写入返回错误
+	writes    int
+}
+
+// cancelReadCloser 模拟读取层直接返回取消错误。
+type cancelReadCloser struct{}
+
 func TestAntigravityCompatEmptyStreamTriggersFailover(t *testing.T) {
 	tests := []struct {
 		name string
@@ -658,7 +674,7 @@ func TestUnwrapV1InternalResponse(t *testing.T) {
 func BenchmarkUnwrapV1Internal_Old_Small(b *testing.B) {
 	body := []byte(`{"response":{"candidates":[{"content":{"parts":[{"text":"hello world"}]}}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":5}}}`)
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = unwrapV1InternalResponseOld(body)
 	}
 }
@@ -667,7 +683,7 @@ func BenchmarkUnwrapV1Internal_New_Small(b *testing.B) {
 	body := []byte(`{"response":{"candidates":[{"content":{"parts":[{"text":"hello world"}]}}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":5}}}`)
 	svc := newAntigravityFixture(antigravityDependencies{})
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{}).UnwrapV1InternalResponse(body)
 	}
 }
@@ -675,7 +691,7 @@ func BenchmarkUnwrapV1Internal_New_Small(b *testing.B) {
 func BenchmarkUnwrapV1Internal_Old_Large(b *testing.B) {
 	body := generateLargeUnwrapJSON(10 * 1024) // ~10KB
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = unwrapV1InternalResponseOld(body)
 	}
 }
@@ -684,7 +700,7 @@ func BenchmarkUnwrapV1Internal_New_Large(b *testing.B) {
 	body := generateLargeUnwrapJSON(10 * 1024) // ~10KB
 	svc := newAntigravityFixture(antigravityDependencies{})
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{}).UnwrapV1InternalResponse(body)
 	}
 }
@@ -771,12 +787,6 @@ func TestExtractImageSize_InvalidSize(t *testing.T) {
 	require.Equal(t, "2K", pricing.NormalizeImageBillingTierOrDefault(googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{}).ExtractImageInputSize(body)))
 }
 
-type antigravityCompatErrorReader struct {
-	data []byte
-	off  int
-	err  error
-}
-
 func (r *antigravityCompatErrorReader) Read(p []byte) (int, error) {
 	if r.off < len(r.data) {
 		n := copy(p, r.data[r.off:])
@@ -787,13 +797,6 @@ func (r *antigravityCompatErrorReader) Read(p []byte) (int, error) {
 }
 
 func (r *antigravityCompatErrorReader) Close() error { return nil }
-
-// antigravityFailingWriter 模拟客户端断开连接的 gin.ResponseWriter
-type antigravityFailingWriter struct {
-	gin.ResponseWriter
-	failAfter int // 允许成功写入的次数，之后所有写入返回错误
-	writes    int
-}
 
 func (w *antigravityFailingWriter) Write(p []byte) (int, error) {
 	if w.writes >= w.failAfter {
@@ -838,9 +841,6 @@ func generateLargeUnwrapJSON(minSize int) []byte {
 	b, _ := json.Marshal(outer)
 	return b
 }
-
-// cancelReadCloser 模拟读取层直接返回取消错误。
-type cancelReadCloser struct{}
 
 func (cancelReadCloser) Read([]byte) (int, error) { return 0, context.Canceled }
 

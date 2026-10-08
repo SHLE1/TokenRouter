@@ -18,6 +18,28 @@ import (
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
+// 在预读后轮换 token 并修改普通配置，检查批量字段更新保持这些并发修改。
+type credentialFieldRaceAdmin struct {
+	ProviderManagement
+	current provider.Record
+}
+
+// failingAdminService 嵌入 managementCredentialFixture，可配置 UpdateProvider 在指定 ID 时失败。
+type failingAdminService struct {
+	*managementCredentialFixture
+	failOnProviderID int64
+	updateCallCount  atomic.Int64
+}
+
+// getProviderFailingService 模拟 GetProvider 在特定 ID 时返回 not found。
+type getProviderFailingService struct {
+	*managementCredentialFixture
+	failOnProviderID int64
+}
+
+// 凭据批量测试提供预读和更新响应，通过用例接口注入错误。
+type managementCredentialFixture struct{ ProviderManagement }
+
 func TestBatchCredentialFieldDoesNotRestoreOldSnapshot(t *testing.T) {
 	admin := &credentialFieldRaceAdmin{current: provider.Record{ID: 984, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth, Credentials: map[string]any{"refresh_token": "old-token", "base_url": "https://old.invalid", "org_uuid": "old-org"}}}
 	h := NewManagementHandler(admin, ManagementOptions{Batch: provider.NewManagementBatch(admin, nil)})
@@ -44,7 +66,7 @@ func TestBatchUpdateCredentials_AllSuccess(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -67,7 +89,7 @@ func TestBatchUpdateCredentials_PartialFailure(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -100,7 +122,7 @@ func TestBatchUpdateCredentials_FirstProviderNotFound(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -119,7 +141,7 @@ func TestBatchUpdateCredentials_InterceptWarmupRequests_NonBool(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -138,7 +160,7 @@ func TestBatchUpdateCredentials_InterceptWarmupRequests_ValidBool(t *testing.T) 
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -158,7 +180,7 @@ func TestBatchUpdateCredentials_AccountUUID_NonString(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -178,18 +200,12 @@ func TestBatchUpdateCredentials_AccountUUID_NullValue(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/admin/providers/batch-update-credentials", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code,
 		"account_uuid 传入 null 应返回 200")
-}
-
-// 在预读后轮换 token 并修改普通配置，检查批量字段更新保持这些并发修改。
-type credentialFieldRaceAdmin struct {
-	ProviderManagement
-	current provider.Record
 }
 
 func (s *credentialFieldRaceAdmin) GetProvider(context.Context, int64) (*provider.Record, error) {
@@ -209,13 +225,6 @@ func (s *credentialFieldRaceAdmin) UpdateProvider(_ context.Context, _ int64, in
 	return &s.current, nil
 }
 
-// failingAdminService 嵌入 managementCredentialFixture，可配置 UpdateProvider 在指定 ID 时失败。
-type failingAdminService struct {
-	*managementCredentialFixture
-	failOnProviderID int64
-	updateCallCount  atomic.Int64
-}
-
 func (f *failingAdminService) UpdateProvider(ctx context.Context, id int64, input *provider.UpdateProviderInput) (*provider.Record, error) {
 	f.updateCallCount.Add(1)
 	if id == f.failOnProviderID {
@@ -231,21 +240,12 @@ func setupProviderHandlerWithService(adminSvc ProviderManagement) (*gin.Engine, 
 	return router, handler
 }
 
-// getProviderFailingService 模拟 GetProvider 在特定 ID 时返回 not found。
-type getProviderFailingService struct {
-	*managementCredentialFixture
-	failOnProviderID int64
-}
-
 func (f *getProviderFailingService) GetProvider(ctx context.Context, id int64) (*provider.Record, error) {
 	if id == f.failOnProviderID {
 		return nil, errors.New("not found")
 	}
 	return f.managementCredentialFixture.GetProvider(ctx, id)
 }
-
-// 凭据批量测试提供预读和更新响应，通过用例接口注入错误。
-type managementCredentialFixture struct{ ProviderManagement }
 
 func (s *managementCredentialFixture) GetProvider(_ context.Context, id int64) (*provider.Record, error) {
 	return &provider.Record{ID: id, Name: "provider", Platform: provider.PlatformAnthropic, Type: provider.ProviderTypeOAuth, Status: provider.StatusActive}, nil

@@ -6,35 +6,6 @@ import (
 	"strings"
 )
 
-// ParseAnthropicBetaHeader 解析 anthropic-beta 头的逗号分隔字符串为 token 列表
-func ParseAnthropicBetaHeader(header string) []string {
-	header = strings.TrimSpace(header)
-	if header == "" {
-		return nil
-	}
-	if strings.HasPrefix(header, "[") && strings.HasSuffix(header, "]") {
-		var parsed []any
-		if err := json.Unmarshal([]byte(header), &parsed); err == nil {
-			tokens := make([]string, 0, len(parsed))
-			for _, item := range parsed {
-				token := strings.TrimSpace(fmt.Sprint(item))
-				if token != "" {
-					tokens = append(tokens, token)
-				}
-			}
-			return tokens
-		}
-	}
-	var tokens []string
-	for _, part := range strings.Split(header, ",") {
-		t := strings.TrimSpace(part)
-		if t != "" {
-			tokens = append(tokens, t)
-		}
-	}
-	return tokens
-}
-
 // Beta header 常量
 //
 // 这些常量来自 2026-04 观测到的 Claude Code CLI 流量。
@@ -69,3 +40,32 @@ const (
 	BetaFallbackCredit       = "fallback-credit-2026-07-01"
 	BetaFallbackCreditLegacy = "fallback-credit-2026-06-01"
 )
+
+// ParseAnthropicBetaHeader 解析 anthropic-beta 头的逗号分隔字符串为 token 列表
+func ParseAnthropicBetaHeader(header string) []string {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return nil
+	}
+	if strings.HasPrefix(header, "[") && strings.HasSuffix(header, "]") {
+		var parsed []any
+		if err := json.Unmarshal([]byte(header), &parsed); err == nil {
+			tokens := make([]string, 0, len(parsed))
+			for _, item := range parsed {
+				token := strings.TrimSpace(fmt.Sprint(item))
+				if token != "" {
+					tokens = append(tokens, token)
+				}
+			}
+			return tokens
+		}
+	}
+	var tokens []string
+	for _, part := range strings.Split(header, ",") {
+		t := strings.TrimSpace(part)
+		if t != "" {
+			tokens = append(tokens, t)
+		}
+	}
+	return tokens
+}

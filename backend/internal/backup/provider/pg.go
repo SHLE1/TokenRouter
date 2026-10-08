@@ -25,6 +25,14 @@ type PgDumper struct {
 	cfg *DatabaseOptions
 }
 
+// cmdReadCloser wraps a command stdout pipe and waits for the process on Close
+type cmdReadCloser struct {
+	io.ReadCloser
+	cmd      *exec.Cmd
+	once     sync.Once
+	closeErr error
+}
+
 // NewPgDumper creates a new PgDumper
 func NewPgDumper(cfg DatabaseOptions) backup.DBDumper {
 	return &PgDumper{cfg: &cfg}
@@ -120,14 +128,6 @@ func (d *PgDumper) Restore(ctx context.Context, data io.Reader) error {
 		return fmt.Errorf("%w: %s", err, output.String())
 	}
 	return nil
-}
-
-// cmdReadCloser wraps a command stdout pipe and waits for the process on Close
-type cmdReadCloser struct {
-	io.ReadCloser
-	cmd      *exec.Cmd
-	once     sync.Once
-	closeErr error
 }
 
 func (c *cmdReadCloser) Close() error {

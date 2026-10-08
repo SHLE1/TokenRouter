@@ -9,6 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// anthropicInboundBlockTypes 是 Anthropic Messages 接受的 content block 类型集合。
+// 输出集合外的类型会触发 400 Request body format invalid（issue #5329）。
+var anthropicInboundBlockTypes = map[string]bool{
+	"text":              true,
+	"image":             true,
+	"document":          true,
+	"tool_use":          true,
+	"tool_result":       true,
+	"thinking":          true,
+	"redacted_thinking": true,
+}
+
 func TestResponsesToAnthropicRequest_ToolChoiceFunctionName(t *testing.T) {
 	req := &ResponsesRequest{
 		Model:      "gpt-5.2",
@@ -591,18 +603,6 @@ func TestResponsesToAnthropic_DefaultToolNormalizesInputSchema(t *testing.T) {
 	assert.Equal(t, "local_shell", tools[0].Type)
 	assert.Equal(t, "shell", tools[0].Name)
 	assert.JSONEq(t, `{"type":"object","properties":{}}`, string(tools[0].InputSchema))
-}
-
-// anthropicInboundBlockTypes 是 Anthropic Messages 接受的 content block 类型集合。
-// 输出集合外的类型会触发 400 Request body format invalid（issue #5329）。
-var anthropicInboundBlockTypes = map[string]bool{
-	"text":              true,
-	"image":             true,
-	"document":          true,
-	"tool_use":          true,
-	"tool_result":       true,
-	"thinking":          true,
-	"redacted_thinking": true,
 }
 
 func responsesToAnthropicMessages(t *testing.T, input string) []AnthropicMessage {

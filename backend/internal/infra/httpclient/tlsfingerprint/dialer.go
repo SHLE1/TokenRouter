@@ -25,55 +25,11 @@ const (
 	defaultTLSFingerprintHandshakeTimeout = 10 * time.Second
 )
 
-func newTLSFingerprintNetworkDialer() *net.Dialer {
-	return &net.Dialer{
-		Timeout:   defaultTLSFingerprintDialTimeout,
-		KeepAlive: defaultTLSFingerprintDialKeepAlive,
-	}
-}
-
-// Profile contains TLS fingerprint configuration.
-// All slice fields use built-in defaults when empty.
-type Profile struct {
-	Name                string // Profile name for identification
-	CipherSuites        []uint16
-	Curves              []uint16
-	PointFormats        []uint16
-	EnableGREASE        bool
-	SignatureAlgorithms []uint16 // Empty uses defaultSignatureAlgorithms
-	ALPNProtocols       []string // Empty uses ["http/1.1"]
-	SupportedVersions   []uint16 // Empty uses [TLS1.3, TLS1.2]
-	KeyShareGroups      []uint16 // Empty uses [X25519]
-	PSKModes            []uint16 // Empty uses [psk_dhe_ke]
-	Extensions          []uint16 // Extension type IDs in order; empty uses default Node.js 24.x order
-}
-
-// Dialer creates TLS connections with custom fingerprints.
-type Dialer struct {
-	profile    *Profile
-	baseDialer func(ctx context.Context, network, addr string) (net.Conn, error)
-}
-
-// HTTPProxyDialer creates TLS connections through HTTP/HTTPS proxies with custom fingerprints.
-// It handles the CONNECT tunnel establishment before performing TLS handshake.
-type HTTPProxyDialer struct {
-	profile        *Profile
-	proxyURL       *url.URL
-	proxyTLSConfig *stdtls.Config
-}
-
-// SOCKS5ProxyDialer creates TLS connections through SOCKS5 proxies with custom fingerprints.
-// It uses golang.org/x/net/proxy to establish the SOCKS5 tunnel.
-type SOCKS5ProxyDialer struct {
-	profile  *Profile
-	proxyURL *url.URL
-}
-
-// Default TLS fingerprint values captured from Claude Code (Node.js 24.x)
-// Captured via tls-fingerprint-web capture server
-// JA3 Hash: 44f88fca027f27bab4bb08d4af15f23e
-// JA4:      t13d1714h1_5b57614c22b0_7baf387fc6ff
 var (
+	// Default TLS fingerprint values captured from Claude Code (Node.js 24.x)
+	// Captured via tls-fingerprint-web capture server
+	// JA3 Hash: 44f88fca027f27bab4bb08d4af15f23e
+	// JA4:      t13d1714h1_5b57614c22b0_7baf387fc6ff
 	// defaultCipherSuites contains the 17 cipher suites from Node.js 24.x
 	// Order is critical for JA3 fingerprint matching
 	defaultCipherSuites = []uint16{
@@ -131,7 +87,70 @@ var (
 		0x0601, // rsa_pkcs1_sha512
 		0x0201, // rsa_pkcs1_sha1
 	}
+
+	// defaultExtensionOrder is the Node.js 24.x extension order.
+	// Used when Profile.Extensions is empty.
+	defaultExtensionOrder = []uint16{
+		0,     // server_name
+		65037, // encrypted_client_hello
+		23,    // extended_master_secret
+		65281, // renegotiation_info
+		10,    // supported_groups
+		11,    // ec_point_formats
+		35,    // session_ticket
+		16,    // alpn
+		5,     // status_request
+		13,    // signature_algorithms
+		18,    // signed_certificate_timestamp
+		51,    // key_share
+		45,    // psk_key_exchange_modes
+		43,    // supported_versions
+	}
 )
+
+// Profile contains TLS fingerprint configuration.
+// All slice fields use built-in defaults when empty.
+type Profile struct {
+	Name                string // Profile name for identification
+	CipherSuites        []uint16
+	Curves              []uint16
+	PointFormats        []uint16
+	EnableGREASE        bool
+	SignatureAlgorithms []uint16 // Empty uses defaultSignatureAlgorithms
+	ALPNProtocols       []string // Empty uses ["http/1.1"]
+	SupportedVersions   []uint16 // Empty uses [TLS1.3, TLS1.2]
+	KeyShareGroups      []uint16 // Empty uses [X25519]
+	PSKModes            []uint16 // Empty uses [psk_dhe_ke]
+	Extensions          []uint16 // Extension type IDs in order; empty uses default Node.js 24.x order
+}
+
+// Dialer creates TLS connections with custom fingerprints.
+type Dialer struct {
+	profile    *Profile
+	baseDialer func(ctx context.Context, network, addr string) (net.Conn, error)
+}
+
+// HTTPProxyDialer creates TLS connections through HTTP/HTTPS proxies with custom fingerprints.
+// It handles the CONNECT tunnel establishment before performing TLS handshake.
+type HTTPProxyDialer struct {
+	profile        *Profile
+	proxyURL       *url.URL
+	proxyTLSConfig *stdtls.Config
+}
+
+// SOCKS5ProxyDialer creates TLS connections through SOCKS5 proxies with custom fingerprints.
+// It uses golang.org/x/net/proxy to establish the SOCKS5 tunnel.
+type SOCKS5ProxyDialer struct {
+	profile  *Profile
+	proxyURL *url.URL
+}
+
+func newTLSFingerprintNetworkDialer() *net.Dialer {
+	return &net.Dialer{
+		Timeout:   defaultTLSFingerprintDialTimeout,
+		KeepAlive: defaultTLSFingerprintDialKeepAlive,
+	}
+}
 
 // NewDialer creates a new TLS fingerprint dialer.
 // baseDialer is used for TCP connection establishment (supports proxy scenarios).
@@ -253,7 +272,7 @@ func (d *HTTPProxyDialer) DialTLSContext(ctx context.Context, network, addr stri
 
 	// Step 2: Send CONNECT request to establish tunnel
 	req := &http.Request{
-		Method: "CONNECT",
+		Method: http.MethodConnect,
 		URL:    &url.URL{Opaque: addr},
 		Host:   addr,
 		Header: make(http.Header),
@@ -353,25 +372,6 @@ func toUTLSCurves(curves []uint16) []utls.CurveID {
 		result[i] = utls.CurveID(c)
 	}
 	return result
-}
-
-// defaultExtensionOrder is the Node.js 24.x extension order.
-// Used when Profile.Extensions is empty.
-var defaultExtensionOrder = []uint16{
-	0,     // server_name
-	65037, // encrypted_client_hello
-	23,    // extended_master_secret
-	65281, // renegotiation_info
-	10,    // supported_groups
-	11,    // ec_point_formats
-	35,    // session_ticket
-	16,    // alpn
-	5,     // status_request
-	13,    // signature_algorithms
-	18,    // signed_certificate_timestamp
-	51,    // key_share
-	45,    // psk_key_exchange_modes
-	43,    // supported_versions
 }
 
 // isGREASEValue checks if a uint16 value matches the TLS GREASE pattern (0x?a?a).

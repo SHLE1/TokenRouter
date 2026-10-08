@@ -6,6 +6,36 @@ import (
 	"strings"
 )
 
+// ResponsesEventToAnthropicState tracks state for converting a sequence of
+// Responses SSE events directly into Anthropic SSE events.
+type ResponsesEventToAnthropicState struct {
+	MessageStartSent bool
+	MessageStopSent  bool
+
+	ContentBlockIndex   int
+	ContentBlockOpen    bool
+	CurrentBlockType    string // "text" | "thinking" | "tool_use"
+	CurrentToolName     string
+	CurrentToolArgs     string
+	CurrentToolHadDelta bool
+	// PendingThinkingSignature 保存 reasoning.encrypted_content，并在 thinking 块
+	// 关闭前通过 signature_delta 发出。
+	PendingThinkingSignature string
+	HasToolCall              bool
+
+	// OutputIndexToBlockIdx maps Responses output_index → Anthropic content block index.
+	OutputIndexToBlockIdx map[int]int
+
+	InputTokens              int
+	OutputTokens             int
+	CacheReadInputTokens     int
+	CacheCreationInputTokens int
+
+	ResponseID string
+	Model      string
+	Created    int64
+}
+
 // ResponsesToAnthropic converts a Responses API response directly into an
 // Anthropic Messages response. Reasoning output items are mapped to thinking
 // blocks; function_call items become tool_use blocks.
@@ -158,36 +188,6 @@ func sanitizeAnthropicToolUseInput(name string, raw string) json.RawMessage {
 		return json.RawMessage(raw)
 	}
 	return sanitized
-}
-
-// ResponsesEventToAnthropicState tracks state for converting a sequence of
-// Responses SSE events directly into Anthropic SSE events.
-type ResponsesEventToAnthropicState struct {
-	MessageStartSent bool
-	MessageStopSent  bool
-
-	ContentBlockIndex   int
-	ContentBlockOpen    bool
-	CurrentBlockType    string // "text" | "thinking" | "tool_use"
-	CurrentToolName     string
-	CurrentToolArgs     string
-	CurrentToolHadDelta bool
-	// PendingThinkingSignature 保存 reasoning.encrypted_content，并在 thinking 块
-	// 关闭前通过 signature_delta 发出。
-	PendingThinkingSignature string
-	HasToolCall              bool
-
-	// OutputIndexToBlockIdx maps Responses output_index → Anthropic content block index.
-	OutputIndexToBlockIdx map[int]int
-
-	InputTokens              int
-	OutputTokens             int
-	CacheReadInputTokens     int
-	CacheCreationInputTokens int
-
-	ResponseID string
-	Model      string
-	Created    int64
 }
 
 // NewResponsesEventToAnthropicState returns an initialised stream state.

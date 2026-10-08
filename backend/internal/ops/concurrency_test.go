@@ -16,17 +16,17 @@ type opsProviderStatsRepoStub struct {
 	groupIDFilter  *int64
 }
 
+type opsProviderStatsFallbackRepoStub struct {
+	ProviderReader
+	platformFilter string
+	groupIDFilter  int64
+}
+
 // ListOpsProvidersForStats 记录轻量查询参数，验证服务不会退回通用分页查询。
 func (r *opsProviderStatsRepoStub) ListOpsProvidersForStats(_ context.Context, platformFilter string, groupIDFilter *int64) ([]ProviderObservation, error) {
 	r.platformFilter = platformFilter
 	r.groupIDFilter = groupIDFilter
 	return r.providers, nil
-}
-
-type opsProviderStatsFallbackRepoStub struct {
-	ProviderReader
-	platformFilter string
-	groupIDFilter  int64
 }
 
 // ListPage 模拟尚未实现轻量查询接口的仓储，锁定兼容回退行为。

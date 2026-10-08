@@ -16,6 +16,11 @@ import (
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
+// openAINoAvailableSelectionError 提供错误消息，并支持 errors.Is 分类。
+type openAINoAvailableSelectionError struct {
+	message string
+}
+
 // BindStickySession 使用调度器默认期限绑定提供商会话。
 func (s *Compatible) BindStickySession(ctx context.Context, groupID *int64, sessionHash string, providerID int64) error {
 	return s.BindStickySessionWithTTL(ctx, groupID, sessionHash, providerID, s.SessionStickyTTL())
@@ -129,11 +134,6 @@ func noAvailableOpenAISelectionErrorForRoutingWithDetails(ctx context.Context, r
 		message += " (" + details + ")"
 	}
 	return openAINoAvailableSelectionError{message: message}
-}
-
-// openAINoAvailableSelectionError 提供错误消息，并支持 errors.Is 分类。
-type openAINoAvailableSelectionError struct {
-	message string
 }
 
 func (e openAINoAvailableSelectionError) Error() string {

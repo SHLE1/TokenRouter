@@ -21,6 +21,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 )
 
+// mockSettingsProvider 返回测试配置并记录读取次数。
+type mockSettingsProvider struct {
+	settings any
+	err      error
+	called   int
+}
+
+type blockingPublic struct {
+	entered, release chan struct{}
+	calls            atomic.Int64
+}
+
 func TestInjectSiteTitle(t *testing.T) {
 	t.Run("replaces_title_with_site_name", func(t *testing.T) {
 		html := []byte(`<html><head><title>TokenRouter - AI API Gateway</title></head><body></body></html>`)
@@ -956,21 +968,9 @@ func TestFrontendServerLateHTMLPublication(t *testing.T) {
 	require.True(t, strings.Contains(w.Body.String(), "NEW-TEST"), "旧回源覆盖失效，后续请求未取得新配置")
 }
 
-// mockSettingsProvider 返回测试配置并记录读取次数。
-type mockSettingsProvider struct {
-	settings any
-	err      error
-	called   int
-}
-
 func (m *mockSettingsProvider) GetPublicSettingsForInjection(ctx context.Context) (any, error) {
 	m.called++
 	return m.settings, m.err
-}
-
-type blockingPublic struct {
-	entered, release chan struct{}
-	calls            atomic.Int64
 }
 
 func (p *blockingPublic) GetPublicSettingsForInjection(context.Context) (any, error) {

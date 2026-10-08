@@ -30,14 +30,209 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// refreshFailureMatchesFixture 竞争替身比较当前行身份，nil 凭据与原刷新快照一致。
-func refreshFailureMatchesFixture(value *providercore.Record, version providercore.RefreshFailureVersion) bool {
-	return value != nil && reflect.DeepEqual(providercore.FailureVersion(value), version)
-}
+var (
+	errCooldownSettingMissing = errors.New("setting missing")
+
+	_ providercore.SessionWindowStore = (*sessionWindowMockRepo)(nil)
+)
 
 type codexInviteResetAdminServiceStub struct {
 	provider *providercore.Record
 	proxy    *egress.Proxy
+}
+
+type codexInviteResetHTTPUpstreamStub struct {
+	responses []*http.Response
+	requests  []*http.Request
+	bodies    []string
+	profiles  []*tlsfingerprint.Profile
+}
+
+// tlsProfileTestStore 通过相同读取入口提供固定测试策略。
+type tlsProfileTestStore struct {
+	egress.TLSFingerprintProfileRepository
+	profiles []*egress.TLSFingerprintProfile
+}
+
+// 设置替身提供单键读写，运行配置缓存使用生产实现。
+type cooldownSettingsStore struct{ data map[string]string }
+
+type grokQuotaProviderRepo struct {
+	*grokQuotaReadStore
+	updates               map[int64]map[string]any
+	updateCalls           int
+	rateLimitedCalls      int
+	lastRateLimitedID     int64
+	lastRateLimitResetAt  time.Time
+	tempUnschedCalls      int
+	lastTempUnschedID     int64
+	lastTempUnschedUntil  time.Time
+	lastTempUnschedReason string
+	recoveryClearCalls    int
+	recoveryObservedAt    time.Time
+	recoveryObservedReset time.Time
+	recoveryClearResult   bool
+}
+
+type grokQuotaProxyRepo struct {
+	proxies map[int64]*egress.Proxy
+	calls   int
+}
+
+type grokQuotaUsageLogRepo struct {
+	stats      *providercore.WindowStats
+	err        error
+	calls      int
+	startTimes []time.Time
+}
+
+type grokHybridUpstream struct {
+	mu                   sync.Mutex
+	requests             []*http.Request
+	bodies               [][]byte
+	weeklyUsagePercent   *float64
+	monthlyLimitCents    *float64
+	activeStatus         int
+	activeHeaders        http.Header
+	billingStarted       chan struct{}
+	billingRelease       <-chan struct{}
+	billingStartOnce     sync.Once
+	billingStatus        int
+	weeklyBillingStatus  int
+	monthlyBillingStatus int
+	billingHeaders       http.Header
+}
+
+// 查询返回独立记录，存储替身记录写入操作供断言使用。
+type grokQuotaReadStore struct {
+	providersByID map[int64]*providercore.Record
+	getByIDCalls  int
+}
+
+// HTTP 记录器保存每次请求和正文，供请求断言读取。
+type grokQuotaHTTPRecorder struct {
+	lastReq      *http.Request
+	lastBody     []byte
+	lastProxyURL string
+	requests     []*http.Request
+	bodies       [][]byte
+	resp         *http.Response
+	responses    []*http.Response
+	err          error
+}
+
+type grokQuotaUpstreamStep struct {
+	status int
+	body   string
+	err    error
+}
+
+type grokQuotaSequenceUpstream struct {
+	mu       sync.Mutex
+	steps    []grokQuotaUpstreamStep
+	requests []*http.Request
+}
+
+type providerUsageCodexProbeRepo struct {
+	usageRecordFixture
+	updateExtraCh chan map[string]any
+	rateLimitCh   chan time.Time
+	clearLimitCh  chan int64
+	clearErrorCh  chan int64
+}
+
+// 夹具组合用量查询组件和平台接口，查询与状态管理使用生产实现。
+type oauthUsageFixtureOptions struct {
+	providerRepo         providercore.OAuthUsageReader
+	cache                *providercore.OAuthUsageCache
+	httpUpstream         QoderTransport
+	tlsFPProfileService  *egressadapter.TLSProfiles
+	qoderSessionProvider *QoderTokenProvider
+}
+
+// 测试存储按 ID 返回独立记录，缺失时返回对应错误。
+type usageRecordFixture struct{ providers []providercore.Record }
+
+type openAIOAuthTokenRouterReaderStub struct {
+	routers map[int64]*egress.TLSFingerprintRouter
+}
+
+// 上游返回前替换管理员凭据，随后条件写入拒绝先前身份的额度结果。
+type qoderObservationIdentityRepo struct {
+	providercore.OAuthUsageReader
+	current *providercore.Record
+	writes  int
+}
+
+type tokenRefreshProviderRepo struct {
+	refreshRecordFixture
+	updateCalls                  int
+	fullUpdateCalls              int
+	updateCredentialsCalls       int
+	setErrorCalls                int
+	clearTempCalls               int
+	setTempUnschedCalls          int
+	updateExtraCalls             int
+	lastErrorMessage             string
+	lastTempUnschedReason        string
+	lastExtraUpdates             map[string]any
+	lastProvider                 *providercore.Record
+	updateErr                    error
+	cancelOnUpdate               context.CancelFunc
+	conditionalErrorCalls        int
+	conditionalTempCalls         int
+	conditionalSuccessCalls      int
+	conditionalErrorErr          error
+	conditionalTempErr           error
+	conditionalSuccessErr        error
+	snapshotReads                bool
+	respectReadContext           bool
+	getByIDCalls                 int
+	durableReadDelay             time.Duration
+	mutateSchedulingOnSuccessCAS bool
+	reauthorizeOnErrorCAS        bool
+	reauthorizeOnTempCAS         bool
+	repairProxyOnErrorCAS        bool
+	repairProxyOnTempCAS         bool
+	setErrorErr                  error
+	setTempUnschedErr            error
+	beforeConditionalState       func()
+}
+
+type tokenRefresherStub struct {
+	credentials map[string]any
+	err         error
+	calls       int
+}
+
+// refreshRecordFixture 模拟提供商记录读取。
+type refreshRecordFixture struct {
+	providersByID map[int64]*providercore.Record
+}
+
+// sessionWindowMockRepo 记录窗口写入，非预期健康操作保持失败。
+type sessionWindowMockRepo struct {
+	// 捕获实际写入。
+	sessionWindowCalls []swCall
+	updateExtraCalls   []ueCall
+	clearRateLimitIDs  []int64
+}
+
+type swCall struct {
+	ID     int64
+	Start  *time.Time
+	End    *time.Time
+	Status string
+}
+
+type ueCall struct {
+	ID      int64
+	Updates map[string]any
+}
+
+// refreshFailureMatchesFixture 竞争替身比较当前行身份，nil 凭据与原刷新快照一致。
+func refreshFailureMatchesFixture(value *providercore.Record, version providercore.RefreshFailureVersion) bool {
+	return value != nil && reflect.DeepEqual(providercore.FailureVersion(value), version)
 }
 
 func (s codexInviteResetAdminServiceStub) GetProvider(ctx context.Context, id int64) (*providercore.Record, error) {
@@ -46,13 +241,6 @@ func (s codexInviteResetAdminServiceStub) GetProvider(ctx context.Context, id in
 
 func (s codexInviteResetAdminServiceStub) GetProxy(ctx context.Context, id int64) (*egress.Proxy, error) {
 	return s.proxy, nil
-}
-
-type codexInviteResetHTTPUpstreamStub struct {
-	responses []*http.Response
-	requests  []*http.Request
-	bodies    []string
-	profiles  []*tlsfingerprint.Profile
 }
 
 func (s *codexInviteResetHTTPUpstreamStub) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
@@ -89,12 +277,6 @@ func codexInviteResetJSONStatusResponse(statusCode int, body string) *http.Respo
 	}
 }
 
-// tlsProfileTestStore 通过相同读取入口提供固定测试策略。
-type tlsProfileTestStore struct {
-	egress.TLSFingerprintProfileRepository
-	profiles []*egress.TLSFingerprintProfile
-}
-
 func (s *tlsProfileTestStore) List(context.Context) ([]*egress.TLSFingerprintProfile, error) {
 	return s.profiles, nil
 }
@@ -109,11 +291,6 @@ func newTLSProfileServiceWithCacheForTest(profiles map[int64]*egress.TLSFingerpr
 	service.Start()
 	return service
 }
-
-// 设置替身提供单键读写，运行配置缓存使用生产实现。
-type cooldownSettingsStore struct{ data map[string]string }
-
-var errCooldownSettingMissing = errors.New("setting missing")
 
 func newCooldownSettingsStore() *cooldownSettingsStore {
 	return &cooldownSettingsStore{data: map[string]string{}}
@@ -135,23 +312,6 @@ func (s *cooldownSettingsStore) Set(_ context.Context, key, value string) error 
 func makeGrokOAuthJWT(claims map[string]any) string {
 	payload, _ := json.Marshal(claims)
 	return "header." + base64.RawURLEncoding.EncodeToString(payload) + ".signature"
-}
-
-type grokQuotaProviderRepo struct {
-	*grokQuotaReadStore
-	updates               map[int64]map[string]any
-	updateCalls           int
-	rateLimitedCalls      int
-	lastRateLimitedID     int64
-	lastRateLimitResetAt  time.Time
-	tempUnschedCalls      int
-	lastTempUnschedID     int64
-	lastTempUnschedUntil  time.Time
-	lastTempUnschedReason string
-	recoveryClearCalls    int
-	recoveryObservedAt    time.Time
-	recoveryObservedReset time.Time
-	recoveryClearResult   bool
 }
 
 func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {
@@ -201,18 +361,6 @@ func (r *grokQuotaProviderRepo) SetTempUnschedulable(_ context.Context, id int64
 	return nil
 }
 
-type grokQuotaProxyRepo struct {
-	proxies map[int64]*egress.Proxy
-	calls   int
-}
-
-type grokQuotaUsageLogRepo struct {
-	stats      *providercore.WindowStats
-	err        error
-	calls      int
-	startTimes []time.Time
-}
-
 func (r *grokQuotaUsageLogRepo) GetProviderWindowStats(_ context.Context, _ int64, start time.Time) (*providercore.WindowStats, error) {
 	r.calls++
 	r.startTimes = append(r.startTimes, start)
@@ -221,23 +369,6 @@ func (r *grokQuotaUsageLogRepo) GetProviderWindowStats(_ context.Context, _ int6
 
 func (r *grokQuotaUsageLogRepo) GetProviderTodayStats(context.Context, int64) (*providercore.WindowStats, error) {
 	return nil, nil
-}
-
-type grokHybridUpstream struct {
-	mu                   sync.Mutex
-	requests             []*http.Request
-	bodies               [][]byte
-	weeklyUsagePercent   *float64
-	monthlyLimitCents    *float64
-	activeStatus         int
-	activeHeaders        http.Header
-	billingStarted       chan struct{}
-	billingRelease       <-chan struct{}
-	billingStartOnce     sync.Once
-	billingStatus        int
-	weeklyBillingStatus  int
-	monthlyBillingStatus int
-	billingHeaders       http.Header
 }
 
 func (u *grokHybridUpstream) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
@@ -344,30 +475,12 @@ func newGrokQuotaFixture(store GrokQuotaStore, proxy *grokQuotaProxyRepo, token 
 	return NewGrokQuota(store, token, requests, stats)
 }
 
-// 查询返回独立记录，存储替身记录写入操作供断言使用。
-type grokQuotaReadStore struct {
-	providersByID map[int64]*providercore.Record
-	getByIDCalls  int
-}
-
 func (r *grokQuotaReadStore) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
 	r.getByIDCalls++
 	if value, ok := r.providersByID[id]; ok {
 		return providercore.CloneRecord(value), nil
 	}
 	return nil, errors.New("provider not found")
-}
-
-// HTTP 记录器保存每次请求和正文，供请求断言读取。
-type grokQuotaHTTPRecorder struct {
-	lastReq      *http.Request
-	lastBody     []byte
-	lastProxyURL string
-	requests     []*http.Request
-	bodies       [][]byte
-	resp         *http.Response
-	responses    []*http.Response
-	err          error
 }
 
 func (u *grokQuotaHTTPRecorder) Do(req *http.Request, proxyURL string, _ int64, _ int) (*http.Response, error) {
@@ -395,18 +508,6 @@ func (u *grokQuotaHTTPRecorder) Do(req *http.Request, proxyURL string, _ int64, 
 		return response, nil
 	}
 	return u.resp, nil
-}
-
-type grokQuotaUpstreamStep struct {
-	status int
-	body   string
-	err    error
-}
-
-type grokQuotaSequenceUpstream struct {
-	mu       sync.Mutex
-	steps    []grokQuotaUpstreamStep
-	requests []*http.Request
 }
 
 func (u *grokQuotaSequenceUpstream) snapshotRequests() []*http.Request {
@@ -447,14 +548,6 @@ func (u *grokQuotaSequenceUpstream) Do(req *http.Request, _ string, _ int64, _ i
 	return &http.Response{StatusCode: step.status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(step.body))}, nil
 }
 
-type providerUsageCodexProbeRepo struct {
-	usageRecordFixture
-	updateExtraCh chan map[string]any
-	rateLimitCh   chan time.Time
-	clearLimitCh  chan int64
-	clearErrorCh  chan int64
-}
-
 func (r *providerUsageCodexProbeRepo) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
 	if r.updateExtraCh != nil {
 		copied := make(map[string]any, len(updates))
@@ -487,15 +580,6 @@ func (r *providerUsageCodexProbeRepo) ClearError(_ context.Context, id int64) er
 	return nil
 }
 
-// 夹具组合用量查询组件和平台接口，查询与状态管理使用生产实现。
-type oauthUsageFixtureOptions struct {
-	providerRepo         providercore.OAuthUsageReader
-	cache                *providercore.OAuthUsageCache
-	httpUpstream         QoderTransport
-	tlsFPProfileService  *egressadapter.TLSProfiles
-	qoderSessionProvider *QoderTokenProvider
-}
-
 func newOAuthUsageFixture(options oauthUsageFixtureOptions) *providercore.OAuthUsageService {
 	sessions := options.qoderSessionProvider
 	if sessions == nil {
@@ -517,9 +601,6 @@ func newOAuthUsageFixture(options oauthUsageFixtureOptions) *providercore.OAuthU
 		},
 	})
 }
-
-// 测试存储按 ID 返回独立记录，缺失时返回对应错误。
-type usageRecordFixture struct{ providers []providercore.Record }
 
 func (r usageRecordFixture) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
 	for index := range r.providers {
@@ -580,22 +661,11 @@ func stopOpenAIAuthorizationForTest(t *testing.T, authorization *providercore.Op
 	require.NoError(t, authorization.StopContext(context.Background()))
 }
 
-type openAIOAuthTokenRouterReaderStub struct {
-	routers map[int64]*egress.TLSFingerprintRouter
-}
-
 func (s *openAIOAuthTokenRouterReaderStub) GetRuntimeRouter(routerID int64) *egress.TLSFingerprintRouter {
 	if s == nil {
 		return nil
 	}
 	return s.routers[routerID]
-}
-
-// 上游返回前替换管理员凭据，随后条件写入拒绝先前身份的额度结果。
-type qoderObservationIdentityRepo struct {
-	providercore.OAuthUsageReader
-	current *providercore.Record
-	writes  int
 }
 
 func (r *qoderObservationIdentityRepo) GetByID(context.Context, int64) (*providercore.Record, error) {
@@ -616,41 +686,6 @@ func (r *qoderObservationIdentityRepo) SetRateLimited(context.Context, int64, ti
 func (r *qoderObservationIdentityRepo) ClearRateLimit(context.Context, int64) error {
 	r.writes++
 	return nil
-}
-
-type tokenRefreshProviderRepo struct {
-	refreshRecordFixture
-	updateCalls                  int
-	fullUpdateCalls              int
-	updateCredentialsCalls       int
-	setErrorCalls                int
-	clearTempCalls               int
-	setTempUnschedCalls          int
-	updateExtraCalls             int
-	lastErrorMessage             string
-	lastTempUnschedReason        string
-	lastExtraUpdates             map[string]any
-	lastProvider                 *providercore.Record
-	updateErr                    error
-	cancelOnUpdate               context.CancelFunc
-	conditionalErrorCalls        int
-	conditionalTempCalls         int
-	conditionalSuccessCalls      int
-	conditionalErrorErr          error
-	conditionalTempErr           error
-	conditionalSuccessErr        error
-	snapshotReads                bool
-	respectReadContext           bool
-	getByIDCalls                 int
-	durableReadDelay             time.Duration
-	mutateSchedulingOnSuccessCAS bool
-	reauthorizeOnErrorCAS        bool
-	reauthorizeOnTempCAS         bool
-	repairProxyOnErrorCAS        bool
-	repairProxyOnTempCAS         bool
-	setErrorErr                  error
-	setTempUnschedErr            error
-	beforeConditionalState       func()
 }
 
 func (r *tokenRefreshProviderRepo) Update(ctx context.Context, provider *providercore.Record) error {
@@ -915,12 +950,6 @@ func (r *tokenRefreshProviderRepo) UpdateExtra(ctx context.Context, id int64, up
 	return nil
 }
 
-type tokenRefresherStub struct {
-	credentials map[string]any
-	err         error
-	calls       int
-}
-
 func (r *tokenRefresherStub) CanRefresh(provider *providercore.Record) bool {
 	return true
 }
@@ -945,38 +974,11 @@ func newRefreshAPI(repo providercore.RefreshRepository, cache providercore.Refre
 	return providercore.NewOAuthRefreshAPI(repo, cache, providercore.RefreshOptions{Platform: providercore.ProviderRefreshPlatformPolicy()})
 }
 
-// refreshRecordFixture 模拟提供商记录读取。
-type refreshRecordFixture struct {
-	providersByID map[int64]*providercore.Record
-}
-
 func (r *refreshRecordFixture) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
 	if value := r.providersByID[id]; value != nil {
 		return value, nil
 	}
 	return nil, errors.New("provider not found")
-}
-
-// sessionWindowMockRepo 记录窗口写入，非预期健康操作保持失败。
-type sessionWindowMockRepo struct {
-	// 捕获实际写入。
-	sessionWindowCalls []swCall
-	updateExtraCalls   []ueCall
-	clearRateLimitIDs  []int64
-}
-
-var _ providercore.SessionWindowStore = (*sessionWindowMockRepo)(nil)
-
-type swCall struct {
-	ID     int64
-	Start  *time.Time
-	End    *time.Time
-	Status string
-}
-
-type ueCall struct {
-	ID      int64
-	Updates map[string]any
 }
 
 func (m *sessionWindowMockRepo) UpdateSessionWindow(_ context.Context, id int64, start, end *time.Time, status string) error {

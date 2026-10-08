@@ -13,6 +13,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 )
 
+// ApiKeyModelResponseWriter 只恢复已登记内部模型对应的协议元数据字段。
+type ApiKeyModelResponseWriter struct {
+	gin.ResponseWriter
+	trace       *modeltrace.APIKeyModelRedirectTrace
+	clientModel string
+}
+
 // ApplyAPIKeyModelRedirect 在复合 Key 选组后应用单 Key 模型重定向。
 // 解析失败时原请求交给协议处理器返回校验错误。
 // @project-doc docs/domains/api_key_model_redirects.md#redirect_order
@@ -92,13 +99,6 @@ func SetAPIKeyModelRedirectContext(c *gin.Context, sourceModel, targetModel stri
 		trace:          trace,
 		clientModel:    responseModel,
 	}
-}
-
-// ApiKeyModelResponseWriter 只恢复已登记内部模型对应的协议元数据字段。
-type ApiKeyModelResponseWriter struct {
-	gin.ResponseWriter
-	trace       *modeltrace.APIKeyModelRedirectTrace
-	clientModel string
 }
 
 func (w *ApiKeyModelResponseWriter) Write(data []byte) (int, error) {

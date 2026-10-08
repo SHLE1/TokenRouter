@@ -52,6 +52,13 @@ type opsAlertRuleState struct {
 	ConsecutiveBreaches int
 }
 
+type slidingWindowLimiter struct {
+	mu     sync.Mutex
+	limit  int
+	window time.Duration
+	sent   []time.Time
+}
+
 func NewOpsAlertEvaluatorService(
 	opsService *OpsService,
 	opsRepo OpsRepository,
@@ -990,13 +997,6 @@ func htmlEscape(s string) string {
 		"'", "&#39;",
 	)
 	return replacer.Replace(s)
-}
-
-type slidingWindowLimiter struct {
-	mu     sync.Mutex
-	limit  int
-	window time.Duration
-	sent   []time.Time
 }
 
 func newSlidingWindowLimiter(limit int, window time.Duration) *slidingWindowLimiter {

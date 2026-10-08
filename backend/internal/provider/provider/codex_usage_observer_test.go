@@ -17,6 +17,10 @@ type openAICodexSnapshotAsyncRepo struct {
 	rateLimitCh   chan time.Time
 }
 
+type snapshotUpdateProviderRepo struct {
+	updateExtraCalls chan map[string]any
+}
+
 func (r *openAICodexSnapshotAsyncRepo) SetRateLimited(_ context.Context, _ int64, resetAt time.Time) error {
 	if r.rateLimitCh != nil {
 		r.rateLimitCh <- resetAt
@@ -122,10 +126,6 @@ func TestOpenAIGatewayService_UpdateCodexUsageSnapshot_ThrottlesExtraWrites(t *t
 		t.Fatalf("unexpected second codex snapshot write: %v", updates)
 	case <-time.After(200 * time.Millisecond):
 	}
-}
-
-type snapshotUpdateProviderRepo struct {
-	updateExtraCalls chan map[string]any
 }
 
 func (r *snapshotUpdateProviderRepo) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {

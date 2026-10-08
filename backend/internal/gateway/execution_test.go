@@ -23,6 +23,10 @@ type fixedExecutionRuntime struct {
 	execute   func(context.Context, upstream.AttemptInput, upstream.OutputSink) (upstream.AttemptResult, error)
 }
 
+type fixedExecutionFunc func(context.Context, upstream.AttemptInput, upstream.OutputSink) (upstream.AttemptResult, error)
+
+type discardExecutionOutput struct{}
+
 func (r *fixedExecutionRuntime) Prepare(_ context.Context, request Request) (Request, error) {
 	r.prepares.Add(1)
 	return request, nil
@@ -41,13 +45,9 @@ func (*fixedExecutionRuntime) CanFailover(error) bool     { return false }
 func (*fixedExecutionRuntime) RefreshPending(error) bool  { return false }
 func (*fixedExecutionRuntime) QueueFailure(string, error) {}
 
-type fixedExecutionFunc func(context.Context, upstream.AttemptInput, upstream.OutputSink) (upstream.AttemptResult, error)
-
 func (f fixedExecutionFunc) Execute(ctx context.Context, in upstream.AttemptInput, out upstream.OutputSink) (upstream.AttemptResult, error) {
 	return f(ctx, in, out)
 }
-
-type discardExecutionOutput struct{}
 
 func (discardExecutionOutput) Begin(upstream.OutputHead) error { return nil }
 func (discardExecutionOutput) Emit(upstream.OutputEvent) error { return nil }

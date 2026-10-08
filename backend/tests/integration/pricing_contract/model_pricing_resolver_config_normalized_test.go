@@ -5,21 +5,21 @@ import (
 	"testing"
 	"time"
 
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -87,7 +87,7 @@ func recordUsageWithConfigPricing(t *testing.T, requestedModel string, pricings 
 		},
 		APIKey: &apikey.APIKey{
 			ID:      1,
-			GroupID: new(int64(groupID)),
+			GroupID: new(groupID),
 			Group:   group,
 		},
 		User:     &identity.User{ID: 1},

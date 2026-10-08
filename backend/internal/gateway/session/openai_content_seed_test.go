@@ -12,6 +12,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+var benchmarkOpenAIContentSessionSeed string
+
 func BenchmarkDeriveOpenAIContentSessionSeedLargeBody(b *testing.B) {
 	largeHistory := strings.Repeat("payload", 1<<17)
 	tests := []struct {
@@ -379,7 +381,7 @@ func TestDeriveOpenAIContentSessionSeed_DeterministicMalformedCorpusMatchesLegac
 	// 用固定随机种子生成畸形 JSON，检查 gjson 的宽容解析结果。
 	rng := rand.New(rand.NewSource(4274))
 	alphabet := []byte(`{}[]":,modeltfsuinpcr0123456789 \\`)
-	for caseIndex := 0; caseIndex < 5000; caseIndex++ {
+	for caseIndex := range 5000 {
 		body := make([]byte, rng.Intn(256))
 		for i := range body {
 			body[i] = alphabet[rng.Intn(len(alphabet))]
@@ -563,8 +565,6 @@ func TestDeriveOpenAIStablePrefixSessionSeed_RequiresMeaningfulPrefix(t *testing
 		require.Empty(t, OpenAIStablePrefixSeed(body))
 	}
 }
-
-var benchmarkOpenAIContentSessionSeed string
 
 func referenceDeriveOpenAIContentSessionSeed(body []byte) string {
 	if len(body) == 0 {

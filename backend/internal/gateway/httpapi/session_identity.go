@@ -16,6 +16,30 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
+const (
+	OpenCodeSessionAffinityHeader = "X-Session-Affinity"
+	OpenCodeSessionIDHeader       = "X-Session-Id"
+	OpenCodeNativeSessionHeader   = "X-OpenCode-Session"
+	CodeBuddyConversationHeader   = "X-Conversation-ID"
+
+	GrokConversationIDHeader = "X-Grok-Conv-Id"
+	ClaudeCodeSessionHeader  = "X-Claude-Code-Session-Id"
+)
+
+var (
+	explicitOpenAIHeaderSessionNames = []string{
+		"session-id",
+		"session_id",
+		"conversation_id",
+		OpenCodeSessionAffinityHeader,
+		OpenCodeSessionIDHeader,
+		OpenCodeNativeSessionHeader,
+		CodeBuddyConversationHeader,
+	}
+
+	clientSessionIDHeaders = append(append([]string(nil), explicitOpenAIHeaderSessionNames...), ClaudeCodeSessionHeader)
+)
+
 // WithOpenAIGuardianParentAffinity 从 HTTP 头和报文提取父会话，再通过 scheduler 生成亲和性散列。
 func WithOpenAIGuardianParentAffinity(ctx context.Context, c *gin.Context, body []byte, model string) context.Context {
 	if ctx == nil || c == nil || !clientmeta.IsCodexReviewModel(model) {
@@ -31,30 +55,6 @@ func WithOpenAIGuardianParentAffinity(ctx context.Context, c *gin.Context, body 
 	}
 	return requeststate.WithGuardianParentAffinity(ctx, requeststate.GuardianParentAffinity{CurrentSessionHash: current, LegacySessionHash: legacy})
 }
-
-const (
-	OpenCodeSessionAffinityHeader = "X-Session-Affinity"
-	OpenCodeSessionIDHeader       = "X-Session-Id"
-	OpenCodeNativeSessionHeader   = "X-OpenCode-Session"
-	CodeBuddyConversationHeader   = "X-Conversation-ID"
-)
-
-var explicitOpenAIHeaderSessionNames = []string{
-	"session-id",
-	"session_id",
-	"conversation_id",
-	OpenCodeSessionAffinityHeader,
-	OpenCodeSessionIDHeader,
-	OpenCodeNativeSessionHeader,
-	CodeBuddyConversationHeader,
-}
-
-const (
-	GrokConversationIDHeader = "X-Grok-Conv-Id"
-	ClaudeCodeSessionHeader  = "X-Claude-Code-Session-Id"
-)
-
-var clientSessionIDHeaders = append(append([]string(nil), explicitOpenAIHeaderSessionNames...), ClaudeCodeSessionHeader)
 
 // ExplicitOpenAIHeaderSessionID 提取 OpenAI 兼容客户端发送的稳定会话标识。
 // 这里只接收会话级字段；每轮变化的请求或消息 ID 会破坏粘性路由和上游提示缓存。

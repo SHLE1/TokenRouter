@@ -32,6 +32,53 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 )
 
+const maxAPIKeyAuthorizationHeaderBytes = apikey.MaxAPIKeyCredentialBytes + 128
+
+type fakeAPIKeyRepo struct {
+	getByKey       func(ctx context.Context, key string) (*apikey.APIKey, error)
+	updateLastUsed func(ctx context.Context, id int64, usedAt time.Time) error
+}
+
+type fakeGoogleSubscriptionRepo struct {
+	listActive     func(ctx context.Context, userID int64) ([]billingcore.UserSubscription, error)
+	getByID        func(ctx context.Context, id int64) (*billingcore.UserSubscription, error)
+	updateStatus   func(ctx context.Context, subscriptionID int64, status string) error
+	activateWindow func(ctx context.Context, id int64, start time.Time) error
+	resetDaily     func(ctx context.Context, id int64, start time.Time) error
+	resetWeekly    func(ctx context.Context, id int64, start time.Time) error
+	resetMonthly   func(ctx context.Context, id int64, start time.Time) error
+}
+
+type googleErrorResponse struct {
+	Error struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Status  string `json:"status"`
+	} `json:"error"`
+}
+
+type stubApiKeyRepo struct {
+	getByKey       func(ctx context.Context, key string) (*apikey.APIKey, error)
+	updateLastUsed func(ctx context.Context, id int64, usedAt time.Time) error
+}
+
+type stubGroupRepoForAuth struct {
+	groupsByID map[int64]routing.Group
+}
+
+type stubUserSubscriptionRepo struct {
+	listActive     func(ctx context.Context, userID int64) ([]billingcore.UserSubscription, error)
+	getByID        func(ctx context.Context, id int64) (*billingcore.UserSubscription, error)
+	updateStatus   func(ctx context.Context, subscriptionID int64, status string) error
+	activateWindow func(ctx context.Context, id int64, start time.Time) error
+	resetDaily     func(ctx context.Context, id int64, start time.Time) error
+	resetWeekly    func(ctx context.Context, id int64, start time.Time) error
+	resetMonthly   func(ctx context.Context, id int64, start time.Time) error
+}
+
+// subscriptionAuthGroups 为未配置分组来源的测试返回空查询结果。
+type subscriptionAuthGroups struct{}
+
 func TestGoogleAPIKeyAuthRejectsOversizedCredentialsBeforeLookup(t *testing.T) {
 	var calls atomic.Int32
 	repo := fakeAPIKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
@@ -2079,7 +2126,7 @@ func TestAPIKeyAuthGoogleSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 		c.Next()
 		fallback, fallbackOK = keyhttp.GetOpsFallbackAPIKey(c)
 	})
-	router.Use(gin.HandlerFunc(APIKeyAuthWithSubscriptionGoogle(apiKeyService, nil, cfg)))
+	router.Use(APIKeyAuthWithSubscriptionGoogle(apiKeyService, nil, cfg))
 	router.GET("/t", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
@@ -2141,7 +2188,7 @@ func TestAPIKeyAuthGoogleRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing
 		c.Next()
 		markedBusinessLimited = gatewayhttp.HasOpsClientBusinessLimited(c)
 	})
-	router.Use(gin.HandlerFunc(APIKeyAuthGoogle(apiKeyService, cfg)))
+	router.Use(APIKeyAuthGoogle(apiKeyService, cfg))
 	router.GET("/t", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
@@ -3081,21 +3128,6 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *apikey.APIKeyService, subsc
 
 func googleTeamAPIKeyError(err error) (int, string, bool) { return keyhttp.GoogleTeamError(err) }
 
-type fakeAPIKeyRepo struct {
-	getByKey       func(ctx context.Context, key string) (*apikey.APIKey, error)
-	updateLastUsed func(ctx context.Context, id int64, usedAt time.Time) error
-}
-
-type fakeGoogleSubscriptionRepo struct {
-	listActive     func(ctx context.Context, userID int64) ([]billingcore.UserSubscription, error)
-	getByID        func(ctx context.Context, id int64) (*billingcore.UserSubscription, error)
-	updateStatus   func(ctx context.Context, subscriptionID int64, status string) error
-	activateWindow func(ctx context.Context, id int64, start time.Time) error
-	resetDaily     func(ctx context.Context, id int64, start time.Time) error
-	resetWeekly    func(ctx context.Context, id int64, start time.Time) error
-	resetMonthly   func(ctx context.Context, id int64, start time.Time) error
-}
-
 func (f fakeGoogleSubscriptionRepo) FilterByGroup(_ context.Context, subs []billingcore.UserSubscription, _ int64) ([]billingcore.UserSubscription, error) {
 	return subs, nil
 }
@@ -3335,14 +3367,6 @@ func (f fakeGoogleSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context
 	return 0, errors.New("not implemented")
 }
 
-type googleErrorResponse struct {
-	Error struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-		Status  string `json:"status"`
-	} `json:"error"`
-}
-
 func newTestAPIKeyService(repo apikey.APIKeyRepository) *apikey.APIKeyService {
 	return testkit.NewService(
 		repo,
@@ -3383,15 +3407,6 @@ func requireAPIKeyAuthError(t *testing.T, w *httptest.ResponseRecorder, code, me
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	require.Equal(t, code, resp.Code)
 	require.Equal(t, message, resp.Message)
-}
-
-type stubApiKeyRepo struct {
-	getByKey       func(ctx context.Context, key string) (*apikey.APIKey, error)
-	updateLastUsed func(ctx context.Context, id int64, usedAt time.Time) error
-}
-
-type stubGroupRepoForAuth struct {
-	groupsByID map[int64]routing.Group
 }
 
 func (r *stubGroupRepoForAuth) Create(ctx context.Context, group *routing.Group) error {
@@ -3563,16 +3578,6 @@ func (r *stubApiKeyRepo) GetRateLimitData(ctx context.Context, id int64) (*apike
 	return nil, nil
 }
 
-type stubUserSubscriptionRepo struct {
-	listActive     func(ctx context.Context, userID int64) ([]billingcore.UserSubscription, error)
-	getByID        func(ctx context.Context, id int64) (*billingcore.UserSubscription, error)
-	updateStatus   func(ctx context.Context, subscriptionID int64, status string) error
-	activateWindow func(ctx context.Context, id int64, start time.Time) error
-	resetDaily     func(ctx context.Context, id int64, start time.Time) error
-	resetWeekly    func(ctx context.Context, id int64, start time.Time) error
-	resetMonthly   func(ctx context.Context, id int64, start time.Time) error
-}
-
 func (r *stubUserSubscriptionRepo) FilterByGroup(_ context.Context, subs []billingcore.UserSubscription, _ int64) ([]billingcore.UserSubscription, error) {
 	return subs, nil
 }
@@ -3718,8 +3723,6 @@ func isAPIKeyNonConsumingRequest(method, path string) bool {
 	return gatewayhttp.IsAPIKeyNonConsumingRequest(method, path)
 }
 
-const maxAPIKeyAuthorizationHeaderBytes = apikey.MaxAPIKeyCredentialBytes + 128
-
 func abortTeamAPIKeyError(c *gin.Context, err error) bool { return keyhttp.AbortTeamError(c, err) }
 
 // RequireGroupAssignment 将测试 context 中的 Key 数据传给网关分组门禁。
@@ -3757,9 +3760,6 @@ func httpRequest(t *testing.T, path, authorization, apiKey string) *http.Request
 	}
 	return req
 }
-
-// subscriptionAuthGroups 为未配置分组来源的测试返回空查询结果。
-type subscriptionAuthGroups struct{}
 
 func (subscriptionAuthGroups) GetByIDLite(context.Context, int64) (*billingcore.SubscriptionPlanGroup, error) {
 	return nil, nil

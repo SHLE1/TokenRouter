@@ -26,6 +26,109 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+const (
+	// issue #5334 中的无效 Responses 子路径会在到达 OpenAI API 前收到 HTML 403。
+	openAI403HTMLBody = "<!DOCTYPE html>\n<html><head><title>403 Forbidden</title></head>" +
+		"<body><h1>403 Forbidden</h1></body></html>"
+
+	teamLinkedDeactivatedBody = `{"detail":{"code":"deactivated_workspace","message":"This workspace has been deactivated."}}`
+
+	grokQuotaSnapshotExtraKey        = "grok_usage_snapshot"
+	grokRateLimitFallbackCooldown    = 2 * time.Minute
+	grokRateLimitRepeatCooldown      = 10 * time.Minute
+	grokRateLimitSustainedCooldown   = 30 * time.Minute
+	grokRateLimitMaxAdaptiveCooldown = time.Hour
+	grokRateLimitBackoffQuietPeriod  = time.Hour
+	grokSpendingLimitProbeCooldown   = 10 * time.Minute
+)
+
+// dbFallbackRepoStub 在缓存未命中时，通过 GetByID 返回配置的数据库记录。
+type dbFallbackRepoStub struct {
+	gatewaytestkit.ErrorPolicyStore
+
+	dbProvider *gatewayprovider.ExecutionProvider // 非空时由 GetByID 返回。
+}
+
+// countingOpenAI403CounterCache 记录连续 403 计数器是否被调用。
+type countingOpenAI403CounterCache struct {
+	gatewaytestkit.ForbiddenCounter
+
+	increments int
+}
+
+type openAI403TestHarness struct {
+	svc *provideradapter.UpstreamHealth
+
+	repo     *gatewaytestkit.HealthStoreRecorder
+	counter  *countingOpenAI403CounterCache
+	blocker  *gatewaytestkit.RuntimeBlockRecorder
+	provider *gatewayprovider.ExecutionProvider
+}
+
+type anthropicWindowLimitRepo struct {
+	gatewaytestkit.HealthStoreBase
+	rateLimitCalls          int
+	tempUnschedCalls        int
+	lastRateLimitReset      time.Time
+	modelRateLimitCalls     int
+	lastModelRateLimitScope string
+	lastModelRateLimitReset time.Time
+	sessionWindowCalls      int
+	lastWindowStart         *time.Time
+	lastWindowEnd           *time.Time
+	lastWindowStatus        string
+	lastExtraUpdates        map[string]any
+}
+
+type teamLinkedProviderRepoStub struct {
+	gatewaytestkit.HealthStoreBase
+	teamProviders []gatewayprovider.ExecutionProvider
+	listErr       error
+	listCalls     int
+	setErrorIDs   []int64
+	setErrorMsgs  map[int64]string
+	failSetError  map[int64]error
+}
+
+type fableSchedulingThresholdRepoStub struct {
+	gatewaytestkit.HealthStoreRecorder
+
+	modelCalls      int
+	lastModelScope  string
+	lastModelReset  time.Time
+	lastModelReason string
+}
+
+type grokQuotaProviderRepo struct {
+	gatewaytestkit.HealthStoreBase
+	providersByID         map[int64]*gatewayprovider.ExecutionProvider
+	updates               map[int64]map[string]any
+	updateCalls           int
+	rateLimitedCalls      int
+	lastRateLimitedID     int64
+	lastRateLimitResetAt  time.Time
+	tempUnschedCalls      int
+	lastTempUnschedID     int64
+	lastTempUnschedUntil  time.Time
+	lastTempUnschedReason string
+	recoveryClearCalls    int
+	recoveryObservedAt    time.Time
+	recoveryObservedReset time.Time
+	recoveryClearResult   bool
+}
+
+// grokPoolPolicyProviderRepo 记录 Grok 池模式错误策略产生的提供商状态写入。
+type grokPoolPolicyProviderRepo struct {
+	*grokQuotaProviderRepo
+	setErrorCalls            int
+	overloadedCalls          int
+	modelRateLimitCalls      int
+	lastModelRateLimitScope  string
+	lastModelRateLimitReason string
+}
+
+type grokHealthTestClock struct{ nanos atomic.Int64 }
+
 func TestHandle403_OtherCNProviderWithKimiConcurrencyMessageUsesNormalPolicy(t *testing.T) {
 	repo := &gatewaytestkit.HealthStoreRecorder{}
 	counter := &gatewaytestkit.ForbiddenCounter{Counts: []int64{providercore.OpenAI403DisableThresholdDefault}}
@@ -105,13 +208,6 @@ func TestHandle403_CNProviderNearMatchRetainsNormalPermanentErrorPolicy(t *testi
 	require.True(t, shouldDisable)
 	require.Equal(t, 1, repo.SetErrorCalls, "non-exact 403 must retain existing permission/auth protection")
 	require.Equal(t, 0, repo.TempCalls)
-}
-
-// dbFallbackRepoStub 在缓存未命中时，通过 GetByID 返回配置的数据库记录。
-type dbFallbackRepoStub struct {
-	gatewaytestkit.ErrorPolicyStore
-
-	dbProvider *gatewayprovider.ExecutionProvider // 非空时由 GetByID 返回。
 }
 
 func (r *dbFallbackRepoStub) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
@@ -360,25 +456,9 @@ func TestRateLimitService_HandleUpstreamError_NonOpenAIOAuth403UsesSetError(t *t
 	require.Contains(t, repo.LastErrorMsg, "Access forbidden (403)")
 }
 
-// countingOpenAI403CounterCache 记录连续 403 计数器是否被调用。
-type countingOpenAI403CounterCache struct {
-	gatewaytestkit.ForbiddenCounter
-
-	increments int
-}
-
 func (s *countingOpenAI403CounterCache) IncrementOpenAI403Count(ctx context.Context, providerID int64, window int) (int64, error) {
 	s.increments++
 	return s.ForbiddenCounter.IncrementOpenAI403Count(ctx, providerID, window)
-}
-
-type openAI403TestHarness struct {
-	svc *provideradapter.UpstreamHealth
-
-	repo     *gatewaytestkit.HealthStoreRecorder
-	counter  *countingOpenAI403CounterCache
-	blocker  *gatewaytestkit.RuntimeBlockRecorder
-	provider *gatewayprovider.ExecutionProvider
 }
 
 func newOpenAI403TestHarness(t *testing.T, providerID int64, counts ...int64) *openAI403TestHarness {
@@ -410,10 +490,6 @@ func (h *openAI403TestHarness) requireNoProviderPenalty(t *testing.T) {
 	require.Empty(t, h.blocker.Providers, "端点级 403 不得触发调度阻断通知")
 	require.Equal(t, 0, h.counter.increments, "端点级 403 不得递增连续 403 计数")
 }
-
-// issue #5334 中的无效 Responses 子路径会在到达 OpenAI API 前收到 HTML 403。
-const openAI403HTMLBody = "<!DOCTYPE html>\n<html><head><title>403 Forbidden</title></head>" +
-	"<body><h1>403 Forbidden</h1></body></html>"
 
 // TestHandleUpstreamError_OpenAIHTML403DoesNotPenalizeProvider 验证常见 HTML 外形均不处罚提供商。
 func TestHandleUpstreamError_OpenAIHTML403DoesNotPenalizeProvider(t *testing.T) {
@@ -471,7 +547,7 @@ func TestHandleUpstreamErrorCNProviderStructured403UsesCumulativeCooldown(t *tes
 func TestHandleUpstreamError_OpenAIHTML403RepeatedNeverEscalates(t *testing.T) {
 	h := newOpenAI403TestHarness(t, 502, 1, 2, 3, 4, 5)
 
-	for i := 0; i < providercore.OpenAI403DisableThresholdDefault+2; i++ {
+	for i := range providercore.OpenAI403DisableThresholdDefault + 2 {
 		require.False(t, h.handle(openAI403HTMLBody), "第 %d 次 HTML 403 仍不得判定提供商应下线", i+1)
 	}
 
@@ -573,21 +649,6 @@ func TestRateLimitService_HandleUpstreamError_OpenAI403ThresholdDisables(t *test
 	require.Equal(t, 0, repo.TempCalls)
 	require.Contains(t, repo.LastErrorMsg, "workspace forbidden by policy")
 	require.Contains(t, repo.LastErrorMsg, "consecutive_403=3/3")
-}
-
-type anthropicWindowLimitRepo struct {
-	gatewaytestkit.HealthStoreBase
-	rateLimitCalls          int
-	tempUnschedCalls        int
-	lastRateLimitReset      time.Time
-	modelRateLimitCalls     int
-	lastModelRateLimitScope string
-	lastModelRateLimitReset time.Time
-	sessionWindowCalls      int
-	lastWindowStart         *time.Time
-	lastWindowEnd           *time.Time
-	lastWindowStatus        string
-	lastExtraUpdates        map[string]any
 }
 
 func (r *anthropicWindowLimitRepo) SetRateLimited(_ context.Context, _ int64, resetAt time.Time) error {
@@ -865,18 +926,6 @@ func TestRateLimitService_ModelTempUnschedulableIsolatesSchedulerByModel(t *test
 	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Schedulable(context.Background(), "gpt-5.6-sol"))
 }
 
-const teamLinkedDeactivatedBody = `{"detail":{"code":"deactivated_workspace","message":"This workspace has been deactivated."}}`
-
-type teamLinkedProviderRepoStub struct {
-	gatewaytestkit.HealthStoreBase
-	teamProviders []gatewayprovider.ExecutionProvider
-	listErr       error
-	listCalls     int
-	setErrorIDs   []int64
-	setErrorMsgs  map[int64]string
-	failSetError  map[int64]error
-}
-
 // ListByPlatform 返回指定平台的 active 提供商。
 func (r *teamLinkedProviderRepoStub) ListByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	r.listCalls++
@@ -1091,15 +1140,6 @@ func TestRateLimitService_ApplyProviderSchedulingThreshold_UsesProviderOverrideI
 	require.Contains(t, payload["error_message"], "85.5% used >= 80%")
 }
 
-type fableSchedulingThresholdRepoStub struct {
-	gatewaytestkit.HealthStoreRecorder
-
-	modelCalls      int
-	lastModelScope  string
-	lastModelReset  time.Time
-	lastModelReason string
-}
-
 func (r *fableSchedulingThresholdRepoStub) SetModelRateLimit(_ context.Context, _ int64, scope string, resetAt time.Time, reason ...string) error {
 	r.modelCalls++
 	r.lastModelScope = scope
@@ -1232,24 +1272,6 @@ func TestRateLimitService_ApplyProviderSchedulingThreshold_UnsupportedPlatformDo
 	require.Empty(t, provider.Record.TempUnschedulableReason)
 }
 
-type grokQuotaProviderRepo struct {
-	gatewaytestkit.HealthStoreBase
-	providersByID         map[int64]*gatewayprovider.ExecutionProvider
-	updates               map[int64]map[string]any
-	updateCalls           int
-	rateLimitedCalls      int
-	lastRateLimitedID     int64
-	lastRateLimitResetAt  time.Time
-	tempUnschedCalls      int
-	lastTempUnschedID     int64
-	lastTempUnschedUntil  time.Time
-	lastTempUnschedReason string
-	recoveryClearCalls    int
-	recoveryObservedAt    time.Time
-	recoveryObservedReset time.Time
-	recoveryClearResult   bool
-}
-
 func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {
 	r.updateCalls++
 	if r.updates == nil {
@@ -1295,16 +1317,6 @@ func (r *grokQuotaProviderRepo) SetTempUnschedulable(_ context.Context, id int64
 	r.lastTempUnschedUntil = until
 	r.lastTempUnschedReason = reason
 	return nil
-}
-
-// grokPoolPolicyProviderRepo 记录 Grok 池模式错误策略产生的提供商状态写入。
-type grokPoolPolicyProviderRepo struct {
-	*grokQuotaProviderRepo
-	setErrorCalls            int
-	overloadedCalls          int
-	modelRateLimitCalls      int
-	lastModelRateLimitScope  string
-	lastModelRateLimitReason string
 }
 
 func (r *grokPoolPolicyProviderRepo) SetError(_ context.Context, _ int64, _ string) error {
@@ -1366,8 +1378,6 @@ func handleGrokHealthWithTeamForTest(health *provideradapter.GrokHealth, team st
 	return gatewayprovider.ApplyGrokExecutionHealth(ctx, health, value, status, headers, body, team, models...).StopScheduling
 }
 
-type grokHealthTestClock struct{ nanos atomic.Int64 }
-
 func (c *grokHealthTestClock) Now() time.Time {
 	if n := c.nanos.Load(); n != 0 {
 		return time.Unix(0, n)
@@ -1391,16 +1401,6 @@ func bindExpiredGrokHealthForTest(health *provideradapter.GrokHealth, id int64, 
 }
 
 func grokInt64PtrForTest(v int64) *int64 { return &v }
-
-const (
-	grokQuotaSnapshotExtraKey        = "grok_usage_snapshot"
-	grokRateLimitFallbackCooldown    = 2 * time.Minute
-	grokRateLimitRepeatCooldown      = 10 * time.Minute
-	grokRateLimitSustainedCooldown   = 30 * time.Minute
-	grokRateLimitMaxAdaptiveCooldown = time.Hour
-	grokRateLimitBackoffQuietPeriod  = time.Hour
-	grokSpendingLimitProbeCooldown   = 10 * time.Minute
-)
 
 func TestHandleGrokProviderUpstreamErrorPoolModeSkipsDefaultLocalState(t *testing.T) {
 	tests := []struct {

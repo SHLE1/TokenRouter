@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -23,7 +24,7 @@ func TestRequestLifetimeRejectsBeforeBodyAndDependencies(t *testing.T) {
 	h.BindRequestActivity(func() (func(), error) { return nil, errors.New("stopped") })
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	c.Request = httptest.NewRequest("POST", "/v1/messages/count_tokens", nil)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
 	c.Request.Body = shutdownBody{t}
 	h.CountTokens(c)
 	require.Equal(t, 503, rec.Code)

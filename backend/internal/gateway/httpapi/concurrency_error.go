@@ -9,9 +9,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-const StatusClientClosedRequest = 499
-
 const (
+	StatusClientClosedRequest = 499
+
 	GatewayQueueFullCode        = "gateway_queue_full"
 	GatewayConcurrencyLimitCode = "gateway_concurrency_limit"
 )

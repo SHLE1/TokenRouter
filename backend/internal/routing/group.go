@@ -9,6 +9,27 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
+const (
+	// GroupSchedulerTypeBasic 使用默认调度器。
+	GroupSchedulerTypeBasic GroupSchedulerType = "basic"
+	// GroupSchedulerTypeAdvanced 使用通用高级调度器。
+	GroupSchedulerTypeAdvanced GroupSchedulerType = "advanced"
+
+	StatusActive                 = "active"
+	StatusDisabled               = "disabled"
+	PlatformOpenAI               = capability.PlatformOpenAI
+	PlatformAnthropic            = capability.PlatformAnthropic
+	PlatformGemini               = capability.PlatformGemini
+	PlatformAntigravity          = capability.PlatformAntigravity
+	PlatformQoder                = capability.PlatformQoder
+	PlatformGrok                 = capability.PlatformGrok
+	PlatformKimi                 = capability.PlatformKimi
+	PlatformZhipu                = capability.PlatformZhipu
+	PlatformDeepseek             = capability.PlatformDeepseek
+	featureKeyBedrockCCCompat    = "bedrock_cc_compat"
+	featureKeyWebSearchEmulation = "web_search_emulation"
+)
+
 type GroupModelsListConfig = accessview.GroupModelsListConfig
 
 type GroupAvailabilityProbeConfig = accessview.GroupAvailabilityProbeConfig
@@ -17,12 +38,10 @@ type GroupAdvancedSchedulerOverrides = policy.GroupAdvancedSchedulerOverrides
 
 type GroupSchedulerType = accessview.GroupSchedulerType
 
-const (
-	// GroupSchedulerTypeBasic 使用默认调度器。
-	GroupSchedulerTypeBasic GroupSchedulerType = "basic"
-	// GroupSchedulerTypeAdvanced 使用通用高级调度器。
-	GroupSchedulerTypeAdvanced GroupSchedulerType = "advanced"
-)
+// GroupRoutingPolicy 使用 accessview 定义的分组路由配置。
+type GroupRoutingPolicy = accessview.GroupRoutingPolicy
+
+type Group accessview.GroupConfig
 
 // NormalizeGroupSchedulerType 归一化并校验调度器类型。
 func NormalizeGroupSchedulerType(value string) (GroupSchedulerType, error) {
@@ -36,11 +55,6 @@ func NormalizeGroupSchedulerType(value string) (GroupSchedulerType, error) {
 		return "", fmt.Errorf("scheduler_type must be basic or advanced")
 	}
 }
-
-// GroupRoutingPolicy 使用 accessview 定义的分组路由配置。
-type GroupRoutingPolicy = accessview.GroupRoutingPolicy
-
-type Group accessview.GroupConfig
 
 // UsesAdvancedScheduler 返回分组是否启用通用高级调度器。
 func (g *Group) UsesAdvancedScheduler() bool {
@@ -110,22 +124,6 @@ func MatchModelPattern(pattern, model string) bool {
 func CloneGroup(g *Group) *Group {
 	return (*Group)(accessview.CloneGroupConfig((*accessview.GroupConfig)(g)))
 }
-
-const (
-	StatusActive                 = "active"
-	StatusDisabled               = "disabled"
-	PlatformOpenAI               = capability.PlatformOpenAI
-	PlatformAnthropic            = capability.PlatformAnthropic
-	PlatformGemini               = capability.PlatformGemini
-	PlatformAntigravity          = capability.PlatformAntigravity
-	PlatformQoder                = capability.PlatformQoder
-	PlatformGrok                 = capability.PlatformGrok
-	PlatformKimi                 = capability.PlatformKimi
-	PlatformZhipu                = capability.PlatformZhipu
-	PlatformDeepseek             = capability.PlatformDeepseek
-	featureKeyBedrockCCCompat    = "bedrock_cc_compat"
-	featureKeyWebSearchEmulation = "web_search_emulation"
-)
 
 // GroupAllowsResponsesImages 检查 Responses 图片策略，空分组默认允许，未设置策略时读取 AllowImageGeneration。
 func GroupAllowsResponsesImages(group *Group) bool {

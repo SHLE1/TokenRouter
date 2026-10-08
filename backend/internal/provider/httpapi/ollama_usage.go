@@ -14,15 +14,15 @@ type OllamaUsageHandler struct {
 	ollamaCloudUsage *provider.OllamaCloudUsageService
 }
 
-func NewOllamaUsageHandler(core *provider.OllamaCloudUsageService) *OllamaUsageHandler {
-	return &OllamaUsageHandler{ollamaCloudUsage: core}
-}
-
 type ollamaCloudUsageSessionRequest struct {
 	Session string `json:"session" binding:"required"`
 }
 type ollamaCloudUsageAutoRefreshRequest struct {
 	Enabled *bool `json:"enabled" binding:"required"`
+}
+
+func NewOllamaUsageHandler(core *provider.OllamaCloudUsageService) *OllamaUsageHandler {
+	return &OllamaUsageHandler{ollamaCloudUsage: core}
 }
 
 func (h *OllamaUsageHandler) GetOllamaCloudUsageSettings(c *gin.Context) {

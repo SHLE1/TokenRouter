@@ -163,7 +163,7 @@ func TestOpenAIModelTransient_StateIsBoundedAndConcurrencySafe(t *testing.T) {
 	now := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
 	var wg sync.WaitGroup
 
-	for i := 0; i < 128; i++ {
+	for i := range 128 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

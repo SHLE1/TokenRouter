@@ -233,7 +233,6 @@ func TestEasyPayQueryOrderStatusMapping(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -321,7 +320,6 @@ func TestEasyPayQueryOrderRejectsUnsafeResponses(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -911,7 +909,6 @@ func TestResolveEasyPayReturnedRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			if got := resolveEasyPayReturnedRef(tt.apiBase, tt.ref); got != tt.want {

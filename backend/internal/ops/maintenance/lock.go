@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
-
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
@@ -19,7 +18,12 @@ const (
 	systemOperationLockKey   = "global-system-operation-lock"
 )
 
-var ErrSystemOperationBusy = infraerrors.Conflict("SYSTEM_OPERATION_BUSY", "another system operation is in progress")
+var (
+	ErrSystemOperationBusy = infraerrors.Conflict("SYSTEM_OPERATION_BUSY", "another system operation is in progress")
+
+	ErrIdempotencyStoreUnavail = idempotency.ErrIdempotencyStoreUnavail
+	ErrOperationOwnershipLost  = infraerrors.Conflict("SYSTEM_OPERATION_OWNERSHIP_LOST", "system operation ownership lost")
+)
 
 type SystemOperationLock struct {
 	recordID    int64
@@ -35,13 +39,6 @@ type SystemOperationLock struct {
 	stopCh   chan struct{}
 }
 
-func (l *SystemOperationLock) OperationID() string {
-	if l == nil {
-		return ""
-	}
-	return l.operationID
-}
-
 type SystemOperationLockService struct {
 	log func(string, string, ...any)
 
@@ -50,6 +47,19 @@ type SystemOperationLockService struct {
 	lease         time.Duration
 	renewInterval time.Duration
 	ttl           time.Duration
+}
+
+// Options 配置系统维护锁的处理超时、TTL 和日志函数。
+type Options struct {
+	Log                                   func(string, string, ...any)
+	ProcessingTimeout, SystemOperationTTL time.Duration
+}
+
+func (l *SystemOperationLock) OperationID() string {
+	if l == nil {
+		return ""
+	}
+	return l.operationID
 }
 
 func NewSystemOperationLockService(repo idempotency.OperationLeaseStore, cfg Options) *SystemOperationLockService {
@@ -200,17 +210,6 @@ func (s *SystemOperationLockService) busyError(operationID string, lockedUntil *
 	}
 	return ErrSystemOperationBusy.WithMetadata(metadata)
 }
-
-// Options 配置系统维护锁的处理超时、TTL 和日志函数。
-type Options struct {
-	Log                                   func(string, string, ...any)
-	ProcessingTimeout, SystemOperationTTL time.Duration
-}
-
-var (
-	ErrIdempotencyStoreUnavail = idempotency.ErrIdempotencyStoreUnavail
-	ErrOperationOwnershipLost  = infraerrors.Conflict("SYSTEM_OPERATION_OWNERSHIP_LOST", "system operation ownership lost")
-)
 
 // Context 在确认丢失所有权时取消后续阶段，浏览器断开不取消已接受操作。
 func (l *SystemOperationLock) Context() context.Context { return l.ctx }

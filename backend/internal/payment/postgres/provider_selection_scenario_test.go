@@ -19,6 +19,11 @@ import (
 	sqlitetest "github.com/TokenFlux/TokenRouter/internal/testutil/sqlite"
 )
 
+type webhookProviderTestDouble struct {
+	key   string
+	types []payment.PaymentType
+}
+
 func TestUsesOfficialWxpayVisibleMethodDerivesFromEnabledProviderInstance(t *testing.T) {
 	ctx := context.Background()
 	client := sqlitetest.NewClient(t)
@@ -865,11 +870,6 @@ func TestVisibleMethodLoadBalancerRejectsMissingEnabledVisibleMethodProvider(t *
 	if _, err := lb.SelectInstance(context.Background(), "", payment.TypeWxpay, payment.StrategyRoundRobin, 9.9); err == nil {
 		t.Fatal("SelectInstance should reject when no enabled provider instance exists")
 	}
-}
-
-type webhookProviderTestDouble struct {
-	key   string
-	types []payment.PaymentType
 }
 
 func (p webhookProviderTestDouble) Name() string { return p.key }

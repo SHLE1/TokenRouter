@@ -11,6 +11,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const openAIUpstreamEndpointContextKey = "openai_actual_upstream_endpoint"
+
 // resolveOpenAITextProtocolForAttempt 解析当前提供商的文本协议，并在转发前写入当前尝试的端点元数据。
 func resolveOpenAITextProtocolForAttempt(
 	c *gin.Context,
@@ -70,5 +72,3 @@ func GetActualOpenAIUpstreamEndpoint(c *gin.Context) string {
 	endpoint, _ := value.(string)
 	return strings.TrimSpace(endpoint)
 }
-
-const openAIUpstreamEndpointContextKey = "openai_actual_upstream_endpoint"

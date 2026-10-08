@@ -6,21 +6,17 @@ import (
 	"time"
 )
 
-// Redeem type constants
 const (
+	// Redeem type constants
 	RedeemTypeBalance      = "balance"
 	RedeemTypeConcurrency  = "concurrency"
 	RedeemTypeSubscription = "subscription"
 	RedeemTypeInvitation   = "invitation"
-)
 
-// Admin adjustment type constants
-const (
+	// Admin adjustment type constants
 	AdjustmentTypeAdminBalance     = "admin_balance"     // 管理员调整余额
 	AdjustmentTypeAdminConcurrency = "admin_concurrency" // 管理员调整并发数
-)
 
-const (
 	StatusUnused   = "unused"
 	StatusUsed     = "used"
 	StatusExpired  = "expired"

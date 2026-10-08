@@ -17,6 +17,33 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type fakeQoderOAuthClient struct {
+	token             *qoder.DeviceTokenResponse
+	ready             bool
+	pollErr           error
+	pollCalls         int
+	userInfo          *qoder.UserInfo
+	userErr           error
+	orgTags           *qoder.OrganizationTags
+	orgErr            error
+	orgCalls          int
+	gotOrgUID         string
+	gotNonce          string
+	gotVerifier       string
+	completedIdentity *qoder.AuthIdentity
+	completedExpiry   time.Time
+	completionErr     error
+	completionCalls   int
+	completedMachine  *qoder.MachineIdentity
+}
+
+type blockingQoderOAuthClient struct {
+	started   chan struct{}
+	release   chan struct{}
+	startOnce sync.Once
+	pollCalls atomic.Int32
+}
+
 func TestQoderOAuthServiceGenerateAuthURLCreatesSession(t *testing.T) {
 	svc := NewQoderAuthorization(func(context.Context, *int64) (string, error) { return "", nil }, nil)
 	svc.Core.Start()
@@ -457,33 +484,6 @@ func TestQoderParseCallbackSupportsQueryFragmentAndPlainCode(t *testing.T) {
 	state, code = provider.ParseQoderCallback("plain-code")
 	require.Empty(t, state)
 	require.Equal(t, "plain-code", code)
-}
-
-type fakeQoderOAuthClient struct {
-	token             *qoder.DeviceTokenResponse
-	ready             bool
-	pollErr           error
-	pollCalls         int
-	userInfo          *qoder.UserInfo
-	userErr           error
-	orgTags           *qoder.OrganizationTags
-	orgErr            error
-	orgCalls          int
-	gotOrgUID         string
-	gotNonce          string
-	gotVerifier       string
-	completedIdentity *qoder.AuthIdentity
-	completedExpiry   time.Time
-	completionErr     error
-	completionCalls   int
-	completedMachine  *qoder.MachineIdentity
-}
-
-type blockingQoderOAuthClient struct {
-	started   chan struct{}
-	release   chan struct{}
-	startOnce sync.Once
-	pollCalls atomic.Int32
 }
 
 func (f *fakeQoderOAuthClient) PollDeviceToken(ctx context.Context, nonce, verifier string) (*qoder.DeviceTokenResponse, bool, error) {

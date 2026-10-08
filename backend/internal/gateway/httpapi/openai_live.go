@@ -29,6 +29,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai/liveattestation"
 )
 
+const (
+	defaultLiveMaxSessionDuration = time.Hour
+
+	chatGPTLiveCallsURL        = "https://chatgpt.com/backend-api/codex/realtime/calls?intent=quicksilver&architecture=avas"
+	chatGPTLiveSidebandBaseURL = "wss://chatgpt.com/backend-api/codex"
+)
+
 // OpenAILiveOptions 保存构造时的会话预算及观察重试间隔。
 type OpenAILiveOptions struct {
 	MaxSessionDuration    time.Duration
@@ -59,15 +66,6 @@ type OpenAILiveExecutor struct {
 	liveObserverCancels map[string]context.CancelFunc
 	liveObserverWG      sync.WaitGroup
 }
-
-const (
-	defaultLiveMaxSessionDuration = time.Hour
-)
-
-const (
-	chatGPTLiveCallsURL        = "https://chatgpt.com/backend-api/codex/realtime/calls?intent=quicksilver&architecture=avas"
-	chatGPTLiveSidebandBaseURL = "wss://chatgpt.com/backend-api/codex"
-)
 
 func liveSidebandReadError(err error) error {
 	if coderws.CloseStatus(err) == coderws.StatusNormalClosure {

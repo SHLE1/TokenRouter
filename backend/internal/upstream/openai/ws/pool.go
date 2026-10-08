@@ -32,6 +32,12 @@ const (
 
 	openAIWSPrewarmFailureWindow   = 30 * time.Second
 	openAIWSPrewarmFailureSuppress = 2
+
+	codexFingerprintOff          = "off"
+	codexFingerprintDevice       = "device"
+	openAICodexRoutingHintHeader = "x-codex-routing-hint"
+
+	WSConnHealthCheckTimeout = openAIWSConnHealthCheckTO
 )
 
 var errOpenAIWSConnClosed = openai.ErrWSConnClosed
@@ -68,6 +74,108 @@ type WSConnLease struct {
 	connPick   time.Duration
 	reused     bool
 	released   atomic.Bool
+}
+
+// WSConn 保存一条上游连接及其独占租约。
+type WSConn struct {
+	id string
+	ws openai.WSClientConn
+
+	handshakeHeaders http.Header
+	compatibility    wsConnCompatibility
+	routingAffinity  string
+
+	leaseCh   chan struct{}
+	closedCh  chan struct{}
+	closeOnce sync.Once
+
+	readMu  sync.Mutex
+	writeMu sync.Mutex
+
+	waiters       atomic.Int32
+	createdAtNano atomic.Int64
+	lastUsedNano  atomic.Int64
+	prewarmed     atomic.Bool
+}
+
+// openAIWSProviderPool 管理一个提供商的连接、排队名额和预热任务。
+type openAIWSProviderPool struct {
+	mu            sync.Mutex
+	conns         map[string]*WSConn
+	pinnedConns   map[string]int
+	changedCh     chan struct{}
+	waiters       map[wsConnCompatibility]int
+	creating      int
+	generation    uint64
+	lastCleanupAt time.Time
+	lastAcquire   *WSAcquireRequest
+	prewarmActive bool
+	prewarmUntil  time.Time
+	prewarmFails  int
+	prewarmFailAt time.Time
+}
+
+type WSPoolMetricsSnapshot struct {
+	AcquireTotal            int64
+	AcquireReuseTotal       int64
+	AcquireCreateTotal      int64
+	AcquireQueueWaitTotal   int64
+	AcquireQueueWaitMsTotal int64
+	ConnPickTotal           int64
+	ConnPickMsTotal         int64
+	ScaleUpTotal            int64
+	ScaleDownTotal          int64
+}
+type openAIWSPoolMetrics struct {
+	acquireTotal          atomic.Int64
+	acquireReuseTotal     atomic.Int64
+	acquireCreateTotal    atomic.Int64
+	acquireQueueWaitTotal atomic.Int64
+	acquireQueueWaitMs    atomic.Int64
+	connPickTotal         atomic.Int64
+	connPickMs            atomic.Int64
+	scaleUpTotal          atomic.Int64
+	scaleDownTotal        atomic.Int64
+}
+type WSConnPool struct {
+	started       bool
+	runtimeMu     sync.Mutex
+	closed        bool
+	acquireWG     sync.WaitGroup
+	prewarmWG     sync.WaitGroup
+	prewarmCtx    context.Context
+	prewarmCancel context.CancelFunc
+	cfg           atomic.Pointer[WSPoolOptions]
+	// 通过接口解耦底层 WS 客户端实现，默认使用 coder/websocket。
+	clientDialer openai.WSClientDialer
+
+	providers sync.Map // key: int64(providerID), value: *openAIWSProviderPool
+	seq       atomic.Uint64
+
+	metrics openAIWSPoolMetrics
+
+	workerStopCh  chan struct{}
+	cleanupWakeCh chan struct{}
+	workerWg      sync.WaitGroup
+	closeOnce     sync.Once
+}
+
+type openAIWSIdlePingCandidate struct {
+	providerID int64
+	conn       *WSConn
+}
+
+type codexFingerprintMode = string
+
+// WSPoolProviderState 记录提供商的连接、租约和固定连接数量。
+type WSPoolProviderState struct{ Connections, LeasedConnections, PinnedConnections int }
+
+// wsConnCompatibility 保存建立连接时的目标、代理和握手参数。
+type wsConnCompatibility struct {
+	wsURL         string
+	proxyURL      string
+	tlsProfileKey string
+	handshake     openAIWSHandshakeCompatibilityKey
 }
 
 func (l *WSConnLease) activeConn() (*WSConn, error) {
@@ -226,28 +334,6 @@ func (l *WSConnLease) Release() {
 		l.pool.reconcileProvider(l.ProviderID)
 		l.pool.notifyProviderPoolChanged(l.ProviderID)
 	}
-}
-
-// WSConn 保存一条上游连接及其独占租约。
-type WSConn struct {
-	id string
-	ws openai.WSClientConn
-
-	handshakeHeaders http.Header
-	compatibility    wsConnCompatibility
-	routingAffinity  string
-
-	leaseCh   chan struct{}
-	closedCh  chan struct{}
-	closeOnce sync.Once
-
-	readMu  sync.Mutex
-	writeMu sync.Mutex
-
-	waiters       atomic.Int32
-	createdAtNano atomic.Int64
-	lastUsedNano  atomic.Int64
-	prewarmed     atomic.Bool
 }
 
 // NewWSConn 创建可领取租约的连接，拨号完成后由池填入出站配置。
@@ -528,23 +614,6 @@ func openAIWSTLSProfileKey(profile *tlsfingerprint.Profile, profileKey string) s
 	return tlsfingerprint.CacheKey(profile)
 }
 
-// openAIWSProviderPool 管理一个提供商的连接、排队名额和预热任务。
-type openAIWSProviderPool struct {
-	mu            sync.Mutex
-	conns         map[string]*WSConn
-	pinnedConns   map[string]int
-	changedCh     chan struct{}
-	waiters       map[wsConnCompatibility]int
-	creating      int
-	generation    uint64
-	lastCleanupAt time.Time
-	lastAcquire   *WSAcquireRequest
-	prewarmActive bool
-	prewarmUntil  time.Time
-	prewarmFails  int
-	prewarmFailAt time.Time
-}
-
 // changeChannelLocked 返回连接池状态变化时会关闭的通知通道，调用方必须持锁。
 func (ap *openAIWSProviderPool) changeChannelLocked() chan struct{} {
 	if ap.changedCh == nil {
@@ -562,51 +631,6 @@ func (ap *openAIWSProviderPool) signalChangedLocked() {
 		close(ap.changedCh)
 	}
 	ap.changedCh = make(chan struct{})
-}
-
-type WSPoolMetricsSnapshot struct {
-	AcquireTotal            int64
-	AcquireReuseTotal       int64
-	AcquireCreateTotal      int64
-	AcquireQueueWaitTotal   int64
-	AcquireQueueWaitMsTotal int64
-	ConnPickTotal           int64
-	ConnPickMsTotal         int64
-	ScaleUpTotal            int64
-	ScaleDownTotal          int64
-}
-type openAIWSPoolMetrics struct {
-	acquireTotal          atomic.Int64
-	acquireReuseTotal     atomic.Int64
-	acquireCreateTotal    atomic.Int64
-	acquireQueueWaitTotal atomic.Int64
-	acquireQueueWaitMs    atomic.Int64
-	connPickTotal         atomic.Int64
-	connPickMs            atomic.Int64
-	scaleUpTotal          atomic.Int64
-	scaleDownTotal        atomic.Int64
-}
-type WSConnPool struct {
-	started       bool
-	runtimeMu     sync.Mutex
-	closed        bool
-	acquireWG     sync.WaitGroup
-	prewarmWG     sync.WaitGroup
-	prewarmCtx    context.Context
-	prewarmCancel context.CancelFunc
-	cfg           atomic.Pointer[WSPoolOptions]
-	// 通过接口解耦底层 WS 客户端实现，默认使用 coder/websocket。
-	clientDialer openai.WSClientDialer
-
-	providers sync.Map // key: int64(providerID), value: *openAIWSProviderPool
-	seq       atomic.Uint64
-
-	metrics openAIWSPoolMetrics
-
-	workerStopCh  chan struct{}
-	cleanupWakeCh chan struct{}
-	workerWg      sync.WaitGroup
-	closeOnce     sync.Once
 }
 
 func NewWSConnPool(cfg *WSPoolOptions) *WSConnPool {
@@ -726,11 +750,6 @@ func (p *WSConnPool) startBackgroundWorkers() {
 	}()
 }
 
-type openAIWSIdlePingCandidate struct {
-	providerID int64
-	conn       *WSConn
-}
-
 func (p *WSConnPool) runBackgroundPingWorker() {
 	if p == nil {
 		return
@@ -755,7 +774,6 @@ func (p *WSConnPool) runBackgroundPingSweep() {
 	var g errgroup.Group
 	g.SetLimit(10)
 	for _, item := range candidates {
-		item := item
 		if item.conn == nil || item.conn.isLeased() || item.conn.waiters.Load() > 0 || !item.conn.supportsIdlePingWithoutReader() {
 			continue
 		}
@@ -1225,7 +1243,7 @@ func (p *WSConnPool) cleanupProviderLocked(ap *openAIWSProviderPool, now time.Ti
 		if redundant > len(idleConns) {
 			redundant = len(idleConns)
 		}
-		for i := 0; i < redundant; i++ {
+		for i := range redundant {
 			conn := idleConns[i]
 			delete(ap.conns, conn.id)
 			if len(ap.pinnedConns) > 0 {
@@ -1843,23 +1861,12 @@ func (p *WSConnPool) nativeOptions() *WSPoolOptions {
 	return p.cfg.Load()
 }
 
-type codexFingerprintMode = string
-
-const (
-	codexFingerprintOff          = "off"
-	codexFingerprintDevice       = "device"
-	openAICodexRoutingHintHeader = "x-codex-routing-hint"
-)
-
 func activeCodexFingerprintMode(provider *WSPoolProvider) codexFingerprintMode {
 	if provider == nil || provider.FingerprintMode == "" {
 		return codexFingerprintOff
 	}
 	return provider.FingerprintMode
 }
-
-// WSPoolProviderState 记录提供商的连接、租约和固定连接数量。
-type WSPoolProviderState struct{ Connections, LeasedConnections, PinnedConnections int }
 
 func (p *WSConnPool) SnapshotProviderState(id int64) (WSPoolProviderState, bool) {
 	provider, ok := p.getProviderPool(id)
@@ -1876,8 +1883,6 @@ func (p *WSConnPool) SnapshotProviderState(id int64) (WSPoolProviderState, bool)
 	}
 	return state, true
 }
-
-const WSConnHealthCheckTimeout = openAIWSConnHealthCheckTO
 
 // EvictConnection 淘汰指定连接，调用方决定重连和重试。
 func (p *WSConnPool) EvictConnection(id int64, connectionID string) { p.evictConn(id, connectionID) }
@@ -1917,14 +1922,6 @@ func (p *WSConnPool) reconcileProvider(id int64) {
 	ap.signalChangedLocked()
 	ap.mu.Unlock()
 	closeOpenAIWSConns(evicted)
-}
-
-// wsConnCompatibility 保存建立连接时的目标、代理和握手参数。
-type wsConnCompatibility struct {
-	wsURL         string
-	proxyURL      string
-	tlsProfileKey string
-	handshake     openAIWSHandshakeCompatibilityKey
 }
 
 // wsCompatibilityForRequest 为拨号、复用和预热生成相同的连接标识。

@@ -64,14 +64,14 @@ func TestWSUsageModelConcurrentDirections(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		<-start
-		for i := 0; i < 10000; i++ {
+		for range 10000 {
 			m.UpdateSessionRequestModel([]byte(`{"type":"session.update","session":{"model":"next"}}`))
 		}
 	}()
 	go func() {
 		defer wg.Done()
 		<-start
-		for i := 0; i < 10000; i++ {
+		for range 10000 {
 			_ = m.RequestModelForFrame(nil)
 		}
 	}()

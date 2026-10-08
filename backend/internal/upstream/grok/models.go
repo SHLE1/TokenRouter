@@ -5,6 +5,21 @@ import (
 	"sync/atomic"
 )
 
+const (
+	// DefaultResponsesModel 是 Grok Responses 请求未指定模型时使用的默认模型。
+	DefaultResponsesModel = "grok-4.5"
+
+	// DefaultTextModel 是允许省略模型的文本请求使用的默认型号。
+	DefaultTextModel = "grok-4.6"
+
+	// 以下为官方 Imagine 模型 ID。
+	DefaultImagineImageQualityModel = "grok-imagine-image-quality"
+	DefaultImagineImageFastModel    = "grok-imagine-image"
+	DefaultImagineImage20Model      = "grok-imagine-image-2.0"
+	DefaultImagineVideoModel        = "grok-imagine-video"
+	DefaultImagineVideo15Model      = "grok-imagine-video-1.5"
+)
+
 var runtimeDefaultTextModel atomic.Pointer[string]
 
 // SetRuntimeDefaultTextModel 发布允许省略模型的请求所用的默认文本型号。
@@ -19,21 +34,6 @@ func RuntimeDefaultTextModel() string {
 	}
 	return ""
 }
-
-// DefaultResponsesModel 是 Grok Responses 请求未指定模型时使用的默认模型。
-const DefaultResponsesModel = "grok-4.5"
-
-// DefaultTextModel 是允许省略模型的文本请求使用的默认型号。
-const DefaultTextModel = "grok-4.6"
-
-// 以下为官方 Imagine 模型 ID。
-const (
-	DefaultImagineImageQualityModel = "grok-imagine-image-quality"
-	DefaultImagineImageFastModel    = "grok-imagine-image"
-	DefaultImagineImage20Model      = "grok-imagine-image-2.0"
-	DefaultImagineVideoModel        = "grok-imagine-video"
-	DefaultImagineVideo15Model      = "grok-imagine-video-1.5"
-)
 
 // NormalizeModelID 保留完整模型 ID，允许省略模型的入口使用协议默认值。
 func NormalizeModelID(model string) string {

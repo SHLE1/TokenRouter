@@ -21,6 +21,46 @@ import (
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+// marketplaceLoadingProtocols 是解析器给 alias 返回的客户端协议。
+var marketplaceLoadingProtocols = []capability.ProtocolID{capability.ProtocolAnthropicMessages, capability.ProtocolOpenAIChatCompletions}
+
+// modelCatalogFixture 保存测试提供的模型价格目录。
+type modelCatalogFixture struct {
+	pricingData map[string]*billingpricing.CatalogModelPricing
+}
+
+// marketplaceLoadingModels 为部分分组返回空目录，覆盖属性和观测查询的分组筛选。
+type marketplaceLoadingModels struct{}
+
+// marketplaceLoadingObservations 记录容量和可用率查询的分组。
+type marketplaceLoadingObservations struct {
+	capacityCalls      int
+	capacityGroups     []int64
+	availabilityGroups []int64
+}
+
+// marketplaceLoadingPrices 记录报价和兼容模态查询。
+type marketplaceLoadingPrices struct {
+	requests      []routing.MarketplaceQuoteRequest
+	modalityCalls int
+}
+
+type marketplaceQuoteFixture struct {
+	calculator *billing.Calculator
+	resolver   *billing.PriceResolver
+}
+
+type marketplaceGroupRepoStub struct {
+	routing.GroupRepository
+
+	groups []routing.Group
+}
+
+type marketplaceSettingRepoStub struct {
+	settingscore.Repository
+	settings map[string]string
+}
+
 // TestMarketplaceBatchAttributesAndOptionalCapacity 覆盖批量读取、属性失败降级、容量开关和模型协议的透传。
 func TestMarketplaceBatchAttributesAndOptionalCapacity(t *testing.T) {
 	for _, attributesFail := range []bool{false, true} {
@@ -729,11 +769,6 @@ func TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs(t *testing.T) {
 	}
 }
 
-// modelCatalogFixture 保存测试提供的模型价格目录。
-type modelCatalogFixture struct {
-	pricingData map[string]*billingpricing.CatalogModelPricing
-}
-
 func newModelCatalogFixture(fixture modelCatalogFixture) *provider.Service {
 	return provider.NewServiceFromSnapshot(provider.Options{
 		ModelLookupCandidates: modelidentity.CandidatesFactory,
@@ -763,12 +798,6 @@ func NewModelPricingResolver(pricingConfigs *routing.PricingConfigService, calcu
 	})
 }
 
-// marketplaceLoadingModels 为部分分组返回空目录，覆盖属性和观测查询的分组筛选。
-type marketplaceLoadingModels struct{}
-
-// marketplaceLoadingProtocols 是解析器给 alias 返回的客户端协议。
-var marketplaceLoadingProtocols = []capability.ProtocolID{capability.ProtocolAnthropicMessages, capability.ProtocolOpenAIChatCompletions}
-
 func (marketplaceLoadingModels) Prefetch(context.Context) ([]routing.CatalogueProvider, bool, error) {
 	return nil, false, nil
 }
@@ -780,13 +809,6 @@ func (marketplaceLoadingModels) ResolveRequestableModels(_ context.Context, id *
 	return routing.RequestableModelsResult{Models: []routing.RequestableModel{{ID: "alias", PricingModel: "priced", UpstreamModels: []string{"upstream"}, Protocols: marketplaceLoadingProtocols, NativeProtocols: marketplaceLoadingProtocols[:1]}}}
 }
 
-// marketplaceLoadingObservations 记录容量和可用率查询的分组。
-type marketplaceLoadingObservations struct {
-	capacityCalls      int
-	capacityGroups     []int64
-	availabilityGroups []int64
-}
-
 func (o *marketplaceLoadingObservations) GetGroupCapacityByIDs(_ context.Context, ids []int64) (map[int64]routing.GroupCapacitySummary, error) {
 	o.capacityCalls++
 	o.capacityGroups = ids
@@ -796,12 +818,6 @@ func (o *marketplaceLoadingObservations) GetGroupCapacityByIDs(_ context.Context
 func (o *marketplaceLoadingObservations) GetSummaryByGroupIDs(_ context.Context, ids []int64, _ int, _ int, _ string, _ time.Time) (map[int64]*routing.GroupAvailabilitySummary, error) {
 	o.availabilityGroups = ids
 	return map[int64]*routing.GroupAvailabilitySummary{1: {WindowDays: 3}}, nil
-}
-
-// marketplaceLoadingPrices 记录报价和兼容模态查询。
-type marketplaceLoadingPrices struct {
-	requests      []routing.MarketplaceQuoteRequest
-	modalityCalls int
 }
 
 func (p *marketplaceLoadingPrices) Quote(_ context.Context, request routing.MarketplaceQuoteRequest) billingpricing.ModelDisplayPricing {
@@ -827,11 +843,6 @@ func testMediaModelPricing(mode routing.BillingMode, prices map[string]*float64)
 	return []routing.ModelPricingEntry{card}
 }
 
-type marketplaceQuoteFixture struct {
-	calculator *billing.Calculator
-	resolver   *billing.PriceResolver
-}
-
 func (p marketplaceQuoteFixture) Quote(ctx context.Context, req routing.MarketplaceQuoteRequest) billingpricing.ModelDisplayPricing {
 	resolver := p.resolver
 	if resolver == nil {
@@ -852,19 +863,8 @@ func marketplaceWithConfig(calculator *billing.Calculator, groupID int64, settin
 	return newMarketplaceFixture(nil, nil, calculator, NewModelPricingResolver(configs, calculator))
 }
 
-type marketplaceGroupRepoStub struct {
-	routing.GroupRepository
-
-	groups []routing.Group
-}
-
 func (s *marketplaceGroupRepoStub) ListActive(context.Context) ([]routing.Group, error) {
 	return s.groups, nil
-}
-
-type marketplaceSettingRepoStub struct {
-	settingscore.Repository
-	settings map[string]string
 }
 
 func (s *marketplaceSettingRepoStub) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {

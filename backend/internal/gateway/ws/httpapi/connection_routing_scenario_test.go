@@ -25,6 +25,12 @@ import (
 	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
+type openAIWSCountingDialer struct {
+	mu             sync.Mutex
+	dialCount      int
+	lastTLSProfile *tlsfingerprint.Profile
+}
+
 func TestSetOpenAICodexRoutingHintCanonicalizesOfficialServiceTiers(t *testing.T) {
 	oauthProvider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	tests := []struct {
@@ -297,12 +303,6 @@ func TestOpenAIWSConnPoolUsesRoutingHintAsSoftDialAffinity(t *testing.T) {
 	defaultAgain.Release()
 
 	require.Equal(t, 4, dialer.DialCount())
-}
-
-type openAIWSCountingDialer struct {
-	mu             sync.Mutex
-	dialCount      int
-	lastTLSProfile *tlsfingerprint.Profile
 }
 
 func (d *openAIWSCountingDialer) Dial(

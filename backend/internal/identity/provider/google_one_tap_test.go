@@ -21,6 +21,8 @@ import (
 	"google.golang.org/api/option"
 )
 
+type googleFixtureTransport struct{ target *url.URL }
+
 func TestValidateGoogleIDTokenPayload(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	validPayload := func() *idtoken.Payload {
@@ -130,8 +132,6 @@ func TestGoogleOfficialValidatorWithLocalJWKS(t *testing.T) {
 		})
 	}
 }
-
-type googleFixtureTransport struct{ target *url.URL }
 
 // RoundTrip 将官方验证器的公钥请求发送到测试服务器提供的 JWKS 地址。
 func (t googleFixtureTransport) RoundTrip(r *http.Request) (*http.Response, error) {

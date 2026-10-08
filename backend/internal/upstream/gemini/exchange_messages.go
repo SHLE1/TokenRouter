@@ -149,7 +149,7 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 			respBody := options.ReadError(resp)
 			_ = resp.Body.Close()
 			// Don't treat insufficient-scope as transient.
-			if resp.StatusCode == 403 && IsGeminiInsufficientScope(resp.Header, respBody) {
+			if resp.StatusCode == http.StatusForbidden && IsGeminiInsufficientScope(resp.Header, respBody) {
 				resp = &http.Response{
 					StatusCode: resp.StatusCode,
 					Header:     resp.Header.Clone(),
@@ -157,7 +157,7 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 				}
 				break
 			}
-			if resp.StatusCode == 429 {
+			if resp.StatusCode == http.StatusTooManyRequests {
 				// Mark as rate-limited early so concurrent requests avoid this provider.
 				options.OnStatus(ctx, resp.StatusCode, resp.Header, respBody)
 			}

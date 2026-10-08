@@ -20,6 +20,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+// schedulerSharedState 保存跨平台共享的调度反馈、运行参数和粘性会话统计。
+type schedulerSharedState struct {
+	Feedback   *scheduler.RuntimeStats
+	Settings   *scheduler.SettingsRuntime
+	Parameters *scheduler.Parameters
+	Sticky     *scheduler.StickyStats
+}
+
 func provideSchedulerCache(rdb *redis.Client, cfg *config.Config) *schedulerredis.SnapshotCache {
 	options := schedulerredis.SnapshotCacheOptions{}
 	if cfg != nil {
@@ -119,14 +127,6 @@ func schedulerParameterDefaults(cfg *config.Config) scheduler.ParameterDefaults 
 	defaults.Runtime.EwmaTTFTAlpha = value.EWMATTFTAlpha
 	defaults.Runtime.StickyEscape = policy.NormalizeStickyEscape(policy.StickyEscapeConfig{Enabled: value.StickyEscapeEnabled, TtftMs: float64(value.StickyEscapeTTFTMs), ErrorRate: value.StickyEscapeErrorRate})
 	return defaults
-}
-
-// schedulerSharedState 保存跨平台共享的调度反馈、运行参数和粘性会话统计。
-type schedulerSharedState struct {
-	Feedback   *scheduler.RuntimeStats
-	Settings   *scheduler.SettingsRuntime
-	Parameters *scheduler.Parameters
-	Sticky     *scheduler.StickyStats
 }
 
 func provideSchedulerSharedState(cfg *config.Config, source settings.Repository) *schedulerSharedState {

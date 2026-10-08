@@ -8,6 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// versionRules 返回缓存测试使用的模型名称。
+type versionRules struct {
+	CatalogueRules
+	id string
+}
+
 // TestModelListVersionsAndInvalidation 目录换版和分组失效均清除旧候选的读取机会。
 func TestModelListVersionsAndInvalidation(t *testing.T) {
 	version, id, reads := "v1", "first", 0
@@ -28,12 +34,6 @@ func TestModelListVersionsAndInvalidation(t *testing.T) {
 	list.Cache.Set(ModelListCacheKey(&group, "openai")+"|v2", []string{"old"}, time.Minute)
 	list.Invalidate(&group, "openai")
 	require.Empty(t, list.Cache.Items())
-}
-
-// versionRules 返回缓存测试使用的模型名称。
-type versionRules struct {
-	CatalogueRules
-	id string
 }
 
 func (r versionRules) ConfiguredModels() []string { return []string{r.id} }

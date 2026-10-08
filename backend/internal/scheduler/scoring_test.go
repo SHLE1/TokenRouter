@@ -149,7 +149,7 @@ func TestAdvancedSchedulerCoreUsesWeightedSamplingForStickyCandidate(t *testing.
 	}
 
 	var observedSticky, observedNonSticky bool
-	for index := 0; index < 128; index++ {
+	for index := range 128 {
 		order := BuildSelectionOrder(candidates, ScoreInput{
 			SessionHash:      fmt.Sprintf("weighted-sticky-%d", index),
 			StickyWeighted:   true,
@@ -303,7 +303,7 @@ func BenchmarkOpenAIProviderSchedulerSelectTopK(b *testing.B) {
 		candidates := buildOpenAISchedulerBenchmarkCandidates(tc.size)
 		b.Run(tc.name+"/heap_topk", func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				result := SelectTopK(candidates, tc.topK)
 				if len(result) == 0 {
 					b.Fatal("unexpected empty result")
@@ -312,7 +312,7 @@ func BenchmarkOpenAIProviderSchedulerSelectTopK(b *testing.B) {
 		})
 		b.Run(tc.name+"/full_sort", func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				result := selectTopKOpenAICandidatesBySortBenchmark(candidates, tc.topK)
 				if len(result) == 0 {
 					b.Fatal("unexpected empty result")
@@ -358,7 +358,7 @@ func buildOpenAISchedulerBenchmarkCandidates(size int) []CandidateScore {
 		return nil
 	}
 	candidates := make([]CandidateScore, 0, size)
-	for i := 0; i < size; i++ {
+	for i := range size {
 		providerID := int64(10_000 + i)
 		candidates = append(candidates, CandidateScore{
 			Provider: &ScoreProvider{
@@ -453,11 +453,10 @@ func TestOpenAIProviderRuntimeStats_ReportConcurrent(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(workers)
-	for worker := 0; worker < workers; worker++ {
-		worker := worker
+	for worker := range workers {
 		go func() {
 			defer wg.Done()
-			for i := 0; i < iterations; i++ {
+			for i := range iterations {
 				providerID := int64(i%providerCount + 1)
 				success := (i+worker)%3 != 0
 				ttft := 80 + (i+worker)%40

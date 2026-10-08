@@ -16,6 +16,19 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+const (
+	DingTalkOAuthCookiePath         = "/api/v1/auth/oauth/dingtalk"
+	DingTalkOAuthStateCookieName    = "dingtalk_oauth_state"
+	DingTalkOAuthRedirectCookie     = "dingtalk_oauth_redirect"
+	DingTalkOAuthIntentCookieName   = "dingtalk_oauth_intent"
+	DingTalkOAuthBindUserCookieName = "dingtalk_oauth_bind_user"
+	DingTalkOAuthCookieMaxAgeSec    = 600 // 10 分钟
+	DingTalkOAuthDefaultRedirectTo  = "/dashboard"
+	DingTalkOAuthDefaultFrontendCB  = "/auth/dingtalk/callback"
+
+	DingTalkLevelThreeEnabled = true
+)
+
 // DingTalkHTTPOptions 保持配置热读取与注册开关的读取顺序。
 type DingTalkHTTPOptions struct {
 	LoadConfig          func(context.Context) (identity.DingTalkOAuthOptions, error)
@@ -26,6 +39,13 @@ type DingTalkHandler struct {
 	binding         *OAuthBindHandler
 	syncer          *identity.DingTalkSyncRuntime
 	dingTalkOptions DingTalkHTTPOptions
+}
+
+type CompleteDingTalkOAuthRequest struct {
+	InvitationCode   string `json:"invitation_code" binding:"required"`
+	AffCode          string `json:"aff_code,omitempty"`
+	AdoptDisplayName *bool  `json:"adopt_display_name,omitempty"`
+	AdoptAvatar      *bool  `json:"adopt_avatar,omitempty"`
 }
 
 func NewDingTalkHandler(p *PendingHandler, b *OAuthBindHandler, s *identity.DingTalkSyncRuntime, o DingTalkHTTPOptions) *DingTalkHandler {
@@ -45,19 +65,6 @@ func (h *DingTalkHandler) findDingTalkCompatEmailUser(ctx context.Context, email
 	}
 	return h.flow.Database.FindDingTalkCompatEmailUser(ctx, email)
 }
-
-const (
-	DingTalkOAuthCookiePath         = "/api/v1/auth/oauth/dingtalk"
-	DingTalkOAuthStateCookieName    = "dingtalk_oauth_state"
-	DingTalkOAuthRedirectCookie     = "dingtalk_oauth_redirect"
-	DingTalkOAuthIntentCookieName   = "dingtalk_oauth_intent"
-	DingTalkOAuthBindUserCookieName = "dingtalk_oauth_bind_user"
-	DingTalkOAuthCookieMaxAgeSec    = 600 // 10 分钟
-	DingTalkOAuthDefaultRedirectTo  = "/dashboard"
-	DingTalkOAuthDefaultFrontendCB  = "/auth/dingtalk/callback"
-
-	DingTalkLevelThreeEnabled = true
-)
 
 // DingTalkUpstreamRedirect 在 4 步链上游调用失败时记录详细错误日志并跳错误页。
 // 把钉钉 errcode/errmsg 写进 backend log + URL fragment，避免被泛 "internal error" 吞掉。
@@ -409,13 +416,6 @@ func BuildDingTalkAuthorizeURL(cfg identity.DingTalkOAuthOptions, state string) 
 	u.RawQuery = q.Encode()
 
 	return u.String(), nil
-}
-
-type CompleteDingTalkOAuthRequest struct {
-	InvitationCode   string `json:"invitation_code" binding:"required"`
-	AffCode          string `json:"aff_code,omitempty"`
-	AdoptDisplayName *bool  `json:"adopt_display_name,omitempty"`
-	AdoptAvatar      *bool  `json:"adopt_avatar,omitempty"`
 }
 
 // CompleteDingTalkOAuthRegistration 校验邀请码并创建用户，完成待处理的钉钉 OAuth 注册。

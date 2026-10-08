@@ -43,6 +43,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
+type openAIImagesFailoverProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	providers []gatewayprovider.ExecutionProvider
+}
+
+type openAIImagesFailoverHTTPUpstream struct {
+	mu          sync.Mutex
+	providerIDs []int64
+}
+
 func TestOpenAIGatewayHandlerResponses_ImageIntentRejectedByImageConcurrency(t *testing.T) {
 	body := `{"model":"gpt-5.4","input":"draw","tools":[{"type":"image_generation"}]}`
 	rec := httptest.NewRecorder()
@@ -331,12 +342,6 @@ func TestImagesGroupMappedTextModelIsRejectedByActualCandidate(t *testing.T) {
 	require.Nil(t, selected)
 }
 
-type openAIImagesFailoverProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	providers []gatewayprovider.ExecutionProvider
-}
-
 func (r openAIImagesFailoverProviderRepo) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	for i := range r.providers {
 		if r.providers[i].Record.ID == id {
@@ -367,11 +372,6 @@ func (r openAIImagesFailoverProviderRepo) providersForPlatform(platform string) 
 		}
 	}
 	return out
-}
-
-type openAIImagesFailoverHTTPUpstream struct {
-	mu          sync.Mutex
-	providerIDs []int64
 }
 
 func (u *openAIImagesFailoverHTTPUpstream) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {

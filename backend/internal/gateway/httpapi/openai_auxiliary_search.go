@@ -30,6 +30,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const (
+	chatgptCodexAlphaSearchURL   = "https://chatgpt.com/backend-api/codex/alpha/search"
+	openAIPlatformAlphaSearchURL = "https://api.openai.com/v1/alpha/search"
+)
+
 // OpenAIAuxiliary 绑定搜索、嵌入和计数请求的出站能力。
 type OpenAIAuxiliary struct {
 	Requests      *OpenAIRequests
@@ -38,11 +43,6 @@ type OpenAIAuxiliary struct {
 	Authorization *providercore.OpenAIAuthorization
 	Enter         func() (func(), error)
 }
-
-const (
-	chatgptCodexAlphaSearchURL   = "https://chatgpt.com/backend-api/codex/alpha/search"
-	openAIPlatformAlphaSearchURL = "https://api.openai.com/v1/alpha/search"
-)
 
 // ForwardAlphaSearch 透传 Codex 独立网页搜索，不绑定仍在演进的 alpha 请求和响应结构。
 //

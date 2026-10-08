@@ -9,6 +9,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
+// settingsRepository 为设置测试保存价格配置和分组关联。
+type settingsRepository struct {
+	PricingConfigRepository
+	value *PricingConfig
+}
+
+type settingsInvalidator struct{ groups []int64 }
+
 func TestSharedBillingSettingsCRUDAndCache(t *testing.T) {
 	ctx := context.Background()
 	repo := &settingsRepository{}
@@ -147,12 +155,6 @@ func TestNormalizePeakRateConfig(t *testing.T) {
 	}
 }
 
-// settingsRepository 为设置测试保存价格配置和分组关联。
-type settingsRepository struct {
-	PricingConfigRepository
-	value *PricingConfig
-}
-
 func (r *settingsRepository) ExistsByName(context.Context, string) (bool, error) { return false, nil }
 
 func (r *settingsRepository) GetGroupsInOtherPricingConfigs(context.Context, int64, []int64) ([]int64, error) {
@@ -186,8 +188,6 @@ func (r *settingsRepository) GetGroupIDs(context.Context, int64) ([]int64, error
 }
 
 func (r *settingsRepository) Delete(context.Context, int64) error { r.value = nil; return nil }
-
-type settingsInvalidator struct{ groups []int64 }
 
 func (i *settingsInvalidator) InvalidateAuthCacheByGroupID(_ context.Context, id int64) {
 	i.groups = append(i.groups, id)

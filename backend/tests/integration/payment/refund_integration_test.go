@@ -231,7 +231,10 @@ func TestRefundMissingRecoveryRequiresManualVerification(t *testing.T) {
 			ctx := context.Background()
 			c, s, o := refundOrderFixture(t, status)
 			var calls atomic.Int32
-			refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) { calls.Add(1); http.Error(w, "must not query", 500) })
+			refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				http.Error(w, "must not query", http.StatusInternalServerError)
+			})
 			result, err := s.QueryAndFinalizeRefund(ctx, o.ID)
 			require.Nil(t, result)
 			require.ErrorContains(t, err, "manual verification")
@@ -303,13 +306,13 @@ func TestRefundRepeatedAttemptsPreserveFactsWithUniqueAction(t *testing.T) {
 	refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if calls.Add(1) < 3 {
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"fixture refund rejected"}}`))
 			return
 		}
 		_, _ = w.Write([]byte(`{"id":"re_test","object":"refund","status":"succeeded"}`))
 	})
-	for attempt := 0; attempt < 3; attempt++ {
+	for attempt := range 3 {
 		plan, warning, err := s.PrepareRefund(ctx, o.ID, 50, "same refund", false, true)
 		require.NoError(t, err)
 		require.Nil(t, warning)

@@ -8,6 +8,11 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+var (
+	benchmarkOpenAIResponseSSEEventTypeSink string
+	benchmarkOpenAIResponseSSETerminalSink  bool
+)
+
 func TestOpenAIStreamEventIsTerminalWithTypeMatchesExistingSemantics(t *testing.T) {
 	tests := []struct {
 		name string
@@ -42,11 +47,6 @@ func TestOpenAIStreamEventIsTerminalWithTypeMatchesExistingSemantics(t *testing.
 	}
 }
 
-var (
-	benchmarkOpenAIResponseSSEEventTypeSink string
-	benchmarkOpenAIResponseSSETerminalSink  bool
-)
-
 func BenchmarkOpenAIResponseSSETypeExtraction(b *testing.B) {
 	data := `{"type":"response.output_text.delta","sequence_number":42,"delta":"streaming response benchmark payload"}`
 	dataBytes := []byte(data)
@@ -55,7 +55,7 @@ func BenchmarkOpenAIResponseSSETypeExtraction(b *testing.B) {
 		b.ReportAllocs()
 		b.SetBytes(int64(len(dataBytes)))
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			benchmarkOpenAIResponseSSETerminalSink = OpenAIStreamEventIsTerminal(data)
 			benchmarkOpenAIResponseSSEEventTypeSink = strings.TrimSpace(gjson.GetBytes(dataBytes, "type").String())
 		}
@@ -65,7 +65,7 @@ func BenchmarkOpenAIResponseSSETypeExtraction(b *testing.B) {
 		b.ReportAllocs()
 		b.SetBytes(int64(len(dataBytes)))
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			eventTypeRaw := gjson.GetBytes(dataBytes, "type").String()
 			benchmarkOpenAIResponseSSEEventTypeSink = strings.TrimSpace(eventTypeRaw)
 			benchmarkOpenAIResponseSSETerminalSink = OpenAIStreamEventIsTerminalWithType(data, eventTypeRaw)

@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const fingerprintOriginalSeed = "11111111-1111-4111-8111-111111111111"
+
 func TestResolveConvergedThreadID_PerClientSession(t *testing.T) {
 	a := ResolveConvergedThreadID(fingerprintOriginalSeed, "session-aaa")
 	b := ResolveConvergedThreadID(fingerprintOriginalSeed, "session-bbb")
@@ -48,5 +50,3 @@ func TestExtractClientSessionID(t *testing.T) {
 		})
 	}
 }
-
-const fingerprintOriginalSeed = "11111111-1111-4111-8111-111111111111"

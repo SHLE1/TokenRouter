@@ -1965,7 +1965,6 @@ func TestFilterCodexInput_PreservesReasoningStripsID(t *testing.T) {
 	}
 
 	for _, preserve := range []bool{true, false} {
-		preserve := preserve
 		t.Run(fmt.Sprintf("preserveReferences=%v", preserve), func(t *testing.T) {
 			filtered := openai.FilterCodexInputWithOptions(build(), openai.CodexInputFilterOptions{PreserveReferences: preserve})
 			require.Len(t, filtered, 1)

@@ -8,6 +8,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+// 路由回退设置的存储键。
+const (
+	SettingKeyEnableModelFallback      = "enable_model_fallback"
+	SettingKeyFallbackModelAnthropic   = "fallback_model_anthropic"
+	SettingKeyFallbackModelAntigravity = "fallback_model_antigravity"
+	SettingKeyFallbackModelGemini      = "fallback_model_gemini"
+	SettingKeyFallbackModelOpenAI      = "fallback_model_openai"
+)
+
 // AdminSettings 包含路由回退和市场观测窗口配置。
 type AdminSettings struct {
 	EnableModelFallback                  bool   `json:"enable_model_fallback"`
@@ -18,15 +27,6 @@ type AdminSettings struct {
 	MarketplaceAvailabilityBucketMinutes int    `json:"marketplace_availability_bucket_minutes"`
 	MarketplaceAvailabilityWindowDays    int    `json:"marketplace_availability_window_days"`
 }
-
-// 路由回退设置的存储键。
-const (
-	SettingKeyEnableModelFallback      = "enable_model_fallback"
-	SettingKeyFallbackModelAnthropic   = "fallback_model_anthropic"
-	SettingKeyFallbackModelAntigravity = "fallback_model_antigravity"
-	SettingKeyFallbackModelGemini      = "fallback_model_gemini"
-	SettingKeyFallbackModelOpenAI      = "fallback_model_openai"
-)
 
 // PrepareAdminSettings 校验市场观测窗口，并把路由设置转换成存储值。
 func PrepareAdminSettings(settings *AdminSettings) map[string]string {

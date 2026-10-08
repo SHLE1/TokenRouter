@@ -26,6 +26,46 @@ import (
 // fork 已移除独立的 manifest 网关透传服务，不在此恢复任何代理路由。
 const DefaultCodexModelsURL = "https://chatgpt.com/backend-api/codex/models"
 
+type upstreamModelEntry struct {
+	ID           string          `json:"id"`
+	Slug         string          `json:"slug"`
+	Model        string          `json:"model"`
+	ModelID      string          `json:"modelId"`
+	ModelIDSnake string          `json:"model_id"`
+	Name         string          `json:"name"`
+	Meta         json.RawMessage `json:"_meta"`
+}
+
+type upstreamModelEntryMetadata struct {
+	ID           string `json:"id"`
+	Model        string `json:"model"`
+	ModelID      string `json:"modelId"`
+	ModelIDSnake string `json:"model_id"`
+	Name         string `json:"name"`
+}
+
+// ModelCatalogueOptions 包含模型查询所需的启动参数和请求端点。
+type ModelCatalogueOptions struct {
+	ValidateURL       func(string) (string, error)
+	OperatorValidator grok.BaseURLValidator
+	BodyLimit         int64
+	CodexModelsURL    string
+}
+
+// ModelCatalogue 执行模型目录请求，不另建缓存或后台任务。
+type ModelCatalogue struct {
+	Options            ModelCatalogueOptions
+	Transport          QoderTransport
+	Profiles           *egressprovider.TLSProfiles
+	ClaudeTokens       *providercore.ClaudeTokenSource
+	GrokTokens         *providercore.GrokTokenSource
+	GeminiTokens       *providercore.GeminiTokenSource
+	AntigravityTokens  *providercore.AntigravityTokenSource
+	DefaultGrokBaseURL func(context.Context) string
+	Read               func(context.Context, int64) (*providercore.Record, error)
+	EnsureTask         func(context.Context, *providercore.Record, string) error
+}
+
 func newUpstreamModelSyncConfigError(message string, err error) error {
 	return &providercore.UpstreamModelSyncError{Kind: providercore.UpstreamModelSyncErrorConfiguration, Message: message, Err: err}
 }
@@ -485,24 +525,6 @@ func buildGeminiModelsURL(base string) string {
 	return normalized + "/v1beta/models"
 }
 
-type upstreamModelEntry struct {
-	ID           string          `json:"id"`
-	Slug         string          `json:"slug"`
-	Model        string          `json:"model"`
-	ModelID      string          `json:"modelId"`
-	ModelIDSnake string          `json:"model_id"`
-	Name         string          `json:"name"`
-	Meta         json.RawMessage `json:"_meta"`
-}
-
-type upstreamModelEntryMetadata struct {
-	ID           string `json:"id"`
-	Model        string `json:"model"`
-	ModelID      string `json:"modelId"`
-	ModelIDSnake string `json:"model_id"`
-	Name         string `json:"name"`
-}
-
 func extractUpstreamModelIDs(body []byte) ([]string, error) {
 	return extractUpstreamModelIDsWithSelector(body, upstreamModelEntryID)
 }
@@ -630,28 +652,6 @@ func buildCodexModelsManifestURL(endpoint string, appendModelsPath bool, clientV
 	query.Set("client_version", clientVersion)
 	requestURL.RawQuery = query.Encode()
 	return requestURL, nil
-}
-
-// ModelCatalogueOptions 包含模型查询所需的启动参数和请求端点。
-type ModelCatalogueOptions struct {
-	ValidateURL       func(string) (string, error)
-	OperatorValidator grok.BaseURLValidator
-	BodyLimit         int64
-	CodexModelsURL    string
-}
-
-// ModelCatalogue 执行模型目录请求，不另建缓存或后台任务。
-type ModelCatalogue struct {
-	Options            ModelCatalogueOptions
-	Transport          QoderTransport
-	Profiles           *egressprovider.TLSProfiles
-	ClaudeTokens       *providercore.ClaudeTokenSource
-	GrokTokens         *providercore.GrokTokenSource
-	GeminiTokens       *providercore.GeminiTokenSource
-	AntigravityTokens  *providercore.AntigravityTokenSource
-	DefaultGrokBaseURL func(context.Context) string
-	Read               func(context.Context, int64) (*providercore.Record, error)
-	EnsureTask         func(context.Context, *providercore.Record, string) error
 }
 
 func (s *ModelCatalogue) agentHeaders(ctx context.Context, value *providercore.Record) (http.Header, error) {

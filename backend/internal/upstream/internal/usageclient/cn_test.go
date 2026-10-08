@@ -24,7 +24,6 @@ func TestCNParseF64(t *testing.T) {
 		{"nil", nil, 0, false},
 	}
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			got, ok := CnParseF64(tc.raw)

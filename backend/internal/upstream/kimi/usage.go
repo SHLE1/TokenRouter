@@ -13,6 +13,10 @@ import (
 // DefaultTestModel 是 Kimi 提供商的默认探测模型。
 const DefaultTestModel = "kimi-k2.5"
 
+type KimiCodingUsageAdapter struct{}
+
+type KimiBalanceUsageAdapter struct{}
+
 // ParseKimiUsageTiers 解析 Kimi For Coding 的 /usages 响应。
 //
 //   - limits[].detail.{limit,remaining,resetTime} → 5h 窗口（取首个 detail）
@@ -68,8 +72,6 @@ func ParseKimiUsageTiers(body []byte) []usageview.CNQuotaTier {
 	return tiers
 }
 
-type KimiCodingUsageAdapter struct{}
-
 func (*KimiCodingUsageAdapter) Name() string { return usageview.UpstreamUsageAdapterKimiCoding }
 func (*KimiCodingUsageAdapter) Query(ctx context.Context, input *usagecontract.Request) (*usageview.UpstreamUsageInfo, error) {
 	client := usageclient.New(input)
@@ -87,8 +89,6 @@ func (*KimiCodingUsageAdapter) Query(ctx context.Context, input *usagecontract.R
 	tiers := ParseKimiUsageTiers(body)
 	return usageclient.CnUsageLimits("kimi", tiers)
 }
-
-type KimiBalanceUsageAdapter struct{}
 
 func (*KimiBalanceUsageAdapter) Name() string { return usageview.UpstreamUsageAdapterKimiBalance }
 func (*KimiBalanceUsageAdapter) Query(ctx context.Context, input *usagecontract.Request) (*usageview.UpstreamUsageInfo, error) {

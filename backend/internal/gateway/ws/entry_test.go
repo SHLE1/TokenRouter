@@ -17,6 +17,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+var errKeyLimitRetry = errors.New("retry provider")
+
 // keyLimitEntry 运行完整入站编排，外部系统使用可观测的请求槽替身。
 type keyLimitEntry struct {
 	cancelClient context.CancelFunc
@@ -29,6 +31,12 @@ type keyLimitEntry struct {
 }
 
 type quietEntryLog struct{}
+
+// keyLimitTarget 用回调驱动实际的逐轮准入、完成和故障转移。
+type keyLimitTarget struct {
+	EntryTarget
+	root *keyLimitEntry
+}
 
 func (quietEntryLog) With(...EntryField) EntryLogger { return quietEntryLog{} }
 func (quietEntryLog) Info(string, ...EntryField)     {}
@@ -117,19 +125,11 @@ func (p *keyLimitEntry) Select(context.Context, string, string, string, map[int6
 	return &EntrySelection{Provider: &EntryProvider{ProviderSnapshot: provider.ProviderSnapshot{ID: 1, Concurrency: 1, Type: "apikey"}}, Acquired: true, ReleaseFunc: func() {}, Target: p.target}, EntryDecision{}, nil
 }
 
-var errKeyLimitRetry = errors.New("retry provider")
-
 func (p *keyLimitEntry) Failover(err error) (*EntryFailure, bool) {
 	if errors.Is(err, errKeyLimitRetry) {
 		return &EntryFailure{Err: err, RetryNext: true}, true
 	}
 	return nil, false
-}
-
-// keyLimitTarget 用回调驱动实际的逐轮准入、完成和故障转移。
-type keyLimitTarget struct {
-	EntryTarget
-	root *keyLimitEntry
 }
 
 func (*keyLimitTarget) Credential(context.Context) error            { return nil }

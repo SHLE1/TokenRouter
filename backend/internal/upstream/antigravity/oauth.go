@@ -54,20 +54,40 @@ const (
 	antigravityDailyBaseURL = "https://daily-cloudcode-pa.googleapis.com"
 )
 
-var userAgentVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
-
-// UserAgentVersionResolver 提供运行时 User-Agent 版本号覆盖能力。
-type UserAgentVersionResolver func(ctx context.Context) string
-
 var (
+	userAgentVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+
 	// defaultUserAgentVersion 可通过环境变量 ANTIGRAVITY_USER_AGENT_VERSION 配置。
 	defaultUserAgentVersion  = DefaultUserAgentVersion
 	userAgentVersionMu       sync.RWMutex
 	userAgentVersionResolver UserAgentVersionResolver
+
+	// defaultClientSecret 可通过环境变量 ANTIGRAVITY_OAUTH_CLIENT_SECRET 配置
+	defaultClientSecret = "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"
+
+	// BaseURLs 定义 Antigravity API 端点（与 Antigravity-Manager 保持一致）
+	BaseURLs = []string{
+		antigravityProdBaseURL,  // prod (优先)
+		antigravityDailyBaseURL, // daily sandbox (备用)
+	}
+
+	// BaseURL 默认 URL（保持向后兼容）
+	BaseURL = BaseURLs[0]
+
+	// DefaultURLAvailability 全局 URL 可用性管理器
+	DefaultURLAvailability = NewURLAvailability(URLAvailabilityTTL)
 )
 
-// defaultClientSecret 可通过环境变量 ANTIGRAVITY_OAUTH_CLIENT_SECRET 配置
-var defaultClientSecret = "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"
+// UserAgentVersionResolver 提供运行时 User-Agent 版本号覆盖能力。
+type UserAgentVersionResolver func(ctx context.Context) string
+
+// URLAvailability 管理 URL 可用性状态（带 TTL 自动恢复和动态优先级）
+type URLAvailability struct {
+	mu          sync.RWMutex
+	unavailable map[string]time.Time // URL -> 恢复时间
+	ttl         time.Duration
+	lastSuccess string // 最近成功请求的 URL，优先使用
+}
 
 func init() {
 	// 从环境变量读取版本号，未设置则使用默认值
@@ -137,15 +157,6 @@ func getClientSecret() (string, error) {
 	return "", infraerrors.Newf(infraerrors.CategoryBadRequest, "ANTIGRAVITY_OAUTH_CLIENT_SECRET_MISSING", "missing antigravity oauth client_secret; set %s", AntigravityOAuthClientSecretEnv)
 }
 
-// BaseURLs 定义 Antigravity API 端点（与 Antigravity-Manager 保持一致）
-var BaseURLs = []string{
-	antigravityProdBaseURL,  // prod (优先)
-	antigravityDailyBaseURL, // daily sandbox (备用)
-}
-
-// BaseURL 默认 URL（保持向后兼容）
-var BaseURL = BaseURLs[0]
-
 // ForwardBaseURLs 返回 API 转发用的 URL 顺序（daily 优先）
 func ForwardBaseURLs() []string {
 	if len(BaseURLs) == 0 {
@@ -172,17 +183,6 @@ func ForwardBaseURLs() []string {
 	}
 	return reordered
 }
-
-// URLAvailability 管理 URL 可用性状态（带 TTL 自动恢复和动态优先级）
-type URLAvailability struct {
-	mu          sync.RWMutex
-	unavailable map[string]time.Time // URL -> 恢复时间
-	ttl         time.Duration
-	lastSuccess string // 最近成功请求的 URL，优先使用
-}
-
-// DefaultURLAvailability 全局 URL 可用性管理器
-var DefaultURLAvailability = NewURLAvailability(URLAvailabilityTTL)
 
 // NewURLAvailability 创建 URL 可用性管理器
 func NewURLAvailability(ttl time.Duration) *URLAvailability {

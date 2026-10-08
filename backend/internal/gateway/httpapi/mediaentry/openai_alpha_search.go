@@ -24,6 +24,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 )
 
+// alphaRequestAdapter 处理 HTTP 输出、平台恢复和观测，media 决定提供商尝试顺序。
+type alphaRequestAdapter struct {
+	h                           *Runtime
+	c                           *gin.Context
+	apiKey                      *apikey.APIKey
+	subscription                *billing.UserSubscription
+	groupMapping                routing.GroupMappingResult
+	requestedModel, sessionHash string
+	originalBody                []byte
+	userID                      int64
+	reqLog                      *zap.Logger
+	streamStarted               *bool
+	selection                   *gatewaycapture.SelectionResult
+	oauth429                    failover.OAuth429State
+}
+
 // recordAlphaSearchUsage 为成功的 alpha/search 记录一次 WebSearchCalls，按分组单价乘倍率计费。
 // 上游缺少 usage 字段。任务提交到 mandatory 池，池满时同步执行。
 func (h *Runtime) recordAlphaSearchUsage(
@@ -74,22 +90,6 @@ func (h *Runtime) recordAlphaSearchUsage(
 			completionLog.Error("openai_alpha_search.record_usage_failed", zap.Error(err))
 		}
 	})
-}
-
-// alphaRequestAdapter 处理 HTTP 输出、平台恢复和观测，media 决定提供商尝试顺序。
-type alphaRequestAdapter struct {
-	h                           *Runtime
-	c                           *gin.Context
-	apiKey                      *apikey.APIKey
-	subscription                *billing.UserSubscription
-	groupMapping                routing.GroupMappingResult
-	requestedModel, sessionHash string
-	originalBody                []byte
-	userID                      int64
-	reqLog                      *zap.Logger
-	streamStarted               *bool
-	selection                   *gatewaycapture.SelectionResult
-	oauth429                    failover.OAuth429State
 }
 
 func (p *alphaRequestAdapter) SelectAlpha(ctx context.Context, excluded map[int64]struct{}) (gatewaymedia.AlphaSelection, bool, error) {

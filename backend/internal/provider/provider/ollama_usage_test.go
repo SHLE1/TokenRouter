@@ -27,6 +27,72 @@ import (
 	upstreamollama "github.com/TokenFlux/TokenRouter/internal/upstream/ollama"
 )
 
+const (
+	ollamaCloudUsageMaxSessionBytes = 16 * 1024
+	ollamaCloudUsageConcurrency     = 4
+	ollamaCloudUsageLeaderLockKey   = "ollama:cloud:usage:leader"
+)
+
+type ollamaUsageTestEncryptor struct{}
+
+type ollamaUsageTestRepo struct {
+	*ollamaUsageRows
+	due                 []providercore.Record
+	beforeSnapshot      func()
+	disableAutoAttempts atomic.Int64
+	disableAutoCalls    atomic.Int64
+	groupResolveCalls   atomic.Int64
+	getByIDCalls        atomic.Int64
+}
+
+type ollamaRefreshPreflightIdentityChangeRepo struct {
+	*ollamaUsageTestRepo
+	getCalls atomic.Int64
+}
+
+type ollamaUsageHTTPStub struct {
+	status         int
+	body           []byte
+	header         http.Header
+	calls          atomic.Int64
+	active         atomic.Int64
+	maxActive      atomic.Int64
+	beforeResponse func(*http.Request)
+	lastRequest    *http.Request
+	lastProxyURL   string
+	mu             sync.Mutex
+}
+
+// 夹具保存测试需要的提供商行，查询返回独立副本。
+type ollamaUsageRows struct {
+	mu        sync.Mutex
+	providers map[int64]*providercore.Record
+}
+
+// 设置替身提供读取器使用的两个键值操作。
+type ollamaUsageSettings struct {
+	settingscore.Repository
+	mu     sync.Mutex
+	values map[string]string
+}
+
+type ollamaUsageTransport interface {
+	Do(*http.Request, string, int64, int) (*http.Response, error)
+}
+
+// 夹具注入可调时钟和锁替身，查询、缓存和启停使用生产实现。
+type ollamaUsageContract struct {
+	*providercore.OllamaCloudUsageService
+	now       func() time.Time
+	lockCache providercore.CNMonitorLeader
+}
+
+// 内存 leader 模拟同一键的持有者比较，Redis 行为由集成测试覆盖。
+type ollamaUsageLeader struct {
+	mu     sync.Mutex
+	owners map[string]string
+}
+
 // TestOllamaUsageStopOwnsManualRefresh 检查停止服务时取消并等待手动查询，随后到达的响应无法写入快照。
 func TestOllamaUsageStopOwnsManualRefresh(t *testing.T) {
 	value := ollamaUsageProvider(901)
@@ -524,8 +590,6 @@ func TestOllamaCloudUsageSingleflightConcurrencyAndRunnerSwitches(t *testing.T) 
 	require.Equal(t, int64(8), upstream.calls.Load())
 }
 
-type ollamaUsageTestEncryptor struct{}
-
 func (ollamaUsageTestEncryptor) Encrypt(value string) (string, error) { return "cipher:" + value, nil }
 
 func (ollamaUsageTestEncryptor) Decrypt(value string) (string, error) {
@@ -533,16 +597,6 @@ func (ollamaUsageTestEncryptor) Decrypt(value string) (string, error) {
 		return "", errors.New("authentication failed")
 	}
 	return strings.TrimPrefix(value, "cipher:"), nil
-}
-
-type ollamaUsageTestRepo struct {
-	*ollamaUsageRows
-	due                 []providercore.Record
-	beforeSnapshot      func()
-	disableAutoAttempts atomic.Int64
-	disableAutoCalls    atomic.Int64
-	groupResolveCalls   atomic.Int64
-	getByIDCalls        atomic.Int64
 }
 
 // GetByID 记录加载次数，让并发测试等待调用方到达 singleflight 前的确定位置。
@@ -718,11 +772,6 @@ func (r *ollamaUsageTestRepo) ListDueOllamaCloudUsageProviders(_ context.Context
 	return out, nil
 }
 
-type ollamaRefreshPreflightIdentityChangeRepo struct {
-	*ollamaUsageTestRepo
-	getCalls atomic.Int64
-}
-
 func (r *ollamaRefreshPreflightIdentityChangeRepo) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
 	if r.getCalls.Add(1) == 2 {
 		r.mu.Lock()
@@ -735,19 +784,6 @@ func (r *ollamaRefreshPreflightIdentityChangeRepo) GetByID(ctx context.Context, 
 func sameOllamaUsageTestIdentity(left, right *providercore.Record) bool {
 	return left != nil && right != nil && left.Platform == right.Platform && left.Type == right.Type &&
 		reflect.DeepEqual(left.Credentials, right.Credentials) && reflect.DeepEqual(left.ProxyID, right.ProxyID)
-}
-
-type ollamaUsageHTTPStub struct {
-	status         int
-	body           []byte
-	header         http.Header
-	calls          atomic.Int64
-	active         atomic.Int64
-	maxActive      atomic.Int64
-	beforeResponse func(*http.Request)
-	lastRequest    *http.Request
-	lastProxyURL   string
-	mu             sync.Mutex
 }
 
 func (s *ollamaUsageHTTPStub) Do(req *http.Request, proxyURL string, _ int64, _ int) (*http.Response, error) {
@@ -804,18 +840,6 @@ func ollamaUsageFixture(t *testing.T) []byte {
 	return body
 }
 
-const (
-	ollamaCloudUsageMaxSessionBytes = 16 * 1024
-	ollamaCloudUsageConcurrency     = 4
-	ollamaCloudUsageLeaderLockKey   = "ollama:cloud:usage:leader"
-)
-
-// 夹具保存测试需要的提供商行，查询返回独立副本。
-type ollamaUsageRows struct {
-	mu        sync.Mutex
-	providers map[int64]*providercore.Record
-}
-
 func (r *ollamaUsageRows) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -825,13 +849,6 @@ func (r *ollamaUsageRows) GetByID(_ context.Context, id int64) (*providercore.Re
 	}
 	copy := cloneOllamaUsageTestProvider(*v)
 	return &copy, nil
-}
-
-// 设置替身提供读取器使用的两个键值操作。
-type ollamaUsageSettings struct {
-	settingscore.Repository
-	mu     sync.Mutex
-	values map[string]string
 }
 
 func (r *ollamaUsageSettings) GetValue(_ context.Context, key string) (string, error) {
@@ -854,17 +871,6 @@ func (r *ollamaUsageSettings) Set(_ context.Context, key, value string) error {
 	return nil
 }
 
-type ollamaUsageTransport interface {
-	Do(*http.Request, string, int64, int) (*http.Response, error)
-}
-
-// 夹具注入可调时钟和锁替身，查询、缓存和启停使用生产实现。
-type ollamaUsageContract struct {
-	*providercore.OllamaCloudUsageService
-	now       func() time.Time
-	lockCache providercore.CNMonitorLeader
-}
-
 func newOllamaUsageContract(repo providercore.OllamaProviderReader, transport ollamaUsageTransport, source providercore.RuntimeSettingsStore, cipher providercore.OllamaSessionCipher, fixedKey bool) *ollamaUsageContract {
 	s := &ollamaUsageContract{now: time.Now}
 	options := providercore.OllamaUsageOptions{
@@ -885,12 +891,6 @@ func newOllamaUsageContract(repo providercore.OllamaProviderReader, transport ol
 	}
 	s.OllamaCloudUsageService = providercore.NewOllamaCloudUsageService(repo, config, cipher, options)
 	return s
-}
-
-// 内存 leader 模拟同一键的持有者比较，Redis 行为由集成测试覆盖。
-type ollamaUsageLeader struct {
-	mu     sync.Mutex
-	owners map[string]string
 }
 
 func (l *ollamaUsageLeader) TryAcquireLeaderLock(_ context.Context, key, owner string, _ time.Duration) (bool, error) {

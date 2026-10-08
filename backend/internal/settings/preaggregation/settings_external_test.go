@@ -12,6 +12,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings/preaggregation"
 )
 
+// preaggregationFixture 保存设置值和读取次数，更新通知由控制器触发。
+type preaggregationFixture struct {
+	values        map[string]string
+	getValueCalls int
+}
+
 // TestPreAggregationSettingsDefaultsFromDeployment 验证新设置缺失时只采用部署能力默认值。
 func TestPreAggregationSettingsDefaultsFromDeployment(t *testing.T) {
 	repo := newPreaggregationFixture()
@@ -68,12 +74,6 @@ func TestPreAggregationSettingsUpdateNotifies(t *testing.T) {
 	var persisted preaggregation.PreAggregationSettings
 	require.NoError(t, json.Unmarshal([]byte(repo.values[preaggregation.SettingKeyPreAggregationSettings]), &persisted))
 	require.Equal(t, updated, persisted)
-}
-
-// preaggregationFixture 保存设置值和读取次数，更新通知由控制器触发。
-type preaggregationFixture struct {
-	values        map[string]string
-	getValueCalls int
 }
 
 func newPreaggregationFixture() *preaggregationFixture {

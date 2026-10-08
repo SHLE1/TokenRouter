@@ -18,14 +18,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-type ResponseMode uint8
-
 const (
 	ModeClaudeResponse ResponseMode = iota
 	ModeGeminiResponse
 	ModeChatResponse
 	ModeResponsesResponse
 )
+
+type ResponseMode uint8
 
 // Target 配置单次请求的模型、输出格式、交换和响应处理回调。
 type Target struct {
@@ -42,6 +42,14 @@ type Target struct {
 	Enter          func() (func(), error)
 }
 
+type Executor struct{}
+
+// observedSink 为已经完整形成的输出段补充事实标记，不缓存或重排帧，不改变 TTFT。
+type observedSink struct {
+	upstream.OutputSink
+	nonStream bool
+}
+
 func (t *Target) TargetID() int64 {
 	if t == nil {
 		return 0
@@ -51,8 +59,6 @@ func (t *Target) TargetID() int64 {
 
 func (t *Target) String() string   { return fmt.Sprintf("antigravity target provider=%d", t.TargetID()) }
 func (t *Target) GoString() string { return t.String() }
-
-type Executor struct{}
 
 // @project-doc docs/interfaces/antigravity_upstream.md#antigravity_native_execution
 func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (result upstream.AttemptResult, failure error) {
@@ -183,12 +189,6 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 		target.OutputError(err)
 	}
 	return result, err
-}
-
-// observedSink 为已经完整形成的输出段补充事实标记，不缓存或重排帧，不改变 TTFT。
-type observedSink struct {
-	upstream.OutputSink
-	nonStream bool
 }
 
 func (s *observedSink) InitialOutput() upstream.OutputHead {

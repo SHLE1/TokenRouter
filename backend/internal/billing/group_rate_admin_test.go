@@ -12,6 +12,23 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+// userGroupRateRepoStubForGroupRate 记录专属倍率与 RPM 配置操作。
+type userGroupRateRepoStubForGroupRate struct {
+	getByGroupIDData map[int64][]billing.UserGroupRateEntry
+	getByGroupIDErr  error
+
+	deletedGroupIDs  []int64
+	deleteByGroupErr error
+
+	syncedGroupID int64
+	syncedEntries []billing.GroupRateMultiplierInput
+	syncGroupErr  error
+
+	rpmSyncedGroupID int64
+	rpmSyncedEntries []billing.GroupRPMOverrideInput
+	rpmSyncErr       error
+}
+
 func TestAdminService_GetGroupRateMultipliers(t *testing.T) {
 	t.Run("returns entries for group", func(t *testing.T) {
 		aliceRate, bobRate := 1.5, 0.8
@@ -158,23 +175,6 @@ func TestAdminService_BatchSetGroupRPMOverrides(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err))
 		require.Zero(t, repo.rpmSyncedGroupID)
 	})
-}
-
-// userGroupRateRepoStubForGroupRate 记录专属倍率与 RPM 配置操作。
-type userGroupRateRepoStubForGroupRate struct {
-	getByGroupIDData map[int64][]billing.UserGroupRateEntry
-	getByGroupIDErr  error
-
-	deletedGroupIDs  []int64
-	deleteByGroupErr error
-
-	syncedGroupID int64
-	syncedEntries []billing.GroupRateMultiplierInput
-	syncGroupErr  error
-
-	rpmSyncedGroupID int64
-	rpmSyncedEntries []billing.GroupRPMOverrideInput
-	rpmSyncErr       error
 }
 
 func (s *userGroupRateRepoStubForGroupRate) GetByUserID(_ context.Context, _ int64) (map[int64]float64, error) {

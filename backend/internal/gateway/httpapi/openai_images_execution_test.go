@@ -42,6 +42,23 @@ import (
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type openAIOAuthImageActualSizeTestRun struct {
+	result   *forwardcore.OpenAIResult
+	recorder *httptest.ResponseRecorder
+	upstream *auxiliaryHTTPRecorder
+}
+
+type failingOpenAIImageWriter struct {
+	gin.ResponseWriter
+	failAfter int
+	writes    int
+}
+
+type openAIImageTestSSEEvent struct {
+	Name string
+	Data string
+}
+
 // TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver 验证回归：failover 第 2+ 轮时，上一轮心跳残留的空白字节不得被误判为“已写响应”，
 // 可重试上游错误转换为 UpstreamFailoverError，交给换号流程。
 func TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver(t *testing.T) {
@@ -149,12 +166,6 @@ func TestOpenAIGatewayServiceForwardImages_OAuthStreamingUsesDecodedOutputDimens
 	require.Equal(t, "1672x941", gjson.Get(completed.Data, "size").String())
 	require.Equal(t, "auto", gjson.Get(completed.Data, "quality").String())
 	require.Equal(t, []string{"1672x941"}, run.result.ImageOutputSizes)
-}
-
-type openAIOAuthImageActualSizeTestRun struct {
-	result   *forwardcore.OpenAIResult
-	recorder *httptest.ResponseRecorder
-	upstream *auxiliaryHTTPRecorder
 }
 
 func runOpenAIOAuthImageActualSizeTest(t *testing.T, stream bool) openAIOAuthImageActualSizeTestRun {
@@ -617,12 +628,6 @@ func TestOpenAISetupTokenImagesUsesOAuthResponsesPath(t *testing.T) {
 	require.Contains(t, upstream.lastReq.URL.String(), "/backend-api/codex/responses")
 }
 
-type failingOpenAIImageWriter struct {
-	gin.ResponseWriter
-	failAfter int
-	writes    int
-}
-
 func (w *failingOpenAIImageWriter) Write(p []byte) (int, error) {
 	if w.writes >= w.failAfter {
 		return 0, errors.New("write failed: client disconnected")
@@ -1005,11 +1010,6 @@ func TestBuildOpenAIImagesURL_HandlesVersionedBaseURL(t *testing.T) {
 		"https://image-upstream.example/v1/images/generations",
 		httpclient.BuildOpenAIEndpointURL("https://image-upstream.example/v1/images/generations", upstreamcore.OpenAIImagesGenerationsEndpoint),
 	)
-}
-
-type openAIImageTestSSEEvent struct {
-	Name string
-	Data string
 }
 
 func parseOpenAIImageTestSSEEvents(body string) []openAIImageTestSSEEvent {

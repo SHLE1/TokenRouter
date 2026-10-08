@@ -11,14 +11,11 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+var UserAttributesBatchCache = response.NewSnapshotCache(30 * time.Second)
+
 // UserAttributeHandler handles user attribute management
 type UserAttributeHandler struct {
 	attrService *identity.UserAttributeService
-}
-
-// NewUserAttributeHandler creates a new handler
-func NewUserAttributeHandler(attrService *identity.UserAttributeService) *UserAttributeHandler {
-	return &UserAttributeHandler{attrService: attrService}
 }
 
 // CreateAttributeDefinitionRequest represents create attribute definition request
@@ -67,8 +64,6 @@ type BatchUserAttributesResponse struct {
 	Attributes map[int64]map[int64]string `json:"attributes"`
 }
 
-var UserAttributesBatchCache = response.NewSnapshotCache(30 * time.Second)
-
 // AttributeDefinitionResponse represents attribute definition response
 type AttributeDefinitionResponse struct {
 	ID           int64                            `json:"id"`
@@ -94,6 +89,11 @@ type AttributeValueResponse struct {
 	Value       string `json:"value"`
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`
+}
+
+// NewUserAttributeHandler creates a new handler
+func NewUserAttributeHandler(attrService *identity.UserAttributeService) *UserAttributeHandler {
+	return &UserAttributeHandler{attrService: attrService}
 }
 
 func DefToResponse(def *identity.UserAttributeDefinition) *AttributeDefinitionResponse {

@@ -14,15 +14,26 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
-const defaultClaudeUsageURL = "https://api.anthropic.com/api/oauth/usage"
+const (
+	defaultClaudeUsageURL = "https://api.anthropic.com/api/oauth/usage"
 
-// 默认 User-Agent，与用户抓包的请求一致
-const defaultUsageUserAgent = "claude-code/2.1.7"
+	// 默认 User-Agent，与用户抓包的请求一致
+	defaultUsageUserAgent = "claude-code/2.1.7"
+)
 
 type UsageClient struct {
 	UsageURL          string
 	AllowPrivateHosts bool
 	DoTLS             func(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)
+}
+
+// UsageFetchOptions 包含获取 Claude 用量数据所需的所有选项
+type UsageFetchOptions struct {
+	AccessToken string                  // OAuth access token
+	ProxyURL    string                  // 代理 URL（可选）
+	ProviderID  int64                   // 提供商 ID（用于连接池隔离）
+	TLSProfile  *tlsfingerprint.Profile // TLS 指纹 Profile（nil 表示不启用）
+	Fingerprint *Fingerprint            // 缓存的指纹信息（User-Agent 等）
 }
 
 // NewUsageClient 创建 Claude 用量获取服务
@@ -38,7 +49,7 @@ func (s *UsageClient) FetchUsageWithOptions(ctx context.Context, opts *UsageFetc
 	}
 
 	// 创建请求
-	req, err := http.NewRequestWithContext(ctx, "GET", s.UsageURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.UsageURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request failed: %w", err)
 	}
@@ -95,13 +106,4 @@ func (s *UsageClient) FetchUsageWithOptions(ctx context.Context, opts *UsageFetc
 	}
 
 	return &usageResp, nil
-}
-
-// UsageFetchOptions 包含获取 Claude 用量数据所需的所有选项
-type UsageFetchOptions struct {
-	AccessToken string                  // OAuth access token
-	ProxyURL    string                  // 代理 URL（可选）
-	ProviderID  int64                   // 提供商 ID（用于连接池隔离）
-	TLSProfile  *tlsfingerprint.Profile // TLS 指纹 Profile（nil 表示不启用）
-	Fingerprint *Fingerprint            // 缓存的指纹信息（User-Agent 等）
 }

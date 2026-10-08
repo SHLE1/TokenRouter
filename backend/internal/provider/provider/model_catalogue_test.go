@@ -19,6 +19,11 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+type modelCatalogueTransportFixture struct {
+	resp    *http.Response
+	lastReq *http.Request
+}
+
 // TestBuildUpstreamModelsRequest_CNProviders 验证“同步上游支持的模型”对国产供应商可用：
 // 密钥经 GetOpenAIProtocolAPIKey 读取，/models 端点拼接到提供商 base_url（含默认值）。
 func TestBuildUpstreamModelsRequest_CNProviders(t *testing.T) {
@@ -125,7 +130,6 @@ func TestBuildOpenAIModelsURL(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -178,7 +182,6 @@ func TestExtractUpstreamModelIDs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -550,11 +553,6 @@ func grokOAuthModelSyncTestProvider(baseURL string) *providercore.Record {
 func upstreamModelSyncTestConfig() ModelCatalogueOptions {
 	policy := egress.OperatorURLPolicy{}
 	return ModelCatalogueOptions{ValidateURL: policy.Validate, OperatorValidator: policy.Validate, BodyLimit: 8 << 20, CodexModelsURL: DefaultCodexModelsURL}
-}
-
-type modelCatalogueTransportFixture struct {
-	resp    *http.Response
-	lastReq *http.Request
 }
 
 func (f *modelCatalogueTransportFixture) DoWithTLS(req *http.Request, _ string, _ int64, _ int, _ *tlsfingerprint.Profile) (*http.Response, error) {

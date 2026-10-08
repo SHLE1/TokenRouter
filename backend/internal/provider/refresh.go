@@ -8,18 +8,6 @@ import (
 	"time"
 )
 
-// GrokRefreshSuccessWriter 保存 Grok 轮换后的凭据。
-// 实现必须比较上游尝试使用的完整凭据和代理，并将成功更新与调度器失效事件原子发布。
-type GrokRefreshSuccessWriter interface {
-	UpdateGrokOAuthCredentialsIfUnchanged(
-		ctx context.Context,
-		id int64,
-		expectedCredentials map[string]any,
-		expectedProxyID *int64,
-		credentials map[string]any,
-	) (bool, error)
-}
-
 const (
 	defaultRefreshLockTTL                   = 60 * time.Second
 	defaultRefreshLockReleaseTimeout        = 2 * time.Second
@@ -32,7 +20,27 @@ var (
 	ErrRefreshCredentialPersist    = errors.New("oauth refresh credential persistence failed")
 )
 
+// GrokRefreshSuccessWriter 保存 Grok 轮换后的凭据。
+// 实现必须比较上游尝试使用的完整凭据和代理，并将成功更新与调度器失效事件原子发布。
+type GrokRefreshSuccessWriter interface {
+	UpdateGrokOAuthCredentialsIfUnchanged(
+		ctx context.Context,
+		id int64,
+		expectedCredentials map[string]any,
+		expectedProxyID *int64,
+		credentials map[string]any,
+	) (bool, error)
+}
+
 type oauthRefreshRequestPathKey struct{}
+
+type RefreshLock struct {
+	token chan struct{}
+}
+
+type RefreshStateUnavailableError struct {
+	err error
+}
 
 func WithRefreshRequestPath(ctx context.Context) context.Context {
 	return context.WithValue(ctx, oauthRefreshRequestPathKey{}, true)
@@ -41,14 +49,6 @@ func WithRefreshRequestPath(ctx context.Context) context.Context {
 func isOAuthRefreshRequestPath(ctx context.Context) bool {
 	requestPath, _ := ctx.Value(oauthRefreshRequestPathKey{}).(bool)
 	return requestPath
-}
-
-type RefreshLock struct {
-	token chan struct{}
-}
-
-type RefreshStateUnavailableError struct {
-	err error
 }
 
 func (e *RefreshStateUnavailableError) Error() string {

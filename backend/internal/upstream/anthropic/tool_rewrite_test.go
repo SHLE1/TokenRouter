@@ -134,7 +134,7 @@ func TestApplyToolsLastCacheBreakpoint_StripsDeferredToolCacheControl(t *testing
 func TestApplyToolsLastCacheBreakpointOnlyLiteralTrueIsDeferred(t *testing.T) {
 	body := []byte(`{"tools":[{"name":"string","defer_loading":"true","cache_control":{"type":"ephemeral"}},{"name":"number","defer_loading":1,"cache_control":{"type":"ephemeral"}},{"name":"object","defer_loading":{},"cache_control":{"type":"ephemeral"}}]}`)
 	out := StripDeferredToolCacheControl(body)
-	for idx := 0; idx < 3; idx++ {
+	for idx := range 3 {
 		require.Equal(t, "ephemeral", gjson.GetBytes(out, fmt.Sprintf("tools.%d.cache_control.type", idx)).String())
 	}
 }

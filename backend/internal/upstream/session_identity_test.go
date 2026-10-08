@@ -51,7 +51,7 @@ func TestIsolateOpenAISessionID(t *testing.T) {
 
 func TestGenerateAnthropicMsgID_FormatAndUniqueness(t *testing.T) {
 	seen := make(map[string]struct{}, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		id := GenerateAnthropicMsgID()
 		require.Regexp(t, `^msg_01[0-9A-Za-z]{22}$`, id)
 		_, duplicate := seen[id]

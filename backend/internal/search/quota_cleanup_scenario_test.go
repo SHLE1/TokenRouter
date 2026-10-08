@@ -10,6 +10,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// blockedQuotaCleanup 等待清理预算耗尽并记录取消错误。
+type blockedQuotaCleanup struct {
+	quotaFixture
+	entered chan context.Context
+	err     error
+}
+
+type canceledSearchExecutor struct {
+	noSearchExecutor
+	cancel context.CancelFunc
+}
+
 func TestQuotaCleanupBudgetAndShutdownWait(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -40,23 +52,11 @@ func TestQuotaCleanupBudgetAndShutdownWait(t *testing.T) {
 	require.NoError(t, work.Stop(context.Background()))
 }
 
-// blockedQuotaCleanup 等待清理预算耗尽并记录取消错误。
-type blockedQuotaCleanup struct {
-	quotaFixture
-	entered chan context.Context
-	err     error
-}
-
 func (q *blockedQuotaCleanup) Decrement(ctx context.Context, _ string) error {
 	q.entered <- ctx
 	<-ctx.Done()
 	q.err = ctx.Err()
 	return q.err
-}
-
-type canceledSearchExecutor struct {
-	noSearchExecutor
-	cancel context.CancelFunc
 }
 
 func (e canceledSearchExecutor) Search(ctx context.Context, _ ProviderConfig, _ SearchRequest) (*SearchResponse, error) {

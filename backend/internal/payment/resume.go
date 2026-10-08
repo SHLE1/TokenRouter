@@ -17,9 +17,9 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-const ResumePaymentResultReturnPath = "/payment/result"
-
 const (
+	ResumePaymentResultReturnPath = "/payment/result"
+
 	PaymentSourceHostedRedirect    = "hosted_redirect"
 	PaymentSourceWechatInAppResume = "wechat_in_app_resume"
 

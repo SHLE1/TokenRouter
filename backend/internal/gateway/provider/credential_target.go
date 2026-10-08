@@ -8,6 +8,11 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
+// ExecutionProviderReader 只开放此处所需的一次提供商读取。
+type ExecutionProviderReader interface {
+	GetByID(context.Context, int64) (*ExecutionProvider, error)
+}
+
 func CredentialProvider(ctx context.Context, repo ExecutionProviderReader, value *ExecutionProvider) (*ExecutionProvider, error) {
 	input := ExecutionRecord(value)
 	var parent *ExecutionProvider
@@ -23,11 +28,6 @@ func CredentialProvider(ctx context.Context, repo ExecutionProviderReader, value
 		return value, nil
 	}
 	return parent, nil
-}
-
-// ExecutionProviderReader 只开放此处所需的一次提供商读取。
-type ExecutionProviderReader interface {
-	GetByID(context.Context, int64) (*ExecutionProvider, error)
 }
 
 // CredentialChatGPTHeaders 先解析母提供商，再应用 ChatGPT 请求头。

@@ -8,6 +8,13 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	AdjustmentTypeAdminConcurrency = billing.AdjustmentTypeAdminConcurrency
+	AdjustmentTypeAdminBalance     = billing.AdjustmentTypeAdminBalance
+)
+
+var ErrRPMStatusUnavailable = infraerrors.New(501, "RPM_STATUS_UNAVAILABLE", "RPM cache not available")
+
 // CreateUserInput represents input for creating a new user via admin operations.
 type CreateUserInput struct {
 	Email         string
@@ -129,15 +136,6 @@ type (
 	}
 )
 
-func NewUserAdmin(d AdminDependencies) *UserAdmin { return &UserAdmin{d} }
-func (s *UserAdmin) RunBackground(name string, fn func()) bool {
-	if s.Background != nil {
-		return s.Background(name, fn)
-	}
-	fn()
-	return true
-}
-
 type AdminUserSettings interface {
 	GetDefaultBalance(context.Context) float64
 	GetDefaultUserAPIKeyLimit(context.Context) int
@@ -202,9 +200,11 @@ type PreparedAdminIdentityBinding struct {
 	VerifiedAt                                 time.Time
 }
 
-const (
-	AdjustmentTypeAdminConcurrency = billing.AdjustmentTypeAdminConcurrency
-	AdjustmentTypeAdminBalance     = billing.AdjustmentTypeAdminBalance
-)
-
-var ErrRPMStatusUnavailable = infraerrors.New(501, "RPM_STATUS_UNAVAILABLE", "RPM cache not available")
+func NewUserAdmin(d AdminDependencies) *UserAdmin { return &UserAdmin{d} }
+func (s *UserAdmin) RunBackground(name string, fn func()) bool {
+	if s.Background != nil {
+		return s.Background(name, fn)
+	}
+	fn()
+	return true
+}

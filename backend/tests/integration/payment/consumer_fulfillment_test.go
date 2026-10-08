@@ -24,6 +24,11 @@ import (
 	sqlitetest "github.com/TokenFlux/TokenRouter/internal/testutil/sqlite"
 )
 
+var (
+	_ promotion.AffiliateRepository = (*paymentFulfillmentAffiliateRepoStub)(nil)
+	_ settings.Repository           = (*paymentFulfillmentSettingRepoStub)(nil)
+)
+
 type paymentFulfillmentAffiliateAccrueCall struct {
 	inviterID     int64
 	inviteeUserID int64
@@ -37,6 +42,21 @@ type paymentFulfillmentAffiliateRepoStub struct {
 	inviterSummary *promotion.AffiliateSummary
 	accruedRebate  float64
 	accrueCalls    []paymentFulfillmentAffiliateAccrueCall
+}
+
+type paymentFulfillmentSettingRepoStub struct {
+	values map[string]string
+}
+
+// redeemCodeRepoStub 记录兑换调用，供测试检查已使用兑换码和已完成订单的处理。
+type redeemCodeRepoStub struct {
+	codesByCode map[string]*billing.RedeemCode
+	useCalls    []string
+}
+
+type recordedRedeemer struct {
+	payment.FulfillmentRedeemer
+	repo *redeemCodeRepoStub
 }
 
 func (r *paymentFulfillmentAffiliateRepoStub) EnsureUserAffiliate(_ context.Context, userID int64) (*promotion.AffiliateSummary, error) {
@@ -126,10 +146,6 @@ func (r *paymentFulfillmentAffiliateRepoStub) ListAffiliateTransferRecords(conte
 
 func (r *paymentFulfillmentAffiliateRepoStub) GetAffiliateUserOverview(context.Context, int64) (*promotion.AffiliateUserOverview, error) {
 	panic("unexpected GetAffiliateUserOverview call")
-}
-
-type paymentFulfillmentSettingRepoStub struct {
-	values map[string]string
 }
 
 func (s *paymentFulfillmentSettingRepoStub) Get(context.Context, string) (*settings.Setting, error) {
@@ -756,25 +772,9 @@ func TestExecuteSubscriptionFulfillmentDoesNotDuplicateWorkAfterLegacySuccessAud
 	require.Zero(t, subRepo.CreateCalls)
 }
 
-var (
-	_ promotion.AffiliateRepository = (*paymentFulfillmentAffiliateRepoStub)(nil)
-	_ settings.Repository           = (*paymentFulfillmentSettingRepoStub)(nil)
-)
-
 // WithLockedInviter 在替身中同步执行回调，行锁由 PostgreSQL 集成测试检查。
 func (r *paymentFulfillmentAffiliateRepoStub) WithLockedInviter(ctx context.Context, _ int64, fn func(context.Context) error) error {
 	return fn(ctx)
-}
-
-// redeemCodeRepoStub 记录兑换调用，供测试检查已使用兑换码和已完成订单的处理。
-type redeemCodeRepoStub struct {
-	codesByCode map[string]*billing.RedeemCode
-	useCalls    []string
-}
-
-type recordedRedeemer struct {
-	payment.FulfillmentRedeemer
-	repo *redeemCodeRepoStub
 }
 
 func fulfillmentRedeemer(repo *redeemCodeRepoStub) payment.FulfillmentRedeemer {

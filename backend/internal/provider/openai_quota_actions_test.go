@@ -16,6 +16,8 @@ type quotaActionsSource struct {
 	reset func(context.Context) (*openai.OpenAIQuotaResetResult, error)
 }
 
+type quotaActionsRecovery func(context.Context) (*SuccessfulTestRecovery, error)
+
 func (s quotaActionsSource) QueryUsage(ctx context.Context, _ int64) (*openai.OpenAIQuotaUsage, error) {
 	return s.query(ctx)
 }
@@ -31,8 +33,6 @@ func (quotaActionsSource) CacheResetCreditsSnapshot(context.Context, int64, *ope
 func (quotaActionsSource) CachePostResetSnapshot(context.Context, int64, *openai.OpenAIQuotaUsage) error {
 	return nil
 }
-
-type quotaActionsRecovery func(context.Context) (*SuccessfulTestRecovery, error)
 
 func (f quotaActionsRecovery) RecoverProviderState(ctx context.Context, _ int64, _ ProviderRecoveryOptions) (*SuccessfulTestRecovery, error) {
 	return f(ctx)

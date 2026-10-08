@@ -12,12 +12,20 @@ import (
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+var errCooldownSettingMissing = errors.New("setting missing")
+
 type mockSettingRepo struct {
 	mu            sync.Mutex
 	data          map[string]string
 	getValueErr   error
 	getValueCalls int
 }
+
+// 设置替身提供单键读写，运行配置缓存使用生产实现。
+type cooldownSettingsStore struct{ data map[string]string }
+
+// ollamaSettingsStore 保存配置测试使用的键值。
+type ollamaSettingsStore struct{ values map[string]string }
 
 func newMockSettingRepo() *mockSettingRepo {
 	return &mockSettingRepo{data: make(map[string]string)}
@@ -92,11 +100,6 @@ func (m *mockSettingRepo) Delete(_ context.Context, key string) error {
 	return nil
 }
 
-// 设置替身提供单键读写，运行配置缓存使用生产实现。
-type cooldownSettingsStore struct{ data map[string]string }
-
-var errCooldownSettingMissing = errors.New("setting missing")
-
 func newCooldownSettingsStore() *cooldownSettingsStore {
 	return &cooldownSettingsStore{data: map[string]string{}}
 }
@@ -160,9 +163,6 @@ func TestOpenAIImagesOAuthUnavailableCooldownSettingsRejectsOverflowingValue(t *
 		require.Equal(t, OpenAIImagesOAuthUnavailableDefaultCooldownMinutes, settings.CooldownMinutes)
 	}
 }
-
-// ollamaSettingsStore 保存配置测试使用的键值。
-type ollamaSettingsStore struct{ values map[string]string }
 
 func (s *ollamaSettingsStore) GetValue(_ context.Context, key string) (string, error) {
 	return s.values[key], nil

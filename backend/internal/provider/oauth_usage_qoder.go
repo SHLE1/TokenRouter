@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+const (
+	QoderUsageQuotaSnapshotExtraKey  = "qoder_quota_snapshot"
+	QoderUsageQuotaUpdatedAtExtraKey = "qoder_quota_updated_at"
+)
+
 // qoderUsageFlightResult 让同 key 的等待者核对本轮身份，不共享可变结果。
 type qoderUsageFlightResult struct {
 	Usage    *UsageInfo
@@ -19,11 +24,6 @@ type QoderUsageOptions struct {
 	Degrade func(error, *Record, time.Time) *UsageInfo
 	Enrich  func(*UsageInfo, *Record)
 }
-
-const (
-	QoderUsageQuotaSnapshotExtraKey  = "qoder_quota_snapshot"
-	QoderUsageQuotaUpdatedAtExtraKey = "qoder_quota_updated_at"
-)
 
 func (s *OAuthUsageService) GetQoderUsage(ctx context.Context, provider *Record, force bool) (*UsageInfo, error) {
 	now := s.options.Now()

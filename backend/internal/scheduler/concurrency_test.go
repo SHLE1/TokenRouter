@@ -12,6 +12,67 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	_ ConcurrencyCache          = (*stubConcurrencyCacheForTest)(nil)
+	_ OpenAIWSIngressLeaseCache = (*ingressLeaseCacheForTest)(nil)
+)
+
+type slotCleanupCache struct {
+	ConcurrencyCache
+	calls atomic.Int64
+}
+
+// stubConcurrencyCacheForTest 用于并发服务单元测试的缓存桩
+type stubConcurrencyCacheForTest struct {
+	acquireResult        bool
+	acquireErr           error
+	releaseErr           error
+	concurrency          int
+	concurrencyErr       error
+	waitAllowed          bool
+	waitErr              error
+	waitCount            int
+	waitCountErr         error
+	loadBatch            map[int64]*ProviderLoadInfo
+	loadBatchErr         error
+	usersLoadBatch       map[int64]*UserLoadInfo
+	usersLoadErr         error
+	cleanupErr           error
+	apiKeyTrackErr       error
+	apiKeyReleaseErr     error
+	apiKeyConcurrency    map[int64]int
+	apiKeyConcurrencyErr error
+
+	// 记录调用
+	releasedProviderIDs      []int64
+	releasedRequestIDs       []string
+	loadBatchCalls           atomic.Int64
+	trackedAPIKeyIDs         []int64
+	trackedAPIKeyRequestIDs  []string
+	releasedAPIKeyIDs        []int64
+	releasedAPIKeyRequestIDs []string
+}
+
+type ingressLeaseCacheForTest struct {
+	stubConcurrencyCacheForTest
+	acquireIngressResult bool
+	acquireIngressErr    error
+	acquireIngressFn     func(context.Context, int64, int, string) (bool, error)
+	refreshIngressResult bool
+	refreshIngressErr    error
+	refreshIngressFn     func(context.Context, int64, string) (bool, error)
+	releaseIngressErr    error
+	releaseIngressFn     func(context.Context, int64, string) error
+	acquireIngressCalls  int
+	refreshIngressCalls  int
+	releaseIngressCalls  int
+}
+
+type trackingConcurrencyCache struct {
+	stubConcurrencyCacheForTest
+	cleanupPrefix string
+}
+
 func TestStartSlotCleanupWorker_UsesCacheWideCleanupWithoutProviderRepo(t *testing.T) {
 	cache := &slotCleanupCache{}
 	svc := NewConcurrencyService(cache)
@@ -653,60 +714,9 @@ func TestUnlimitedSlotPreservesCallerCancellation(t *testing.T) {
 	}
 }
 
-type slotCleanupCache struct {
-	ConcurrencyCache
-	calls atomic.Int64
-}
-
 func (c *slotCleanupCache) CleanupExpiredProviderSlotKeys(context.Context) error {
 	c.calls.Add(1)
 	return nil
-}
-
-// stubConcurrencyCacheForTest 用于并发服务单元测试的缓存桩
-type stubConcurrencyCacheForTest struct {
-	acquireResult        bool
-	acquireErr           error
-	releaseErr           error
-	concurrency          int
-	concurrencyErr       error
-	waitAllowed          bool
-	waitErr              error
-	waitCount            int
-	waitCountErr         error
-	loadBatch            map[int64]*ProviderLoadInfo
-	loadBatchErr         error
-	usersLoadBatch       map[int64]*UserLoadInfo
-	usersLoadErr         error
-	cleanupErr           error
-	apiKeyTrackErr       error
-	apiKeyReleaseErr     error
-	apiKeyConcurrency    map[int64]int
-	apiKeyConcurrencyErr error
-
-	// 记录调用
-	releasedProviderIDs      []int64
-	releasedRequestIDs       []string
-	loadBatchCalls           atomic.Int64
-	trackedAPIKeyIDs         []int64
-	trackedAPIKeyRequestIDs  []string
-	releasedAPIKeyIDs        []int64
-	releasedAPIKeyRequestIDs []string
-}
-
-type ingressLeaseCacheForTest struct {
-	stubConcurrencyCacheForTest
-	acquireIngressResult bool
-	acquireIngressErr    error
-	acquireIngressFn     func(context.Context, int64, int, string) (bool, error)
-	refreshIngressResult bool
-	refreshIngressErr    error
-	refreshIngressFn     func(context.Context, int64, string) (bool, error)
-	releaseIngressErr    error
-	releaseIngressFn     func(context.Context, int64, string) error
-	acquireIngressCalls  int
-	refreshIngressCalls  int
-	releaseIngressCalls  int
 }
 
 func (c *ingressLeaseCacheForTest) AcquireOpenAIWSIngressLease(ctx context.Context, apiKeyID int64, maxConnections int, leaseID string) (bool, error) {
@@ -732,11 +742,6 @@ func (c *ingressLeaseCacheForTest) ReleaseOpenAIWSIngressLease(ctx context.Conte
 	}
 	return c.releaseIngressErr
 }
-
-var (
-	_ ConcurrencyCache          = (*stubConcurrencyCacheForTest)(nil)
-	_ OpenAIWSIngressLeaseCache = (*ingressLeaseCacheForTest)(nil)
-)
 
 func (c *stubConcurrencyCacheForTest) AcquireProviderSlot(_ context.Context, _ int64, _ int, _ string) (bool, error) {
 	return c.acquireResult, c.acquireErr
@@ -837,11 +842,6 @@ func (c *stubConcurrencyCacheForTest) CleanupExpiredProviderSlotKeys(_ context.C
 
 func (c *stubConcurrencyCacheForTest) CleanupStaleProcessSlots(_ context.Context, _ string) error {
 	return c.cleanupErr
-}
-
-type trackingConcurrencyCache struct {
-	stubConcurrencyCacheForTest
-	cleanupPrefix string
 }
 
 func (c *trackingConcurrencyCache) CleanupStaleProcessSlots(_ context.Context, prefix string) error {

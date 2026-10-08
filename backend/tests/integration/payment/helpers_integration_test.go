@@ -19,6 +19,11 @@ import (
 	paymentadapter "github.com/TokenFlux/TokenRouter/internal/payment/provider"
 )
 
+type refundBalanceParticipant struct {
+	payment.RefundRights
+	balances *billingpostgres.BalanceStore
+}
+
 // assertRefundPostgresState 从事务外读取余额、订单状态和审计记录。
 func assertRefundPostgresState(t *testing.T, ctx context.Context, client *dbent.Client, userID, orderID int64, balance float64, status string, audits int) {
 	t.Helper()
@@ -41,11 +46,6 @@ func testEntClient(t *testing.T) *dbent.Client {
 		require.NoError(t, err)
 	})
 	return integrationEntClient
-}
-
-type refundBalanceParticipant struct {
-	payment.RefundRights
-	balances *billingpostgres.BalanceStore
 }
 
 func (p refundBalanceParticipant) DeductBalance(ctx context.Context, id int64, amount float64) (float64, error) {

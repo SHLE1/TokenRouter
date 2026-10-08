@@ -10,8 +10,6 @@ import (
 // CRSHandler 只解析管理请求，六类同步及逐条结果由提供商用例拥有。
 type CRSHandler struct{ core *provider.CRSSync }
 
-func NewCRSHandler(core *provider.CRSSync) *CRSHandler { return &CRSHandler{core: core} }
-
 type SyncFromCRSRequest struct {
 	BaseURL             string   `json:"base_url" binding:"required"`
 	Username            string   `json:"username" binding:"required"`
@@ -24,6 +22,8 @@ type PreviewFromCRSRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
+
+func NewCRSHandler(core *provider.CRSSync) *CRSHandler { return &CRSHandler{core: core} }
 
 // SyncFromCRS 执行管理员同步。
 // POST /api/v1/admin/providers/sync/crs

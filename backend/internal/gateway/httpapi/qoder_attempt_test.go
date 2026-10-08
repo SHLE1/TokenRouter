@@ -30,6 +30,58 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+const (
+	qoderCachedUsageSSEForTest = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":66637,\\\"completion_tokens\\\":6,\\\"total_tokens\\\":66643,\\\"prompt_tokens_details\\\":{\\\"cached_tokens\\\":66612,\\\"cacheable_tokens\\\":19},\\\"completion_tokens_details\\\":{\\\"reasoning_tokens\\\":0}}}\"}\n\n"
+
+	qoderXMLToolCallFixture = `<tool_call>Read<arg_value><arg_key>file_path</arg_key><arg_value>/workspace/campus-navigation/README.md</arg_value></tool_call>`
+
+	qoderJSONShellToolCallFixture = `<tool_call>{"name":"shell","arguments":{"command":"pwd","description":"Print working directory"}}</tool_call>`
+
+	qoderDSMLToolCallFixture = `<｜｜DSML｜｜tool_calls>
+<｜｜DSML｜｜invoke name="Bash">
+<｜｜DSML｜｜parameter name="command" string="true">ls -la</｜｜DSML｜｜parameter>
+<｜｜DSML｜｜parameter name="description" string="true">List root files</｜｜DSML｜｜parameter>
+</｜｜DSML｜｜invoke>
+</｜｜DSML｜｜tool_calls>`
+)
+
+type qoderContextClientFixture struct {
+	request func(context.Context) (*http.Response, error)
+}
+
+type qoderForwardTestHeader struct {
+	key   string
+	value string
+}
+
+type blockingQoderClientStub struct {
+	t           *testing.T
+	mu          sync.Mutex
+	cond        *sync.Cond
+	Bodies      [][]byte
+	Headers     map[string]string
+	firstWriter *io.PipeWriter
+	firstDone   bool
+	nextError   bool
+}
+
+type qoderTrackingReadCloser struct {
+	*strings.Reader
+	closed bool
+}
+
+type qoderAnthropicStreamEventForTest struct {
+	Event string
+	Data  map[string]any
+}
+
+// qoderFailingHTTPWriter 模拟同步写失败，验证客户端断开后仍能收集尾部用量。
+type qoderFailingHTTPWriter struct {
+	gin.ResponseWriter
+	failAfter int
+	writes    int
+}
+
 // assertQoderContextCapabilityForTest 同时校验顶层上限和可选档位的两个运行时字段。
 func assertQoderContextCapabilityForTest(t *testing.T, payload map[string]any, wantTokens int, wantRuntime bool) {
 	t.Helper()
@@ -59,10 +111,6 @@ func requireQoderPayloadMapForTest(t *testing.T, value any, path string) map[str
 	result, ok := value.(map[string]any)
 	require.True(t, ok, "%s 应为 JSON 对象", path)
 	return result
-}
-
-type qoderContextClientFixture struct {
-	request func(context.Context) (*http.Response, error)
 }
 
 func (c qoderContextClientFixture) StreamRequestContext(ctx context.Context, _ *qoder.SessionContext, _ string, _ []byte, _ map[string]string) (*http.Response, error) {
@@ -115,7 +163,7 @@ func TestQoderForwardPartialResult(t *testing.T) {
 	client.Body = qoderWrappedSSELineForTest(t, map[string]any{"choices": []any{map[string]any{"delta": map[string]any{"content": "served"}}}}) + qoderWrappedSSELineForTest(t, map[string]any{"usage": map[string]any{"prompt_tokens": 12, "completion_tokens": 3}}) + qoderWrappedErrorSSELineForTest(t, 502, map[string]any{"code": "500", "message": "fixture failure"})
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", nil)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
 	result, err := ForwardQoderAttempt(c.Request.Context(), c, s.Runtime, a, []byte(`{"model":"auto","stream":true,"messages":[{"role":"user","content":"hi"}]}`), protocolcore.ProtocolOpenAIChatCompletions)
 	if err == nil || !strings.Contains(rec.Body.String(), "served") {
 		t.Fatalf("fixture did not reach post-output failure: %v", err)
@@ -134,14 +182,12 @@ func TestQoderCanceledBeforeForward(t *testing.T) {
 	cancel()
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", nil).WithContext(ctx)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil).WithContext(ctx)
 	_, err := ForwardQoderAttempt(ctx, c, s.Runtime, a, []byte(`{"model":"auto","stream":true,"messages":[{"role":"user","content":"hi"}]}`), protocolcore.ProtocolOpenAIChatCompletions)
 	if len(client.Requests) != 0 || !errors.Is(err, context.Canceled) {
 		t.Fatalf("already canceled request starts %d upstream inference(s); err=%v", len(client.Requests), err)
 	}
 }
-
-const qoderCachedUsageSSEForTest = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":66637,\\\"completion_tokens\\\":6,\\\"total_tokens\\\":66643,\\\"prompt_tokens_details\\\":{\\\"cached_tokens\\\":66612,\\\"cacheable_tokens\\\":19},\\\"completion_tokens_details\\\":{\\\"reasoning_tokens\\\":0}}}\"}\n\n"
 
 func TestQoderGatewayAllowsExplicitPreviewCompatibilityMapping(t *testing.T) {
 	rec := httptest.NewRecorder()
@@ -1775,11 +1821,6 @@ func qoderPayloadMessageTextForTest(msg map[string]any) string {
 	return ""
 }
 
-type qoderForwardTestHeader struct {
-	key   string
-	value string
-}
-
 func qoderHeader(key, value string) qoderForwardTestHeader {
 	return qoderForwardTestHeader{key: key, value: value}
 }
@@ -1883,17 +1924,6 @@ func qoderPayloadAtForTest(t *testing.T, client interface{ BodyAt(int) []byte },
 	var payload map[string]any
 	require.NoError(t, json.Unmarshal(client.BodyAt(index), &payload))
 	return payload
-}
-
-type blockingQoderClientStub struct {
-	t           *testing.T
-	mu          sync.Mutex
-	cond        *sync.Cond
-	Bodies      [][]byte
-	Headers     map[string]string
-	firstWriter *io.PipeWriter
-	firstDone   bool
-	nextError   bool
 }
 
 func newBlockingQoderClientStub(t *testing.T) *blockingQoderClientStub {
@@ -2117,22 +2147,6 @@ func TestQoderPartialUsageOnError(t *testing.T) {
 			}
 		})
 	}
-}
-
-const qoderXMLToolCallFixture = `<tool_call>Read<arg_value><arg_key>file_path</arg_key><arg_value>/workspace/campus-navigation/README.md</arg_value></tool_call>`
-
-const qoderJSONShellToolCallFixture = `<tool_call>{"name":"shell","arguments":{"command":"pwd","description":"Print working directory"}}</tool_call>`
-
-const qoderDSMLToolCallFixture = `<｜｜DSML｜｜tool_calls>
-<｜｜DSML｜｜invoke name="Bash">
-<｜｜DSML｜｜parameter name="command" string="true">ls -la</｜｜DSML｜｜parameter>
-<｜｜DSML｜｜parameter name="description" string="true">List root files</｜｜DSML｜｜parameter>
-</｜｜DSML｜｜invoke>
-</｜｜DSML｜｜tool_calls>`
-
-type qoderTrackingReadCloser struct {
-	*strings.Reader
-	closed bool
 }
 
 func (r *qoderTrackingReadCloser) Close() error {
@@ -3683,11 +3697,6 @@ func qoderResponsesCompletedEventForTest(t *testing.T, body string) gjson.Result
 	return gjson.Result{}
 }
 
-type qoderAnthropicStreamEventForTest struct {
-	Event string
-	Data  map[string]any
-}
-
 func qoderAnthropicStreamEventsForTest(t *testing.T, stream string) []qoderAnthropicStreamEventForTest {
 	t.Helper()
 	events := make([]qoderAnthropicStreamEventForTest, 0)
@@ -3711,13 +3720,6 @@ func qoderAnthropicStreamEventsForTest(t *testing.T, stream string) []qoderAnthr
 		}
 	}
 	return events
-}
-
-// qoderFailingHTTPWriter 模拟同步写失败，验证客户端断开后仍能收集尾部用量。
-type qoderFailingHTTPWriter struct {
-	gin.ResponseWriter
-	failAfter int
-	writes    int
 }
 
 func (w *qoderFailingHTTPWriter) Write(p []byte) (int, error) {

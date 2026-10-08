@@ -20,6 +20,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type qoderValidationHTTPUpstreamStub struct {
+	proxyURL            string
+	providerID          int64
+	providerConcurrency int
+}
+
+type qoderValidationStore struct {
+	providercore.AdminStore
+	providers map[int64]*providercore.Record
+}
+
 func TestValidateQoderCosyCredentialsAcceptsDirectToken(t *testing.T) {
 	validator := &qoderCredentialValidator{}
 	provider := &providercore.Record{
@@ -366,12 +377,6 @@ func TestValidateQoderCosyCredentialsPATUsesProviderDoer(t *testing.T) {
 	require.Equal(t, 5, upstream.providerConcurrency)
 }
 
-type qoderValidationHTTPUpstreamStub struct {
-	proxyURL            string
-	providerID          int64
-	providerConcurrency int
-}
-
 func (s *qoderValidationHTTPUpstreamStub) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
 	return s.DoWithTLS(req, proxyURL, providerID, providerConcurrency, nil)
 }
@@ -392,11 +397,6 @@ func (s *qoderValidationHTTPUpstreamStub) DoWithTLS(req *http.Request, proxyURL 
 		}`)),
 		Request: req,
 	}, nil
-}
-
-type qoderValidationStore struct {
-	providercore.AdminStore
-	providers map[int64]*providercore.Record
 }
 
 func (s *qoderValidationStore) Create(_ context.Context, value *providercore.Record) error {

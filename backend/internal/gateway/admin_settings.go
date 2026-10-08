@@ -11,6 +11,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+// 网关综合设置使用以下持久化键。
+const (
+	SettingKeyAntigravityUserAgentVersion      = "antigravity_user_agent_version"
+	SettingKeyBackendModeEnabled               = "backend_mode_enabled"
+	SettingKeyEnableIdentityPatch              = "enable_identity_patch"
+	SettingKeyGrokDefaultBaseURLMode           = "grok_default_base_url_mode"
+	SettingKeyGrokDefaultTextModel             = "grok_default_text_model"
+	SettingKeyIdentityPatchPrompt              = "identity_patch_prompt"
+	SettingKeyOpenAIAllowClaudeCodeCodexPlugin = "openai_allow_claude_code_codex_plugin"
+	SettingKeyOpenAICodexUserAgent             = "openai_codex_user_agent"
+	SettingKeyUserPromptReplacementConfig      = promptpolicy.SettingKeyUserPromptReplacementConfig
+)
+
 // AdminSettings 仅包含入站与转发配置；Fast 使用已有的独立策略准备器。
 type AdminSettings struct {
 	AntigravityUserAgentVersion            string                                    `json:"antigravity_user_agent_version"`
@@ -42,19 +55,6 @@ type AdminSettingsRules struct {
 	NormalizeUserAgentVersion  func(string) string
 	ValidateClaudePromptBlocks func(string) error
 }
-
-// 网关综合设置使用以下持久化键。
-const (
-	SettingKeyAntigravityUserAgentVersion      = "antigravity_user_agent_version"
-	SettingKeyBackendModeEnabled               = "backend_mode_enabled"
-	SettingKeyEnableIdentityPatch              = "enable_identity_patch"
-	SettingKeyGrokDefaultBaseURLMode           = "grok_default_base_url_mode"
-	SettingKeyGrokDefaultTextModel             = "grok_default_text_model"
-	SettingKeyIdentityPatchPrompt              = "identity_patch_prompt"
-	SettingKeyOpenAIAllowClaudeCodeCodexPlugin = "openai_allow_claude_code_codex_plugin"
-	SettingKeyOpenAICodexUserAgent             = "openai_codex_user_agent"
-	SettingKeyUserPromptReplacementConfig      = promptpolicy.SettingKeyUserPromptReplacementConfig
-)
 
 // PrepareAdminSettings 规范化管理配置并编码为待写入的键值。
 func PrepareAdminSettings(settings *AdminSettings, rules AdminSettingsRules) (map[string]string, error) {

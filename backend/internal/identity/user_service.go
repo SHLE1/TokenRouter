@@ -31,11 +31,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-// IsValidUserAPIKeyLimit 判断用户 API Key 数量上限能否安全写入数据库。
-func IsValidUserAPIKeyLimit(limit int) bool {
-	return limit >= 0 && limit <= MaxUserAPIKeyLimit
-}
-
 const (
 	ProfileMaxNotifyEmails      = 3 // Maximum number of notification emails per user
 	ProfileMaxInlineAvatarBytes = 100 * 1024
@@ -48,17 +43,48 @@ const (
 	ProfileDefaultUserIdentityRedirect = "/settings/profile"
 	ProfileUserLastActiveMinTouch      = 10 * time.Minute
 	ProfileUserLastActiveFailBackoff   = 30 * time.Second
+
+	ProfileUserIdentityNoteEmailManagedByBinding   = "profile.authBindings.notes.emailManagedByBinding"
+	ProfileUserIdentityNoteCanUnbind               = "profile.authBindings.notes.canUnbind"
+	ProfileUserIdentityNoteBindAnotherBeforeUnbind = "profile.authBindings.notes.bindAnotherBeforeUnbind"
+
+	SettingKeyDingTalkConnectEnabled = "dingtalk_connect_enabled"
+
+	SettingKeyLinuxDoConnectEnabled = "linuxdo_connect_enabled"
+
+	SettingKeyOIDCConnectEnabled = "oidc_connect_enabled"
+
+	SettingKeySiteName = "site_name"
+
+	SettingKeyWeChatConnectEnabled = "wechat_connect_enabled"
+
+	SettingKeyWeChatConnectMPEnabled = "wechat_connect_mp_enabled"
+
+	SettingKeyWeChatConnectMobileEnabled = "wechat_connect_mobile_enabled"
+
+	SettingKeyWeChatConnectMode = "wechat_connect_mode"
+
+	SettingKeyWeChatConnectOpenEnabled = "wechat_connect_open_enabled"
 )
 
 var (
 	ProfileAvatarScaleSteps   = []float64{1, 0.92, 0.84, 0.76, 0.68, 0.6, 0.52, 0.44, 0.36}
 	ProfileAvatarQualitySteps = []int{88, 80, 72, 64, 56, 48, 40, 32}
-)
 
-const (
-	ProfileUserIdentityNoteEmailManagedByBinding   = "profile.authBindings.notes.emailManagedByBinding"
-	ProfileUserIdentityNoteCanUnbind               = "profile.authBindings.notes.canUnbind"
-	ProfileUserIdentityNoteBindAnotherBeforeUnbind = "profile.authBindings.notes.bindAnotherBeforeUnbind"
+	ErrBalanceNegative             = billing.ErrBalanceNegative
+	ErrInsufficientPerms           = infraerrors.Forbidden("INSUFFICIENT_PERMISSIONS", "insufficient permissions")
+	ErrNotifyCodeUserRateLimit     = infraerrors.TooManyRequests("NOTIFY_CODE_USER_RATE_LIMIT", "too many verification codes requested, please try again later")
+	ErrAvatarInvalid               = infraerrors.BadRequest("AVATAR_INVALID", "avatar must be a valid image data URL or http(s) URL")
+	ErrAvatarTooLarge              = infraerrors.BadRequest("AVATAR_TOO_LARGE", "avatar image must be 100KB or smaller")
+	ErrAvatarNotImage              = infraerrors.BadRequest("AVATAR_NOT_IMAGE", "avatar content must be an image")
+	ErrProfileEmailChangeForbidden = infraerrors.BadRequest("EMAIL_PROFILE_UPDATE_FORBIDDEN", "email must be changed through verified email binding")
+	ErrIdentityProviderInvalid     = infraerrors.BadRequest("IDENTITY_PROVIDER_INVALID", "identity provider is invalid")
+	ErrIdentityRedirectInvalid     = infraerrors.BadRequest("IDENTITY_REDIRECT_INVALID", "identity redirect path is invalid")
+	ErrUserAPIKeyLimitInvalid      = infraerrors.BadRequest("INVALID_API_KEY_LIMIT", fmt.Sprintf("api key limit must be between 0 and %d", MaxUserAPIKeyLimit))
+	ErrIdentityUnbindLastMethod    = infraerrors.Conflict(
+		"IDENTITY_UNBIND_LAST_METHOD",
+		"bind another sign-in method before unbinding this provider",
+	)
 )
 
 type ProfileUserProfileIdentityTxRunner interface {
@@ -75,6 +101,42 @@ type UserService struct {
 	billingCache         UserBalanceCache
 	lastActiveTouchL1    sync.Map
 	lastActiveTouchSF    singleflight.Group
+}
+
+// ProfileSettings 只提供资料页面需要的动态设置。
+type ProfileSettings interface {
+	GetMultiple(context.Context, []string) (map[string]string, error)
+	GetValue(context.Context, string) (string, error)
+}
+
+type (
+	UserAuthInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
+	UserBalanceCache    interface {
+		InvalidateUserBalance(context.Context, int64) error
+	}
+)
+
+// NotifyVerificationNotice 只表达身份已确认的验证码投递事实。
+type NotifyVerificationNotice struct {
+	UserID                        int64
+	Email, Code, Locale, SiteName string
+}
+
+type NotifyVerificationSender interface {
+	GenerateVerifyCode() (string, error)
+	SendNotifyVerification(context.Context, NotifyVerificationNotice) error
+}
+
+// IsValidUserAPIKeyLimit 判断用户 API Key 数量上限能否安全写入数据库。
+func IsValidUserAPIKeyLimit(limit int) bool {
+	return limit >= 0 && limit <= MaxUserAPIKeyLimit
+}
+
+func NewUserService(users UserRepository, settings ProfileSettings, auth UserAuthInvalidator, balance UserBalanceCache, background func(string, func()) bool, clocks ...func() time.Time) *UserService {
+	if background == nil {
+		background = func(_ string, fn func()) bool { fn(); return true }
+	}
+	return &UserService{operationClock: clockFromOptional(clocks), userRepo: users, settingRepo: settings, authCacheInvalidator: auth, billingCache: balance, runBackground: background}
 }
 
 // GetFirstAdmin 获取首个管理员用户（用于 Admin API Key 认证）
@@ -1154,37 +1216,6 @@ func (s *UserService) ToggleNotifyEmail(ctx context.Context, userID int64, email
 	return s.userRepo.Update(ctx, user, UserUpdateFields{BalanceNotifyExtraEmails: true})
 }
 
-// ProfileSettings 只提供资料页面需要的动态设置。
-type ProfileSettings interface {
-	GetMultiple(context.Context, []string) (map[string]string, error)
-	GetValue(context.Context, string) (string, error)
-}
-
-type (
-	UserAuthInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
-	UserBalanceCache    interface {
-		InvalidateUserBalance(context.Context, int64) error
-	}
-)
-
-// NotifyVerificationNotice 只表达身份已确认的验证码投递事实。
-type NotifyVerificationNotice struct {
-	UserID                        int64
-	Email, Code, Locale, SiteName string
-}
-
-type NotifyVerificationSender interface {
-	GenerateVerifyCode() (string, error)
-	SendNotifyVerification(context.Context, NotifyVerificationNotice) error
-}
-
-func NewUserService(users UserRepository, settings ProfileSettings, auth UserAuthInvalidator, balance UserBalanceCache, background func(string, func()) bool, clocks ...func() time.Time) *UserService {
-	if background == nil {
-		background = func(_ string, fn func()) bool { fn(); return true }
-	}
-	return &UserService{operationClock: clockFromOptional(clocks), userRepo: users, settingRepo: settings, authCacheInvalidator: auth, billingCache: balance, runBackground: background}
-}
-
 func (s *UserService) SendNotifyVerifyEmail(ctx context.Context, sender NotifyVerificationSender, userID int64, email, code, locale string) error {
 	siteName := "TokenRouter"
 	if s.settingRepo != nil {
@@ -1233,38 +1264,3 @@ func ParseWeChatConnectCapabilitySettings(settings map[string]string, enabled bo
 	}
 	return true, false, false
 }
-
-const SettingKeyDingTalkConnectEnabled = "dingtalk_connect_enabled"
-
-const SettingKeyLinuxDoConnectEnabled = "linuxdo_connect_enabled"
-
-const SettingKeyOIDCConnectEnabled = "oidc_connect_enabled"
-
-const SettingKeySiteName = "site_name"
-
-const SettingKeyWeChatConnectEnabled = "wechat_connect_enabled"
-
-const SettingKeyWeChatConnectMPEnabled = "wechat_connect_mp_enabled"
-
-const SettingKeyWeChatConnectMobileEnabled = "wechat_connect_mobile_enabled"
-
-const SettingKeyWeChatConnectMode = "wechat_connect_mode"
-
-const SettingKeyWeChatConnectOpenEnabled = "wechat_connect_open_enabled"
-
-var (
-	ErrBalanceNegative             = billing.ErrBalanceNegative
-	ErrInsufficientPerms           = infraerrors.Forbidden("INSUFFICIENT_PERMISSIONS", "insufficient permissions")
-	ErrNotifyCodeUserRateLimit     = infraerrors.TooManyRequests("NOTIFY_CODE_USER_RATE_LIMIT", "too many verification codes requested, please try again later")
-	ErrAvatarInvalid               = infraerrors.BadRequest("AVATAR_INVALID", "avatar must be a valid image data URL or http(s) URL")
-	ErrAvatarTooLarge              = infraerrors.BadRequest("AVATAR_TOO_LARGE", "avatar image must be 100KB or smaller")
-	ErrAvatarNotImage              = infraerrors.BadRequest("AVATAR_NOT_IMAGE", "avatar content must be an image")
-	ErrProfileEmailChangeForbidden = infraerrors.BadRequest("EMAIL_PROFILE_UPDATE_FORBIDDEN", "email must be changed through verified email binding")
-	ErrIdentityProviderInvalid     = infraerrors.BadRequest("IDENTITY_PROVIDER_INVALID", "identity provider is invalid")
-	ErrIdentityRedirectInvalid     = infraerrors.BadRequest("IDENTITY_REDIRECT_INVALID", "identity redirect path is invalid")
-	ErrUserAPIKeyLimitInvalid      = infraerrors.BadRequest("INVALID_API_KEY_LIMIT", fmt.Sprintf("api key limit must be between 0 and %d", MaxUserAPIKeyLimit))
-	ErrIdentityUnbindLastMethod    = infraerrors.Conflict(
-		"IDENTITY_UNBIND_LAST_METHOD",
-		"bind another sign-in method before unbinding this provider",
-	)
-)

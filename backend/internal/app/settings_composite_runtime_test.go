@@ -38,6 +38,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
+// settingAtomicRepo 分别模拟写入失败和提交后回读失败，检查 HTTP 返回的持久化状态。
+type settingAtomicRepo struct {
+	*settingHandlerRepoStub
+	writes    int
+	failWrite bool
+	failApply bool
+}
+
+type failingAuthSourceSettingsRepoStub struct {
+	values map[string]string
+	err    error
+}
+
+type creativeModelCandidateReaderStub struct {
+	candidates     []creative.CreativeModelCandidate
+	sanitizeGemini bool
+}
+
 func TestSettingsResponsesWSPatchAndNull(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{ws.SettingKey: `{"read_timeout_seconds":45,"max_ingress_connections_per_api_key":5}`})
 	response := doUpdateSettings(t, h, map[string]any{"responses_ws": map[string]any{"read_timeout_seconds": nil, "max_ingress_connections_per_api_key": 0}}, nil)
@@ -115,7 +133,7 @@ func TestSettingsFieldOwnership(t *testing.T) {
 	}
 	input := reflect.TypeFor[settingsdto.UpdateSettingsRequest]()
 	count := 0
-	for i := 0; i < input.NumField(); i++ {
+	for i := range input.NumField() {
 		field := input.Field(i)
 		name := strings.Split(field.Tag.Get("json"), ",")[0]
 		if name == "" || name == "-" {
@@ -135,14 +153,6 @@ func TestSettingsRejectedFastPolicyHasNoWrites(t *testing.T) {
 	rec := doUpdateSettings(t, h, map[string]any{"site_name": "after", "openai_fast_policy_settings": map[string]any{"rules": []map[string]any{{"service_tier": "priority", "action": "bogus", "scope": "all"}}}}, nil)
 	require.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
 	require.Equal(t, "before", repo.values[site.SettingKeySiteName], "后段校验拒绝后不应保存站点名称")
-}
-
-// settingAtomicRepo 分别模拟写入失败和提交后回读失败，检查 HTTP 返回的持久化状态。
-type settingAtomicRepo struct {
-	*settingHandlerRepoStub
-	writes    int
-	failWrite bool
-	failApply bool
 }
 
 func (r *settingAtomicRepo) SetMultiple(ctx context.Context, values map[string]string) error {
@@ -194,11 +204,6 @@ func TestSettingsCombinedWriteAndApplyErrors(t *testing.T) {
 			require.Contains(t, rec.Body.String(), "persisted")
 		})
 	}
-}
-
-type failingAuthSourceSettingsRepoStub struct {
-	values map[string]string
-	err    error
 }
 
 func (s *failingAuthSourceSettingsRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
@@ -1156,11 +1161,6 @@ func TestUpdateSettingsNormalizesGeminiInpaintBeforeSave(t *testing.T) {
 	}, nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.JSONEq(t, `[{"group_id":12,"model":"gemini-3.1-flash-image","operations":["generate"]}]`, repo.values[creative.SettingKeyCreativeModelSettings])
-}
-
-type creativeModelCandidateReaderStub struct {
-	candidates     []creative.CreativeModelCandidate
-	sanitizeGemini bool
 }
 
 func (s *creativeModelCandidateReaderStub) ListCreativeModelCandidates(context.Context) ([]creative.CreativeModelCandidate, error) {

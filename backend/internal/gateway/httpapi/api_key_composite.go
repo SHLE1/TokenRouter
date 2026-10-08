@@ -25,6 +25,13 @@ import (
 
 const CompositeKeyNoGroupContextKey = "composite_key_no_group"
 
+// CompositeModelResponseWriter 将常见协议响应中的内部模型恢复为客户端复合模型。
+type CompositeModelResponseWriter struct {
+	gin.ResponseWriter
+	clientModel string
+	actualModel string
+}
+
 // ResolveCompositeAPIKeyRequest 根据客户端模型选择复合 Key 分组，并改写为去除分组前缀的模型。
 // @project-doc docs/domains/composite_api_keys.md#group_selection
 func ResolveCompositeAPIKeyRequest(c *gin.Context, apiKeyService *apikey.APIKeyService, apiKey *apikey.APIKey) (*apikey.APIKey, error) {
@@ -91,13 +98,6 @@ func SetCompositeModelContext(c *gin.Context, clientModel, actualModel string) {
 		ctx := context.WithValue(c.Request.Context(), telemetry.ClientModel, clientModel)
 		c.Request = c.Request.WithContext(ctx)
 	}
-}
-
-// CompositeModelResponseWriter 将常见协议响应中的内部模型恢复为客户端复合模型。
-type CompositeModelResponseWriter struct {
-	gin.ResponseWriter
-	clientModel string
-	actualModel string
 }
 
 func (w *CompositeModelResponseWriter) Write(data []byte) (int, error) {

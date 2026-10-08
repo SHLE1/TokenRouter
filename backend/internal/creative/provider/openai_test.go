@@ -16,6 +16,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 )
 
+// creativeImageResponseBody 记录生图响应关闭时点，验证下载前已释放连接。
+type creativeImageResponseBody struct {
+	io.Reader
+	closed bool
+}
+
 func TestParseCreativeOpenAIImageOutputs(t *testing.T) {
 	img1 := base64.StdEncoding.EncodeToString([]byte("png-bytes-1"))
 	img2 := base64.StdEncoding.EncodeToString([]byte("png-bytes-2"))
@@ -100,12 +106,6 @@ func TestBuildCreativeOpenAIRequestBody(t *testing.T) {
 	require.Contains(t, string(body), `name="output_format"`)
 	require.NotContains(t, string(body), `name="output_compression"`)
 	require.Contains(t, string(body), `name="background"`)
-}
-
-// creativeImageResponseBody 记录生图响应关闭时点，验证下载前已释放连接。
-type creativeImageResponseBody struct {
-	io.Reader
-	closed bool
 }
 
 func (b *creativeImageResponseBody) Close() error {

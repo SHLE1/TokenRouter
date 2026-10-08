@@ -21,6 +21,18 @@ var (
 	redisNamespaceSeq uint64
 )
 
+type prefixHook struct {
+	prefix string
+}
+
+// IntegrationRedisSuite 提供 Redis 集成测试的上下文和客户端。
+// 嵌入它的测试套件调用 SetupTest 初始化 ctx 和 rdb。
+type IntegrationRedisSuite struct {
+	suite.Suite
+	ctx context.Context
+	rdb *redisclient.Client
+}
+
 func testRedis(t *testing.T) *redisclient.Client {
 	t.Helper()
 
@@ -68,10 +80,6 @@ func sanitizeRedisNamespace(name string) string {
 	name = strings.ReplaceAll(name, "/", "_")
 	name = strings.ReplaceAll(name, " ", "_")
 	return name
-}
-
-type prefixHook struct {
-	prefix string
 }
 
 func (h prefixHook) DialHook(next redisclient.DialHook) redisclient.DialHook { return next }
@@ -149,14 +157,6 @@ func (h prefixHook) prefixCmd(cmd redisclient.Cmder) {
 			}
 		}
 	}
-}
-
-// IntegrationRedisSuite 提供 Redis 集成测试的上下文和客户端。
-// 嵌入它的测试套件调用 SetupTest 初始化 ctx 和 rdb。
-type IntegrationRedisSuite struct {
-	suite.Suite
-	ctx context.Context
-	rdb *redisclient.Client
 }
 
 // SetupTest 为每个测试方法初始化上下文和 Redis 客户端。

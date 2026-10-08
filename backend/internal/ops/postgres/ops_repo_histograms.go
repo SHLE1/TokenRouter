@@ -92,7 +92,7 @@ func latencyHistogramBucketIndexCaseExpr(column string, firstPlaceholder, bounda
 	var sb strings.Builder
 	_, _ = sb.WriteString("CASE\n")
 
-	for index := 0; index < boundaryCount; index++ {
+	for index := range boundaryCount {
 		fmt.Fprintf(&sb, "\tWHEN %s < $%d THEN %d\n", column, firstPlaceholder+index, index)
 	}
 

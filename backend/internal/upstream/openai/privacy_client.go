@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
@@ -12,17 +13,17 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+const (
+	PrivacyModeTrainingOff = "training_off"
+	PrivacyModeFailed      = "training_set_failed"
+	PrivacyModeCFBlocked   = "training_set_cf_blocked"
+)
+
 type (
 	PrivacyClientFactory func(string) (*req.Client, error)
 	ChatGPTAccountInfo   = wire.ChatGPTAccountInfo
 	PrivacyEndpoints     struct{ Settings, Providers, Subscriptions string }
 	PrivacyClient        struct{ Endpoints PrivacyEndpoints }
-)
-
-const (
-	PrivacyModeTrainingOff = "training_off"
-	PrivacyModeFailed      = "training_set_failed"
-	PrivacyModeCFBlocked   = "training_set_cf_blocked"
 )
 
 // DisableOpenAITraining 调用 ChatGPT 设置接口关闭训练数据共享。
@@ -58,7 +59,7 @@ func (p PrivacyClient) DisableOpenAITraining(ctx context.Context, clientFactory 
 		return PrivacyModeFailed
 	}
 
-	if resp.StatusCode == 403 || resp.StatusCode == 503 {
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusServiceUnavailable {
 		body := resp.String()
 		if strings.Contains(body, "cloudflare") || strings.Contains(body, "cf-") || strings.Contains(body, "Just a moment") {
 			slog.Warn("openai_privacy_cf_blocked", "status", resp.StatusCode)

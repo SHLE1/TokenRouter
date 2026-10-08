@@ -34,6 +34,14 @@ type UserErrorRequestList struct {
 	PageSize int                 `json:"page_size"`
 }
 
+// UserErrorRequestDetail 是点击请求列表单行后展示的脱敏详情。
+// 它包含 UserErrorRequest 字段、上游错误正文 error_body 和 upstream_status_code。
+type UserErrorRequestDetail struct {
+	UserErrorRequest
+	ErrorBody          string `json:"error_body"`
+	UpstreamStatusCode *int   `json:"upstream_status_code,omitempty"`
+}
+
 // MapUserErrorCategory 把后端 error_phase + error_type 映射为用户侧粗分类码。
 // 返回稳定的分类码，前端通过 i18n 显示文案。
 func MapUserErrorCategory(phase, errType string) string {
@@ -116,14 +124,6 @@ func ToUserErrorRequest(e *OpsErrorLog) *UserErrorRequest {
 		Stream:          e.Stream,
 		UserAgent:       e.UserAgent,
 	}
-}
-
-// UserErrorRequestDetail 是点击请求列表单行后展示的脱敏详情。
-// 它包含 UserErrorRequest 字段、上游错误正文 error_body 和 upstream_status_code。
-type UserErrorRequestDetail struct {
-	UserErrorRequest
-	ErrorBody          string `json:"error_body"`
-	UpstreamStatusCode *int   `json:"upstream_status_code,omitempty"`
 }
 
 // ToUserErrorRequestDetail 把内部 OpsErrorLogDetail 裁剪为用户安全详情视图。

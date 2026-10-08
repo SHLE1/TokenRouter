@@ -29,6 +29,11 @@ type KeyApiKeyAuthCacheConfig struct {
 	singleflight  bool
 }
 
+type AuthCacheInvalidationSubscriberHealth struct {
+	Connected bool   `json:"connected"`
+	Failures  uint64 `json:"failures"`
+}
+
 func KeyNewAPIKeyAuthCacheConfig(cfg *Options) KeyApiKeyAuthCacheConfig {
 	if cfg == nil {
 		return KeyApiKeyAuthCacheConfig{}
@@ -174,11 +179,6 @@ func (s *APIKeyService) KeyInvalidateLocalAuthCache(cacheKey string) {
 	if s.authNegativeCacheL1.Load() != nil {
 		s.authNegativeCacheL1.Load().Del(cacheKey)
 	}
-}
-
-type AuthCacheInvalidationSubscriberHealth struct {
-	Connected bool   `json:"connected"`
-	Failures  uint64 `json:"failures"`
 }
 
 func (s *APIKeyService) AuthCacheInvalidationSubscriberHealth() AuthCacheInvalidationSubscriberHealth {

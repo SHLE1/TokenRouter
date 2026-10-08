@@ -49,6 +49,63 @@ import (
 	openaicore "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const (
+	// 原大文本完整转发夹具保留相同长度。
+	openAIResponsesInputTextMaxChars = 10000000
+
+	// codexNamespaceRequestBody 模拟 Codex 多智能体请求及带残留 namespace 的普通消息项。
+	codexNamespaceRequestBody = `{
+	"model":"gpt-5.6-terra",
+	"stream":false,
+	"instructions":"test",
+	"tools":[
+		{"type":"namespace","name":"collaboration","description":"Tools for spawning and managing sub-agents.","tools":[
+			{"type":"function","name":"spawn_agent","description":"Call as to=functions.collaboration.spawn_agent","parameters":{"type":"object"}},
+			{"type":"function","name":"wait_agent","parameters":{"type":"object"}}
+		]},
+		{"type":"function","name":"exec","parameters":{"type":"object"}}
+	],
+	"input":[
+		{"type":"function_call","namespace":"collaboration","name":"spawn_agent","call_id":"call_1","arguments":"{}"},
+		{"type":"message","role":"user","namespace":"leftover","content":[{"type":"input_text","text":"hello"}]}
+	]
+}`
+
+	namespaceForwardOKResponse = `{"id":"resp_ns","output":[],"usage":{"input_tokens":1,"output_tokens":1,"input_tokens_details":{"cached_tokens":0}}}`
+)
+
+type blockingOpenAIResponseHeaderUpstream struct {
+	canceled chan struct{}
+	once     sync.Once
+}
+
+type reasoningCacheStub struct {
+	sessiontestkit.StickyCache
+	sets    map[string]string
+	getResp map[string]string
+}
+
+type passthroughErrReadCloser struct {
+	err error
+}
+
+type openAIPassthroughFailoverRepo struct {
+	gatewaytestkit.HealthStoreBase
+	rateLimitCalls []time.Time
+	overloadCalls  []time.Time
+}
+
+// mappingHTTPTransport 将构造好的上游请求发给本机 HTTP 服务。
+type mappingHTTPTransport struct {
+	client   *http.Client
+	endpoint *url.URL
+}
+
+type tlsRouterTestStore struct {
+	egress.TLSFingerprintRouterRepository
+	values []*egress.TLSFingerprintRouter
+}
+
 func TestAdaptiveProtocolRoutesKimiResponsesToNativeResponses(t *testing.T) {
 	body := []byte(`{"model":"k3-256k","input":"hello","reasoning":{"effort":"none"},"store":true,"previous_response_id":"resp_old","stream":false}`)
 	upstream := &auxiliaryHTTPRecorder{err: errors.New("stop after capture")}
@@ -986,11 +1043,6 @@ func openAIFailoverCachedBodyTestProvider(id int64, name string, mapping map[str
 	}
 }
 
-type blockingOpenAIResponseHeaderUpstream struct {
-	canceled chan struct{}
-	once     sync.Once
-}
-
 func (u *blockingOpenAIResponseHeaderUpstream) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
 	select {
 	case <-req.Context().Done():
@@ -1617,12 +1669,6 @@ func forceChatResponsesFallbackProvider() *gatewayprovider.ExecutionProvider {
 		providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModeForceChatCompletions),
 	}
 	return provider
-}
-
-type reasoningCacheStub struct {
-	sessiontestkit.StickyCache
-	sets    map[string]string
-	getResp map[string]string
 }
 
 func (c *reasoningCacheStub) SetReasoningContent(_ context.Context, itemID, content string, _ time.Duration) error {
@@ -3463,10 +3509,6 @@ func TestOpenAIGatewayServiceForward_CodexBridgeSkipsCompactRequests(t *testing.
 	require.NotContains(t, instructions, "image_generation")
 }
 
-type passthroughErrReadCloser struct {
-	err error
-}
-
 func (r passthroughErrReadCloser) Read(_ []byte) (int, error) {
 	if r.err != nil {
 		return 0, r.err
@@ -3712,12 +3754,6 @@ func TestOpenAIGatewayService_OpenAIOAuthHTTPForwardsTLSProfile(t *testing.T) {
 			require.Nil(t, upstream.lastTLSProfile)
 		})
 	}
-}
-
-type openAIPassthroughFailoverRepo struct {
-	gatewaytestkit.HealthStoreBase
-	rateLimitCalls []time.Time
-	overloadCalls  []time.Time
 }
 
 func (r *openAIPassthroughFailoverRepo) SetRateLimited(_ context.Context, _ int64, resetAt time.Time) error {
@@ -5695,9 +5731,6 @@ func TestOpenAIGatewayService_PreservesOversizedToolOutputForUpstream(t *testing
 	require.Equal(t, oversized, gjson.GetBytes(upstream.bodies[0], "input.1.output").String())
 }
 
-// 原大文本完整转发夹具保留相同长度。
-const openAIResponsesInputTextMaxChars = 10000000
-
 func TestOpenAIGatewayServiceForward_NormalizesResponsesLiteToolsForOAuth(t *testing.T) {
 	for _, passthrough := range []bool{false, true} {
 		name := "managed"
@@ -5849,26 +5882,6 @@ func TestOpenAIGatewayServiceForward_DisablesResponsesLiteParallelToolCallsForAP
 		})
 	}
 }
-
-// codexNamespaceRequestBody 模拟 Codex 多智能体请求及带残留 namespace 的普通消息项。
-const codexNamespaceRequestBody = `{
-	"model":"gpt-5.6-terra",
-	"stream":false,
-	"instructions":"test",
-	"tools":[
-		{"type":"namespace","name":"collaboration","description":"Tools for spawning and managing sub-agents.","tools":[
-			{"type":"function","name":"spawn_agent","description":"Call as to=functions.collaboration.spawn_agent","parameters":{"type":"object"}},
-			{"type":"function","name":"wait_agent","parameters":{"type":"object"}}
-		]},
-		{"type":"function","name":"exec","parameters":{"type":"object"}}
-	],
-	"input":[
-		{"type":"function_call","namespace":"collaboration","name":"spawn_agent","call_id":"call_1","arguments":"{}"},
-		{"type":"message","role":"user","namespace":"leftover","content":[{"type":"input_text","text":"hello"}]}
-	]
-}`
-
-const namespaceForwardOKResponse = `{"id":"resp_ns","output":[],"usage":{"input_tokens":1,"output_tokens":1,"input_tokens_details":{"cached_tokens":0}}}`
 
 // TestOpenAIGatewayService_OAuthPreservesCodexNamespaceTools 验证 OAuth Responses 原样保留 namespace 声明和历史工具调用字段。
 func TestOpenAIGatewayService_OAuthPreservesCodexNamespaceTools(t *testing.T) {
@@ -6231,12 +6244,6 @@ func newOpenAIRejectedFieldTestResponse(status int, body string) *http.Response 
 	}
 }
 
-// mappingHTTPTransport 将构造好的上游请求发给本机 HTTP 服务。
-type mappingHTTPTransport struct {
-	client   *http.Client
-	endpoint *url.URL
-}
-
 func (p mappingHTTPTransport) Do(request *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
 	clone := request.Clone(request.Context())
 	target := *clone.URL
@@ -6305,11 +6312,6 @@ func TestOpenAIPassthroughHTTPAppliesExplicitModelMappingOnce(t *testing.T) {
 			})
 		}
 	}
-}
-
-type tlsRouterTestStore struct {
-	egress.TLSFingerprintRouterRepository
-	values []*egress.TLSFingerprintRouter
 }
 
 func (s *tlsRouterTestStore) List(context.Context) ([]*egress.TLSFingerprintRouter, error) {

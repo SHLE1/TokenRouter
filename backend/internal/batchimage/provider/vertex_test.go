@@ -20,6 +20,33 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
+type fakeVertexBatchClient struct {
+	created       *VertexBatchPredictionJob
+	got           *VertexBatchPredictionJob
+	createErr     error
+	getErr        error
+	cancelErr     error
+	createdReq    VertexCreateBatchPredictionJobRequest
+	cancelledName string
+}
+
+type fakeVertexObjectStore struct {
+	uploadURI       string
+	uploadedJSONL   []byte
+	uploadErr       error
+	listed          []string
+	objects         map[string]string
+	listErr         error
+	openErr         error
+	deleteErr       error
+	deletedObjects  []string
+	deletedPrefixes []string
+}
+
+type fakeGeminiTokenCache struct {
+	token string
+}
+
 func TestBatchImageProviderRegistry_ReturnsVertex(t *testing.T) {
 	registry := newBatchProviderRegistryForTest()
 	platform, ok := registry.Get(batchimage.BatchImageProviderVertex)
@@ -322,16 +349,6 @@ func vertexJobWithName(name string) *batchimage.BatchImageJob {
 	return &batchimage.BatchImageJob{ProviderJobName: &name}
 }
 
-type fakeVertexBatchClient struct {
-	created       *VertexBatchPredictionJob
-	got           *VertexBatchPredictionJob
-	createErr     error
-	getErr        error
-	cancelErr     error
-	createdReq    VertexCreateBatchPredictionJobRequest
-	cancelledName string
-}
-
 func (f *fakeVertexBatchClient) CreateBatchPredictionJob(_ context.Context, accessToken string, req VertexCreateBatchPredictionJobRequest) (*VertexBatchPredictionJob, error) {
 	if strings.TrimSpace(accessToken) == "" {
 		return nil, errors.New("missing token")
@@ -363,19 +380,6 @@ func (f *fakeVertexBatchClient) createdPayloadForAssert(t *testing.T) []byte {
 	b, err := json.Marshal(f.createdReq)
 	require.NoError(t, err)
 	return b
-}
-
-type fakeVertexObjectStore struct {
-	uploadURI       string
-	uploadedJSONL   []byte
-	uploadErr       error
-	listed          []string
-	objects         map[string]string
-	listErr         error
-	openErr         error
-	deleteErr       error
-	deletedObjects  []string
-	deletedPrefixes []string
 }
 
 func (f *fakeVertexObjectStore) UploadJSONL(_ context.Context, _ string, uri string, r io.Reader) error {
@@ -412,10 +416,6 @@ func (f *fakeVertexObjectStore) DeleteObject(_ context.Context, _ string, uri st
 func (f *fakeVertexObjectStore) DeletePrefix(_ context.Context, _ string, uri string) error {
 	f.deletedPrefixes = append(f.deletedPrefixes, uri)
 	return f.deleteErr
-}
-
-type fakeGeminiTokenCache struct {
-	token string
 }
 
 func (f *fakeGeminiTokenCache) GetAccessToken(context.Context, string) (string, error) {

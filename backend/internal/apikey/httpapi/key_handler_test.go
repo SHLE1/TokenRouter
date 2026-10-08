@@ -19,6 +19,17 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+type rotationHTTPRepository struct {
+	apiKeyHandlerSecurityRepoStub
+	calls int
+	err   error
+}
+
+type apiKeyHandlerSecurityRepoStub struct {
+	apikey.APIKeyRepository
+	keys map[int64]*apikey.APIKey
+}
+
 func TestValidateAPIKeyCreateRequest(t *testing.T) {
 	t.Parallel()
 
@@ -184,12 +195,6 @@ func TestAPIKeyHandler_GetByID_HidesUnauthorizedKeyExistence(t *testing.T) {
 	}
 }
 
-type rotationHTTPRepository struct {
-	apiKeyHandlerSecurityRepoStub
-	calls int
-	err   error
-}
-
 func (r *rotationHTTPRepository) RotateCredential(_ context.Context, key *apikey.APIKey, _ string) error {
 	r.calls++
 	if r.err != nil {
@@ -197,11 +202,6 @@ func (r *rotationHTTPRepository) RotateCredential(_ context.Context, key *apikey
 	}
 	r.keys[key.ID].Key = key.Key
 	return nil
-}
-
-type apiKeyHandlerSecurityRepoStub struct {
-	apikey.APIKeyRepository
-	keys map[int64]*apikey.APIKey
 }
 
 func (s *apiKeyHandlerSecurityRepoStub) GetByID(ctx context.Context, id int64) (*apikey.APIKey, error) {

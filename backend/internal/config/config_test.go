@@ -97,7 +97,6 @@ func TestLoadAdvancedSchedulerStickyEscapeZeroBoundaries(t *testing.T) {
 	})
 
 	for _, source := range []string{"yaml", "env"} {
-		source := source
 		t.Run(source+" 拒绝显式零 TTFT", func(t *testing.T) {
 			resetViperWithJWTSecret(t)
 			if source == "yaml" {
@@ -212,23 +211,22 @@ func TestForwardedClientIPSettingsConcurrentPublication(t *testing.T) {
 		{TrustForwardedIP: true, Headers: []string{"X-Public-A"}},
 		{TrustForwardedIP: false, Headers: []string{"X-Public-B"}},
 	} {
-		settings := settings
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			<-start
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				cfg.SetForwardedClientIPSettings(settings.TrustForwardedIP, settings.Headers)
 			}
 		}()
 	}
 
-	for i := 0; i < cap(errCh); i++ {
+	for range cap(errCh) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			<-start
-			for j := 0; j < iterations; j++ {
+			for range iterations {
 				snapshot := cfg.ForwardedClientIPSettings()
 				validA := snapshot.TrustForwardedIP && len(snapshot.Headers) == 1 && snapshot.Headers[0] == "X-Public-A"
 				validB := !snapshot.TrustForwardedIP && len(snapshot.Headers) == 1 && snapshot.Headers[0] == "X-Public-B"
@@ -2344,7 +2342,6 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := buildValid(t)
 			tc.mutate(cfg)
@@ -2980,7 +2977,7 @@ func TestValidateWebAuthnConfig(t *testing.T) {
 
 // collectMapstructureKeys 遍历配置结构，返回 viper 填充结构所需的全部点分键。
 func collectMapstructureKeys(t reflect.Type, prefix string, out map[string]string) {
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 		if field.PkgPath != "" {
 			continue // 跳过未导出字段

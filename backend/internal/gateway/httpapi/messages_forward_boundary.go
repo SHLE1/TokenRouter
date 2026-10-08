@@ -20,6 +20,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
+var _ messageforward.HTTPBoundary = (*MessageForwardBoundary)(nil)
+
+// MessageForwardBoundary 独占当前 HTTP 写入和观察，不持有提供商、设置或重试规则。
+type MessageForwardBoundary struct {
+	context *gin.Context
+	filter  *egress.CompiledHeaderFilter
+}
+
 // WriteAnthropicPassthroughHeaders 使用传入的过滤器，缺省时透传 Content-Type 和 x-request-id。
 func WriteAnthropicPassthroughHeaders(dst, src http.Header, filter *egress.CompiledHeaderFilter) {
 	if dst == nil || src == nil {
@@ -35,12 +43,6 @@ func WriteAnthropicPassthroughHeaders(dst, src http.Header, filter *egress.Compi
 	if value := strings.TrimSpace(src.Get("x-request-id")); value != "" {
 		dst.Set("x-request-id", value)
 	}
-}
-
-// MessageForwardBoundary 独占当前 HTTP 写入和观察，不持有提供商、设置或重试规则。
-type MessageForwardBoundary struct {
-	context *gin.Context
-	filter  *egress.CompiledHeaderFilter
 }
 
 func NewMessageForwardBoundary(c *gin.Context, filter *egress.CompiledHeaderFilter) *MessageForwardBoundary {
@@ -176,5 +178,3 @@ func (b *MessageForwardBoundary) WriteHeaders(dst, src http.Header, passthrough 
 	}
 	egressprovider.WriteFilteredHeaders(dst, src, b.filter)
 }
-
-var _ messageforward.HTTPBoundary = (*MessageForwardBoundary)(nil)

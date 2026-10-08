@@ -7,6 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// redeemAuthInvalidatorStub 记录权益变更后认证缓存失效的用户。
+type redeemAuthInvalidatorStub struct{ userIDs []int64 }
+
 func TestRedeemService_InvalidateRedeemCaches_AuthCache(t *testing.T) {
 	invalidator := &redeemAuthInvalidatorStub{}
 	svc := &RedeemService{authCacheInvalidator: invalidator}
@@ -18,9 +21,6 @@ func TestRedeemService_InvalidateRedeemCaches_AuthCache(t *testing.T) {
 
 	require.Equal(t, []int64{11, 11, 11}, invalidator.userIDs)
 }
-
-// redeemAuthInvalidatorStub 记录权益变更后认证缓存失效的用户。
-type redeemAuthInvalidatorStub struct{ userIDs []int64 }
 
 func (s *redeemAuthInvalidatorStub) InvalidateAuthCacheByUserID(_ context.Context, id int64) {
 	s.userIDs = append(s.userIDs, id)

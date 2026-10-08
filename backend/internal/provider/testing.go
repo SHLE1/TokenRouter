@@ -13,6 +13,25 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const (
+	TestRouteClaude TestRoute = iota
+	TestRouteCNAdaptive
+	TestRouteCNResponses
+	TestRouteCNChat
+	TestRouteCNAnthropic
+	TestRouteOpenAI
+	TestRouteGemini
+	TestRouteGrok
+	TestRouteAntigravity
+	TestRouteQoder
+
+	ProviderTestTypeText          = "text"
+	ProviderTestTypeImage         = "image"
+	ProviderTestModeDefault       = "default"
+	ProviderTestModeCompact       = "compact"
+	ProviderTestModeLegacyCompact = "legacy_compact"
+)
+
 // TestEvent represents a SSE event for provider testing
 type TestEvent struct {
 	Type     string `json:"type"`
@@ -25,6 +44,67 @@ type TestEvent struct {
 	Data     any    `json:"data,omitempty"`
 	Success  bool   `json:"success,omitempty"`
 	Error    string `json:"error,omitempty"`
+}
+
+// TestRequest 表达测试意图；Type 为 nil 时保留历史模型名推断，客户端元数据不包含凭据。
+type TestRequest struct {
+	ProviderID            int64
+	Model, Prompt, Mode   string
+	Type                  *string
+	Protocol              string
+	UserAgent, Originator string
+	Automatic             bool
+}
+type TestRoute uint8
+
+type PreparedTestRequest struct {
+	TestRequest
+	TestType     string
+	ExplicitType bool
+	Route        TestRoute
+}
+type TestTargetInfo struct {
+	ProviderSnapshot
+	APIProtocol string
+}
+
+// TestTarget 提供单次测试执行和脱敏的提供商快照。
+type TestTarget interface {
+	Information() TestTargetInfo
+	Execute(context.Context, PreparedTestRequest, TestEventSink) error
+}
+type TestLoader interface {
+	LoadTestTarget(context.Context, TestRequest) (TestTarget, error)
+}
+
+// Begin 的 commit 区分仅准备元数据与立即提交；HTTP Header/Flush 的实现由 Adapter 拥有。
+type TestEventSink interface {
+	Begin(context.Context, bool) error
+	Emit(context.Context, TestEvent) error
+}
+type TestOptions struct {
+	Now        func() time.Time
+	Error      func(string)
+	WriteError func(error)
+}
+type TestService struct {
+	loader  TestLoader
+	options TestOptions
+}
+
+// 首次输出失败立即取消执行上下文，后续写出复用相同错误。
+type testGuardedSink struct {
+	mu     sync.Mutex
+	next   TestEventSink
+	cancel context.CancelFunc
+	err    error
+}
+
+// 后台直接收集事件，通过 JSON 编码处理非法 UTF-8，编码失败的 Data 被丢弃。
+type testResultSink struct {
+	mu    sync.Mutex
+	texts []string
+	err   string
 }
 
 // NormalizeProviderTestType 统一管理端传入的测试类型，空值由调用方按兼容方式处理。
@@ -82,73 +162,6 @@ func NormalizeProviderTestMode(mode string) string {
 	default:
 		return ProviderTestModeDefault
 	}
-}
-
-const (
-	ProviderTestTypeText          = "text"
-	ProviderTestTypeImage         = "image"
-	ProviderTestModeDefault       = "default"
-	ProviderTestModeCompact       = "compact"
-	ProviderTestModeLegacyCompact = "legacy_compact"
-)
-
-// TestRequest 表达测试意图；Type 为 nil 时保留历史模型名推断，客户端元数据不包含凭据。
-type TestRequest struct {
-	ProviderID            int64
-	Model, Prompt, Mode   string
-	Type                  *string
-	Protocol              string
-	UserAgent, Originator string
-	Automatic             bool
-}
-type TestRoute uint8
-
-const (
-	TestRouteClaude TestRoute = iota
-	TestRouteCNAdaptive
-	TestRouteCNResponses
-	TestRouteCNChat
-	TestRouteCNAnthropic
-	TestRouteOpenAI
-	TestRouteGemini
-	TestRouteGrok
-	TestRouteAntigravity
-	TestRouteQoder
-)
-
-type PreparedTestRequest struct {
-	TestRequest
-	TestType     string
-	ExplicitType bool
-	Route        TestRoute
-}
-type TestTargetInfo struct {
-	ProviderSnapshot
-	APIProtocol string
-}
-
-// TestTarget 提供单次测试执行和脱敏的提供商快照。
-type TestTarget interface {
-	Information() TestTargetInfo
-	Execute(context.Context, PreparedTestRequest, TestEventSink) error
-}
-type TestLoader interface {
-	LoadTestTarget(context.Context, TestRequest) (TestTarget, error)
-}
-
-// Begin 的 commit 区分仅准备元数据与立即提交；HTTP Header/Flush 的实现由 Adapter 拥有。
-type TestEventSink interface {
-	Begin(context.Context, bool) error
-	Emit(context.Context, TestEvent) error
-}
-type TestOptions struct {
-	Now        func() time.Time
-	Error      func(string)
-	WriteError func(error)
-}
-type TestService struct {
-	loader  TestLoader
-	options TestOptions
 }
 
 func NewTestService(loader TestLoader, options TestOptions) *TestService {
@@ -260,14 +273,6 @@ func (s *TestService) fail(ctx context.Context, sink TestEventSink, message stri
 	return errors.New(message)
 }
 
-// 首次输出失败立即取消执行上下文，后续写出复用相同错误。
-type testGuardedSink struct {
-	mu     sync.Mutex
-	next   TestEventSink
-	cancel context.CancelFunc
-	err    error
-}
-
 func (s *testGuardedSink) apply(write func() error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -307,13 +312,6 @@ func (s *TestService) RunTestBackgroundWithPromptAndUserAgent(ctx context.Contex
 		}
 	}
 	return &ScheduledTestResult{Status: status, ResponseText: text, ErrorMessage: message, LatencyMs: finished.Sub(started).Milliseconds(), StartedAt: started, FinishedAt: finished}, nil
-}
-
-// 后台直接收集事件，通过 JSON 编码处理非法 UTF-8，编码失败的 Data 被丢弃。
-type testResultSink struct {
-	mu    sync.Mutex
-	texts []string
-	err   string
 }
 
 func (*testResultSink) Begin(context.Context, bool) error { return nil }

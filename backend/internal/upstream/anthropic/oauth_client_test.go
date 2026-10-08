@@ -32,6 +32,8 @@ type requestCapture struct {
 	contentType string
 }
 
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
 func newTestReqClient(rt http.RoundTripper) *req.Client {
 	c := req.C()
 	c.GetClient().Transport = rt
@@ -391,8 +393,6 @@ func (s *ClaudeOAuthServiceSuite) TestRefreshToken() {
 func TestClaudeOAuthServiceSuite(t *testing.T) {
 	suite.Run(t, new(ClaudeOAuthServiceSuite))
 }
-
-type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 

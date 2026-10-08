@@ -12,6 +12,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
+// 凭据测试使用应用的读取和数据转换函数，微信资格由支付模块判断。
+type paymentOAuthSettingsFixture map[string]string
+
 func TestMaybeBuildWeChatOAuthRequiredResponse(t *testing.T) {
 	t.Setenv("PAYMENT_RESUME_SIGNING_KEY", "0123456789abcdef0123456789abcdef")
 
@@ -186,9 +189,6 @@ func newWeChatPaymentOAuthTestService(values map[string]string) *payment.Checkou
 	return newWeChatPaymentCheckout(values,
 		[]byte("0123456789abcdef0123456789abcdef"))
 }
-
-// 凭据测试使用应用的读取和数据转换函数，微信资格由支付模块判断。
-type paymentOAuthSettingsFixture map[string]string
 
 func (s paymentOAuthSettingsFixture) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	values := make(map[string]string, len(keys))

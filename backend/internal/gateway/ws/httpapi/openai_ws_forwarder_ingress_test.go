@@ -63,6 +63,79 @@ type stagedPassthroughConn struct {
 	closeOnce sync.Once
 }
 
+type gatewayTTLSettingRepo struct {
+	data map[string]string
+}
+
+type wsFixtureProviderStore struct {
+	gatewayadapter.ExecutionProviderStore
+	providers []gatewayadapter.ExecutionProvider
+}
+
+type openAIWSLeaseLossAfterReadConn struct {
+	*openAIWSCaptureConn
+	cancel context.CancelCauseFunc
+	once   sync.Once
+}
+
+type openAIWSSingleConnDialer struct {
+	conn openai.WSClientConn
+}
+
+type openAIWSQueueDialer struct {
+	mu        sync.Mutex
+	conns     []openai.WSClientConn
+	dialCount int
+}
+
+type openAIWSPreflightFailConn struct {
+	mu         sync.Mutex
+	events     [][]byte
+	pingFails  bool
+	writeCount int
+	pingCount  int
+}
+
+type openAIWSWriteFailAfterFirstTurnConn struct {
+	mu          sync.Mutex
+	events      [][]byte
+	failOnWrite bool
+}
+
+// openAIWSIngressCapacityShedRepo 接收非容量类错误触发的提供商状态写入。
+type openAIWSIngressCapacityShedRepo struct {
+	wsFixtureProviderStore
+}
+
+type openAIWSRateLimitSignalRepo struct {
+	wsFixtureProviderStore
+	rateLimitCalls []time.Time
+	tempCalls      []time.Time
+	errorCalls     []string
+	updateExtra    []map[string]any
+}
+
+type openAIWS403CounterCacheStub struct {
+	counts []int64
+}
+
+type openAIWSStatusErrorDialer struct {
+	status int
+	header http.Header
+	err    error
+}
+
+// runtimeTestDialer 记录拨号预算，并为后台预热创建独立连接。
+type runtimeTestDialer struct {
+	mu      sync.Mutex
+	conns   []openai.WSClientConn
+	budgets []time.Duration
+}
+
+type stagedPassthroughDialer struct {
+	conn openai.WSClientConn
+}
+
 func (c *stagedPassthroughConn) Send(payload string) {
 	c.frames <- stagedPassthroughFrame{messageType: websocket.MessageText, payload: []byte(payload)}
 }
@@ -122,10 +195,6 @@ func (c *stagedPassthroughConn) WriteFrame(ctx context.Context, _ websocket.Mess
 func (c *stagedPassthroughConn) Close() error {
 	c.closeOnce.Do(func() { close(c.closed) })
 	return nil
-}
-
-type gatewayTTLSettingRepo struct {
-	data map[string]string
 }
 
 func (r *gatewayTTLSettingRepo) Get(context.Context, string) (*settingscore.Setting, error) {
@@ -462,11 +531,6 @@ func newOpenAIWSV2TestConfig() *wsFixtureOptions {
 	return options
 }
 
-type wsFixtureProviderStore struct {
-	gatewayadapter.ExecutionProviderStore
-	providers []gatewayadapter.ExecutionProvider
-}
-
 func (r wsFixtureProviderStore) GetByID(_ context.Context, id int64) (*gatewayadapter.ExecutionProvider, error) {
 	for i := range r.providers {
 		if r.providers[i].Record.ID == id {
@@ -474,12 +538,6 @@ func (r wsFixtureProviderStore) GetByID(_ context.Context, id int64) (*gatewayad
 		}
 	}
 	return nil, errors.New("provider not found")
-}
-
-type openAIWSLeaseLossAfterReadConn struct {
-	*openAIWSCaptureConn
-	cancel context.CancelCauseFunc
-	once   sync.Once
 }
 
 func (c *openAIWSLeaseLossAfterReadConn) ReadMessage(ctx context.Context) ([]byte, error) {
@@ -490,10 +548,6 @@ func (c *openAIWSLeaseLossAfterReadConn) ReadMessage(ctx context.Context) ([]byt
 		})
 	}
 	return message, err
-}
-
-type openAIWSSingleConnDialer struct {
-	conn openai.WSClientConn
 }
 
 func (d *openAIWSSingleConnDialer) Dial(
@@ -4689,12 +4743,6 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 	}
 }
 
-type openAIWSQueueDialer struct {
-	mu        sync.Mutex
-	conns     []openai.WSClientConn
-	dialCount int
-}
-
 func (d *openAIWSQueueDialer) Dial(
 	ctx context.Context,
 	wsURL string,
@@ -4724,14 +4772,6 @@ func (d *openAIWSQueueDialer) DialCount() int {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.dialCount
-}
-
-type openAIWSPreflightFailConn struct {
-	mu         sync.Mutex
-	events     [][]byte
-	pingFails  bool
-	writeCount int
-	pingCount  int
 }
 
 func (c *openAIWSPreflightFailConn) WriteJSON(context.Context, any) error {
@@ -4779,12 +4819,6 @@ func (c *openAIWSPreflightFailConn) PingCount() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.pingCount
-}
-
-type openAIWSWriteFailAfterFirstTurnConn struct {
-	mu          sync.Mutex
-	events      [][]byte
-	failOnWrite bool
 }
 
 func (c *openAIWSWriteFailAfterFirstTurnConn) WriteJSON(context.Context, any) error {
@@ -5355,7 +5389,6 @@ func TestIsOpenAIWSClientDisconnectError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tt.want, gatewayadapter.IsOpenAIWSClientDisconnectError(tt.err))
@@ -5756,7 +5789,6 @@ func TestShouldInferIngressFunctionCallOutputPreviousResponseID(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := openai.ShouldInferIngressFunctionCallOutputPreviousResponseID(
@@ -5844,7 +5876,6 @@ func TestOpenAIWSInputIsPrefixExtended(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := openai.OpenAIWSInputIsPrefixExtended(tt.previous, tt.current)
@@ -6293,7 +6324,6 @@ func TestOpenAIWSRawPayloadHasToolCallOutput(t *testing.T) {
 		"custom_tool_call_output",
 		"mcp_tool_call_output",
 	} {
-		typ := typ
 		t.Run(typ, func(t *testing.T) {
 			t.Parallel()
 			payload := []byte(`{"input":[{"type":"` + typ + `","call_id":"call_1","output":"ok"}]}`)
@@ -6425,11 +6455,6 @@ func requestToJSONString(payload map[string]any) string {
 		return "{}"
 	}
 	return string(b)
-}
-
-// openAIWSIngressCapacityShedRepo 接收非容量类错误触发的提供商状态写入。
-type openAIWSIngressCapacityShedRepo struct {
-	wsFixtureProviderStore
 }
 
 func (r *openAIWSIngressCapacityShedRepo) SetError(context.Context, int64, string) error { return nil }
@@ -6704,18 +6729,6 @@ func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *
 	}
 }
 
-type openAIWSRateLimitSignalRepo struct {
-	wsFixtureProviderStore
-	rateLimitCalls []time.Time
-	tempCalls      []time.Time
-	errorCalls     []string
-	updateExtra    []map[string]any
-}
-
-type openAIWS403CounterCacheStub struct {
-	counts []int64
-}
-
 func (s *openAIWS403CounterCacheStub) IncrementOpenAI403Count(_ context.Context, _ int64, _ int) (int64, error) {
 	if len(s.counts) == 0 {
 		return 1, nil
@@ -6751,12 +6764,6 @@ func (r *openAIWSRateLimitSignalRepo) UpdateExtra(_ context.Context, _ int64, up
 	}
 	r.updateExtra = append(r.updateExtra, copied)
 	return nil
-}
-
-type openAIWSStatusErrorDialer struct {
-	status int
-	header http.Header
-	err    error
 }
 
 func (d *openAIWSStatusErrorDialer) Dial(context.Context, string, http.Header, string, *tlsfingerprint.Profile) (openai.WSClientConn, int, http.Header, error) {
@@ -7058,13 +7065,6 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventForbid
 	}
 }
 
-// runtimeTestDialer 记录拨号预算，并为后台预热创建独立连接。
-type runtimeTestDialer struct {
-	mu      sync.Mutex
-	conns   []openai.WSClientConn
-	budgets []time.Duration
-}
-
 func (d *runtimeTestDialer) Dial(ctx context.Context, _ string, _ http.Header, _ string, _ *tlsfingerprint.Profile) (openai.WSClientConn, int, http.Header, error) {
 	deadline, _ := ctx.Deadline()
 	d.mu.Lock()
@@ -7179,10 +7179,6 @@ func newStagedPassthroughConn() *stagedPassthroughConn {
 		writes: make(chan []byte, 4),
 		closed: make(chan struct{}),
 	}
-}
-
-type stagedPassthroughDialer struct {
-	conn openai.WSClientConn
 }
 
 func (d *stagedPassthroughDialer) Dial(context.Context, string, http.Header, string, *tlsfingerprint.Profile) (openai.WSClientConn, int, http.Header, error) {

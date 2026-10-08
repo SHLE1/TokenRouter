@@ -33,6 +33,9 @@ type KeyStore struct {
 	usageTotals UsageTotalsReader
 }
 
+// UsageTotalsReader 按 Key ID 查询用于排序的用量汇总。
+type UsageTotalsReader func(context.Context, []int64) (map[int64]float64, error)
+
 func NewKeyStore(client *dbent.Client, sqlDB *sql.DB, usage UsageTotalsReader) *KeyStore {
 	return NewKeyStoreWithSQL(client, sqlDB, usage)
 }
@@ -1117,9 +1120,6 @@ func (r *KeyStore) ResetRateLimitWindows(ctx context.Context, id int64) error {
 func (r *KeyStore) GetRateLimitData(ctx context.Context, id int64) (result *keycore.APIKeyRateLimitData, err error) {
 	return billingpostgres.NewKeyUsageStore(r.client, r.sql).GetRateLimitData(ctx, id)
 }
-
-// UsageTotalsReader 按 Key ID 查询用于排序的用量汇总。
-type UsageTotalsReader func(context.Context, []int64) (map[int64]float64, error)
 
 func (r *KeyStore) KeyLoadAPIKeyUsageTotals(ctx context.Context, ids []int64) (map[int64]float64, error) {
 	if r.usageTotals == nil {

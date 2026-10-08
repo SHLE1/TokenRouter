@@ -18,6 +18,11 @@ const (
 	ReasoningEffortOverLimitDowngrade = "downgrade"
 	// ReasoningEffortOverLimitDeny 表示超出上限时拒绝请求。
 	ReasoningEffortOverLimitDeny = "deny"
+
+	// 推理强度映射支持精确、前缀和后缀匹配。
+	ReasoningEffortMatchExact  = "exact"
+	ReasoningEffortMatchPrefix = "prefix"
+	ReasoningEffortMatchSuffix = "suffix"
 )
 
 // ReasoningEffortOverLimitError 表示请求的推理强度超过分组上限且策略要求拒绝。
@@ -25,6 +30,9 @@ type ReasoningEffortOverLimitError struct {
 	Requested string
 	Max       string
 }
+
+// ReasoningEffortMapping 在应用分组上限前，改写请求中的 OpenAI/Codex 推理强度值。
+type ReasoningEffortMapping = accessview.ReasoningEffortMapping
 
 func (e *ReasoningEffortOverLimitError) Error() string {
 	if e == nil {
@@ -372,13 +380,3 @@ func MapReasoningEffort(raw string, mappings []ReasoningEffortMapping, requestMo
 	}
 	return strings.TrimSpace(mapping.To), true
 }
-
-// 推理强度映射支持精确、前缀和后缀匹配。
-const (
-	ReasoningEffortMatchExact  = "exact"
-	ReasoningEffortMatchPrefix = "prefix"
-	ReasoningEffortMatchSuffix = "suffix"
-)
-
-// ReasoningEffortMapping 在应用分组上限前，改写请求中的 OpenAI/Codex 推理强度值。
-type ReasoningEffortMapping = accessview.ReasoningEffortMapping

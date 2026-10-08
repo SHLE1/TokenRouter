@@ -9,6 +9,9 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// benchmarkStringSink 保存模型名与缓存键读取基准的结果。
+var benchmarkStringSink string
+
 func TestOpenAIRequestView_ExtractsRawScalars(t *testing.T) {
 	view := NewOpenAIRequestView([]byte(`{"model":" gpt-5 ","stream":true,"prompt_cache_key":" ses-1 ","previous_response_id":" resp-1 ","service_tier":" fast ","reasoning":{"effort":" medium "}}`))
 
@@ -181,7 +184,7 @@ func BenchmarkOpenAIResponses_LargeInputMeta(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				model, stream, promptCacheKey := OpenAIRequestMetaFromBody(body)
 				benchmarkStringSink = model + promptCacheKey
 				if stream {
@@ -200,7 +203,7 @@ func BenchmarkOpenAIResponses_LargeInputDecodeMap(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				reqBody, err := DecodeOpenAIRequestBody(body)
 				if err != nil {
 					b.Fatalf("解析 OpenAI 请求失败: %v", err)
@@ -219,7 +222,7 @@ func BenchmarkOpenAIResponses_LargeInputRawPatch(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				view := NewOpenAIRequestView(body)
 				view.MarkPatchSet("instructions", "You are a helpful coding assistant.")
 				view.MarkPatchSet("reasoning.effort", "none")
@@ -250,6 +253,3 @@ func buildLargeOpenAIResponsesBody(targetBytes int) []byte {
 	_, _ = builder.WriteString(`],"tools":[{"type":"function","name":"lookup","parameters":{"type":"object","properties":{"query":{"type":"string"}}}}]}`)
 	return []byte(builder.String())
 }
-
-// benchmarkStringSink 保存模型名与缓存键读取基准的结果。
-var benchmarkStringSink string

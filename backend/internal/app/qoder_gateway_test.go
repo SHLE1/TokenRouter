@@ -28,6 +28,26 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type qoderErrorPassthroughRepoStub struct {
+	rules []*errorpolicy.ErrorPassthroughRule
+}
+
+// fixtureClient 模拟供应商网络，测试使用平台转换、网关循环和 Lease 的生产实现。
+type fixtureClient struct {
+	body    string
+	failure error
+	calls   *atomic.Int32
+}
+
+// blockingSink 模拟同步背压，当前帧写入结束后才能写下一帧。
+type blockingSink struct {
+	entered, proceed chan struct{}
+	once             atomic.Bool
+	failure          error
+}
+
+type cancelableQoderClient struct{ entered chan struct{} }
+
 func TestQoderGatewayErrorDetailsAppliesPassthroughRule(t *testing.T) {
 	customMessage := "Use another Qoder provider"
 	responseCode := http.StatusTeapot
@@ -70,10 +90,6 @@ func TestQoderGatewayErrorDetailsAppliesPassthroughRule(t *testing.T) {
 	require.Equal(t, true, skip)
 }
 
-type qoderErrorPassthroughRepoStub struct {
-	rules []*errorpolicy.ErrorPassthroughRule
-}
-
 func (r *qoderErrorPassthroughRepoStub) List(context.Context) ([]*errorpolicy.ErrorPassthroughRule, error) {
 	return r.rules, nil
 }
@@ -94,19 +110,12 @@ func (r *qoderErrorPassthroughRepoStub) Delete(context.Context, int64) error {
 	return nil
 }
 
-// fixtureClient 模拟供应商网络，测试使用平台转换、网关循环和 Lease 的生产实现。
-type fixtureClient struct {
-	body    string
-	failure error
-	calls   *atomic.Int32
-}
-
 func (c fixtureClient) StreamRequestContext(context.Context, *qoder.SessionContext, string, []byte, map[string]string) (*http.Response, error) {
 	c.calls.Add(1)
 	if c.failure != nil {
 		return nil, c.failure
 	}
-	return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(c.body))}, nil
+	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(c.body))}, nil
 }
 
 func TestQoderNativeGatewayAttemptsAndCompletion(t *testing.T) {
@@ -194,13 +203,6 @@ func TestQoderNativeGatewayCompletedFailureNeverRetriesSupplier(t *testing.T) {
 	require.EqualValues(t, 1, calls.Load())
 }
 
-// blockingSink 模拟同步背压，当前帧写入结束后才能写下一帧。
-type blockingSink struct {
-	entered, proceed chan struct{}
-	once             atomic.Bool
-	failure          error
-}
-
 func (s *blockingSink) Begin(upstream.OutputHead) error { return nil }
 
 func (s *blockingSink) Emit(event upstream.OutputEvent) error {
@@ -249,8 +251,6 @@ func TestQoderNativeGatewaySlowSinkAndWriteFailure(t *testing.T) {
 		})
 	}
 }
-
-type cancelableQoderClient struct{ entered chan struct{} }
 
 func (c cancelableQoderClient) StreamRequestContext(ctx context.Context, _ *qoder.SessionContext, _ string, _ []byte, _ map[string]string) (*http.Response, error) {
 	close(c.entered)

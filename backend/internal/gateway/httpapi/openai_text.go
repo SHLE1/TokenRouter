@@ -19,6 +19,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+const (
+	OpenAISelectionSession OpenAISessionInput = iota
+	OpenAIExplicitSession
+	OpenAIPromptCacheSession
+)
+
 // OpenAITextOptions 配置 HTTP 限制和提供商切换上限。
 type OpenAITextOptions struct {
 	MaxBodyBytes             int64
@@ -29,12 +35,6 @@ type OpenAITextOptions struct {
 
 // OpenAISessionInput 分别提供粘性会话、客户端隔离标识和上游缓存键。
 type OpenAISessionInput uint8
-
-const (
-	OpenAISelectionSession OpenAISessionInput = iota
-	OpenAIExplicitSession
-	OpenAIPromptCacheSession
-)
 
 // OpenAITextCall 保存通过 HTTP 准入的请求数据，执行接口同步捕获完成快照。
 type OpenAITextCall struct {

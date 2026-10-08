@@ -28,6 +28,17 @@ type privateOutputSink struct {
 	written  bool
 }
 
+// 请求构造测试提供 Header。调用响应方法时，嵌入的 nil 接口会使测试失败。
+type requestBoundaryFixture struct {
+	HTTPBoundary
+	Request *http.Request
+}
+
+type betaSettingsFixture struct {
+	gateway.RuntimeSettingsStore
+	values map[string]string
+}
+
 func (s *privateOutputSink) Begin(head upstream.OutputHead) error {
 	for name, values := range head.Header {
 		s.recorder.Header()[name] = append([]string(nil), values...)
@@ -115,12 +126,6 @@ func (b *privateHTTPBoundary) ReadResponseBody(reader io.Reader, limit int64, _ 
 	return httpclient.ReadResponseBodyLimited(reader, limit)
 }
 
-// 请求构造测试提供 Header。调用响应方法时，嵌入的 nil 接口会使测试失败。
-type requestBoundaryFixture struct {
-	HTTPBoundary
-	Request *http.Request
-}
-
 func (b *requestBoundaryFixture) Present() bool { return b != nil }
 
 func (b *requestBoundaryFixture) RequestPresent() bool { return b != nil && b.Request != nil }
@@ -130,11 +135,6 @@ func (b *requestBoundaryFixture) RequestHeaders() http.Header {
 		return http.Header{}
 	}
 	return b.Request.Header
-}
-
-type betaSettingsFixture struct {
-	gateway.RuntimeSettingsStore
-	values map[string]string
 }
 
 func (s betaSettingsFixture) GetValue(_ context.Context, key string) (string, error) {

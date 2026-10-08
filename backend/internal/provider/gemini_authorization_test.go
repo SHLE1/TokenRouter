@@ -91,7 +91,6 @@ func TestValidateTierID(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := ValidateTierID(tt.tierID)
@@ -180,7 +179,6 @@ func TestExtractTierIDFromAllowedTiers(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := ExtractTierIDFromAllowedTiers(tt.allowedTiers)
@@ -224,7 +222,6 @@ func TestInferGoogleOneTier(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := InferGoogleOneTier(tt.storageBytes, t.Logf)
@@ -254,7 +251,6 @@ func TestIsNonRetryableGeminiOAuthError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := IsNonRetryableGeminiOAuthError(tt.err)

@@ -14,13 +14,23 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// AntigravityPassthroughErrorMessages 透传给客户端的错误消息白名单（小写）
-// 匹配时使用 strings.Contains，无需完全匹配
-var AntigravityPassthroughErrorMessages = []string{
-	"prompt is too long",
-}
+// AntigravityGemini31ProAgentModel 是 Gemini 3.1 Pro High 的上游路由键。
+const AntigravityGemini31ProAgentModel = "gemini-pro-agent"
 
-var ErrProjectIDRequired = errors.New("this standard-tier Antigravity provider requires project_id")
+var (
+	// AntigravityPassthroughErrorMessages 透传给客户端的错误消息白名单（小写）
+	// 匹配时使用 strings.Contains，无需完全匹配
+	AntigravityPassthroughErrorMessages = []string{
+		"prompt is too long",
+	}
+
+	ErrProjectIDRequired = errors.New("this standard-tier Antigravity provider requires project_id")
+
+	// DefaultAntigravityModelMapping 将公开请求型号转换为平台内部路由键。
+	DefaultAntigravityModelMapping = map[string]string{
+		"gemini-3.1-pro-high": AntigravityGemini31ProAgentModel,
+	}
+)
 
 // PromptTooLongError 表示上游明确返回 prompt too long
 type PromptTooLongError struct {
@@ -262,14 +272,6 @@ func EnableMixedGeminiToolInvocations(body []byte) ([]byte, error) {
 	}
 	toolConfig["includeServerSideToolInvocations"] = true
 	return json.Marshal(request)
-}
-
-// AntigravityGemini31ProAgentModel 是 Gemini 3.1 Pro High 的上游路由键。
-const AntigravityGemini31ProAgentModel = "gemini-pro-agent"
-
-// DefaultAntigravityModelMapping 将公开请求型号转换为平台内部路由键。
-var DefaultAntigravityModelMapping = map[string]string{
-	"gemini-3.1-pro-high": AntigravityGemini31ProAgentModel,
 }
 
 // CleanJSONSchema 将 JSON Schema 转换为 Gemini 支持的格式。

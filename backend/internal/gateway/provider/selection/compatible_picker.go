@@ -32,17 +32,25 @@ type openAIProviderSchedulerMetrics struct {
 	schedulercore.PlatformMetrics
 }
 
-func (m *openAIProviderSchedulerMetrics) recordSwitch() {
-	if m != nil {
-		m.RecordSwitch()
-	}
-}
-
 type compatiblePicker struct {
 	service       *Compatible
 	metrics       openAIProviderSchedulerMetrics
 	stats         *schedulercore.RuntimeStats
 	freeQuotaGate atomic.Pointer[providercore.FreeQuotaGate]
+}
+
+// pickerEngine 包含候选评分、计数和反馈操作。
+type pickerEngine interface {
+	Select(context.Context, schedulercore.PlatformSelectionInput) (*gatewayprovider.SelectionResult, schedulercore.PlatformDecision, error)
+	ReportResult(int64, bool, *int, ...policy.FeedbackConfig)
+	ReportSwitch()
+	SnapshotMetrics() schedulercore.PlatformMetricsSnapshot
+}
+
+func (m *openAIProviderSchedulerMetrics) recordSwitch() {
+	if m != nil {
+		m.RecordSwitch()
+	}
 }
 
 func newDefaultOpenAIProviderScheduler(service *Compatible, stats *schedulercore.RuntimeStats) pickerEngine {
@@ -624,7 +632,6 @@ func (s *Compatible) selectProviderWithSchedulerForRoutingOnce(
 		ExcludedIDs:              excludedIDs,
 	})
 	if selection != nil {
-
 		selection.AdvancedScheduler = true
 		feedback := effectiveSettings.Feedback
 		selection.AdvancedSchedulerFeedback = &feedback
@@ -664,7 +671,6 @@ func (s *Compatible) isOpenAIProviderTransportCompatible(provider *gatewayprovid
 		return false
 	}
 	if requiredTransport == egress.OpenAIUpstreamTransportResponsesWebsocketV2Ingress {
-
 		if provider.View().IsGrok() {
 			return true
 		}
@@ -703,7 +709,6 @@ func (s *Compatible) ReportOpenAIProviderScheduleResult(providerOrID any, model 
 		s.clearOpenAIProviderModelTransientState(providerID, providercore.NormalizeTransientModel(model))
 	}
 	if provider == nil {
-
 		s.reportOpenAIProviderScheduleResult(false, providerID, model, success, firstTokenMs)
 		return healthTripped
 	}
@@ -819,14 +824,6 @@ func (s *compatiblePicker) selectBySessionHash(ctx context.Context, req schedule
 // openAIQuotaHeadroomFactor 旧候选只转换额度观测；评分信号使用提供商模块唯一实现。
 func openAIQuotaHeadroomFactor(value *gatewayprovider.ExecutionProvider, now time.Time) float64 {
 	return providercore.OpenAIQuotaHeadroomFactor(gatewayprovider.ExecutionRecord(value), now)
-}
-
-// pickerEngine 包含候选评分、计数和反馈操作。
-type pickerEngine interface {
-	Select(context.Context, schedulercore.PlatformSelectionInput) (*gatewayprovider.SelectionResult, schedulercore.PlatformDecision, error)
-	ReportResult(int64, bool, *int, ...policy.FeedbackConfig)
-	ReportSwitch()
-	SnapshotMetrics() schedulercore.PlatformMetricsSnapshot
 }
 
 // requestRoutingModel 返回提供商层模型，未提供时使用客户端模型。

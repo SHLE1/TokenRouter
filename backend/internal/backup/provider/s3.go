@@ -29,9 +29,7 @@ const (
 	s3MaxUploadConcurrency = 8
 	s3MaxUploadParts       = 10000
 	s3UploadFailTimeout    = 30 * time.Second
-)
 
-const (
 	backupStreamPartSizeBytes = 16 * 1024 * 1024
 	backupStreamConcurrency   = 1
 )
@@ -43,6 +41,16 @@ type S3BackupStore struct {
 	uploadConcurrency int
 	uploadPartSizeMB  int
 	uploadMode        string
+}
+
+type contextAwareReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+type s3UploadProgressListener struct {
+	uploaded   atomic.Int64
+	onProgress func(uploadedBytes int64)
 }
 
 // NewS3BackupStoreFactory returns a BackupObjectStoreFactory that creates S3-backed stores
@@ -143,11 +151,6 @@ func (s *S3BackupStore) uploadBackupSpooledPut(ctx context.Context, key string, 
 		return 0, err
 	}
 	return written, nil
-}
-
-type contextAwareReader struct {
-	ctx    context.Context
-	reader io.Reader
 }
 
 // Read 在每次读取前检查取消信号，避免磁盘暂存阶段忽略任务超时。
@@ -274,11 +277,6 @@ func (s *S3BackupStore) HeadBucket(ctx context.Context) error {
 		return fmt.Errorf("S3 HeadBucket failed: %w", err)
 	}
 	return nil
-}
-
-type s3UploadProgressListener struct {
-	uploaded   atomic.Int64
-	onProgress func(uploadedBytes int64)
 }
 
 func (l *s3UploadProgressListener) OnObjectBytesTransferred(_ context.Context, event *transfermanager.ObjectBytesTransferredEvent) {

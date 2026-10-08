@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/gin-gonic/gin"
 
 	keycore "github.com/TokenFlux/TokenRouter/internal/apikey"
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"github.com/gin-gonic/gin"
 )
 
 type PublicUsageContext struct {
@@ -27,10 +27,6 @@ type (
 )
 type PublicBalanceQuery func(context.Context, int64) (*PublicUserBalance, error)
 
-func (f PublicBalanceQuery) GetByID(ctx context.Context, id int64) (*PublicUserBalance, error) {
-	return f(ctx, id)
-}
-
 type PublicWindowReader interface {
 	GetRateLimitData(context.Context, int64) (*billingcore.APIKeyRateLimitData, error)
 }
@@ -45,6 +41,10 @@ type (
 		calendar       timezone.Calendar
 	}
 )
+
+func (f PublicBalanceQuery) GetByID(ctx context.Context, id int64) (*PublicUserBalance, error) {
+	return f(ctx, id)
+}
 
 func NewPublicUsageHandler(u *usage.UsageService, keys PublicWindowReader, users PublicBalanceReader, settings BalanceUnitReader, request PublicUsageContext, calendar timezone.Calendar) *PublicUsageHandler {
 	return &PublicUsageHandler{usageService: u, apiKeyService: keys, userService: users, settingService: settings, request: request, calendar: calendar}

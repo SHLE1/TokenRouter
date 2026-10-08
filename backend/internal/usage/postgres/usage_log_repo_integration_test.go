@@ -66,8 +66,7 @@ func TestUsageLogRepositoryCreate_BatchPathConcurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(total)
-	for i := 0; i < total; i++ {
-		i := i
+	for i := range total {
 		logs[i] = &usage.UsageLog{
 			UserID:       user.ID,
 			APIKeyID:     apiKey.ID,
@@ -87,7 +86,7 @@ func TestUsageLogRepositoryCreate_BatchPathConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 
-	for i := 0; i < total; i++ {
+	for i := range total {
 		require.NoError(t, errs[i])
 		require.True(t, results[i])
 		require.NotZero(t, logs[i].ID)
@@ -160,7 +159,7 @@ func TestUsageLogRepositoryFlushCreateBatch_DeduplicatesSameKeyInMemory(t *testi
 	batch := make([]usageLogCreateRequest, 0, total)
 	logs := make([]*usage.UsageLog, 0, total)
 
-	for i := 0; i < total; i++ {
+	for i := range total {
 		log := &usage.UsageLog{
 			UserID:       user.ID,
 			APIKeyID:     apiKey.ID,

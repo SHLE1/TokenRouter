@@ -16,6 +16,17 @@ type backgroundRefreshBlockingPager struct {
 	calls    atomic.Int32
 }
 
+type backgroundRefreshUnusedProvider struct{}
+
+type refreshStartPager struct {
+	calls   atomic.Int32
+	entered chan struct{}
+}
+
+type tokenRefreshTestRefresher struct {
+	err error
+}
+
 func (p *backgroundRefreshBlockingPager) ListOAuthRefreshCandidatePage(ctx context.Context, _ OAuthRefreshPageOptions) (*OAuthRefreshCandidatePage, error) {
 	p.calls.Add(1)
 	p.entered <- struct{}{}
@@ -23,8 +34,6 @@ func (p *backgroundRefreshBlockingPager) ListOAuthRefreshCandidatePage(ctx conte
 	p.released.Add(1)
 	return nil, ctx.Err()
 }
-
-type backgroundRefreshUnusedProvider struct{}
 
 func (backgroundRefreshUnusedProvider) CanRefresh(*Record) bool { return true }
 
@@ -61,11 +70,6 @@ func TestBackgroundRefreshStopsBothEntrypoints(t *testing.T) {
 	require.Equal(t, int32(2), pager.calls.Load())
 }
 
-type refreshStartPager struct {
-	calls   atomic.Int32
-	entered chan struct{}
-}
-
 func (p *refreshStartPager) ListOAuthRefreshCandidatePage(ctx context.Context, _ OAuthRefreshPageOptions) (*OAuthRefreshCandidatePage, error) {
 	p.calls.Add(1)
 	p.entered <- struct{}{}
@@ -91,10 +95,6 @@ func TestTokenRefreshStartIsIdempotent(t *testing.T) {
 	case <-time.After(30 * time.Millisecond):
 	}
 	require.Equal(t, int32(1), p.calls.Load(), "重复启动产生并行扫描")
-}
-
-type tokenRefreshTestRefresher struct {
-	err error
 }
 
 func (r *tokenRefreshTestRefresher) CanRefresh(*Record) bool { return true }

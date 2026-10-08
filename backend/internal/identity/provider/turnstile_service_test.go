@@ -18,6 +18,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
+type TurnstileServiceSuite struct {
+	suite.Suite
+	ctx      context.Context
+	verifier *turnstileVerifier
+	received chan url.Values
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
 func (s *TurnstileServiceSuite) TestVerifyToken_SendsFormAndDecodesJSON() {
 	s.setupTransport(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 保存表单，供测试主 goroutine 检查。
@@ -121,13 +130,6 @@ func TestTurnstileServiceSuite(t *testing.T) {
 	suite.Run(t, new(TurnstileServiceSuite))
 }
 
-type TurnstileServiceSuite struct {
-	suite.Suite
-	ctx      context.Context
-	verifier *turnstileVerifier
-	received chan url.Values
-}
-
 func (s *TurnstileServiceSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.received = make(chan url.Values, 1)
@@ -142,8 +144,6 @@ func (s *TurnstileServiceSuite) setupTransport(handler http.HandlerFunc) {
 		Transport: newInProcessTransport(handler, nil),
 	}
 }
-
-type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 

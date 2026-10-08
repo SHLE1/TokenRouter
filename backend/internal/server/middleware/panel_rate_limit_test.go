@@ -24,6 +24,18 @@ type panelRateLimitStubRepo struct {
 	values map[string]string
 }
 
+// fakePanelAllower 内存计数版限流原语。
+type fakePanelAllower struct {
+	mu     sync.Mutex
+	counts map[string]int64
+	err    error
+}
+
+type panelTestIdentity struct {
+	userID int64
+	role   string
+}
+
 func (r *panelRateLimitStubRepo) Get(_ context.Context, key string) (*settingscore.Setting, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -95,13 +107,6 @@ func (r *panelRateLimitStubRepo) Delete(_ context.Context, key string) error {
 	return nil
 }
 
-// fakePanelAllower 内存计数版限流原语。
-type fakePanelAllower struct {
-	mu     sync.Mutex
-	counts map[string]int64
-	err    error
-}
-
 func (f *fakePanelAllower) Allow(_ context.Context, key string, limit int, window time.Duration) (AllowResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -127,11 +132,6 @@ func newPanelRateLimitTestService(t *testing.T, settingsJSON string) *runtimecon
 		repo.values = map[string]string{"panel_rate_limit_settings": settingsJSON}
 	}
 	return runtimeconfig.NewPanelSettings(repo)
-}
-
-type panelTestIdentity struct {
-	userID int64
-	role   string
 }
 
 func newPanelTestRouter(limiter gin.HandlerFunc, identity *panelTestIdentity) *gin.Engine {
@@ -207,7 +207,7 @@ func TestPanelRateLimiterAdminExemption(t *testing.T) {
 		settingService: newPanelRateLimitTestService(t, `{"enabled":true,"user_rpm":1,"heavy_rpm":1,"exempt_admin":true,"public_ip_rpm":0}`),
 	}
 	admin := newPanelTestRouter(p.Global(), &panelTestIdentity{userID: 9, role: identitycore.RoleAdmin})
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		require.Equal(t, http.StatusOK, performPanelRequest(admin, "127.0.0.1:1000").Code)
 	}
 
@@ -228,7 +228,7 @@ func TestPanelRateLimiterDisabledOrMissingSubject(t *testing.T) {
 		settingService: newPanelRateLimitTestService(t, `{"enabled":false,"user_rpm":1,"heavy_rpm":1,"exempt_admin":true,"public_ip_rpm":1}`),
 	}
 	router := newPanelTestRouter(p.Global(), &panelTestIdentity{userID: 3, role: identitycore.RoleUser})
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		require.Equal(t, http.StatusOK, performPanelRequest(router, "127.0.0.1:1000").Code)
 	}
 
@@ -238,7 +238,7 @@ func TestPanelRateLimiterDisabledOrMissingSubject(t *testing.T) {
 		settingService: newPanelRateLimitTestService(t, `{"enabled":true,"user_rpm":1,"heavy_rpm":1,"exempt_admin":true,"public_ip_rpm":0}`),
 	}
 	anonymous := newPanelTestRouter(p2.Global(), nil)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		require.Equal(t, http.StatusOK, performPanelRequest(anonymous, "127.0.0.1:1000").Code)
 	}
 
@@ -259,12 +259,12 @@ func TestPanelRateLimiterFailOpenOnRedisError(t *testing.T) {
 		settingService: newPanelRateLimitTestService(t, `{"enabled":true,"user_rpm":1,"heavy_rpm":1,"exempt_admin":true,"public_ip_rpm":1}`),
 	}
 	router := newPanelTestRouter(p.Global(), &panelTestIdentity{userID: 5, role: identitycore.RoleUser})
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		require.Equal(t, http.StatusOK, performPanelRequest(router, "127.0.0.1:1000").Code)
 	}
 
 	publicRouter := newPanelTestRouter(p.PublicIP(), nil)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		require.Equal(t, http.StatusOK, performPanelRequest(publicRouter, "203.0.113.9:1000").Code)
 	}
 }
@@ -284,7 +284,7 @@ func TestPanelRateLimiterPublicIP(t *testing.T) {
 	require.Equal(t, http.StatusOK, performPanelRequest(router, "198.51.100.7:1000").Code)
 
 	// 回环/内网地址（反代内部转发地址）：跳过计数，绝不误拦
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		require.Equal(t, http.StatusOK, performPanelRequest(router, "127.0.0.1:1000").Code)
 		require.Equal(t, http.StatusOK, performPanelRequest(router, "10.0.0.8:1000").Code)
 		require.Equal(t, http.StatusOK, performPanelRequest(router, "172.17.0.1:1000").Code)

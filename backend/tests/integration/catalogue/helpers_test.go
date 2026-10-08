@@ -28,6 +28,18 @@ type modelsListProviderRepoStub struct {
 	listAllCalls     atomic.Int64
 }
 
+type catalogueFixture struct {
+	*routing.RequestableCatalogue
+	prices *billing.PriceResolver
+}
+
+type providerStatsSource struct{ pricingConfigs *routing.PricingConfigService }
+
+type cataloguePrices struct {
+	resolver   *billing.PriceResolver
+	calculator *billing.Calculator
+}
+
 func (s *modelsListProviderRepoStub) ListSchedulableByGroupID(_ context.Context, id int64) ([]provider.Record, error) {
 	s.listByGroupCalls.Add(1)
 	if s.err != nil {
@@ -50,11 +62,6 @@ func (s *modelsListProviderRepoStub) ListSchedulable(context.Context) ([]provide
 	out := make([]provider.Record, len(s.all))
 	copy(out, s.all)
 	return out, nil
-}
-
-type catalogueFixture struct {
-	*routing.RequestableCatalogue
-	prices *billing.PriceResolver
 }
 
 // newCatalogueFixture 使用提供商查询、分组策略和价格解析器构造可请求模型目录。
@@ -96,8 +103,6 @@ func newCatalogueFixture(rows catalogueRows, pricingConfigs *routing.PricingConf
 	return &catalogueFixture{RequestableCatalogue: core, prices: prices}
 }
 
-type providerStatsSource struct{ pricingConfigs *routing.PricingConfigService }
-
 func (s providerStatsSource) ProviderStatsGroup(ctx context.Context, id int64) (*billing.ProviderStatsPricingConfig, error) {
 	v, e := s.pricingConfigs.GetPricingConfigForGroup(ctx, id)
 	if e != nil || v == nil {
@@ -116,11 +121,6 @@ func cataloguePriceResolver(pricingConfigs *routing.PricingConfigService, calcul
 	return billing.NewPriceResolver(source, calculator, modelidentity.Identity, func(model string, err error) {
 		slog.Debug("failed to get model pricing from model catalog, using fallback", "model", model, "error", err)
 	}, stats)
-}
-
-type cataloguePrices struct {
-	resolver   *billing.PriceResolver
-	calculator *billing.Calculator
 }
 
 func (p cataloguePrices) Quote(ctx context.Context, request routing.MarketplaceQuoteRequest) pricing.ModelDisplayPricing {

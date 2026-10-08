@@ -10,6 +10,20 @@ import (
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
+// KeyUsageStore 写入 Key 的消费累计和资金窗口。
+type KeyUsageStore struct {
+	client *dbent.Client
+	sql    KeyUsageSQL
+}
+type KeyUsageSQL interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
+
+func NewKeyUsageStore(client *dbent.Client, db KeyUsageSQL) *KeyUsageStore {
+	return &KeyUsageStore{client: client, sql: db}
+}
+
 // IncrementQuotaUsed 使用 Ent 原子递增 quota_used 字段并返回新值
 func (r *KeyUsageStore) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) (float64, error) {
 	updated, err := r.client.APIKey.UpdateOneID(id).
@@ -107,20 +121,6 @@ func (r *KeyUsageStore) GetRateLimitData(ctx context.Context, id int64) (result 
 		return nil, err
 	}
 	return data, rows.Err()
-}
-
-// KeyUsageStore 写入 Key 的消费累计和资金窗口。
-type KeyUsageStore struct {
-	client *dbent.Client
-	sql    KeyUsageSQL
-}
-type KeyUsageSQL interface {
-	ExecContext(context.Context, string, ...any) (sql.Result, error)
-	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-}
-
-func NewKeyUsageStore(client *dbent.Client, db KeyUsageSQL) *KeyUsageStore {
-	return &KeyUsageStore{client: client, sql: db}
 }
 
 // ApplyKeyUsageReset 将消费字段附加到调用方的更新语句。

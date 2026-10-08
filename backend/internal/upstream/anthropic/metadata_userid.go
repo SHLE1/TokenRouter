@@ -11,6 +11,12 @@ import (
 // JSON-formatted metadata.user_id instead of the legacy concatenated string.
 const NewMetadataFormatMinVersion = "2.1.78"
 
+// 此入口转交协议值，解析规则由协议包统一维护。
+type (
+	ParsedUserID = wire.ParsedMetadataUserID
+	jsonUserID   = wire.MetadataUserID
+)
+
 // FormatMetadataUserID builds a metadata.user_id string in the format
 // appropriate for the given CLI version. Components are the rewritten values
 // (not necessarily the originals).
@@ -39,11 +45,5 @@ func IsNewMetadataFormatVersion(version string) bool {
 // ExtractCLIVersion extracts the Claude Code version from a User-Agent string.
 // Returns "" if the UA doesn't match the expected pattern.
 func ExtractCLIVersion(ua string) string { return clientmeta.ExtractClaudeCLIVersion(ua) }
-
-// 此入口转交协议值，解析规则由协议包统一维护。
-type (
-	ParsedUserID = wire.ParsedMetadataUserID
-	jsonUserID   = wire.MetadataUserID
-)
 
 func ParseMetadataUserID(raw string) *ParsedUserID { return wire.ParseMetadataUserID(raw) }

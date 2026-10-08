@@ -18,6 +18,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
+// geminiModelReadTarget 保存本次选中的提供商，供模型资源查询使用。
+type geminiModelReadTarget struct {
+	reader *googleforward.Gemini
+	value  *gatewayprovider.ExecutionProvider
+}
+
 // provideModelsHTTP 构造四个模型目录查询入口。
 func provideModelsHTTP(catalog *catalogprovider.Service, catalogue *routing.RequestableCatalogue, reader *googleforward.Gemini, activity *gatewayRequestActivity, choices *selection.Gemini) *gatewayhttp.ModelsHandler {
 	if catalog == nil {
@@ -55,12 +61,6 @@ func modelsHTTP(catalog modelcatalog.Reader, catalogue *routing.RequestableCatal
 		result.BindRequestActivity(activity.Enter)
 	}
 	return result
-}
-
-// geminiModelReadTarget 保存本次选中的提供商，供模型资源查询使用。
-type geminiModelReadTarget struct {
-	reader *googleforward.Gemini
-	value  *gatewayprovider.ExecutionProvider
 }
 
 func (p geminiModelReadTarget) Read(ctx context.Context, path string) (*gatewayhttp.ModelHTTPResponse, error) {

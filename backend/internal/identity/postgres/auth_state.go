@@ -9,12 +9,24 @@ import (
 	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/authidentity"
 	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
 	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
+
+// AuthState 通过 Ent 持久化认证状态，业务校验调用注入的 AuthService。
+type AuthState struct {
+	*identitycore.AuthDependencies
+	entClient *dbent.Client
+	Rules     *identitycore.AuthService
+}
+
+func NewAuthState(client *dbent.Client, deps *identitycore.AuthDependencies) *AuthState {
+	return &AuthState{AuthDependencies: deps, entClient: client}
+}
 
 // ApplyProviderDefaultSettingsOnFirstBind applies provider-specific bootstrap
 // settings the first time a user binds a third-party identity. The grant is
@@ -639,16 +651,6 @@ func (s *AuthState) AuthUseOAuthRegistrationInvitation(ctx context.Context, invi
 	return s.Redeem.Use(ctx, invitationID, userID)
 }
 
-// AuthState 通过 Ent 持久化认证状态，业务校验调用注入的 AuthService。
-type AuthState struct {
-	*identitycore.AuthDependencies
-	entClient *dbent.Client
-	Rules     *identitycore.AuthService
-}
-
-func NewAuthState(client *dbent.Client, deps *identitycore.AuthDependencies) *AuthState {
-	return &AuthState{AuthDependencies: deps, entClient: client}
-}
 func (s *AuthState) HasDatabase() bool { return s != nil && s.entClient != nil }
 
 func AuthReplaceBoundEmailAuthIdentityWithClient(

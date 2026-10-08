@@ -13,6 +13,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logevent"
 )
 
+type stringerValue string
+
 func opsSystemLogBackoffEvent() *logevent.LogEvent {
 	return &logevent.LogEvent{
 		Time:      time.Now().UTC(),
@@ -504,8 +506,6 @@ func TestOpsSystemLogSink_StopFlushUsesActiveContextAndDrainsQueue(t *testing.T)
 	}
 }
 
-type stringerValue string
-
 func (s stringerValue) String() string { return string(s) }
 
 func TestOpsSystemLogSink_HelperFunctions(t *testing.T) {
@@ -584,7 +584,7 @@ func TestRegressionSystemLogDuplicateStart(t *testing.T) {
 	s := NewOpsSystemLogSink(r)
 	s.Start()
 	s.Start()
-	for i := 0; i < 400; i++ {
+	for range 400 {
 		s.WriteLogEvent(&logevent.LogEvent{Level: "error", Message: "lifecycle-test"})
 	}
 	<-entered

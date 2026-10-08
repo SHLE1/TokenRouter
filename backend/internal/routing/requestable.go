@@ -30,6 +30,37 @@ type RequestableModelsResult struct {
 	HadExplicitProviderModels bool // 用于保持 /v1/models 的历史响应字段结构。
 }
 
+// CatalogueRules 提供平台资格、模型映射和执行时观测到的模型信息。
+type CatalogueRules interface {
+	ConfiguredModels() []string
+	Mapping() map[string]string
+	Supports(context.Context, string) bool
+	UpstreamModels(context.Context, string) []string
+}
+
+// CatalogueProvider 只向目录编排提供可分组和排序的只读快照。
+type CatalogueProvider struct {
+	provider.ProviderSnapshot
+	GroupIDs         []int64
+	ProviderGroupIDs []int64
+	Passthrough      bool
+	Rules            CatalogueRules
+}
+type CatalogueDefaults struct {
+	Platform func(string) []string
+}
+type CataloguePolicies interface {
+	GetGroupPolicy(context.Context, int64) (*GroupPolicyView, error)
+	GetPricingConfigForGroup(context.Context, int64) (*PricingConfig, error)
+}
+
+// RequestableResolver 只编排目录规则，缓存和数据取得均由现有唯一来源提供。
+type RequestableResolver struct {
+	GroupPolicies CataloguePolicies
+	Defaults      CatalogueDefaults
+	Warn          func(string, ...any)
+}
+
 // ResolveWithProviders 使用已预取提供商解析模型，供模型广场避免逐分组重复查询。
 func (s *RequestableResolver) ResolveWithProviders(
 	ctx context.Context,
@@ -314,37 +345,6 @@ func RequestableModelIDs(models []RequestableModel) []string {
 		ids = append(ids, model.ID)
 	}
 	return ids
-}
-
-// CatalogueRules 提供平台资格、模型映射和执行时观测到的模型信息。
-type CatalogueRules interface {
-	ConfiguredModels() []string
-	Mapping() map[string]string
-	Supports(context.Context, string) bool
-	UpstreamModels(context.Context, string) []string
-}
-
-// CatalogueProvider 只向目录编排提供可分组和排序的只读快照。
-type CatalogueProvider struct {
-	provider.ProviderSnapshot
-	GroupIDs         []int64
-	ProviderGroupIDs []int64
-	Passthrough      bool
-	Rules            CatalogueRules
-}
-type CatalogueDefaults struct {
-	Platform func(string) []string
-}
-type CataloguePolicies interface {
-	GetGroupPolicy(context.Context, int64) (*GroupPolicyView, error)
-	GetPricingConfigForGroup(context.Context, int64) (*PricingConfig, error)
-}
-
-// RequestableResolver 只编排目录规则，缓存和数据取得均由现有唯一来源提供。
-type RequestableResolver struct {
-	GroupPolicies CataloguePolicies
-	Defaults      CatalogueDefaults
-	Warn          func(string, ...any)
 }
 
 // matchesCataloguePlatform 只把平台参数用于专用入口的强制过滤。

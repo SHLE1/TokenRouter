@@ -3,9 +3,9 @@ package migrations_test
 import (
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
 func TestMergePriceCardsHighestIndependentBuckets(t *testing.T) {

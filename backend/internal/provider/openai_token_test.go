@@ -15,24 +15,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-func TestOpenAITokenProvider_NoRefreshTokenExpiredAccessTokenReturnsError(t *testing.T) {
-	tokenSource := &OpenAITokenSource{Metrics: &OpenAITokenMetricsStore{}, Policy: OpenAIProviderRefreshPolicy(), Debug: slog.Debug, Warn: slog.Warn}
-	expiresAt := time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)
-	provider := &Record{
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.ProviderTypeOAuth,
-		Credentials: map[string]any{
-			"access_token": "expired-access-token",
-			"expires_at":   expiresAt,
-		},
-	}
-
-	token, err := tokenSource.GetAccessToken(context.Background(), provider)
-	require.Error(t, err)
-	require.Empty(t, token)
-	require.Contains(t, err.Error(), "refresh_token is missing")
-}
-
 // openAITokenCacheStub 记录令牌缓存和刷新锁的调用。
 type openAITokenCacheStub struct {
 	mu               sync.Mutex
@@ -49,6 +31,51 @@ type openAITokenCacheStub struct {
 	lockCalled       int32
 	unlockCalled     int32
 	simulateLockRace bool
+}
+
+// openAIProviderRepoStub 模拟 OpenAI 令牌来源所需的存储操作。
+type openAIProviderRepoStub struct {
+	provider     *Record
+	getErr       error
+	updateErr    error
+	getCalled    int32
+	updateCalled int32
+}
+
+// openAIOAuthServiceStub 返回测试设置的 OpenAI 令牌交换结果。
+type openAIOAuthServiceStub struct {
+	tokenInfo     *OpenAITokenInfo
+	refreshErr    error
+	refreshCalled int32
+}
+
+type openAITokenStateWriter struct {
+	RefreshRepository
+	setErrorCalls int
+	lastErrorMsg  string
+}
+
+type openAITokenBlockRecorder struct {
+	providers []*Record
+	reasons   []string
+}
+
+func TestOpenAITokenProvider_NoRefreshTokenExpiredAccessTokenReturnsError(t *testing.T) {
+	tokenSource := &OpenAITokenSource{Metrics: &OpenAITokenMetricsStore{}, Policy: OpenAIProviderRefreshPolicy(), Debug: slog.Debug, Warn: slog.Warn}
+	expiresAt := time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)
+	provider := &Record{
+		Platform: capability.PlatformOpenAI,
+		Type:     capability.ProviderTypeOAuth,
+		Credentials: map[string]any{
+			"access_token": "expired-access-token",
+			"expires_at":   expiresAt,
+		},
+	}
+
+	token, err := tokenSource.GetAccessToken(context.Background(), provider)
+	require.Error(t, err)
+	require.Empty(t, token)
+	require.Contains(t, err.Error(), "refresh_token is missing")
 }
 
 func newOpenAITokenCacheStub() *openAITokenCacheStub {
@@ -106,15 +133,6 @@ func (s *openAITokenCacheStub) ReleaseRefreshLock(ctx context.Context, cacheKey 
 	return s.releaseLockErr
 }
 
-// openAIProviderRepoStub 模拟 OpenAI 令牌来源所需的存储操作。
-type openAIProviderRepoStub struct {
-	provider     *Record
-	getErr       error
-	updateErr    error
-	getCalled    int32
-	updateCalled int32
-}
-
 func (r *openAIProviderRepoStub) GetByID(ctx context.Context, id int64) (*Record, error) {
 	atomic.AddInt32(&r.getCalled, 1)
 	if r.getErr != nil {
@@ -130,13 +148,6 @@ func (r *openAIProviderRepoStub) Update(ctx context.Context, provider *Record) e
 	}
 	r.provider = provider
 	return nil
-}
-
-// openAIOAuthServiceStub 返回测试设置的 OpenAI 令牌交换结果。
-type openAIOAuthServiceStub struct {
-	tokenInfo     *OpenAITokenInfo
-	refreshErr    error
-	refreshCalled int32
 }
 
 func (s *openAIOAuthServiceStub) RefreshProviderToken(ctx context.Context, provider *Record) (*OpenAITokenInfo, error) {
@@ -875,21 +886,10 @@ func newOpenAITokenSourceContract(cache AccessTokenCache) *OpenAITokenSource {
 	}
 }
 
-type openAITokenStateWriter struct {
-	RefreshRepository
-	setErrorCalls int
-	lastErrorMsg  string
-}
-
 func (w *openAITokenStateWriter) SetError(_ context.Context, _ int64, message string) error {
 	w.setErrorCalls++
 	w.lastErrorMsg = message
 	return nil
-}
-
-type openAITokenBlockRecorder struct {
-	providers []*Record
-	reasons   []string
 }
 
 func (r *openAITokenBlockRecorder) record(value *Record, _ time.Time, reason string) {

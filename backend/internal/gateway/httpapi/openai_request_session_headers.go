@@ -20,7 +20,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-const openCodeSessionHeader = "X-OpenCode-Session"
+const (
+	openCodeSessionHeader = "X-OpenCode-Session"
+
+	OpenAICodexRoutingHintHeader = "x-codex-routing-hint"
+)
 
 // ApplyOpenCodeSessionHeader forwards the caller-owned conversation identifier
 // only to OpenCode's official API origin. The caller applies this after provider
@@ -65,8 +69,6 @@ func ResolveOpenAIUpstreamOriginatorForClient(read func() string, official bool,
 	}
 	return openai.ResolveUpstreamOriginator(read, official, match.Matched, match.UpstreamOriginator)
 }
-
-const OpenAICodexRoutingHintHeader = "x-codex-routing-hint"
 
 // SetOpenAICodexRoutingHint 为 OpenAI OAuth 请求生成 Codex 后端路由提示。
 // 调用方传入最终上游模型名，以及应用本地改写和过滤策略后的 serviceTier。

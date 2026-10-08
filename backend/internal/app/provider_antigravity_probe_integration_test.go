@@ -21,12 +21,17 @@ import (
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
+// 这些构造函数供集成测试组合平台探测和应用任务跟踪器。
+var (
+	NewAntigravityRetryForTest = provideAntigravityRetry
+	NewAntigravityProbeForTest = provideAntigravityProbe
+	NewGatewayActivityForTest  = provideGatewayRequestActivity
+)
+
 type antigravityProbeBody struct {
 	io.Reader
 	closed bool
 }
-
-func (b *antigravityProbeBody) Close() error { b.closed = true; return nil }
 
 // 供应商响应使用本地流，数据库读取、令牌获取、重试和 SSE 处理使用生产组件。
 type antigravityProbeTransport struct {
@@ -34,6 +39,8 @@ type antigravityProbeTransport struct {
 	bodies    []string
 	responses []*antigravityProbeBody
 }
+
+func (b *antigravityProbeBody) Close() error { b.closed = true; return nil }
 
 func (s *antigravityProbeTransport) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
 	body, err := io.ReadAll(req.Body)
@@ -44,7 +51,7 @@ func (s *antigravityProbeTransport) Do(req *http.Request, _ string, _ int64, _ i
 	s.bodies = append(s.bodies, string(body))
 	response := &antigravityProbeBody{Reader: strings.NewReader("data: {\"response\":{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"probe result\"}]}}]}}\n\n")}
 	s.responses = append(s.responses, response)
-	return &http.Response{StatusCode: 200, Header: make(http.Header), Body: response}, nil
+	return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: response}, nil
 }
 
 func (s *antigravityProbeTransport) DoWithTLS(req *http.Request, proxy string, id int64, concurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
@@ -101,10 +108,3 @@ func TestNativeAntigravityProbeAssembly(t *testing.T) {
 	require.Error(t, err)
 	require.Len(t, transport.requests, before, "关闭屏障后不再开始供应商推理")
 }
-
-// 这些构造函数供集成测试组合平台探测和应用任务跟踪器。
-var (
-	NewAntigravityRetryForTest = provideAntigravityRetry
-	NewAntigravityProbeForTest = provideAntigravityProbe
-	NewGatewayActivityForTest  = provideGatewayRequestActivity
-)

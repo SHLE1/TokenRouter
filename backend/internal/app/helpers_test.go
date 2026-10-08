@@ -108,6 +108,329 @@ import (
 	routeusageadmin "github.com/TokenFlux/TokenRouter/internal/usage/httpapi/admin"
 )
 
+const (
+	successfulQoderStream = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"served\\\"}}]}\"}\n\ndata: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":12,\\\"completion_tokens\\\":3}}\"}\n\ndata: {\"body\":\"[DONE]\"}\n\n"
+	qoderFailureFrame     = "data: {\"body\":\"{\\\"code\\\":\\\"500\\\",\\\"message\\\":\\\"fixture failure\\\"}\",\"statusCodeValue\":502}\n\n"
+)
+
+var (
+	// 类型断言检查测试后台任务接口与生产接口一致。
+	_ moderationflow.Tasks = fixtureCyberTasks{}
+
+	handlerStructuredLogCaptureMu sync.Mutex
+
+	handlerRefresherStarted sync.Map
+)
+
+// 夹具保存各模块的依赖，规则和状态由模块管理。
+type messageExecutionFixture struct {
+	Routes   *gatewayprovider.RoutePlanner
+	Cache    session.GatewayCache
+	Digest   *session.DigestSessionStore
+	Cooldown *providercore.RetryCooldown
+	Recorder *completion.Recorder
+}
+
+type fixtureRetryStore struct {
+	gatewayprovider.ExecutionProviderStore
+}
+
+// gatewayHTTPFixtureInput 保存测试传入的依赖和预算参数。
+type gatewayHTTPFixtureInput struct {
+	Credentials  *gatewayhttp.RequestCredentialExecutor
+	Availability *gatewayModelAvailability
+	Choices      *selection.Compatible
+	Native       *gatewayhttp.UnifiedTextExecutor
+	Generic      *selection.Generic
+	Source       *gatewayExecutionFixture
+	Funding      *admission.FundingAdmission
+	Keys         *apikey.APIKeyService
+	Worker       *completion.UsageRecordWorkerPool
+	Rules        *errorpolicy.ErrorPassthroughService
+	Moderator    *moderation.ContentModerationService
+	Ops          *opscore.OpsService
+	Queue        gatewayhttp.OpsErrorLogQueue
+	Config       *config.Config
+	Prompts      *promptpolicy.Service
+	Concurrency  *gatewayhttp.ConcurrencyHelper
+	Images       *scheduler.ImageConcurrencyLimiter
+	MaxSwitches  int
+	Recorder     *completion.Recorder
+}
+
+// gatewayHTTPEndpointsFixture 保存处理函数，执行、输出、计费和资源状态使用生产组件。
+type gatewayHTTPEndpointsFixture struct {
+	Input                              *gatewayHTTPFixtureInput
+	Responses                          gin.HandlerFunc
+	Messages                           gin.HandlerFunc
+	ChatCompletions                    gin.HandlerFunc
+	ResponsesWebSocket                 gin.HandlerFunc
+	Images                             gin.HandlerFunc
+	GrokVideoGeneration                gin.HandlerFunc
+	GrokVideoStatus                    gin.HandlerFunc
+	httpResources                      func() *gatewayhttp.OpenAIHTTPResources
+	openAIAttemptSupport               func() *openaiattempt.Support
+	rejectIfCyberSessionBlocked        func(*gin.Context, *apikey.APIKey, []byte, string, gatewayhttp.CyberBlockFormat) bool
+	enqueueCyberSessionBlockedOpsEntry func(*gin.Context, *apikey.APIKey, string, string)
+}
+
+type fixtureCyberTasks struct{ source *gatewayExecutionFixture }
+
+type fixtureCyberOps struct {
+	service *opscore.OpsService
+	queue   gatewayhttp.OpsErrorLogQueue
+}
+
+// httpFixtureBalances 为协议和重试测试提供可消费余额，资金准入使用生产实现。
+type httpFixtureBalances struct{}
+
+type gatewayExecutionPricingConfigRows struct {
+	routing.PricingConfigRepository
+
+	modelConfigs   []routingtestkit.Configuration
+	groupPlatforms map[int64]string
+}
+
+// messageEndpointsFixture 保存消息处理函数和请求准备函数。
+type messageEndpointsFixture struct {
+	Messages                     gin.HandlerFunc
+	Responses                    gin.HandlerFunc
+	ChatCompletions              gin.HandlerFunc
+	prepareGatewayAttemptRequest func(context.Context, *requeststate.ParsedRequest, []byte, *apikey.APIKey, string) (*requeststate.ParsedRequest, routing.GroupMappingResult, error)
+}
+
+type fakeSchedulerCache struct {
+	providers []*gatewayprovider.ExecutionProvider
+}
+
+type fakeGroupRepo struct {
+	group *routing.Group
+}
+
+type fakeConcurrencyCache struct{}
+
+// HTTP 故障切换夹具转换存储返回的 token 数据，刷新由凭据组件处理。
+type grokCredentialTokenReader struct{ source *grokCredentialHandlerRepo }
+
+type handlerInMemoryLogSink struct {
+	mu     sync.Mutex
+	events []*logging.LogEvent
+}
+
+type grokCredentialHandlerRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	mu             sync.Mutex
+	providers      []gatewayprovider.ExecutionProvider
+	setErrorIDs    []int64
+	setTempIDs     []int64
+	rateLimitIDs   []int64
+	updateExtraIDs []int64
+	selectionCalls int
+	setErrorErr    error
+	setTempErr     error
+	missingOnGet   map[int64]bool
+}
+
+type grokCredentialHandlerTokenCache struct {
+	providercore.AccessTokenCache
+	mu        sync.Mutex
+	deleteErr error
+}
+
+type grokCredentialHandlerRefresher struct {
+	mode    string
+	started chan struct{}
+	once    sync.Once
+}
+
+type grokCredentialHandlerUpstream struct {
+	httpclient.
+		UpstreamTransport
+	mu             sync.Mutex
+	hits           []int64
+	requestURLs    []string
+	authorization  []string
+	failProviderID int64
+	rateLimitIDs   map[int64]bool
+	failureStatus  map[int64]int
+	cancelRequest  context.CancelFunc
+}
+
+type contentModerationHandlerSettingRepo struct {
+	values map[string]string
+}
+
+type contentModerationHandlerTestRepo struct {
+	mu            sync.Mutex
+	logs          []moderation.ContentModerationLog
+	cyberWarnings []moderation.ContentModerationCyberWarning
+}
+
+type openAIHandlerTestWarningError struct {
+	warning *forwardcore.UpstreamWarning
+	err     error
+}
+
+type openAIWSFailoverHandlerProviderRepoStub struct {
+	gatewayprovider.ExecutionProviderStore
+
+	providers      []gatewayprovider.ExecutionProvider
+	rateLimitedIDs []int64
+}
+
+type opsErrorLogJob struct {
+	ops   *opscore.OpsService
+	entry *opscore.OpsInsertErrorLogInput
+}
+
+// captureOpsErrorQueue 是各测试独立使用的同步观测替身。
+type captureOpsErrorQueue struct {
+	health opscore.ErrorLogQueueHealth
+	jobs   chan opsErrorLogJob
+}
+
+// modelCatalogueEmptyPrices 让仅测试提供商目录的夹具提供合法的空价格仓储。
+type modelCatalogueEmptyPrices struct {
+	routing.PricingConfigRepository
+}
+
+// gatewayExecutionFixture 保存测试构造的执行组件和输入。
+type gatewayExecutionFixture struct {
+	Text       *gatewayhttp.OpenAITextExecutor
+	Requests   *gatewayhttp.OpenAIRequests
+	Responses  *gatewayhttp.OpenAIResponsesExecutor
+	WebSockets *wshttp.OpenAIWebSocketExecutor
+	Grok       *gatewayhttp.GrokExecutor
+	Auxiliary  *gatewayhttp.OpenAIAuxiliary
+	Recorder   *completion.Recorder
+	Blocks     *session.CyberBlocks
+	Cache      session.GatewayCache
+	Planner    *gatewayprovider.RoutePlanner
+	Background func(string, func()) bool
+}
+
+// mixedHTTPProviders 提供持久化提供商查询，生产选择器负责资格检查和排序。
+type mixedHTTPProviders struct {
+	gatewayprovider.ExecutionProviderStore
+	values []gatewayprovider.ExecutionProvider
+}
+
+// 路由夹具提供测试所需的构造参数。
+type routeTestAdminHandlers struct {
+	APIKey                *keyhttp.AdminAPIKeyHandler[routingdto.Group]
+	ProviderArchive       *routeprovider.ArchiveHandler
+	ProviderCRS           *routeprovider.CRSHandler
+	ProviderCodexImport   *routeprovider.CodexImportHandler
+	ProviderManagement    *routeprovider.ManagementHandler
+	ProviderOAuthUsage    *routeprovider.OAuthUsageHandler
+	ProviderOllama        *routeprovider.OllamaUsageHandler
+	ProviderTests         *routeprovider.TestHandler
+	Affiliate             *routepromotion.AffiliateHandler
+	Announcement          *routesite.AdminAnnouncementHandler
+	AntigravityOAuth      *routeprovider.AntigravityOAuthHandler
+	AuditLog              *routeaudit.AuditLogHandler
+	Backup                *routebackup.BackupHandler
+	PricingConfig         *routerouting.PricingHandler
+	CodexInviteReset      *routeprovider.CodexInviteResetHandler
+	ContentModeration     *routemoderation.ContentModerationHandler
+	Dashboard             *routeusageadmin.DashboardHandler
+	DataManagement        *routebackup.DataManagementHandler
+	ErrorPassthrough      *gatewayhttp.ErrorPassthroughHandler
+	GeminiOAuth           *routeprovider.GeminiOAuthHandler
+	GrokOAuth             *routeprovider.GrokOAuthHandler
+	Group                 *routerouting.GroupHandler
+	OAuth                 *routeprovider.ClaudeOAuthHandler
+	OpenAIOAuth           *routeprovider.OpenAIOAuthHandler
+	Ops                   *routeops.OpsHandler
+	Payment               *paymenthttp.AdminHandler
+	Promo                 *routepromotion.PromoHandler
+	Proxy                 *routeegress.ProxyHandler
+	QoderOAuth            *routeprovider.QoderOAuthHandler
+	Redeem                *routebilling.AdminRedeemHandler
+	ScheduledTest         *routeprovider.ScheduledTestHandler
+	SchedulerDiagnostics  *routescheduler.DiagnosticsHandler
+	Subscription          *routebilling.AdminSubscriptionHandler
+	System                *routeops.SystemHandler
+	TLSFingerprintProfile *routeegress.TLSFingerprintProfileHandler
+	TLSFingerprintRouter  *routeegress.TLSFingerprintRouterHandler
+	Team                  *teamhttpapi.AdminHandler
+	UpstreamUsage         *routeprovider.UpstreamUsageHandler
+	Usage                 *routeusageadmin.UsageHandler
+	User                  *routeidentity.AdminUserHandler[dto.APIKey[routingdto.Group]]
+	UserAttribute         *routeidentity.UserAttributeHandler
+}
+
+type routeTestHandlers struct {
+	APIKey       *keyhttp.APIKeyHandler[routingdto.Group]
+	Admin        *routeTestAdminHandlers
+	Announcement *routesite.AnnouncementHandler
+	Auth         interface {
+		routeidentity.AuthEndpoints
+		paymenthttp.WeChatAuthEndpoints
+	}
+	AuxiliaryHTTP       *gatewayhttp.AuxiliaryHandler
+	BatchImage          *batchhttp.BatchImageHandler
+	CompatibleTextHTTP  *gatewayhttp.CompatibleTextHandler
+	CountTokensHTTP     *gatewayhttp.CountTokensHandler
+	Creative            *routecreative.CreativeHandler
+	TextEnabled         bool
+	GeminiNativeHTTP    *gatewayhttp.GeminiNativeHandler
+	LiveHTTP            *gatewayhttp.LiveHandler
+	MediaHTTP           *gatewayhttp.MediaHandler
+	MessagesHTTP        *gatewayhttp.MessagesHandler
+	ModelMarketplace    *routerouting.MarketplaceHandler
+	ModelsHTTP          *gatewayhttp.ModelsHandler
+	Notification        *routenotification.Handler
+	OpenAIEnabled       bool
+	OpenAITextHTTP      *gatewayhttp.OpenAITextHandler
+	OpenAITokensHTTP    *gatewayhttp.OpenAITokensHandler
+	Passkey             *routeidentity.PasskeyHandler
+	Payment             *paymenthttp.PaymentHandler
+	PaymentWebhook      *paymenthttp.PaymentWebhookHandler
+	Plans               *routebilling.PlanHandler
+	PublicSettings      *routesite.PublicHandler
+	PublicUsage         *usagehttp.PublicUsageHandler
+	QoderChat           *gatewayhttp.QoderChatHandler
+	QoderCompatibleHTTP *gatewayhttp.QoderCompatibleHandler
+	Redeem              *routebilling.RedeemHandler
+	ResponsesWSHTTP     *wshttp.ResponsesWSHandler
+	Search              *routesearch.Handler
+	SearchHTTP          *gatewayhttp.SearchHandler
+	Subscription        *routebilling.SubscriptionHandler
+	Team                *teamhttpapi.UserHandler
+	Totp                *routeidentity.TotpHandler
+	Usage               *usagehttp.UsageHandler
+	PromotionUser       *routepromotion.UserHandler
+	User                *routeidentity.UserHandler
+}
+
+type protocolGateTrackingReader struct {
+	read bool
+}
+
+// 空路由夹具的上游计数器缺失时，返回依赖错误。
+type routeCountUnavailable struct{}
+
+// selectionGroupFixture 为单平台存储替身提供批量平台查询和分组关系，选号使用生产策略。
+// 源记录已有分组时原样保留，防止掩盖组外提供商拒绝测试。
+type selectionGroupFixture struct {
+	gatewayprovider.ExecutionProviderStore
+	mu     sync.Mutex
+	groups map[int64][]int64
+}
+
+// readerStoreProbe 记录动态设置查询次数，首次读取和缓存命中分别检查。
+type readerStoreProbe struct {
+	settingscore.Repository
+	reads int
+}
+
+type settingHandlerRepoStub struct {
+	values      map[string]string
+	lastUpdates map[string]string
+}
+
 // newGenericExecutionAndSelectionFixture 组合执行入口与选择器，窗口和调度规则使用生产实现。
 func newGenericExecutionAndSelectionFixture(
 	providerRepo gatewayprovider.ExecutionProviderStore,
@@ -180,19 +503,6 @@ func newGenericExecutionAndSelectionFixture(
 	return source, choices, messages
 }
 
-// 夹具保存各模块的依赖，规则和状态由模块管理。
-type messageExecutionFixture struct {
-	Routes   *gatewayprovider.RoutePlanner
-	Cache    session.GatewayCache
-	Digest   *session.DigestSessionStore
-	Cooldown *providercore.RetryCooldown
-	Recorder *completion.Recorder
-}
-
-type fixtureRetryStore struct {
-	gatewayprovider.ExecutionProviderStore
-}
-
 func (s fixtureRetryStore) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
 	value, err := s.ExecutionProviderStore.GetByID(ctx, id)
 	return gatewayprovider.ExecutionRecord(value), err
@@ -245,58 +555,12 @@ func newHTTPCompletionFixture(cfg *config.Config, logs usage.UsageLogRepository,
 	return f.Core(nil, openAI)
 }
 
-// gatewayHTTPFixtureInput 保存测试传入的依赖和预算参数。
-type gatewayHTTPFixtureInput struct {
-	Credentials  *gatewayhttp.RequestCredentialExecutor
-	Availability *gatewayModelAvailability
-	Choices      *selection.Compatible
-	Native       *gatewayhttp.UnifiedTextExecutor
-	Generic      *selection.Generic
-	Source       *gatewayExecutionFixture
-	Funding      *admission.FundingAdmission
-	Keys         *apikey.APIKeyService
-	Worker       *completion.UsageRecordWorkerPool
-	Rules        *errorpolicy.ErrorPassthroughService
-	Moderator    *moderation.ContentModerationService
-	Ops          *opscore.OpsService
-	Queue        gatewayhttp.OpsErrorLogQueue
-	Config       *config.Config
-	Prompts      *promptpolicy.Service
-	Concurrency  *gatewayhttp.ConcurrencyHelper
-	Images       *scheduler.ImageConcurrencyLimiter
-	MaxSwitches  int
-	Recorder     *completion.Recorder
-}
-
-// gatewayHTTPEndpointsFixture 保存处理函数，执行、输出、计费和资源状态使用生产组件。
-type gatewayHTTPEndpointsFixture struct {
-	Input                              *gatewayHTTPFixtureInput
-	Responses                          gin.HandlerFunc
-	Messages                           gin.HandlerFunc
-	ChatCompletions                    gin.HandlerFunc
-	ResponsesWebSocket                 gin.HandlerFunc
-	Images                             gin.HandlerFunc
-	GrokVideoGeneration                gin.HandlerFunc
-	GrokVideoStatus                    gin.HandlerFunc
-	httpResources                      func() *gatewayhttp.OpenAIHTTPResources
-	openAIAttemptSupport               func() *openaiattempt.Support
-	rejectIfCyberSessionBlocked        func(*gin.Context, *apikey.APIKey, []byte, string, gatewayhttp.CyberBlockFormat) bool
-	enqueueCyberSessionBlockedOpsEntry func(*gin.Context, *apikey.APIKey, string, string)
-}
-
-type fixtureCyberTasks struct{ source *gatewayExecutionFixture }
-
 func (t fixtureCyberTasks) Go(name string, fn func()) bool {
 	if t.source != nil && t.source.Background != nil {
 		return t.source.Background(name, fn)
 	}
 	go fn()
 	return true
-}
-
-type fixtureCyberOps struct {
-	service *opscore.OpsService
-	queue   gatewayhttp.OpsErrorLogQueue
 }
 
 func (w fixtureCyberOps) Enqueue(value *opscore.OpsInsertErrorLogInput) {
@@ -413,9 +677,6 @@ func newGatewayHTTPEndpointsFromDeps(source *gatewayExecutionFixture, credential
 	return newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{Source: source, Credentials: credentials, Availability: availability, Choices: choices, Funding: funding, Keys: keys, Worker: worker, Rules: rules, Moderator: moderator, Ops: opsService, Config: cfg, Prompts: prompts, Concurrency: resources.Concurrency, Images: resources.Images, MaxSwitches: openAITextOptions(cfg).MaxSwitches})
 }
 
-// 类型断言检查测试后台任务接口与生产接口一致。
-var _ moderationflow.Tasks = fixtureCyberTasks{}
-
 // newFundingAdmissionFixture 复用夹具创建的资金缓存，RPM 后端保持未配置。
 func newFundingAdmissionFixture(funds *billing.Eligibility, cfg *config.Config) *admission.FundingAdmission {
 	return admission.NewFundingAdmission(funds, nil)
@@ -430,18 +691,8 @@ func newBillingEligibilityFixture(cfg *config.Config) *billing.Eligibility {
 	return billing.NewEligibility(nil, httpFixtureBalances{}, nil, func() billing.EligibilityOptions { return billingEligibilityFixtureOptions(cfg) }, nil, func(_ string, fn func()) { go fn() })
 }
 
-// httpFixtureBalances 为协议和重试测试提供可消费余额，资金准入使用生产实现。
-type httpFixtureBalances struct{}
-
 func (httpFixtureBalances) GetByID(_ context.Context, id int64) (*billing.UserSummary, error) {
 	return &billing.UserSummary{ID: id, Balance: 1000}, nil
-}
-
-type gatewayExecutionPricingConfigRows struct {
-	routing.PricingConfigRepository
-
-	modelConfigs   []routingtestkit.Configuration
-	groupPlatforms map[int64]string
 }
 
 func (s *gatewayExecutionPricingConfigRows) ListAll(ctx context.Context) ([]routingtestkit.Configuration, error) {
@@ -477,14 +728,6 @@ func newGatewayExecutionPricingConfigServiceForTest(groupID int64, platform stri
 			LoadPricingLocation,
 	},
 	)
-}
-
-// messageEndpointsFixture 保存消息处理函数和请求准备函数。
-type messageEndpointsFixture struct {
-	Messages                     gin.HandlerFunc
-	Responses                    gin.HandlerFunc
-	ChatCompletions              gin.HandlerFunc
-	prepareGatewayAttemptRequest func(context.Context, *requeststate.ParsedRequest, []byte, *apikey.APIKey, string) (*requeststate.ParsedRequest, routing.GroupMappingResult, error)
 }
 
 // newMessageEndpointsFixture 将单次执行组件接入消息处理器，观测使用无状态替身。
@@ -550,10 +793,6 @@ func newMessageEndpointsFixture(source *messageExecutionFixture, messages *gatew
 			return gatewayhttp.PrepareGroupAttempt(ctx, parsed, body, key, model, plan)
 		},
 	}
-}
-
-type fakeSchedulerCache struct {
-	providers []*gatewayprovider.ExecutionProvider
 }
 
 func (f *fakeSchedulerCache) GetSnapshot(_ context.Context, _ scheduler.SchedulerBucket) ([]scheduler.SnapshotProvider, bool, error) {
@@ -626,10 +865,6 @@ func (f *fakeSchedulerCache) GetOutboxWatermark(_ context.Context) (int64, error
 
 func (f *fakeSchedulerCache) SetOutboxWatermark(_ context.Context, _ int64) error { return nil }
 
-type fakeGroupRepo struct {
-	group *routing.Group
-}
-
 func (f *fakeGroupRepo) Create(context.Context, *routing.Group) error { return nil }
 
 func (f *fakeGroupRepo) GetByID(context.Context, int64) (*routing.Group, error) {
@@ -683,8 +918,6 @@ func (f *fakeGroupRepo) BindProvidersToGroup(context.Context, int64, []int64) er
 func (f *fakeGroupRepo) UpdateSortOrders(context.Context, []routing.GroupSortOrderUpdate) error {
 	return nil
 }
-
-type fakeConcurrencyCache struct{}
 
 func (f *fakeConcurrencyCache) AcquireProviderSlot(context.Context, int64, int, string) (bool, error) {
 	return true, nil
@@ -751,9 +984,6 @@ func (f *fakeSchedulerCache) AcquireBucketLease(ctx context.Context, bucket sche
 	return scheduler.NewBucketLease(func(cleanup context.Context) error { return f.UnlockBucket(cleanup, bucket) }), true, nil
 }
 
-// HTTP 故障切换夹具转换存储返回的 token 数据，刷新由凭据组件处理。
-type grokCredentialTokenReader struct{ source *grokCredentialHandlerRepo }
-
 func (r grokCredentialTokenReader) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
 	v, err := r.source.GetByID(ctx, id)
 	return gatewayprovider.ExecutionRecord(v), err
@@ -795,13 +1025,6 @@ func newOpenAIExecutionCredentialsForTest(repo gatewayprovider.ExecutionProvider
 		out.Grok = grok.GetAccessToken
 	}
 	return out
-}
-
-var handlerStructuredLogCaptureMu sync.Mutex
-
-type handlerInMemoryLogSink struct {
-	mu     sync.Mutex
-	events []*logging.LogEvent
 }
 
 func (s *handlerInMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
@@ -886,21 +1109,6 @@ func captureHandlerStructuredLog(t *testing.T) (*handlerInMemoryLogSink, func())
 		logging.SetSink(nil)
 		handlerStructuredLogCaptureMu.Unlock()
 	}
-}
-
-type grokCredentialHandlerRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	mu             sync.Mutex
-	providers      []gatewayprovider.ExecutionProvider
-	setErrorIDs    []int64
-	setTempIDs     []int64
-	rateLimitIDs   []int64
-	updateExtraIDs []int64
-	selectionCalls int
-	setErrorErr    error
-	setTempErr     error
-	missingOnGet   map[int64]bool
 }
 
 func (r *grokCredentialHandlerRepo) ListSchedulableByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
@@ -1103,12 +1311,6 @@ func (r *grokCredentialHandlerRepo) rateLimitedProviderIDs() []int64 {
 	return append([]int64(nil), r.rateLimitIDs...)
 }
 
-type grokCredentialHandlerTokenCache struct {
-	providercore.AccessTokenCache
-	mu        sync.Mutex
-	deleteErr error
-}
-
 func (c *grokCredentialHandlerTokenCache) GetAccessToken(context.Context, string) (string, error) {
 	return "", errors.New("not cached")
 }
@@ -1139,12 +1341,6 @@ func cloneCredentialMap(source map[string]any) map[string]any {
 	return cloned
 }
 
-type grokCredentialHandlerRefresher struct {
-	mode    string
-	started chan struct{}
-	once    sync.Once
-}
-
 func (r *grokCredentialHandlerRefresher) CacheKey(provider *providercore.Record) string {
 	return providercore.GrokTokenCacheKey(provider)
 }
@@ -1172,19 +1368,6 @@ func (r *grokCredentialHandlerRefresher) Refresh(ctx context.Context, _ *provide
 	default:
 		return nil, nil
 	}
-}
-
-type grokCredentialHandlerUpstream struct {
-	httpclient.
-		UpstreamTransport
-	mu             sync.Mutex
-	hits           []int64
-	requestURLs    []string
-	authorization  []string
-	failProviderID int64
-	rateLimitIDs   map[int64]bool
-	failureStatus  map[int64]int
-	cancelRequest  context.CancelFunc
 }
 
 func (u *grokCredentialHandlerUpstream) Do(req *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
@@ -1276,8 +1459,6 @@ func (u *grokCredentialHandlerUpstream) requests() ([]string, []string) {
 	defer u.mu.Unlock()
 	return append([]string(nil), u.requestURLs...), append([]string(nil), u.authorization...)
 }
-
-var handlerRefresherStarted sync.Map
 
 func findHandlerRefresherStarted(router *gin.Engine) <-chan struct{} {
 	value, _ := handlerRefresherStarted.Load(router)
@@ -1442,10 +1623,6 @@ func newGrokCredentialFailoverHandler(t *testing.T, mode string) (*gatewayHTTPEn
 	return h, repo, upstream, router, cleanup
 }
 
-type contentModerationHandlerSettingRepo struct {
-	values map[string]string
-}
-
 func (r *contentModerationHandlerSettingRepo) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
 	if value, ok := r.values[key]; ok {
 		return &settingscore.Setting{Key: key, Value: value}, nil
@@ -1499,12 +1676,6 @@ func (r *contentModerationHandlerSettingRepo) GetAll(ctx context.Context) (map[s
 func (r *contentModerationHandlerSettingRepo) Delete(ctx context.Context, key string) error {
 	delete(r.values, key)
 	return nil
-}
-
-type contentModerationHandlerTestRepo struct {
-	mu            sync.Mutex
-	logs          []moderation.ContentModerationLog
-	cyberWarnings []moderation.ContentModerationCyberWarning
 }
 
 func (r *contentModerationHandlerTestRepo) CreateLog(ctx context.Context, log *moderation.ContentModerationLog) error {
@@ -1577,11 +1748,6 @@ func (r *contentModerationHandlerTestRepo) CleanupExpiredLogs(ctx context.Contex
 	return &moderation.ContentModerationCleanupResult{}, nil
 }
 
-type openAIHandlerTestWarningError struct {
-	warning *forwardcore.UpstreamWarning
-	err     error
-}
-
 func (e *openAIHandlerTestWarningError) Error() string {
 	if e == nil || e.err == nil {
 		return "test warning error"
@@ -1628,13 +1794,6 @@ func newOpenAIHandlerForPreviousResponseIDValidation(t *testing.T, cache *httpte
 	})
 }
 
-type openAIWSFailoverHandlerProviderRepoStub struct {
-	gatewayprovider.ExecutionProviderStore
-
-	providers      []gatewayprovider.ExecutionProvider
-	rateLimitedIDs []int64
-}
-
 func (s *openAIWSFailoverHandlerProviderRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	out := make([]gatewayprovider.ExecutionProvider, 0, len(s.providers))
 	for _, provider := range s.providers {
@@ -1679,17 +1838,6 @@ func (r *contentModerationHandlerTestRepo) cyberWarningSnapshot() []moderation.C
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return append([]moderation.ContentModerationCyberWarning(nil), r.cyberWarnings...)
-}
-
-type opsErrorLogJob struct {
-	ops   *opscore.OpsService
-	entry *opscore.OpsInsertErrorLogInput
-}
-
-// captureOpsErrorQueue 是各测试独立使用的同步观测替身。
-type captureOpsErrorQueue struct {
-	health opscore.ErrorLogQueueHealth
-	jobs   chan opsErrorLogJob
 }
 
 func newOpsCaptureQueue(size int) *captureOpsErrorQueue {
@@ -1740,28 +1888,8 @@ func newExecutionAvailabilityForTest(store gatewayprovider.ExecutionProviderStor
 	}
 }
 
-// modelCatalogueEmptyPrices 让仅测试提供商目录的夹具提供合法的空价格仓储。
-type modelCatalogueEmptyPrices struct {
-	routing.PricingConfigRepository
-}
-
 func (modelCatalogueEmptyPrices) ListAll(context.Context) ([]routing.PricingConfig, error) {
 	return nil, nil
-}
-
-// gatewayExecutionFixture 保存测试构造的执行组件和输入。
-type gatewayExecutionFixture struct {
-	Text       *gatewayhttp.OpenAITextExecutor
-	Requests   *gatewayhttp.OpenAIRequests
-	Responses  *gatewayhttp.OpenAIResponsesExecutor
-	WebSockets *wshttp.OpenAIWebSocketExecutor
-	Grok       *gatewayhttp.GrokExecutor
-	Auxiliary  *gatewayhttp.OpenAIAuxiliary
-	Recorder   *completion.Recorder
-	Blocks     *session.CyberBlocks
-	Cache      session.GatewayCache
-	Planner    *gatewayprovider.RoutePlanner
-	Background func(string, func()) bool
 }
 
 // newOpenAIExecutionAndSelectionFixture 组合执行组件和选择器，两者共享可变状态。
@@ -1858,12 +1986,6 @@ func newEmptyCompatibleSelectionFixture() *selection.Compatible {
 	return selection.NewCompatible(selection.CompatibleDependencies{}, selection.DefaultOptions())
 }
 
-// mixedHTTPProviders 提供持久化提供商查询，生产选择器负责资格检查和排序。
-type mixedHTTPProviders struct {
-	gatewayprovider.ExecutionProviderStore
-	values []gatewayprovider.ExecutionProvider
-}
-
 func (*mixedHTTPProviders) completeGroupProjection() {}
 
 func (s *mixedHTTPProviders) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
@@ -1937,11 +2059,6 @@ func newAppHealthObserverFixture(store gatewayprovider.ExecutionProviderStore, c
 	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: store, Options: options})
 }
 
-const (
-	successfulQoderStream = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"served\\\"}}]}\"}\n\ndata: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":12,\\\"completion_tokens\\\":3}}\"}\n\ndata: {\"body\":\"[DONE]\"}\n\n"
-	qoderFailureFrame     = "data: {\"body\":\"{\\\"code\\\":\\\"500\\\",\\\"message\\\":\\\"fixture failure\\\"}\",\"statusCodeValue\":502}\n\n"
-)
-
 func newAuthRoutesTestRouter(redisClient *redis.Client) *gin.Engine {
 	router := gin.New()
 	v1 := router.Group("/api/v1")
@@ -1964,95 +2081,6 @@ func newAuthRoutesTestRouter(redisClient *redis.Client) *gin.Engine {
 	)
 
 	return router
-}
-
-// 路由夹具提供测试所需的构造参数。
-type routeTestAdminHandlers struct {
-	APIKey                *keyhttp.AdminAPIKeyHandler[routingdto.Group]
-	ProviderArchive       *routeprovider.ArchiveHandler
-	ProviderCRS           *routeprovider.CRSHandler
-	ProviderCodexImport   *routeprovider.CodexImportHandler
-	ProviderManagement    *routeprovider.ManagementHandler
-	ProviderOAuthUsage    *routeprovider.OAuthUsageHandler
-	ProviderOllama        *routeprovider.OllamaUsageHandler
-	ProviderTests         *routeprovider.TestHandler
-	Affiliate             *routepromotion.AffiliateHandler
-	Announcement          *routesite.AdminAnnouncementHandler
-	AntigravityOAuth      *routeprovider.AntigravityOAuthHandler
-	AuditLog              *routeaudit.AuditLogHandler
-	Backup                *routebackup.BackupHandler
-	PricingConfig         *routerouting.PricingHandler
-	CodexInviteReset      *routeprovider.CodexInviteResetHandler
-	ContentModeration     *routemoderation.ContentModerationHandler
-	Dashboard             *routeusageadmin.DashboardHandler
-	DataManagement        *routebackup.DataManagementHandler
-	ErrorPassthrough      *gatewayhttp.ErrorPassthroughHandler
-	GeminiOAuth           *routeprovider.GeminiOAuthHandler
-	GrokOAuth             *routeprovider.GrokOAuthHandler
-	Group                 *routerouting.GroupHandler
-	OAuth                 *routeprovider.ClaudeOAuthHandler
-	OpenAIOAuth           *routeprovider.OpenAIOAuthHandler
-	Ops                   *routeops.OpsHandler
-	Payment               *paymenthttp.AdminHandler
-	Promo                 *routepromotion.PromoHandler
-	Proxy                 *routeegress.ProxyHandler
-	QoderOAuth            *routeprovider.QoderOAuthHandler
-	Redeem                *routebilling.AdminRedeemHandler
-	ScheduledTest         *routeprovider.ScheduledTestHandler
-	SchedulerDiagnostics  *routescheduler.DiagnosticsHandler
-	Subscription          *routebilling.AdminSubscriptionHandler
-	System                *routeops.SystemHandler
-	TLSFingerprintProfile *routeegress.TLSFingerprintProfileHandler
-	TLSFingerprintRouter  *routeegress.TLSFingerprintRouterHandler
-	Team                  *teamhttpapi.AdminHandler
-	UpstreamUsage         *routeprovider.UpstreamUsageHandler
-	Usage                 *routeusageadmin.UsageHandler
-	User                  *routeidentity.AdminUserHandler[dto.APIKey[routingdto.Group]]
-	UserAttribute         *routeidentity.UserAttributeHandler
-}
-
-type routeTestHandlers struct {
-	APIKey       *keyhttp.APIKeyHandler[routingdto.Group]
-	Admin        *routeTestAdminHandlers
-	Announcement *routesite.AnnouncementHandler
-	Auth         interface {
-		routeidentity.AuthEndpoints
-		paymenthttp.WeChatAuthEndpoints
-	}
-	AuxiliaryHTTP       *gatewayhttp.AuxiliaryHandler
-	BatchImage          *batchhttp.BatchImageHandler
-	CompatibleTextHTTP  *gatewayhttp.CompatibleTextHandler
-	CountTokensHTTP     *gatewayhttp.CountTokensHandler
-	Creative            *routecreative.CreativeHandler
-	TextEnabled         bool
-	GeminiNativeHTTP    *gatewayhttp.GeminiNativeHandler
-	LiveHTTP            *gatewayhttp.LiveHandler
-	MediaHTTP           *gatewayhttp.MediaHandler
-	MessagesHTTP        *gatewayhttp.MessagesHandler
-	ModelMarketplace    *routerouting.MarketplaceHandler
-	ModelsHTTP          *gatewayhttp.ModelsHandler
-	Notification        *routenotification.Handler
-	OpenAIEnabled       bool
-	OpenAITextHTTP      *gatewayhttp.OpenAITextHandler
-	OpenAITokensHTTP    *gatewayhttp.OpenAITokensHandler
-	Passkey             *routeidentity.PasskeyHandler
-	Payment             *paymenthttp.PaymentHandler
-	PaymentWebhook      *paymenthttp.PaymentWebhookHandler
-	Plans               *routebilling.PlanHandler
-	PublicSettings      *routesite.PublicHandler
-	PublicUsage         *usagehttp.PublicUsageHandler
-	QoderChat           *gatewayhttp.QoderChatHandler
-	QoderCompatibleHTTP *gatewayhttp.QoderCompatibleHandler
-	Redeem              *routebilling.RedeemHandler
-	ResponsesWSHTTP     *wshttp.ResponsesWSHandler
-	Search              *routesearch.Handler
-	SearchHTTP          *gatewayhttp.SearchHandler
-	Subscription        *routebilling.SubscriptionHandler
-	Team                *teamhttpapi.UserHandler
-	Totp                *routeidentity.TotpHandler
-	Usage               *usagehttp.UsageHandler
-	PromotionUser       *routepromotion.UserHandler
-	User                *routeidentity.UserHandler
 }
 
 func newGatewayRoutesTestRouter(platform ...string) *gin.Engine {
@@ -2116,10 +2144,6 @@ func newGatewayRoutesTestRouterWithGroup(cfg *config.Config, group *routing.Grou
 	return router
 }
 
-type protocolGateTrackingReader struct {
-	read bool
-}
-
 func (r *protocolGateTrackingReader) Read(_ []byte) (int, error) {
 	r.read = true
 	return 0, io.EOF
@@ -2130,7 +2154,7 @@ func routeInventoryValue(kind reflect.Type, depth int) reflect.Value {
 	if kind.Kind() == reflect.Pointer {
 		value := reflect.New(kind.Elem())
 		if kind.Elem().Kind() == reflect.Struct && depth < 3 {
-			for i := 0; i < value.Elem().NumField(); i++ {
+			for i := range value.Elem().NumField() {
 				field := value.Elem().Field(i)
 				if kind.Elem().Field(i).Anonymous && field.CanSet() {
 					field.Set(routeInventoryValue(field.Type(), depth+1))
@@ -2150,7 +2174,7 @@ func routeInventoryValue(kind reflect.Type, depth int) reflect.Value {
 	}
 	if kind.Kind() == reflect.Struct {
 		value := reflect.New(kind).Elem()
-		for i := 0; i < value.NumField(); i++ {
+		for i := range value.NumField() {
 			if value.Field(i).CanSet() && value.Field(i).Kind() == reflect.Func {
 				value.Field(i).Set(routeInventoryValue(value.Field(i).Type(), depth+1))
 			}
@@ -2589,19 +2613,8 @@ func RegisterGatewayRoutes(
 	gatewayhttp.RegisterGatewayRoutes(r, gatewayhttp.RouteEndpoints{CountTokens: countTokensHTTP, QoderCompatible: qoderCompatibleHTTP, CompatibleText: compatibleTextHTTP, GeminiNative: geminiNativeHTTP, OpenAIText: openAITextHTTP, OpenAITokens: openAITokensHTTP, ResponsesWS: responsesWSHTTP.ResponsesWebSocket, Models: modelsHTTP, Messages: messagesHTTP, Media: mediaHTTP, Auxiliary: auxiliaryHTTP, Live: liveHTTP, Search: searchHTTP, PublicUsage: publicUsage, QoderChat: qoderChat}, legacyRouteMiddleware(apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, cfg), func(group *gin.RouterGroup) { batchhttp.RegisterGatewayRoutes(group, h.BatchImage) })
 }
 
-// 空路由夹具的上游计数器缺失时，返回依赖错误。
-type routeCountUnavailable struct{}
-
 func (routeCountUnavailable) CheckKey(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error {
 	return billing.ErrBillingServiceUnavailable
-}
-
-// selectionGroupFixture 为单平台存储替身提供批量平台查询和分组关系，选号使用生产策略。
-// 源记录已有分组时原样保留，防止掩盖组外提供商拒绝测试。
-type selectionGroupFixture struct {
-	gatewayprovider.ExecutionProviderStore
-	mu     sync.Mutex
-	groups map[int64][]int64
 }
 
 func withSelectionGroupFixture(source gatewayprovider.ExecutionProviderStore) gatewayprovider.ExecutionProviderStore {
@@ -2654,20 +2667,9 @@ func (s *selectionGroupFixture) GetByID(ctx context.Context, id int64) (*gateway
 	return value, nil
 }
 
-// readerStoreProbe 记录动态设置查询次数，首次读取和缓存命中分别检查。
-type readerStoreProbe struct {
-	settingscore.Repository
-	reads int
-}
-
 func (s *readerStoreProbe) GetValue(context.Context, string) (string, error) {
 	s.reads++
 	return "", settingscore.ErrSettingNotFound
-}
-
-type settingHandlerRepoStub struct {
-	values      map[string]string
-	lastUpdates map[string]string
 }
 
 func (s *settingHandlerRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {

@@ -23,6 +23,22 @@ import (
 	openaierrors "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type cyberSessionBlockWritePlan struct {
+	scopeKey string
+	keys     []string
+}
+
+// Support 为文本、WS 和媒体适配提供共享的请求资源和用例接口。
+type Support struct {
+	Concurrency *gatewayhttp.ConcurrencyHelper
+	Sticky      gatewayhttp.SlotStickyBinder
+	Rules       *errorpolicy.ErrorPassthroughService
+	Cyber       *gatewayhttp.CyberHandler
+	Quota       gatewayprovider.QuotaUpdater
+	Moderation  gatewayhttp.ModerationPort
+	Submission  gatewayhttp.CompletionSubmission
+}
+
 // OpenAIProviderScheduleModel 依次读取输出模型、请求观测模型和提供商配置的上游模型。
 func OpenAIProviderScheduleModel(c *gin.Context, provider *gatewayprovider.ExecutionProvider, forwardModel string, requireCompact bool, result *forwardcore.OpenAIResult) string {
 	if result != nil {
@@ -296,11 +312,6 @@ func EnsureOpenAIPoolModeSessionHash(sessionHash string, provider *gatewayprovid
 	return "openai-pool-retry-" + uuid.NewString()
 }
 
-type cyberSessionBlockWritePlan struct {
-	scopeKey string
-	keys     []string
-}
-
 func buildCyberSessionBlockWritePlan(apiKeyID int64, c *gin.Context, body []byte) cyberSessionBlockWritePlan {
 	explicit := gatewayhttp.CyberSessionExplicitBlockKey(apiKeyID, c, body)
 	transcript := gatewaysession.CyberSessionTranscriptBlockKeys(apiKeyID, body)
@@ -322,17 +333,6 @@ func cyberSessionScopeKey(apiKeyID int64, c *gin.Context) string {
 // handleGroupSelectionBusinessError 读取 Key 并使用平台目录生成业务错误响应。
 func handleGroupSelectionBusinessError(c *gin.Context, err error, started bool, write func(int, string, string, bool)) bool {
 	return gatewayhttp.WriteGroupSelectionBusinessError(c, err, started, keyhttp.GetAPIKeyFromContext, gatewayprovider.ModelDisplayCatalogue{}, write)
-}
-
-// Support 为文本、WS 和媒体适配提供共享的请求资源和用例接口。
-type Support struct {
-	Concurrency *gatewayhttp.ConcurrencyHelper
-	Sticky      gatewayhttp.SlotStickyBinder
-	Rules       *errorpolicy.ErrorPassthroughService
-	Cyber       *gatewayhttp.CyberHandler
-	Quota       gatewayprovider.QuotaUpdater
-	Moderation  gatewayhttp.ModerationPort
-	Submission  gatewayhttp.CompletionSubmission
 }
 
 // ResolveOpenAIUpstreamEndpoint 返回 OpenAI 兼容提供商实际使用的上游端点。

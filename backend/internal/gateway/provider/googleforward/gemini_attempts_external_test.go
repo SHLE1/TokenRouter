@@ -30,6 +30,27 @@ import (
 	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
+type errorRulesFixtureRepo struct {
+	errorpolicy.ErrorPassthroughRepository
+	rules []*errorpolicy.ErrorPassthroughRule
+}
+
+type geminiErrorPolicyRepo struct {
+	gatewaytestkit.ErrorPolicyStore
+	setErrorCalls            int
+	setRateLimitedCalls      int
+	setTempCalls             int
+	setModelRateLimitedCalls int
+	lastModelScope           string
+}
+
+type rateLimit429ProviderRepoStub struct {
+	gatewaytestkit.ErrorPolicyStore
+	rateLimitCalls     int
+	lastRateLimitID    int64
+	lastRateLimitReset time.Time
+}
+
 func TestParseGeminiRateLimitResetTime_QuotaResetDelay_RoundsUp(t *testing.T) {
 	// Avoid flakiness around Unix second boundaries.
 	for {
@@ -1442,11 +1463,6 @@ func buildGeminiRateLimitBody(delay string) []byte {
 	return []byte(fmt.Sprintf(`{"error":{"message":"too many requests","details":[{"metadata":{"quotaResetDelay":%q}}]}}`, delay))
 }
 
-type errorRulesFixtureRepo struct {
-	errorpolicy.ErrorPassthroughRepository
-	rules []*errorpolicy.ErrorPassthroughRule
-}
-
 func (r errorRulesFixtureRepo) List(context.Context) ([]*errorpolicy.ErrorPassthroughRule, error) {
 	return r.rules, nil
 }
@@ -1465,15 +1481,6 @@ func newGeminiNativeTestContext(t *testing.T) (*gin.Context, *httptest.ResponseR
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1beta/models/gemini-2.5-flash:generateContent", strings.NewReader("{}"))
 	return c, rec
-}
-
-type geminiErrorPolicyRepo struct {
-	gatewaytestkit.ErrorPolicyStore
-	setErrorCalls            int
-	setRateLimitedCalls      int
-	setTempCalls             int
-	setModelRateLimitedCalls int
-	lastModelScope           string
 }
 
 func (r *geminiErrorPolicyRepo) SetError(_ context.Context, _ int64, _ string) error {
@@ -1570,13 +1577,6 @@ func findSSEEventForTest(events []map[string]any, event string, index int, block
 		return i
 	}
 	return -1
-}
-
-type rateLimit429ProviderRepoStub struct {
-	gatewaytestkit.ErrorPolicyStore
-	rateLimitCalls     int
-	lastRateLimitID    int64
-	lastRateLimitReset time.Time
 }
 
 func (r *rateLimit429ProviderRepoStub) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {

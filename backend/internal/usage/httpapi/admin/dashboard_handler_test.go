@@ -22,6 +22,24 @@ type dashboardUsageRepoCacheProbe struct {
 	usersTrendCalls atomic.Int32
 }
 
+type dashboardUsageRepoCapture struct {
+	usage.UsageLogRepository
+	trendRequestType *int16
+	trendStream      *bool
+	modelRequestType *int16
+	modelStream      *bool
+	rankingLimit     int
+	ranking          []usage.UserSpendingRankingItem
+	rankingTotal     float64
+}
+
+type userBreakdownRepoCapture struct {
+	usage.UsageLogRepository
+	capturedDim   usage.UserBreakdownDimension
+	capturedLimit int
+	result        []usage.UserBreakdownItem
+}
+
 func (r *dashboardUsageRepoCacheProbe) GetUsageTrendWithFilters(
 	ctx context.Context,
 	startTime, endTime time.Time,
@@ -132,17 +150,6 @@ func TestDashboardHandler_GetUserUsageTrend_UsesCache(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec2.Code)
 	require.Equal(t, "hit", rec2.Header().Get("X-Snapshot-Cache"))
 	require.Equal(t, int32(1), repo.usersTrendCalls.Load())
-}
-
-type dashboardUsageRepoCapture struct {
-	usage.UsageLogRepository
-	trendRequestType *int16
-	trendStream      *bool
-	modelRequestType *int16
-	modelStream      *bool
-	rankingLimit     int
-	ranking          []usage.UserSpendingRankingItem
-	rankingTotal     float64
 }
 
 func (s *dashboardUsageRepoCapture) GetUsageTrendWithFilters(
@@ -317,13 +324,6 @@ func TestDashboardUsersRankingLimitAndCache(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec2.Code)
 	require.Equal(t, "hit", rec2.Header().Get("X-Snapshot-Cache"))
-}
-
-type userBreakdownRepoCapture struct {
-	usage.UsageLogRepository
-	capturedDim   usage.UserBreakdownDimension
-	capturedLimit int
-	result        []usage.UserBreakdownItem
 }
 
 func (r *userBreakdownRepoCapture) GetUserBreakdownStats(

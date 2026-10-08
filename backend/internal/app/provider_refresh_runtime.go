@@ -16,6 +16,9 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
+// providerRefreshRegistrations 按平台登记刷新执行器，每个平台登记一次。
+type providerRefreshRegistrations []provider.RefreshRegistration
+
 // provideManagedRefresh 为提供商凭据刷新绑定业务用例和共享协调器。
 func provideManagedRefresh(admin *provider.Admin, privacy *provider.PrivacyService, coordinator *provider.OAuthRefreshAPI, transport httpclient.UpstreamTransport, profiles *egressprovider.TLSProfiles, claude *provider.ClaudeAuthorization, openai *provider.OpenAIAuthorization, gemini *provider.GeminiAuthorization, ag *provider.AntigravityAuthorization, grok provider.GrokRefreshTokenService, invalidator provider.TokenCacheInvalidator) *provider.ManagedRefreshService {
 	qoder := provideradapter.NewQoderTokenRefresher(provideradapter.QoderRefreshOptions{Transport: transport, Profiles: profiles})
@@ -42,9 +45,6 @@ func provideProviderRefresh(store *providerpostgres.ProviderStore, cache provide
 	manager.Register(lifecycle.Hook{Name: "ProviderRefreshCoordinator", StopOrder: 25, Stop: coordinator.StopContext})
 	return coordinator
 }
-
-// providerRefreshRegistrations 按平台登记刷新执行器，每个平台登记一次。
-type providerRefreshRegistrations []provider.RefreshRegistration
 
 func provideRefreshPlatforms(claude *provider.ClaudeAuthorization, openai *provider.OpenAIAuthorization, gemini *provider.GeminiAuthorization, antigravity *provider.AntigravityAuthorization, qoder *provideradapter.QoderAuthorization, grok *provider.GrokAuthorization, transport httpclient.UpstreamTransport, profiles *egressprovider.TLSProfiles) providerRefreshRegistrations {
 	claudeRefresh := &provider.ClaudeTokenRefresher{Authorization: claude}

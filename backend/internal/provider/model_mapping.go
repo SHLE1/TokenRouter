@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+// ModelMappingDefaults 提供专用路由和独立型号配额的读取函数。
+type ModelMappingDefaults struct {
+	// Models 枚举专用路由别名，Spark 返回独立配额对应的型号。
+	Models      func(*Record) []string
+	Antigravity func() map[string]string
+}
+
 // ResolveCompactForwardModel 应用 Compact 附加映射，空值时使用回退模型。
 func ResolveCompactForwardModel(value *Record, model string) string {
 	model = strings.TrimSpace(model)
@@ -28,13 +35,6 @@ func ResolveForwardMappedModel(value *Record, requested string, defaults ModelMa
 		return requested
 	}
 	return strings.TrimSpace(mapped)
-}
-
-// ModelMappingDefaults 提供专用路由和独立型号配额的读取函数。
-type ModelMappingDefaults struct {
-	// Models 枚举专用路由别名，Spark 返回独立配额对应的型号。
-	Models      func(*Record) []string
-	Antigravity func() map[string]string
 }
 
 // ResolveModelMapping 读取不可变配置并返回独立映射，不在共享提供商内写入派生缓存。

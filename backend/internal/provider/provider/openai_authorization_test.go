@@ -26,6 +26,33 @@ import (
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type openaiOAuthClientRefreshStub struct {
+	refreshCalls int32
+	lastOptions  []upstreamopenai.OAuthTokenRequestOptions
+	lastClientID string
+}
+
+type openAIOAuthTokenProfileResolverStub struct {
+	profiles map[int64]*tlsfingerprint.Profile
+}
+
+type openAIOAuthSettingRepoStub struct {
+	values map[string]string
+}
+
+type openaiOAuthClientAuthURLStub struct{}
+
+type openaiOAuthClientStateStub struct {
+	exchangeCalled int32
+	lastClientID   string
+	lastOptions    []upstreamopenai.OAuthTokenRequestOptions
+}
+
+type chatGPTBackendTestConfig struct {
+	providers    map[string]any
+	subscription func(providerID string) map[string]any
+}
+
 func TestOpenAIOAuthService_RefreshProviderToken_NoRefreshTokenUsesExistingAccessToken(t *testing.T) {
 	client := &openaiOAuthClientRefreshStub{}
 	deps := &OpenAIAuthorizationDependencies{}
@@ -167,7 +194,7 @@ func TestOpenAIPrivacyUsesNativeAccountSettingsEndpoint(t *testing.T) {
 	client.Transport.WrapRoundTripFunc(func(http.RoundTripper) req.HttpRoundTripFunc {
 		return func(request *http.Request) (*http.Response, error) {
 			requests = append(requests, request)
-			return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"training_allowed":false}`)), Request: request}, nil
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"training_allowed":false}`)), Request: request}, nil
 		}
 	})
 	options := OpenAIAuthorizationOptions(&OpenAIAuthorizationDependencies{PrivacyFactory: func(string) (*req.Client, error) { return client, nil }})
@@ -195,7 +222,7 @@ func TestOpenAIPATUsesNativeAccountEndpoint(t *testing.T) {
 	var requestedURL string
 	client.Transport = req.HttpRoundTripFunc(func(request *http.Request) (*http.Response, error) {
 		requestedURL = request.URL.String()
-		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Request: request, Body: io.NopCloser(strings.NewReader(`{"email":"fixture@example.test","chatgpt_user_id":"user-fixture","chatgpt_account_id":"account-fixture","chatgpt_plan_type":"plus","chatgpt_account_is_fedramp":false}`))}, nil
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Request: request, Body: io.NopCloser(strings.NewReader(`{"email":"fixture@example.test","chatgpt_user_id":"user-fixture","chatgpt_account_id":"account-fixture","chatgpt_plan_type":"plus","chatgpt_account_is_fedramp":false}`))}, nil
 	})
 	options := OpenAIAuthorizationOptions(&OpenAIAuthorizationDependencies{})
 	info, err := options.ValidatePAT(context.Background(), "at-fixture", proxy.URL)
@@ -664,12 +691,6 @@ func TestEnrichTokenInfo_WorkspacePlanKeepsItsOwnExpiry(t *testing.T) {
 	require.Zero(t, subscriptionCalls.Load())
 }
 
-type openaiOAuthClientRefreshStub struct {
-	refreshCalls int32
-	lastOptions  []upstreamopenai.OAuthTokenRequestOptions
-	lastClientID string
-}
-
 func (s *openaiOAuthClientRefreshStub) ExchangeCode(ctx context.Context, code, codeVerifier, redirectURI, proxyURL, clientID string, options ...upstreamopenai.OAuthTokenRequestOptions) (*upstreamopenai.TokenResponse, error) {
 	return nil, errors.New("not implemented")
 }
@@ -687,20 +708,12 @@ func (s *openaiOAuthClientRefreshStub) RefreshTokenWithClientID(ctx context.Cont
 	return &upstreamopenai.TokenResponse{AccessToken: "new-at", RefreshToken: "new-rt", ExpiresIn: 3600}, nil
 }
 
-type openAIOAuthTokenProfileResolverStub struct {
-	profiles map[int64]*tlsfingerprint.Profile
-}
-
 func (s *openAIOAuthTokenProfileResolverStub) ResolveTokenTLSProfileByID(id int64) (*tlsfingerprint.Profile, bool) {
 	if s == nil {
 		return nil, false
 	}
 	profile, ok := s.profiles[id]
 	return profile, ok
-}
-
-type openAIOAuthSettingRepoStub struct {
-	values map[string]string
 }
 
 func (s *openAIOAuthSettingRepoStub) Get(context.Context, string) (*settings.Setting, error) {
@@ -734,8 +747,6 @@ func (s *openAIOAuthSettingRepoStub) Delete(context.Context, string) error {
 	panic("unexpected Delete call")
 }
 
-type openaiOAuthClientAuthURLStub struct{}
-
 func (s *openaiOAuthClientAuthURLStub) ExchangeCode(ctx context.Context, code, codeVerifier, redirectURI, proxyURL, clientID string, options ...upstreamopenai.OAuthTokenRequestOptions) (*upstreamopenai.TokenResponse, error) {
 	return nil, errors.New("not implemented")
 }
@@ -746,12 +757,6 @@ func (s *openaiOAuthClientAuthURLStub) RefreshToken(ctx context.Context, refresh
 
 func (s *openaiOAuthClientAuthURLStub) RefreshTokenWithClientID(ctx context.Context, refreshToken, proxyURL string, clientID string, options ...upstreamopenai.OAuthTokenRequestOptions) (*upstreamopenai.TokenResponse, error) {
 	return nil, errors.New("not implemented")
-}
-
-type openaiOAuthClientStateStub struct {
-	exchangeCalled int32
-	lastClientID   string
-	lastOptions    []upstreamopenai.OAuthTokenRequestOptions
 }
 
 func (s *openaiOAuthClientStateStub) ExchangeCode(ctx context.Context, code, codeVerifier, redirectURI, proxyURL, clientID string, options ...upstreamopenai.OAuthTokenRequestOptions) (*upstreamopenai.TokenResponse, error) {
@@ -771,11 +776,6 @@ func (s *openaiOAuthClientStateStub) RefreshToken(ctx context.Context, refreshTo
 
 func (s *openaiOAuthClientStateStub) RefreshTokenWithClientID(ctx context.Context, refreshToken, proxyURL string, clientID string, options ...upstreamopenai.OAuthTokenRequestOptions) (*upstreamopenai.TokenResponse, error) {
 	return s.RefreshToken(ctx, refreshToken, proxyURL)
-}
-
-type chatGPTBackendTestConfig struct {
-	providers    map[string]any
-	subscription func(providerID string) map[string]any
 }
 
 // configureChatGPTBackendTestServer 在本地接管提供商、订阅和隐私设置端点。

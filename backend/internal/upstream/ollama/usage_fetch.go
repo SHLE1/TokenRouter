@@ -13,19 +13,25 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )
 
+const (
+	SettingsURL    = "https://ollama.com/settings"
+	RequestTimeout = 15 * time.Second
+	MaxBodyBytes   = 512 * 1024
+)
+
 type FetchInput struct {
 	ObservedAt time.Time
 	Cookie     string `json:"-"`
 }
-
-func (i FetchInput) String() string   { return "ollama usage input" }
-func (i FetchInput) GoString() string { return i.String() }
 
 type FetchOptions struct {
 	Do          func(*http.Request) (*http.Response, error)
 	Context     func(context.Context) context.Context
 	Unavailable error
 }
+
+func (i FetchInput) String() string   { return "ollama usage input" }
+func (i FetchInput) GoString() string { return i.String() }
 
 // FetchUsage 使用给定会话读取 Ollama 设置页并解析用量。
 func FetchUsage(ctx context.Context, input FetchInput, options FetchOptions) (*usageview.OllamaUsageObservation, error) {
@@ -79,12 +85,6 @@ func FetchUsage(ctx context.Context, input FetchInput, options FetchOptions) (*u
 
 	return &usageview.OllamaUsageObservation{Data: data, HTTPStatus: resp.StatusCode}, nil
 }
-
-const (
-	SettingsURL    = "https://ollama.com/settings"
-	RequestTimeout = 15 * time.Second
-	MaxBodyBytes   = 512 * 1024
-)
 
 func IsExactSettingsURL(parsed *url.URL) bool {
 	return parsed != nil && parsed.Scheme == "https" && parsed.Host == "ollama.com" && parsed.Path == "/settings" &&

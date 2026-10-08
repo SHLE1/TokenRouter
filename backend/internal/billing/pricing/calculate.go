@@ -11,6 +11,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+// OpenAIFastTierPriority 和 OpenAIFastTierUltrafast 使用 OpenAI 协议的档位名称。
+const (
+	OpenAIFastTierPriority  = openai.ServiceTierPriority
+	OpenAIFastTierUltrafast = openai.ServiceTierUltrafast
+)
+
+// ErrModelPricingUnavailable 表示当前所有定价来源都无法为请求模型提供价格。
+var ErrModelPricingUnavailable = errors.New("pricing not found")
+
+// ResolvedTokenPriceRange 是正上下文范围的实际价格；nil 表示该范围缺价。
+type ResolvedTokenPriceRange struct {
+	minTokens int
+	maxTokens *int
+	pricing   *ModelPricing
+}
+
 func NormalizeBillingServiceTier(serviceTier string) string {
 	return strings.ToLower(strings.TrimSpace(serviceTier))
 }
@@ -121,9 +137,6 @@ func MaxReasoningEffortBillingMultiplier(model, effort string, pricing *ModelPri
 	}
 	return 1
 }
-
-// ErrModelPricingUnavailable 表示当前所有定价来源都无法为请求模型提供价格。
-var ErrModelPricingUnavailable = errors.New("pricing not found")
 
 // ConfigTierOverridePrice 根据模型目录中的层级比例推导价卡层级价格。
 // 价卡覆盖普通价时，priority/Fast 价格仍按对应服务层级计算。
@@ -960,16 +973,3 @@ func CalculateCost(resolved *ResolvedPricing, input CostInput) (*CostBreakdown, 
 	}
 	return breakdown, err
 }
-
-// ResolvedTokenPriceRange 是正上下文范围的实际价格；nil 表示该范围缺价。
-type ResolvedTokenPriceRange struct {
-	minTokens int
-	maxTokens *int
-	pricing   *ModelPricing
-}
-
-// OpenAIFastTierPriority 和 OpenAIFastTierUltrafast 使用 OpenAI 协议的档位名称。
-const (
-	OpenAIFastTierPriority  = openai.ServiceTierPriority
-	OpenAIFastTierUltrafast = openai.ServiceTierUltrafast
-)

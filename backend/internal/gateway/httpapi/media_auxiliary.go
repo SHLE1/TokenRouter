@@ -56,6 +56,17 @@ type AuxiliaryHandler struct {
 	ports AuxiliaryHTTPPorts
 }
 
+type mediaClientFrames struct{ conn *websocket.Conn }
+
+type EmbeddingHTTPExecution interface {
+	media.EmbeddingsPorts
+	EndEmbeddingFailure(*media.EmbeddingFailure)
+}
+type AlphaHTTPExecution interface {
+	media.AlphaPorts
+	EndAlphaFailure(*media.AlphaFailure)
+}
+
 func NewAuxiliaryHandler(ports AuxiliaryHTTPPorts) *AuxiliaryHandler {
 	return &AuxiliaryHandler{base: NewMediaHandler(ports), ports: ports}
 }
@@ -303,8 +314,6 @@ func (h *AuxiliaryHandler) GrokRealtime(c *gin.Context) {
 	}
 }
 
-type mediaClientFrames struct{ conn *websocket.Conn }
-
 func (c mediaClientFrames) ReadFrame(ctx context.Context) (upstream.FrameKind, []byte, error) {
 	kind, data, err := c.conn.Read(ctx)
 	return upstream.FrameKind(kind), data, err
@@ -314,15 +323,6 @@ func (c mediaClientFrames) WriteFrame(ctx context.Context, kind upstream.FrameKi
 	return c.conn.Write(ctx, websocket.MessageType(kind), data)
 }
 func (c mediaClientFrames) Close() error { return c.conn.CloseNow() }
-
-type EmbeddingHTTPExecution interface {
-	media.EmbeddingsPorts
-	EndEmbeddingFailure(*media.EmbeddingFailure)
-}
-type AlphaHTTPExecution interface {
-	media.AlphaPorts
-	EndAlphaFailure(*media.AlphaFailure)
-}
 
 func mediaWebsocketUpgrade(r *http.Request) bool {
 	if r == nil {

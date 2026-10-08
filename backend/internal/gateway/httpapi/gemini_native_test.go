@@ -3,6 +3,7 @@ package httpapi
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -56,7 +57,7 @@ func TestExtractGeminiCLISessionHash(t *testing.T) {
 			// 创建测试上下文
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			c.Request = httptest.NewRequest("POST", "/test", nil)
+			c.Request = httptest.NewRequest(http.MethodPost, "/test", nil)
 			if tt.privilegedUserID != "" {
 				c.Request.Header.Set("x-gemini-api-privileged-user-id", tt.privilegedUserID)
 			}

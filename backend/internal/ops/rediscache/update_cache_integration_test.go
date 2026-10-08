@@ -17,6 +17,22 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+type prefixHook struct {
+	prefix string
+}
+
+// IntegrationRedisSuite 为更新缓存测试提供上下文和带独立键前缀的 Redis 客户端。
+type IntegrationRedisSuite struct {
+	suite.Suite
+	ctx context.Context
+	rdb *redis.Client
+}
+
+type UpdateCacheSuite struct {
+	IntegrationRedisSuite
+	cache *updateCache
+}
+
 func (s *UpdateCacheSuite) TestGetUpdateInfo_Missing() {
 	_, err := s.cache.GetUpdateInfo(s.ctx)
 	require.True(s.T(), errors.Is(err, redis.Nil), "expected redis.Nil for missing update info")
@@ -116,10 +132,6 @@ func sanitizeRedisNamespace(name string) string {
 	return name
 }
 
-type prefixHook struct {
-	prefix string
-}
-
 func (h prefixHook) DialHook(next redis.DialHook) redis.DialHook { return next }
 
 func (h prefixHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
@@ -197,13 +209,6 @@ func (h prefixHook) prefixCmd(cmd redis.Cmder) {
 	}
 }
 
-// IntegrationRedisSuite 为更新缓存测试提供上下文和带独立键前缀的 Redis 客户端。
-type IntegrationRedisSuite struct {
-	suite.Suite
-	ctx context.Context
-	rdb *redis.Client
-}
-
 // SetupTest 为每个测试方法初始化上下文和 Redis 客户端。
 func (s *IntegrationRedisSuite) SetupTest() {
 	s.ctx = context.Background()
@@ -214,11 +219,6 @@ func (s *IntegrationRedisSuite) SetupTest() {
 func (s *IntegrationRedisSuite) AssertTTLWithin(ttl, min, max time.Duration) {
 	s.T().Helper()
 	assertTTLWithin(s.T(), ttl, min, max)
-}
-
-type UpdateCacheSuite struct {
-	IntegrationRedisSuite
-	cache *updateCache
 }
 
 func (s *UpdateCacheSuite) SetupTest() {

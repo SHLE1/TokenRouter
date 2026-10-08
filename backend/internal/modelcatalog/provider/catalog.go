@@ -17,6 +17,21 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 )
 
+// supplementFields 定义本地补充可填写的计费字段。
+var supplementFields = map[string]string{
+	"input_cost_per_token": "input", "output_cost_per_token": "output",
+	"input_cost_per_token_priority": "priority_input", "output_cost_per_token_priority": "priority_output",
+	"cache_read_input_token_cost": "cache_read", "cache_read_input_token_cost_priority": "priority_cache_read",
+	"cache_creation_input_token_cost": "cache_write", "cache_creation_input_token_cost_priority": "priority_cache_write",
+	"cache_creation_input_token_cost_above_1hr": "cache_write_1h",
+	"input_cost_per_image_token":                "image_input", "output_cost_per_image_token": "image_output", "output_cost_per_image": "image",
+	"image_prices": "image_prices", "video_prices": "video_prices",
+	"fast_multiplier": "fast_multiplier", "flex_multiplier": "flex_multiplier",
+	"max_reasoning_effort_multiplier": "max_reasoning_effort_multiplier",
+	"cache_write_multiplier":          "cache_write_multiplier", "cache_write_1h_multiplier": "cache_write_1h_multiplier",
+	"time_pricing": "time_pricing", "source_url": "source_url", "verified_at": "verified_at",
+}
+
 // AttributeSnapshot 只供管理与展示使用，与价格在同一个锁内发布。
 type AttributeSnapshot struct {
 	Items       []modelcatalog.Entry `json:"items"`
@@ -133,21 +148,6 @@ func applyModelSupplements(raw map[string]json.RawMessage, catalog *modelcatalog
 	return nil
 }
 
-// supplementFields 定义本地补充可填写的计费字段。
-var supplementFields = map[string]string{
-	"input_cost_per_token": "input", "output_cost_per_token": "output",
-	"input_cost_per_token_priority": "priority_input", "output_cost_per_token_priority": "priority_output",
-	"cache_read_input_token_cost": "cache_read", "cache_read_input_token_cost_priority": "priority_cache_read",
-	"cache_creation_input_token_cost": "cache_write", "cache_creation_input_token_cost_priority": "priority_cache_write",
-	"cache_creation_input_token_cost_above_1hr": "cache_write_1h",
-	"input_cost_per_image_token":                "image_input", "output_cost_per_image_token": "image_output", "output_cost_per_image": "image",
-	"image_prices": "image_prices", "video_prices": "video_prices",
-	"fast_multiplier": "fast_multiplier", "flex_multiplier": "flex_multiplier",
-	"max_reasoning_effort_multiplier": "max_reasoning_effort_multiplier",
-	"cache_write_multiplier":          "cache_write_multiplier", "cache_write_1h_multiplier": "cache_write_1h_multiplier",
-	"time_pricing": "time_pricing", "source_url": "source_url", "verified_at": "verified_at",
-}
-
 // mergeMediaSupplement 只填补允许的计费字段，目录已有值和零价均优先。
 func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry json.RawMessage) error {
 	var fields map[string]json.RawMessage
@@ -212,7 +212,7 @@ func (s *Service) publishModelsCatalog(body []byte, updated time.Time, persist b
 	var fingerprint string
 	var defaults pricing.OperationPrices
 	// 文件编辑可能与目录同步重叠，发布前后核对文件指纹，价格数据取自同一组文件内容。
-	for attempt := 0; attempt < 3; attempt++ {
+	for attempt := range 3 {
 		before := s.customPricingFilesFingerprint()
 		var err error
 		catalog, prices, defaults, err = s.buildModelsCatalog(body)

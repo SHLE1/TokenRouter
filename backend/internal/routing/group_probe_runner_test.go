@@ -8,6 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mappedProbeExecutor 检查执行探测使用选中的模型，历史记录使用管理员请求的模型。
+type mappedProbeExecutor struct {
+	t *testing.T
+}
+
 func TestGroupProbeAttemptUsesMappedTargetAndRecordsRequestedModel(t *testing.T) {
 	runner := NewGroupAvailabilityProbeRunnerService(nil, mappedProbeExecutor{t: t}, GroupProbeOptions{})
 	result := runner.runProbeAttempt(context.Background(), GroupAvailabilityProbeDueGroup{GroupID: 59}, GroupAvailabilityProbeConfig{
@@ -150,11 +155,6 @@ func TestRunGroupAvailabilityProbeAttemptsStopsAfterParentCancellation(t *testin
 	if attempts != 1 {
 		t.Fatalf("runGroupAvailabilityProbeAttempts() attempts = %d, want 1", attempts)
 	}
-}
-
-// mappedProbeExecutor 检查执行探测使用选中的模型，历史记录使用管理员请求的模型。
-type mappedProbeExecutor struct {
-	t *testing.T
 }
 
 func (e mappedProbeExecutor) Select(_ context.Context, due GroupAvailabilityProbeDueGroup, model string) (GroupProbeTarget, error) {

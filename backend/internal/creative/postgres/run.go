@@ -15,6 +15,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+// creativeRunRepository 基于 Ent 实现创作台任务元数据仓储。
+// 状态转换统一走 version 乐观锁：WHERE run_id = ? AND version = ?，冲突即视为并发推进。
+type creativeRunRepository struct {
+	client *dbent.Client
+}
+
 // translatePersistenceError 将数据库的缺失和冲突错误转换为任务错误。
 func translatePersistenceError(err error, notFound, conflict *apperror.ApplicationError) error {
 	if err == nil {
@@ -27,12 +33,6 @@ func translatePersistenceError(err error, notFound, conflict *apperror.Applicati
 		return conflict.WithCause(err)
 	}
 	return err
-}
-
-// creativeRunRepository 基于 Ent 实现创作台任务元数据仓储。
-// 状态转换统一走 version 乐观锁：WHERE run_id = ? AND version = ?，冲突即视为并发推进。
-type creativeRunRepository struct {
-	client *dbent.Client
 }
 
 // NewCreativeRunRepository 创建创作台任务仓储。
@@ -89,7 +89,7 @@ func (r *creativeRunRepository) CreateCreativeRun(ctx context.Context, params cr
 	}
 	// 同事务创建全部 pending 输出行，保证任务与输出元数据原子出现。
 	outputBuilders := make([]*dbent.CreativeRunOutputCreate, 0, params.RequestedOutputCount)
-	for index := 0; index < params.RequestedOutputCount; index++ {
+	for index := range params.RequestedOutputCount {
 		outputBuilders = append(outputBuilders, tx.CreativeRunOutput.Create().
 			SetRunID(params.RunID).
 			SetOutputIndex(index).

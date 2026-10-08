@@ -29,6 +29,65 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const (
+	RoleAdmin = "admin"
+
+	RoleUser = "user"
+)
+
+// contentModerationTestProxyRepo 记录审核服务查询代理的次数。
+type contentModerationTestProxyRepo struct {
+	proxies    map[int64]*Proxy
+	getByIDErr error
+	getCalls   atomic.Int64
+}
+
+type contentModerationRuntimeSettingRepo struct {
+	mu               sync.Mutex
+	values           map[string]string
+	getValueCalls    int
+	getMultipleCalls int
+	getMultipleErr   error
+	getMultipleStart chan<- struct{}
+	getMultipleWait  <-chan struct{}
+}
+
+type contentModerationTestSettingRepo struct {
+	values map[string]string
+}
+
+type contentModerationTestRepo struct {
+	mu            sync.Mutex
+	logs          []ContentModerationLog
+	cyberWarnings []ContentModerationCyberWarning
+}
+
+type contentModerationTestHashCache struct {
+	mu            sync.Mutex
+	hashes        map[string]struct{}
+	recorded      []string
+	checked       []string
+	deleted       []string
+	hasResult     bool
+	hasResultUsed bool
+}
+
+type contentModerationTestUserRepo struct {
+	user         *User
+	updated      []User
+	requestedIDs []int64
+}
+
+type contentModerationTestAuthCacheInvalidator struct {
+	userIDs []int64
+}
+
+type (
+	User             = UserSnapshot
+	Proxy            = egress.Proxy
+	UserUpdateFields struct{ Status bool }
+)
+
 func TestSplitContentModerationTextKeepsOverlapAndTail(t *testing.T) {
 	chunks := splitContentModerationText("abcdefghij", 6, 2)
 
@@ -138,7 +197,7 @@ func TestContentModerationWeightedAPIKeySelectionHonorsPriorityAndFreeze(t *test
 	svc := newTestModeration(nil, nil, nil, nil, nil, nil, nil)
 	svc.Start()
 	counts := map[string]int{}
-	for index := 0; index < 60; index++ {
+	for range 60 {
 		key, ok := svc.nextUsableAPIKey(cfg)
 		require.True(t, ok)
 		counts[key]++
@@ -149,7 +208,7 @@ func TestContentModerationWeightedAPIKeySelectionHonorsPriorityAndFreeze(t *test
 	svc.keyHealthMu.Lock()
 	svc.keyHealth[moderationAPIKeyHash("sk-high")] = &contentModerationKeyHealth{FrozenUntil: time.Now().Add(time.Minute)}
 	svc.keyHealthMu.Unlock()
-	for index := 0; index < 10; index++ {
+	for range 10 {
 		key, ok := svc.nextUsableAPIKey(cfg)
 		require.True(t, ok)
 		require.Equal(t, "sk-low", key)
@@ -548,7 +607,7 @@ func TestContentModerationProxyURLResolutionCached(t *testing.T) {
 	svc.Start()
 	svc.SetProxyRepository(proxyRepo)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if _, err := svc.resolveModerationProxyURL(context.Background(), 3); err != nil {
 			t.Fatalf("resolve attempt %d failed: %v", i, err)
 		}
@@ -1670,7 +1729,7 @@ func TestContentModerationStatusTracksPreBlockAPIKeyLoad(t *testing.T) {
 	)
 	svc.Start()
 
-	for idx := 0; idx < 4; idx++ {
+	for idx := range 4 {
 		_, err := svc.Check(context.Background(), ContentModerationCheckInput{
 			UserID:   1001,
 			Protocol: ContentModerationProtocolOpenAIChat,
@@ -2686,13 +2745,6 @@ func decodeModerationTextInputs(t *testing.T, r *http.Request) []string {
 	return []string{single}
 }
 
-// contentModerationTestProxyRepo 记录审核服务查询代理的次数。
-type contentModerationTestProxyRepo struct {
-	proxies    map[int64]*Proxy
-	getByIDErr error
-	getCalls   atomic.Int64
-}
-
 func (r *contentModerationTestProxyRepo) GetByID(ctx context.Context, id int64) (*Proxy, error) {
 	r.getCalls.Add(1)
 	if r.getByIDErr != nil {
@@ -2705,16 +2757,6 @@ func (r *contentModerationTestProxyRepo) GetByID(ctx context.Context, id int64) 
 }
 
 func moderationProxyIDPtr(v int64) *int64 { return &v }
-
-type contentModerationRuntimeSettingRepo struct {
-	mu               sync.Mutex
-	values           map[string]string
-	getValueCalls    int
-	getMultipleCalls int
-	getMultipleErr   error
-	getMultipleStart chan<- struct{}
-	getMultipleWait  <-chan struct{}
-}
 
 func (r *contentModerationRuntimeSettingRepo) Get(_ context.Context, key string) (*Setting, error) {
 	r.mu.Lock()
@@ -2851,10 +2893,6 @@ func runtimeCacheTestInput(text string) ContentModerationCheckInput {
 	}
 }
 
-type contentModerationTestSettingRepo struct {
-	values map[string]string
-}
-
 func (r *contentModerationTestSettingRepo) Get(ctx context.Context, key string) (*Setting, error) {
 	if value, ok := r.values[key]; ok {
 		return &Setting{Key: key, Value: value}, nil
@@ -2908,12 +2946,6 @@ func (r *contentModerationTestSettingRepo) GetAll(ctx context.Context) (map[stri
 func (r *contentModerationTestSettingRepo) Delete(ctx context.Context, key string) error {
 	delete(r.values, key)
 	return nil
-}
-
-type contentModerationTestRepo struct {
-	mu            sync.Mutex
-	logs          []ContentModerationLog
-	cyberWarnings []ContentModerationCyberWarning
 }
 
 func (r *contentModerationTestRepo) CreateLog(ctx context.Context, log *ContentModerationLog) error {
@@ -3030,22 +3062,6 @@ func requireRecordedHashCount(t *testing.T, cache *contentModerationTestHashCach
 	return hashes
 }
 
-type contentModerationTestHashCache struct {
-	mu            sync.Mutex
-	hashes        map[string]struct{}
-	recorded      []string
-	checked       []string
-	deleted       []string
-	hasResult     bool
-	hasResultUsed bool
-}
-
-type contentModerationTestUserRepo struct {
-	user         *User
-	updated      []User
-	requestedIDs []int64
-}
-
 func (r *contentModerationTestUserRepo) GetByID(ctx context.Context, id int64) (*User, error) {
 	r.requestedIDs = append(r.requestedIDs, id)
 	if r.user == nil {
@@ -3063,10 +3079,6 @@ func (r *contentModerationTestUserRepo) Update(ctx context.Context, user *User, 
 	r.updated = append(r.updated, clone)
 	r.user = &clone
 	return nil
-}
-
-type contentModerationTestAuthCacheInvalidator struct {
-	userIDs []int64
 }
 
 func (i *contentModerationTestAuthCacheInvalidator) InvalidateAuthCacheByUserID(ctx context.Context, userID int64) {
@@ -3252,14 +3264,6 @@ func newCreativeNoMediaRetentionModerationService(t *testing.T) (*ContentModerat
 	return svc, repo, hashCache, imageDataURL
 }
 
-type (
-	User             = UserSnapshot
-	Proxy            = egress.Proxy
-	UserUpdateFields struct{ Status bool }
-)
-
-const RoleAdmin = "admin"
-
 func (r *contentModerationTestUserRepo) SetStatus(ctx context.Context, id int64, status string) error {
 	return r.Update(ctx, &User{ID: id, Role: r.user.Role, Status: status}, UserUpdateFields{Status: true})
 }
@@ -3277,8 +3281,6 @@ func newTestModeration(settings SettingRepository, repo ContentModerationReposit
 }
 
 func IsOpenAICyberWarningText(text string) bool { return openai.IsOpenAICyberWarningText(text) }
-
-const RoleUser = "user"
 
 func makeTestPNG(t *testing.T, width, height int) []byte {
 	t.Helper()

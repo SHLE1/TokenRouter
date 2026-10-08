@@ -35,6 +35,36 @@ type PromoMutations interface {
 	ApplyCode(context.Context, int64, string, func(*PromoCode) error, func() time.Time) error
 }
 
+// PromoCodeRepository 读写优惠码及使用记录。
+type PromoCodeRepository interface {
+	// 基础 CRUD
+	Create(ctx context.Context, code *PromoCode) error
+	GetByID(ctx context.Context, id int64) (*PromoCode, error)
+	GetByCode(ctx context.Context, code string) (*PromoCode, error)
+	GetByCodeForUpdate(ctx context.Context, code string) (*PromoCode, error) // 带行锁的查询，用于并发控制
+	Update(ctx context.Context, code *PromoCode) error
+	Delete(ctx context.Context, id int64) error
+
+	// 列表查询
+	List(ctx context.Context, params pagination.PaginationParams) ([]PromoCode, *pagination.PaginationResult, error)
+	ListWithFilters(ctx context.Context, params pagination.PaginationParams, status, search string) ([]PromoCode, *pagination.PaginationResult, error)
+
+	// 使用记录
+	CreateUsage(ctx context.Context, usage *PromoCodeUsage) error
+	GetUsageByPromoCodeAndUser(ctx context.Context, promoCodeID, userID int64) (*PromoCodeUsage, error)
+	ListUsagesByPromoCode(ctx context.Context, promoCodeID int64, params pagination.PaginationParams) ([]PromoCodeUsage, *pagination.PaginationResult, error)
+
+	// 计数操作
+	IncrementUsedCount(ctx context.Context, id int64) error
+}
+
+// RegistrationPromotionPreview 返回注册优惠码的有效状态、赠送金额和错误代码。
+type RegistrationPromotionPreview struct {
+	Valid       bool
+	BonusAmount float64
+	ErrorCode   string
+}
+
 func NewPromoService(repo PromoCodeRepository, mutations PromoMutations, auth AuthCacheInvalidator, balances BalanceCache, runtime Runtime) *PromoService {
 	if runtime.Now == nil {
 		runtime.Now = time.Now
@@ -227,36 +257,6 @@ func (s *PromoService) background(name string, fn func()) {
 	} else {
 		fn()
 	}
-}
-
-// PromoCodeRepository 读写优惠码及使用记录。
-type PromoCodeRepository interface {
-	// 基础 CRUD
-	Create(ctx context.Context, code *PromoCode) error
-	GetByID(ctx context.Context, id int64) (*PromoCode, error)
-	GetByCode(ctx context.Context, code string) (*PromoCode, error)
-	GetByCodeForUpdate(ctx context.Context, code string) (*PromoCode, error) // 带行锁的查询，用于并发控制
-	Update(ctx context.Context, code *PromoCode) error
-	Delete(ctx context.Context, id int64) error
-
-	// 列表查询
-	List(ctx context.Context, params pagination.PaginationParams) ([]PromoCode, *pagination.PaginationResult, error)
-	ListWithFilters(ctx context.Context, params pagination.PaginationParams, status, search string) ([]PromoCode, *pagination.PaginationResult, error)
-
-	// 使用记录
-	CreateUsage(ctx context.Context, usage *PromoCodeUsage) error
-	GetUsageByPromoCodeAndUser(ctx context.Context, promoCodeID, userID int64) (*PromoCodeUsage, error)
-	ListUsagesByPromoCode(ctx context.Context, promoCodeID int64, params pagination.PaginationParams) ([]PromoCodeUsage, *pagination.PaginationResult, error)
-
-	// 计数操作
-	IncrementUsedCount(ctx context.Context, id int64) error
-}
-
-// RegistrationPromotionPreview 返回注册优惠码的有效状态、赠送金额和错误代码。
-type RegistrationPromotionPreview struct {
-	Valid       bool
-	BonusAmount float64
-	ErrorCode   string
 }
 
 // PreviewRegistrationPromotion 检查注册优惠码并返回公开预览结果。

@@ -6,14 +6,60 @@ import (
 	"net/http"
 )
 
-// NewDeferredOutputContext 在首次访问输出接口时取得响应 Header。
-func NewDeferredOutputContext(sink OutputSink) *OutputContext {
-	return &OutputContext{Writer: &deferredOutputWriter{sink: sink}}
-}
-
 type deferredOutputWriter struct {
 	sink   OutputSink
 	output OutputWriter
+}
+
+// OutputHead 是输出适配器需要的响应元数据，Header 在传递时复制。
+type OutputHead struct {
+	// Committed 记录输出适配器当前的 HTTP 提交状态。
+	Committed bool
+	Status    int
+	Header    http.Header
+}
+
+// OutputEvent 是一个输出片段，写入和刷新错误同步返回执行方。
+type OutputEvent struct {
+	Data           []byte
+	Flush          bool
+	Semantic       bool
+	CommitForRetry bool
+	Terminal       bool
+}
+
+// OutputSink 由 HTTP 或其他调用适配器实现，拥有实际写入与刷新。
+type OutputSink interface {
+	Begin(OutputHead) error
+	Emit(OutputEvent) error
+}
+
+// OutputContext 提供一次转换所需的字节输出接口。
+type OutputContext struct{ Writer OutputWriter }
+
+// OutputWriter 按编解码器的调用顺序，通过 sink 写出数据。
+type OutputWriter interface {
+	io.Writer
+	Header() http.Header
+	WriteHeader(int)
+	WriteHeaderNow()
+	Written() bool
+	Flush()
+}
+
+type sinkWriter struct {
+	sink    OutputSink
+	header  http.Header
+	status  int
+	started bool
+	written bool
+	err     error
+	next    *OutputEvent
+}
+
+// NewDeferredOutputContext 在首次访问输出接口时取得响应 Header。
+func NewDeferredOutputContext(sink OutputSink) *OutputContext {
+	return &OutputContext{Writer: &deferredOutputWriter{sink: sink}}
 }
 
 func (w *deferredOutputWriter) writer() OutputWriter {
@@ -55,42 +101,6 @@ func CloneHeader(src http.Header) http.Header {
 	return dst
 }
 
-// OutputHead 是输出适配器需要的响应元数据，Header 在传递时复制。
-type OutputHead struct {
-	// Committed 记录输出适配器当前的 HTTP 提交状态。
-	Committed bool
-	Status    int
-	Header    http.Header
-}
-
-// OutputEvent 是一个输出片段，写入和刷新错误同步返回执行方。
-type OutputEvent struct {
-	Data           []byte
-	Flush          bool
-	Semantic       bool
-	CommitForRetry bool
-	Terminal       bool
-}
-
-// OutputSink 由 HTTP 或其他调用适配器实现，拥有实际写入与刷新。
-type OutputSink interface {
-	Begin(OutputHead) error
-	Emit(OutputEvent) error
-}
-
-// OutputContext 提供一次转换所需的字节输出接口。
-type OutputContext struct{ Writer OutputWriter }
-
-// OutputWriter 按编解码器的调用顺序，通过 sink 写出数据。
-type OutputWriter interface {
-	io.Writer
-	Header() http.Header
-	WriteHeader(int)
-	WriteHeaderNow()
-	Written() bool
-	Flush()
-}
-
 // NewOutputContext 为一次流转换建立独立元数据，禁止跨请求复用。
 func NewOutputContext(sink OutputSink) *OutputContext {
 	header := make(http.Header)
@@ -107,16 +117,6 @@ func NewOutputContext(sink OutputSink) *OutputContext {
 		}
 	}
 	return &OutputContext{Writer: &sinkWriter{sink: sink, header: header, status: status, written: committed}}
-}
-
-type sinkWriter struct {
-	sink    OutputSink
-	header  http.Header
-	status  int
-	started bool
-	written bool
-	err     error
-	next    *OutputEvent
 }
 
 func (w *sinkWriter) Header() http.Header { return w.header }

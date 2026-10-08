@@ -29,6 +29,32 @@ import (
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
+// batchCataloguePolicyReads 统计批量模型列表读取策略和计费来源的次数。
+type batchCataloguePolicyReads struct {
+	*routing.PricingConfigService
+	policyReads, pricingReads int
+}
+
+// changingMediaPricingGroupRepo 模拟两次读取之间管理员修改分组倍率，两份配置计算出的最终价格相同。
+type changingMediaPricingGroupRepo struct {
+	calls              int
+	oldGroup, newGroup *batchimage.GroupView
+}
+
+// publicPricingConfigFixture 提供模型配置和价卡数据，编译和报价由生产模块执行。
+type publicPricingConfigFixture struct {
+	routing.PricingConfigRepository
+	pricingConfig routing.PricingConfig
+	platforms     map[int64]string
+	policy        routing.GroupRoutingPolicy
+}
+
+type fakeBatchImageAuthCacheInvalidator struct {
+	keys     []string
+	userIDs  []int64
+	groupIDs []int64
+}
+
 // TestBatchImageUnboundKeyCannotUseGlobalProviders 检查未绑定分组的 Key 提交任务时返回分组禁用错误。
 func TestBatchImageUnboundKeyCannotUseGlobalProviders(t *testing.T) {
 	svc, repo, _, platform, _, _ := newTestBatchImagePublicService(true)
@@ -113,7 +139,7 @@ func TestBatchImageCatalogueUsesOnePolicySnapshot(t *testing.T) {
 			svc.ProviderRepo = rebindBatchFixtureProviders(svc, &publicBatchImageProviderRepo{providers: []providercore.Record{value}})
 			svc.ModelIDs = func() []string {
 				ids := []string{"gpt-5.4", "catalog-image"}
-				for i := 0; i < 12000; i++ {
+				for i := range 12000 {
 					ids = append(ids, fmt.Sprintf("text-%d", i))
 				}
 				return ids
@@ -1118,12 +1144,6 @@ func TestBatchImageConfiguredAlias(t *testing.T) {
 	}
 }
 
-// batchCataloguePolicyReads 统计批量模型列表读取策略和计费来源的次数。
-type batchCataloguePolicyReads struct {
-	*routing.PricingConfigService
-	policyReads, pricingReads int
-}
-
 // GetGroupPolicy 统计策略读取次数。
 func (p *batchCataloguePolicyReads) GetGroupPolicy(ctx context.Context, id int64) (*routing.GroupPolicyView, error) {
 	p.policyReads++
@@ -1134,12 +1154,6 @@ func (p *batchCataloguePolicyReads) GetGroupPolicy(ctx context.Context, id int64
 func (p *batchCataloguePolicyReads) GetPricingConfigForGroup(ctx context.Context, id int64) (*routing.PricingConfig, error) {
 	p.pricingReads++
 	return p.PricingConfigService.GetPricingConfigForGroup(ctx, id)
-}
-
-// changingMediaPricingGroupRepo 模拟两次读取之间管理员修改分组倍率，两份配置计算出的最终价格相同。
-type changingMediaPricingGroupRepo struct {
-	calls              int
-	oldGroup, newGroup *batchimage.GroupView
 }
 
 func (r *changingMediaPricingGroupRepo) GetByIDLite(context.Context, int64) (*batchimage.GroupView, error) {
@@ -1154,14 +1168,6 @@ func testPtrFloat64(value float64) *float64 { return &value }
 
 func rebindBatchFixtureProviders(core *batchimage.Public, source batchProvidersFixtureSource) batchimage.ProviderReader {
 	return &batchProviderFixture{source: source, registry: testassert.MustType[*batchProviderFixture](core.ProviderRepo).registry}
-}
-
-// publicPricingConfigFixture 提供模型配置和价卡数据，编译和报价由生产模块执行。
-type publicPricingConfigFixture struct {
-	routing.PricingConfigRepository
-	pricingConfig routing.PricingConfig
-	platforms     map[int64]string
-	policy        routing.GroupRoutingPolicy
 }
 
 func (r *publicPricingConfigFixture) ListAll(context.Context) ([]routing.PricingConfig, error) {
@@ -1218,12 +1224,6 @@ func newTestBatchImagePublicService(enabled bool) (*batchimage.Public, *fakeBatc
 		}})
 
 	return svc, repo, queue, gemini, vertex, authCache
-}
-
-type fakeBatchImageAuthCacheInvalidator struct {
-	keys     []string
-	userIDs  []int64
-	groupIDs []int64
 }
 
 func (f *fakeBatchImageAuthCacheInvalidator) InvalidateAuthCacheByKey(_ context.Context, key string) {

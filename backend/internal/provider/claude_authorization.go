@@ -24,15 +24,6 @@ type ClaudeAuthorization struct {
 	activity operationActivity
 }
 
-func NewClaudeAuthorization(client ClaudeOAuthClient, options ClaudeAuthorizationOptions) *ClaudeAuthorization {
-	return &ClaudeAuthorization{Store: NewClaudeAuthorizationSessions(), Client: client, Options: options}
-}
-func (s *ClaudeAuthorization) Start() { s.Store.Start() }
-func (s *ClaudeAuthorization) StopContext(ctx context.Context) error {
-	s.Store.Stop()
-	return s.activity.stop(ctx, "claude authorization")
-}
-
 // ClaudeOAuthClient handles HTTP requests for Claude OAuth flows
 type ClaudeOAuthClient interface {
 	GetOrganizationUUID(ctx context.Context, sessionKey, proxyURL string) (string, error)
@@ -45,6 +36,42 @@ type ClaudeOAuthClient interface {
 type ClaudeGenerateAuthURLResult struct {
 	AuthURL   string `json:"auth_url"`
 	SessionID string `json:"session_id"`
+}
+
+// ClaudeExchangeCodeInput represents the input for code exchange
+type ClaudeExchangeCodeInput struct {
+	SessionID string
+	Code      string
+	ProxyID   *int64
+}
+
+// ClaudeTokenInfo represents the token information stored in credentials
+type ClaudeTokenInfo struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int64  `json:"expires_in"`
+	ExpiresAt    int64  `json:"expires_at"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	Scope        string `json:"scope,omitempty"`
+	OrgUUID      string `json:"org_uuid,omitempty"`
+	AccountUUID  string `json:"account_uuid,omitempty"`
+	EmailAddress string `json:"email_address,omitempty"`
+}
+
+// ClaudeCookieAuthInput represents the input for cookie-based authentication
+type ClaudeCookieAuthInput struct {
+	SessionKey string
+	ProxyID    *int64
+	Scope      string // "full" or "inference"
+}
+
+func NewClaudeAuthorization(client ClaudeOAuthClient, options ClaudeAuthorizationOptions) *ClaudeAuthorization {
+	return &ClaudeAuthorization{Store: NewClaudeAuthorizationSessions(), Client: client, Options: options}
+}
+func (s *ClaudeAuthorization) Start() { s.Store.Start() }
+func (s *ClaudeAuthorization) StopContext(ctx context.Context) error {
+	s.Store.Stop()
+	return s.activity.stop(ctx, "claude authorization")
 }
 
 // GenerateAuthURL generates an OAuth authorization URL with full scope
@@ -119,26 +146,6 @@ func (s *ClaudeAuthorization) generateAuthURLWithScope(ctx context.Context, scop
 	}, nil
 }
 
-// ClaudeExchangeCodeInput represents the input for code exchange
-type ClaudeExchangeCodeInput struct {
-	SessionID string
-	Code      string
-	ProxyID   *int64
-}
-
-// ClaudeTokenInfo represents the token information stored in credentials
-type ClaudeTokenInfo struct {
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int64  `json:"expires_in"`
-	ExpiresAt    int64  `json:"expires_at"`
-	RefreshToken string `json:"refresh_token,omitempty"`
-	Scope        string `json:"scope,omitempty"`
-	OrgUUID      string `json:"org_uuid,omitempty"`
-	AccountUUID  string `json:"account_uuid,omitempty"`
-	EmailAddress string `json:"email_address,omitempty"`
-}
-
 // ExchangeCode exchanges authorization code for tokens
 func (s *ClaudeAuthorization) ExchangeCode(ctx context.Context, input *ClaudeExchangeCodeInput) (*ClaudeTokenInfo, error) {
 	operation, done, err := s.activity.begin(ctx, errors.New("claude authorization is stopped"))
@@ -175,13 +182,6 @@ func (s *ClaudeAuthorization) ExchangeCode(ctx context.Context, input *ClaudeExc
 	s.Store.Delete(input.SessionID)
 
 	return tokenInfo, nil
-}
-
-// ClaudeCookieAuthInput represents the input for cookie-based authentication
-type ClaudeCookieAuthInput struct {
-	SessionKey string
-	ProxyID    *int64
-	Scope      string // "full" or "inference"
 }
 
 // CookieAuth performs OAuth using sessionKey (cookie-based auto-auth)

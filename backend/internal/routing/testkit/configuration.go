@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
@@ -28,6 +27,15 @@ type Configuration struct {
 	ModelPricing              []routing.ModelPricingEntry
 	ModelMapping              map[string]string
 	ProviderStatsPricingRules []routing.ProviderStatsPricingRule
+}
+
+// configurationRows 将迁移夹具拆成生产服务的两个数据来源。
+type configurationRows struct {
+	routing.PricingConfigRepository
+	source interface {
+		ListAll(context.Context) ([]Configuration, error)
+		GetGroupPlatforms(context.Context, []int64) (map[int64]string, error)
+	}
 }
 
 func (c Configuration) Price() routing.PricingConfig {
@@ -83,15 +91,6 @@ func (c *Configuration) IsBedrockCCCompatEnabled(platform string) bool {
 	}
 	p := routing.GroupPolicyView{GroupRoutingPolicy: c.Policy()}
 	return p.IsBedrockCCCompatEnabled(platform)
-}
-
-// configurationRows 将迁移夹具拆成生产服务的两个数据来源。
-type configurationRows struct {
-	routing.PricingConfigRepository
-	source interface {
-		ListAll(context.Context) ([]Configuration, error)
-		GetGroupPlatforms(context.Context, []int64) (map[int64]string, error)
-	}
 }
 
 func (r configurationRows) ListAll(ctx context.Context) ([]routing.PricingConfig, error) {

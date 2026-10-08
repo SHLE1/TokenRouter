@@ -15,6 +15,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	ollamaCloudUsageManualRefreshInterval = 30 * time.Second
+	ollamaCloudUsageMaxPerCycle           = 20
+	ollamaCloudUsageLeaderLockKey         = "ollama:cloud:usage:leader"
+	ollamaCloudUsageLeaderLockTTL         = 2 * time.Minute
+)
+
 type OllamaProviderReader interface {
 	GetByID(context.Context, int64) (*Record, error)
 }
@@ -50,6 +57,16 @@ type OllamaCloudUsageService struct {
 	options                 OllamaUsageOptions
 }
 
+type OllamaUsageRepository interface {
+	ListOllamaCloudUsageGroupProviders(context.Context, []*Record) ([]Record, error)
+	SaveOllamaCloudUsageSession(context.Context, *Record, string, bool) error
+	DeleteOllamaCloudUsageSession(context.Context, *Record) error
+	SetOllamaCloudUsageAutoRefresh(context.Context, *Record, bool) error
+	UpdateOllamaCloudUsageSnapshot(context.Context, *Record, *OllamaCloudUsageSnapshot) error
+	DisableOllamaCloudUsageAutoRefresh(context.Context, *Record) error
+	ListDueOllamaCloudUsageProviders(context.Context, time.Time, time.Duration, time.Duration, int) ([]Record, error)
+}
+
 func NewOllamaCloudUsageService(repo OllamaProviderReader, settings OllamaUsageSettingsStore, cipher OllamaSessionCipher, options OllamaUsageOptions) *OllamaCloudUsageService {
 	if options.Now == nil {
 		options.Now = time.Now
@@ -61,23 +78,6 @@ func NewOllamaCloudUsageService(repo OllamaProviderReader, settings OllamaUsageS
 	s.runtime = NewOllamaUsageRuntime(s.RunDue, options.Log)
 	return s
 }
-
-type OllamaUsageRepository interface {
-	ListOllamaCloudUsageGroupProviders(context.Context, []*Record) ([]Record, error)
-	SaveOllamaCloudUsageSession(context.Context, *Record, string, bool) error
-	DeleteOllamaCloudUsageSession(context.Context, *Record) error
-	SetOllamaCloudUsageAutoRefresh(context.Context, *Record, bool) error
-	UpdateOllamaCloudUsageSnapshot(context.Context, *Record, *OllamaCloudUsageSnapshot) error
-	DisableOllamaCloudUsageAutoRefresh(context.Context, *Record) error
-	ListDueOllamaCloudUsageProviders(context.Context, time.Time, time.Duration, time.Duration, int) ([]Record, error)
-}
-
-const (
-	ollamaCloudUsageManualRefreshInterval = 30 * time.Second
-	ollamaCloudUsageMaxPerCycle           = 20
-	ollamaCloudUsageLeaderLockKey         = "ollama:cloud:usage:leader"
-	ollamaCloudUsageLeaderLockTTL         = 2 * time.Minute
-)
 
 func (s *OllamaCloudUsageService) StartContext(ctx context.Context) error {
 	if s == nil {

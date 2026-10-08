@@ -18,6 +18,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+// availabilityProviderStore 按测试提供商的持久配置筛选候选。
+type availabilityProviderStore struct {
+	providers      []ExecutionProvider
+	providersByID  map[int64]*ExecutionProvider
+	calls          int
+	includeGrouped bool
+	platforms      []string
+}
+
 func TestDiagnoseModelAvailabilityForPlatform_NoModel_AlwaysAvailable(t *testing.T) {
 	repo := &availabilityProviderStore{providers: nil, providersByID: map[int64]*ExecutionProvider{}}
 	svc := newAvailabilityForTest(repo, nil, false)
@@ -293,15 +302,6 @@ func TestOpenAIGatewayDiagnoseModelAvailabilityForPlatform_GrokPlatformFiltersOp
 
 	require.False(t, diag.HasProvidersInPool, "Grok 诊断不能把 OpenAI 提供商算进提供商池")
 	require.False(t, diag.HasModelSupport)
-}
-
-// availabilityProviderStore 按测试提供商的持久配置筛选候选。
-type availabilityProviderStore struct {
-	providers      []ExecutionProvider
-	providersByID  map[int64]*ExecutionProvider
-	calls          int
-	includeGrouped bool
-	platforms      []string
 }
 
 func (m *availabilityProviderStore) ListModelAvailabilityCandidates(_ context.Context, groupID *int64, platforms []string, includeGrouped bool) ([]providercore.Record, error) {

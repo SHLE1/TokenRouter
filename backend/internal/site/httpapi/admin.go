@@ -5,27 +5,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+	"github.com/gin-gonic/gin"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/TokenFlux/TokenRouter/internal/site"
-
-	"github.com/gin-gonic/gin"
 )
 
 // AdminAnnouncementHandler handles admin announcement management
 type AdminAnnouncementHandler struct {
 	announcementService *site.AnnouncementService
-}
-
-// NewAdminAnnouncementHandler creates a new admin announcement handler
-func NewAdminAnnouncementHandler(announcementService *site.AnnouncementService) *AdminAnnouncementHandler {
-	return &AdminAnnouncementHandler{
-		announcementService: announcementService,
-	}
 }
 
 type CreateAnnouncementRequest struct {
@@ -48,6 +39,13 @@ type UpdateAnnouncementRequest struct {
 	Targeting    *site.AnnouncementTargeting           `json:"targeting"`
 	StartsAt     *int64                                `json:"starts_at"` // Unix seconds, 0 = clear
 	EndsAt       *int64                                `json:"ends_at"`   // Unix seconds, 0 = clear
+}
+
+// NewAdminAnnouncementHandler creates a new admin announcement handler
+func NewAdminAnnouncementHandler(announcementService *site.AnnouncementService) *AdminAnnouncementHandler {
+	return &AdminAnnouncementHandler{
+		announcementService: announcementService,
+	}
 }
 
 // List handles listing announcements with filters

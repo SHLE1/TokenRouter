@@ -8,6 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// assembledToolUse 保存重建后的工具调用 ID、名称和参数。
+type assembledToolUse struct {
+	ID    string
+	Name  string
+	Input string
+}
+
 func TestChatCompletionsResponseToAnthropic_TextOnly(t *testing.T) {
 	resp := &ChatCompletionsResponse{
 		ID:    "chatcmpl-1",
@@ -358,7 +365,7 @@ func TestChatCompletionsChunkToAnthropicEvents_BuffersToolArgumentFragments(t *t
 		}},
 	}, state)
 	const fragmentCount = 1024
-	for i := 0; i < fragmentCount; i++ {
+	for range fragmentCount {
 		ChatCompletionsChunkToAnthropicEvents(testRuntime(), &ChatCompletionsChunk{
 			Choices: []ChatChunkChoice{{
 				Delta: ChatDelta{ToolCalls: []ChatToolCall{{
@@ -770,13 +777,6 @@ func anthropicEventTypes(events []AnthropicStreamEvent) []string {
 		out = append(out, e.Type)
 	}
 	return out
-}
-
-// assembledToolUse 保存重建后的工具调用 ID、名称和参数。
-type assembledToolUse struct {
-	ID    string
-	Name  string
-	Input string
 }
 
 // assembleToolUseBlocks 从 start 读取 ID 和名称并拼接参数 delta，模拟 Anthropic 客户端处理。

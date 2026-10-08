@@ -9,13 +9,15 @@ import (
 	"time"
 )
 
-// Strategy represents a load balancing strategy for provider instance selection.
-type Strategy string
-
 const (
 	StrategyRoundRobin  Strategy = "round-robin"
 	StrategyLeastAmount Strategy = "least-amount"
+
+	wxpayJSAPIAppIDContextKey contextKey = "payment.wxpay.jsapi_app_id"
 )
+
+// Strategy represents a load balancing strategy for provider instance selection.
+type Strategy string
 
 // ChannelLimits holds limits for a single payment channel within a provider instance.
 type ChannelLimits struct {
@@ -43,7 +45,29 @@ type DefaultLoadBalancer struct {
 
 type contextKey string
 
-const wxpayJSAPIAppIDContextKey contextKey = "payment.wxpay.jsapi_app_id"
+// instanceCandidate pairs an instance with its pre-fetched daily usage.
+type instanceCandidate struct {
+	inst      *ProviderInstance
+	dailyUsed float64 // 包含待支付和渠道处理中的订单
+}
+
+// InstanceSource 查询支付实例及其当日用量。
+type InstanceSource interface {
+	EnabledInstances(context.Context, string) ([]*ProviderInstance, error)
+	Instance(context.Context, int64) (*ProviderInstance, error)
+	DailyUsage(context.Context, []string, time.Time) (map[string]float64, error)
+	PaidDailyAmount(context.Context, string, time.Time) (float64, error)
+}
+
+type (
+	// SelectionObserver 接收渠道选择过程中的日志。
+	SelectionObserver func(string, string, ...any)
+	// SelectionRuntime 提供渠道选择使用的时钟和日志函数。
+	SelectionRuntime struct {
+		Now     func() time.Time
+		Observe SelectionObserver
+	}
+)
 
 // NewDefaultLoadBalancer creates a new load balancer.
 func NewDefaultLoadBalancer(source InstanceSource, encryptionKey []byte, runtime ...SelectionRuntime) *DefaultLoadBalancer {
@@ -71,12 +95,6 @@ func wxpayJSAPIAppIDFromContext(ctx context.Context) string {
 	}
 	appID, _ := ctx.Value(wxpayJSAPIAppIDContextKey).(string)
 	return strings.TrimSpace(appID)
-}
-
-// instanceCandidate pairs an instance with its pre-fetched daily usage.
-type instanceCandidate struct {
-	inst      *ProviderInstance
-	dailyUsed float64 // 包含待支付和渠道处理中的订单
 }
 
 // SelectInstance picks an enabled instance for the given provider key and payment type.
@@ -367,21 +385,3 @@ func selectionObserver(values []SelectionObserver) SelectionObserver {
 	}
 	return func(string, string, ...any) {}
 }
-
-// InstanceSource 查询支付实例及其当日用量。
-type InstanceSource interface {
-	EnabledInstances(context.Context, string) ([]*ProviderInstance, error)
-	Instance(context.Context, int64) (*ProviderInstance, error)
-	DailyUsage(context.Context, []string, time.Time) (map[string]float64, error)
-	PaidDailyAmount(context.Context, string, time.Time) (float64, error)
-}
-
-type (
-	// SelectionObserver 接收渠道选择过程中的日志。
-	SelectionObserver func(string, string, ...any)
-	// SelectionRuntime 提供渠道选择使用的时钟和日志函数。
-	SelectionRuntime struct {
-		Now     func() time.Time
-		Observe SelectionObserver
-	}
-)

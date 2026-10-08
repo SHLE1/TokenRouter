@@ -9,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
-
 	"github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/securitysecret"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
 const (

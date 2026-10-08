@@ -14,10 +14,6 @@ type CredentialMutationSnapshot struct {
 	ProxyID         *int64 `json:"-"`
 }
 
-func (CredentialMutationSnapshot) String() string { return "CredentialMutationSnapshot{已脱敏}" }
-
-func (s CredentialMutationSnapshot) GoString() string { return s.String() }
-
 // CredentialVersion 是刷新条件写入时比较的身份数据。
 // 提供商身份和代理与交换前的完整凭据一起比较，不能只比较 access_token。
 type CredentialVersion struct {
@@ -29,17 +25,21 @@ type CredentialVersion struct {
 	Credentials map[string]any `json:"-"`
 }
 
-func (v CredentialVersion) String() string {
-	return fmt.Sprintf("provider credential version (id=%d)", v.ID)
-}
-
-func (v CredentialVersion) GoString() string { return v.String() }
-
 // CredentialRefreshWriter 仅在交换使用的状态仍然有效时保存新凭据。
 // false 表示状态发生改变，调用方必须重新读取，不能再次交换或覆盖新值。
 type CredentialRefreshWriter interface {
 	UpdateOAuthCredentialsIfUnchanged(context.Context, CredentialVersion, map[string]any) (bool, error)
 }
+
+func (CredentialMutationSnapshot) String() string { return "CredentialMutationSnapshot{已脱敏}" }
+
+func (s CredentialMutationSnapshot) GoString() string { return s.String() }
+
+func (v CredentialVersion) String() string {
+	return fmt.Sprintf("provider credential version (id=%d)", v.ID)
+}
+
+func (v CredentialVersion) GoString() string { return v.String() }
 
 // CloneCredentialVersion 冻结等待锁期间的比较输入，不让调用方改变嵌套凭据。
 func CloneCredentialVersion(value CredentialVersion) CredentialVersion {

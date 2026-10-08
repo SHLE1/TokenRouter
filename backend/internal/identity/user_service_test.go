@@ -20,6 +20,54 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+type mockUserRepo struct {
+	updateBalanceErr        error
+	updateBalanceFn         func(ctx context.Context, id int64, amount float64) error
+	deductBalanceFn         func(ctx context.Context, id int64, amount float64) error
+	deductBalanceResultFn   func(ctx context.Context, id int64, amount float64) (float64, error)
+	getByIDUser             *identity.User
+	getByIDErr              error
+	identities              []identity.UserAuthIdentityRecord
+	unbindIdentityErr       error
+	unboundProviders        []string
+	updateLastActiveErr     error
+	updateLastActiveUserIDs []int64
+	updateLastActiveAt      []time.Time
+	updateFn                func(ctx context.Context, user *identity.User) error
+	updateCalls             int
+	updateFields            []identity.UserUpdateFields
+	upsertAvatarFn          func(ctx context.Context, userID int64, input identity.UpsertUserAvatarInput) (*identity.UserAvatar, error)
+	upsertAvatarArgs        []identity.UpsertUserAvatarInput
+	deleteAvatarFn          func(ctx context.Context, userID int64) error
+	deleteAvatarIDs         []int64
+	getAvatarFn             func(ctx context.Context, userID int64) (*identity.UserAvatar, error)
+	txCalls                 int
+}
+
+type mockUserRepoTxKey struct{}
+
+type mockUserRepoTxState struct {
+	getByIDUser      *identity.User
+	upsertAvatarArgs []identity.UpsertUserAvatarInput
+	deleteAvatarIDs  []int64
+}
+
+type mockUserSettingRepo struct {
+	values map[string]string
+}
+
+type mockAuthCacheInvalidator struct {
+	invalidatedUserIDs []int64
+	mu                 sync.Mutex
+}
+
+type mockBillingCache struct {
+	invalidateErr       error
+	invalidateCallCount atomic.Int64
+	invalidatedUserIDs  []int64
+	mu                  sync.Mutex
+}
+
 func TestUserService_UpdateProfile_RejectsEmailWhenNormalizationEnabled(t *testing.T) {
 	repo := &emailNormalizationRepoStub{
 		user: &identity.User{
@@ -98,38 +146,6 @@ func runProfileBackground(_ string, task func()) bool {
 func boolPtr(value bool) *bool { return &value }
 
 func float64Ptr(value float64) *float64 { return &value }
-
-type mockUserRepo struct {
-	updateBalanceErr        error
-	updateBalanceFn         func(ctx context.Context, id int64, amount float64) error
-	deductBalanceFn         func(ctx context.Context, id int64, amount float64) error
-	deductBalanceResultFn   func(ctx context.Context, id int64, amount float64) (float64, error)
-	getByIDUser             *identity.User
-	getByIDErr              error
-	identities              []identity.UserAuthIdentityRecord
-	unbindIdentityErr       error
-	unboundProviders        []string
-	updateLastActiveErr     error
-	updateLastActiveUserIDs []int64
-	updateLastActiveAt      []time.Time
-	updateFn                func(ctx context.Context, user *identity.User) error
-	updateCalls             int
-	updateFields            []identity.UserUpdateFields
-	upsertAvatarFn          func(ctx context.Context, userID int64, input identity.UpsertUserAvatarInput) (*identity.UserAvatar, error)
-	upsertAvatarArgs        []identity.UpsertUserAvatarInput
-	deleteAvatarFn          func(ctx context.Context, userID int64) error
-	deleteAvatarIDs         []int64
-	getAvatarFn             func(ctx context.Context, userID int64) (*identity.UserAvatar, error)
-	txCalls                 int
-}
-
-type mockUserRepoTxKey struct{}
-
-type mockUserRepoTxState struct {
-	getByIDUser      *identity.User
-	upsertAvatarArgs []identity.UpsertUserAvatarInput
-	deleteAvatarIDs  []int64
-}
 
 func mockUserRepoStateFromContext(ctx context.Context) *mockUserRepoTxState {
 	state, _ := ctx.Value(mockUserRepoTxKey{}).(*mockUserRepoTxState)
@@ -386,10 +402,6 @@ func (m *mockUserRepo) WithUserProfileIdentityTx(ctx context.Context, fn func(tx
 	return nil
 }
 
-type mockUserSettingRepo struct {
-	values map[string]string
-}
-
 func (s *mockUserSettingRepo) GetValue(_ context.Context, key string) (string, error) {
 	if s != nil && s.values != nil {
 		if value, ok := s.values[key]; ok {
@@ -444,11 +456,6 @@ func (s *mockUserSettingRepo) Delete(_ context.Context, key string) error {
 	return nil
 }
 
-type mockAuthCacheInvalidator struct {
-	invalidatedUserIDs []int64
-	mu                 sync.Mutex
-}
-
 func (m *mockAuthCacheInvalidator) InvalidateAuthCacheByKey(context.Context, string) {}
 
 func (m *mockAuthCacheInvalidator) InvalidateAuthCacheByGroupID(context.Context, int64) {}
@@ -457,13 +464,6 @@ func (m *mockAuthCacheInvalidator) InvalidateAuthCacheByUserID(_ context.Context
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.invalidatedUserIDs = append(m.invalidatedUserIDs, userID)
-}
-
-type mockBillingCache struct {
-	invalidateErr       error
-	invalidateCallCount atomic.Int64
-	invalidatedUserIDs  []int64
-	mu                  sync.Mutex
 }
 
 func (m *mockBillingCache) GetUserBalance(context.Context, int64) (float64, error) { return 0, nil }
@@ -874,8 +874,8 @@ func TestUpdateProfile_CompressesInlineAvatarToTwentyKilobytes(t *testing.T) {
 		img.Rect = image.Rect(0, 0, size, size)
 		img.Stride = size * 4
 		img.Pix = make([]byte, size*size*4)
-		for y := 0; y < size; y++ {
-			for x := 0; x < size; x++ {
+		for y := range size {
+			for x := range size {
 				offset := y*img.Stride + x*4
 				img.Pix[offset] = uint8((x*x + y*17) % 255)
 				img.Pix[offset+1] = uint8((y*y + x*29) % 255)

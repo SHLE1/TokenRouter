@@ -104,7 +104,7 @@ func (s *Creator) Create(
 
 	excluded := make(map[int64]struct{})
 	var lastErr error
-	for attempt := 0; attempt <= 3; attempt++ {
+	for range 4 {
 		selection, selectErr := s.ports.Select(ctx, identity.GroupID, model, excluded)
 
 		if selectErr != nil {

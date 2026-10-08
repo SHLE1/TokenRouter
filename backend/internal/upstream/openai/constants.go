@@ -5,30 +5,34 @@ import (
 	"strings"
 )
 
-// DefaultTestModel 是测试 OpenAI 提供商时使用的默认模型。
-const DefaultTestModel = "gpt-5.4"
+const (
+	// DefaultTestModel 是测试 OpenAI 提供商时使用的默认模型。
+	DefaultTestModel = "gpt-5.4"
 
-// CodexUsageProbeModel 是 OAuth Codex 额度探针使用的兼容模型。
-const CodexUsageProbeModel = "codex-auto-review"
+	// CodexUsageProbeModel 是 OAuth Codex 额度探针使用的兼容模型。
+	CodexUsageProbeModel = "codex-auto-review"
+)
 
-// DefaultInstructions 是非 Codex CLI 请求的默认 instructions。
-// 内容为真实 Codex CLI 的 GPT-5-Codex base prompt（codex 系模型默认）。
-//
-//go:embed instructions.txt
-var DefaultInstructions string
+var (
+	// DefaultInstructions 是非 Codex CLI 请求的默认 instructions。
+	// 内容为真实 Codex CLI 的 GPT-5-Codex base prompt（codex 系模型默认）。
+	//
+	//go:embed instructions.txt
+	DefaultInstructions string
 
-// instructionsGPT51 / instructionsGPT52 / instructionsGPT55 为 gpt-5.1 / gpt-5.2 / gpt-5.5
-// 非 codex 模型对应的真实 Codex 编码 agent base prompt，用于模型感知的 instructions 选择。
-// GPT-5.5 同时作为最新版本的 fallback（覆盖 5.3 / 5.4 等未单独维护 prompt 的版本）。
-//
-//go:embed instructions_gpt5_1.txt
-var instructionsGPT51 string
+	// instructionsGPT51 / instructionsGPT52 / instructionsGPT55 为 gpt-5.1 / gpt-5.2 / gpt-5.5
+	// 非 codex 模型对应的真实 Codex 编码 agent base prompt，用于模型感知的 instructions 选择。
+	// GPT-5.5 同时作为最新版本的 fallback（覆盖 5.3 / 5.4 等未单独维护 prompt 的版本）。
+	//
+	//go:embed instructions_gpt5_1.txt
+	instructionsGPT51 string
 
-//go:embed instructions_gpt5_2.txt
-var instructionsGPT52 string
+	//go:embed instructions_gpt5_2.txt
+	instructionsGPT52 string
 
-//go:embed instructions_gpt5_5.txt
-var instructionsGPT55 string
+	//go:embed instructions_gpt5_5.txt
+	instructionsGPT55 string
+)
 
 // latestCodexInstructions 返回当前已知最新版本的 Codex base instructions，
 // 当前为 GPT-5.5；若 5.5 prompt 意外为空则回退到 DefaultInstructions 保证非空。

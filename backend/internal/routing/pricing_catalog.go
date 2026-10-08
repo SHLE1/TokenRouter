@@ -17,10 +17,6 @@ type PricingCatalog struct {
 	Prices   ModelPriceReader
 }
 
-func (c *PricingCatalog) DefaultPricing(model string) (*ModelPricing, error) {
-	return c.Prices.GetModelPricing(model)
-}
-
 // DefaultPricingSnapshot 固定一次查询的模型名、价格和更新时间。
 type DefaultPricingSnapshot struct {
 	Version   string
@@ -30,3 +26,7 @@ type DefaultPricingSnapshot struct {
 }
 
 type ModelPricing = pricing.ModelPricing
+
+func (c *PricingCatalog) DefaultPricing(model string) (*ModelPricing, error) {
+	return c.Prices.GetModelPricing(model)
+}

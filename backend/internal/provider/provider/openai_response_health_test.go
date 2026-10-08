@@ -13,6 +13,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 测试通过提供商运行状态的时钟控制时间。
+type response429Clock struct{ nanos atomic.Int64 }
+
 func TestOpenAI429FastPath_BlocksOAuthOnlyAfterRetryWindow(t *testing.T) {
 	svc := &OpenAIResponseHealth{Runtime: providercore.NewRuntimeBlockState(time.Now)}
 	provider := &providercore.Record{LoadLocation: time.LoadLocation, ID: 420, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}
@@ -64,9 +67,6 @@ func TestOpenAI429FastPath_SkipsSparkShadow(t *testing.T) {
 	require.False(t, svc.Runtime.Blocked(shadow.ID, func() string { return providercore.RefreshCredentialIdentity(shadow) }), "spark shadow must not be runtime-blocked by /responses global 429")
 	require.True(t, svc.Runtime.Blocked(normal.ID, func() string { return providercore.RefreshCredentialIdentity(normal) }), "normal OpenAI OAuth provider with an exhausted 5h window must be paused")
 }
-
-// 测试通过提供商运行状态的时钟控制时间。
-type response429Clock struct{ nanos atomic.Int64 }
 
 func (c *response429Clock) Now() time.Time {
 	if n := c.nanos.Load(); n != 0 {

@@ -6,9 +6,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-const CodexImageGenerationBridgeKey = "codex_image_generation_bridge"
-
 const (
+	CodexImageGenerationBridgeKey = "codex_image_generation_bridge"
+
 	CodexImageGenerationExplicitToolPolicyKey = "codex_image_generation_explicit_tool_policy"
 
 	CodexImagePolicyAllow = "allow"

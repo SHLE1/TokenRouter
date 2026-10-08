@@ -27,6 +27,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type codexProviderIdentityRepoStub struct {
+	gatewayprovider.ExecutionProviderStore
+
+	provider *gatewayprovider.ExecutionProvider
+}
+
 func TestOpenAIAgentIdentityPassthroughKeepsSessionAndPromptCacheHeaders(t *testing.T) {
 	key, privateKey := newTestAgentIdentityKey(t)
 	provider := &gatewayprovider.ExecutionProvider{
@@ -206,12 +212,6 @@ func TestBuildUpstreamRequestOpenAIPassthrough_OffModeKeepsIsolatedSession(t *te
 	assert.NotEmpty(t, req.Header.Get("session_id"))
 	assert.NotEqual(t, openai.ResolveConvergedSessionID(testCodexFingerprintSeed), req.Header.Get("session_id"), "off 模式不得收敛 session_id")
 	assert.Empty(t, req.Header.Get("x-codex-window-id"))
-}
-
-type codexProviderIdentityRepoStub struct {
-	gatewayprovider.ExecutionProviderStore
-
-	provider *gatewayprovider.ExecutionProvider
 }
 
 func (s *codexProviderIdentityRepoStub) GetByID(_ context.Context, _ int64) (*gatewayprovider.ExecutionProvider, error) {

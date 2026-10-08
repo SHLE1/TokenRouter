@@ -30,6 +30,15 @@ import (
 	groktestkit "github.com/TokenFlux/TokenRouter/internal/upstream/grok/testkit"
 )
 
+const (
+	grokRateLimitRepeatCooldown = 10 * time.Minute
+)
+
+type grokProtocolSSEFrame struct {
+	event string
+	data  []byte
+}
+
 func TestIsGrokModelSpecificFreeUsage(t *testing.T) {
 	require.True(t, providercore.IsGrokModelSpecificFreeUsage(
 		"you've used all the included free usage for model grok-4.5", "grok-4.5"))
@@ -131,10 +140,6 @@ func TestForwardGrokResponses_PropagatesSearchCountFromSSE(t *testing.T) {
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.SearchCount, "stream SearchCount must be wired and deduped")
 }
-
-const (
-	grokRateLimitRepeatCooldown = 10 * time.Minute
-)
 
 func TestForwardGrokResponsesCodexAdditionalToolsUsesMixedCacheIntent(t *testing.T) {
 	body := []byte(`{
@@ -1125,11 +1130,6 @@ func TestForwardGrokResponsesAPIKeyRestoresClientToolsStreaming(t *testing.T) {
 	require.Equal(t, "custom_tool_call", gjson.GetBytes(completed.data, "response.output.0.type").String())
 	require.Equal(t, "tool_search_call", gjson.GetBytes(completed.data, "response.output.1.type").String())
 	require.Equal(t, "collaboration", gjson.GetBytes(completed.data, "response.output.2.namespace").String())
-}
-
-type grokProtocolSSEFrame struct {
-	event string
-	data  []byte
 }
 
 func grokProtocolOAuthProvider(id int64) *gatewayprovider.ExecutionProvider {

@@ -22,6 +22,60 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+const (
+	// 分组页的“可用”提供商数使用 ListSchedulableByGroupID 的过滤条件。
+	groupProviderAvailableSQL = `a.deleted_at IS NULL
+				AND a.status = 'active'
+				AND a.schedulable = true
+				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
+				AND (a.rate_limit_reset_at IS NULL OR a.rate_limit_reset_at <= NOW())
+				AND (a.overload_until IS NULL OR a.overload_until <= NOW())
+				AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= NOW())`
+
+	// RateLimitedProviderCount 统计处于暂时退出调度时间窗口内的提供商数量。
+	groupProviderTemporarilyLimitedSQL = `a.deleted_at IS NULL
+				AND a.status = 'active'
+				AND a.schedulable = true
+				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
+				AND (
+					a.rate_limit_reset_at > NOW() OR
+					a.overload_until > NOW() OR
+					a.temp_unschedulable_until > NOW()
+				)`
+)
+
+type GroupLinkParticipant interface {
+	Clear(context.Context, int64) (sql.Result, error)
+	Bind(context.Context, int64, []int64) error
+	Copy(context.Context, int64, int64, bool) (sql.Result, error)
+}
+
+type GroupAccessParticipant interface {
+	Delete(context.Context, int64) error
+}
+
+type GroupStoreOptions struct {
+	Providers func(postgresinfra.Executor) GroupLinkParticipant
+	Users     func(postgresinfra.Executor) GroupAccessParticipant
+	Enqueue   func(context.Context, postgresinfra.Executor, *int64) error
+}
+
+type GroupStore struct {
+	options GroupStoreOptions
+	client  *dbent.Client
+	sql     postgresinfra.Executor
+}
+
+type groupProviderCounts struct {
+	Total       int64
+	Active      int64
+	RateLimited int64
+}
+
+func NewGroupStore(client *dbent.Client, db postgresinfra.Executor, options GroupStoreOptions) *GroupStore {
+	return &GroupStore{client: client, sql: db, options: options}
+}
+
 // Mutate 在可用时为分组变更开启事务，保证分组及关联变更原子化。
 func (s *GroupStore) Mutate(ctx context.Context, fn func(context.Context) error) error {
 	if dbent.TxFromContext(ctx) != nil || s.client == nil {
@@ -42,32 +96,6 @@ func (s *GroupStore) Mutate(ctx context.Context, fn func(context.Context) error)
 		return fmt.Errorf("commit group mutation transaction: %w", err)
 	}
 	return nil
-}
-
-type GroupLinkParticipant interface {
-	Clear(context.Context, int64) (sql.Result, error)
-	Bind(context.Context, int64, []int64) error
-	Copy(context.Context, int64, int64, bool) (sql.Result, error)
-}
-
-type GroupAccessParticipant interface {
-	Delete(context.Context, int64) error
-}
-
-type GroupStoreOptions struct {
-	Providers func(postgresinfra.Executor) GroupLinkParticipant
-	Users     func(postgresinfra.Executor) GroupAccessParticipant
-	Enqueue   func(context.Context, postgresinfra.Executor, *int64) error
-}
-
-func NewGroupStore(client *dbent.Client, db postgresinfra.Executor, options GroupStoreOptions) *GroupStore {
-	return &GroupStore{client: client, sql: db, options: options}
-}
-
-type GroupStore struct {
-	options GroupStoreOptions
-	client  *dbent.Client
-	sql     postgresinfra.Executor
 }
 
 func (r *GroupStore) sqlExecutorFromContext(ctx context.Context) postgresinfra.Executor {
@@ -809,34 +837,6 @@ func (r *GroupStore) DeleteCascade(ctx context.Context, id int64) ([]int64, erro
 
 	return affectedUserIDs, nil
 }
-
-type groupProviderCounts struct {
-	Total       int64
-	Active      int64
-	RateLimited int64
-}
-
-const (
-	// 分组页的“可用”提供商数使用 ListSchedulableByGroupID 的过滤条件。
-	groupProviderAvailableSQL = `a.deleted_at IS NULL
-				AND a.status = 'active'
-				AND a.schedulable = true
-				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
-				AND (a.rate_limit_reset_at IS NULL OR a.rate_limit_reset_at <= NOW())
-				AND (a.overload_until IS NULL OR a.overload_until <= NOW())
-				AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= NOW())`
-
-	// RateLimitedProviderCount 统计处于暂时退出调度时间窗口内的提供商数量。
-	groupProviderTemporarilyLimitedSQL = `a.deleted_at IS NULL
-				AND a.status = 'active'
-				AND a.schedulable = true
-				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
-				AND (
-					a.rate_limit_reset_at > NOW() OR
-					a.overload_until > NOW() OR
-					a.temp_unschedulable_until > NOW()
-				)`
-)
 
 func (r *GroupStore) loadProviderCounts(ctx context.Context, groupIDs []int64) (counts map[int64]groupProviderCounts, err error) {
 	sqlq := r.sqlExecutorFromContext(ctx)

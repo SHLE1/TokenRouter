@@ -14,6 +14,12 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+const WSMaxPrevResponseIDDeletePasses = 8
+
+type WSPreviousTurnStrictState struct {
+	nonInputComparable []byte
+}
+
 func SetOpenAIWSTurnMetadata(payload map[string]any, turnMetadata string) {
 	if len(payload) == 0 {
 		return
@@ -604,12 +610,6 @@ func ShouldKeepIngressPreviousResponseIDWithStrictState(
 	}
 	return true, "strict_incremental_ok", nil
 }
-
-type WSPreviousTurnStrictState struct {
-	nonInputComparable []byte
-}
-
-const WSMaxPrevResponseIDDeletePasses = 8
 
 func WSPayloadStringFromRaw(payload []byte, key string) string {
 	if len(payload) == 0 || strings.TrimSpace(key) == "" {

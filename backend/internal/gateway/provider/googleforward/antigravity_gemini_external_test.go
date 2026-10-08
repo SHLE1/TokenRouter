@@ -26,6 +26,45 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
+// 编译期接口断言
+var _ gatewayprovider.ExecutionProviderStore = (*stubAntigravityProviderRepo)(nil)
+
+type rateLimitCall struct {
+	providerID int64
+	resetAt    time.Time
+}
+
+type modelRateLimitCall struct {
+	providerID int64
+	modelKey   string // 存储的 key（应该是官方模型 ID，如 "claude-sonnet-4-5"）
+	resetAt    time.Time
+}
+
+type extraUpdateCall struct {
+	providerID int64
+	updates    map[string]any
+}
+
+type stubAntigravityProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	rateCalls           []rateLimitCall
+	modelRateLimitCalls []modelRateLimitCall
+	extraUpdateCalls    []extraUpdateCall
+}
+
+// stubSmartRetryCache 用于 handleSmartRetry 测试的 GatewayCache mock
+// 仅关注 DeleteSessionProviderID 的调用记录
+type stubSmartRetryCache struct {
+	session.GatewayCache // 嵌入接口，未实现的方法 panic（确保只调用预期方法）
+	deleteCalls          []deleteSessionCall
+}
+
+type deleteSessionCall struct {
+	groupID     int64
+	sessionHash string
+}
+
 func TestAntigravityGatewayService_ForwardGemini_UsesConfiguredProjectFallback(t *testing.T) {
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
@@ -772,33 +811,6 @@ func TestAntigravityGatewayService_ForwardGemini_SignatureRetryPropagatesFailove
 	require.Equal(t, "failover", events[1].Kind)
 }
 
-// 编译期接口断言
-var _ gatewayprovider.ExecutionProviderStore = (*stubAntigravityProviderRepo)(nil)
-
-type rateLimitCall struct {
-	providerID int64
-	resetAt    time.Time
-}
-
-type modelRateLimitCall struct {
-	providerID int64
-	modelKey   string // 存储的 key（应该是官方模型 ID，如 "claude-sonnet-4-5"）
-	resetAt    time.Time
-}
-
-type extraUpdateCall struct {
-	providerID int64
-	updates    map[string]any
-}
-
-type stubAntigravityProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	rateCalls           []rateLimitCall
-	modelRateLimitCalls []modelRateLimitCall
-	extraUpdateCalls    []extraUpdateCall
-}
-
 func (s *stubAntigravityProviderRepo) SetRateLimited(ctx context.Context, id int64, resetAt time.Time) error {
 	s.rateCalls = append(s.rateCalls, rateLimitCall{providerID: id, resetAt: resetAt})
 	return nil
@@ -812,18 +824,6 @@ func (s *stubAntigravityProviderRepo) SetModelRateLimit(ctx context.Context, id 
 func (s *stubAntigravityProviderRepo) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
 	s.extraUpdateCalls = append(s.extraUpdateCalls, extraUpdateCall{providerID: id, updates: updates})
 	return nil
-}
-
-// stubSmartRetryCache 用于 handleSmartRetry 测试的 GatewayCache mock
-// 仅关注 DeleteSessionProviderID 的调用记录
-type stubSmartRetryCache struct {
-	session.GatewayCache // 嵌入接口，未实现的方法 panic（确保只调用预期方法）
-	deleteCalls          []deleteSessionCall
-}
-
-type deleteSessionCall struct {
-	groupID     int64
-	sessionHash string
 }
 
 func (c *stubSmartRetryCache) DeleteSessionProviderID(_ context.Context, groupID int64, sessionHash string) error {

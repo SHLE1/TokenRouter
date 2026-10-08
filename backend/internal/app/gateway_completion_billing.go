@@ -24,6 +24,13 @@ import (
 // GatewayCompletionRecorders 包含两种完成记录器，各自使用独立的倍率缓存。
 type GatewayCompletionRecorders struct{ Forward, OpenAI *completion.Recorder }
 
+// completionProviders 在统计影子提供商用量时读取母提供商，并返回完成记录需要的统计字段。
+type completionProviders struct {
+	store *providerpostgres.ProviderStore
+}
+
+type completionHealth struct{ core *provider.HealthService }
+
 // ProvideGatewayCompletionRecorders 为完成记录器组合价格、资金、统计和提交后操作。
 func ProvideGatewayCompletionRecorders(
 	rates *gatewayBillingRates,
@@ -82,11 +89,6 @@ func ProvideGatewayCompletionRecorders(
 	return GatewayCompletionRecorders{Forward: completion.NewRecorder(forward, options), OpenAI: completion.NewRecorder(openai, options)}
 }
 
-// completionProviders 在统计影子提供商用量时读取母提供商，并返回完成记录需要的统计字段。
-type completionProviders struct {
-	store *providerpostgres.ProviderStore
-}
-
 func (p completionProviders) CredentialProvider(ctx context.Context, in completion.ProviderSnapshot) (*completion.ProviderSnapshot, error) {
 	original := &provider.Record{ID: in.ID, Platform: in.Platform, Type: in.Type, ParentProviderID: in.CredentialProviderID}
 	value, err := provider.ResolveCredentialRecord(ctx, p.store.GetByID, original)
@@ -98,8 +100,6 @@ func (p completionProviders) CredentialProvider(ctx context.Context, in completi
 	}
 	return gatewayprovider.ProjectCompletionProvider(value), nil
 }
-
-type completionHealth struct{ core *provider.HealthService }
 
 func (p completionHealth) ResetOpenAI403Counter(ctx context.Context, id int64) {
 	p.core.ResetForbiddenCounter(ctx, id)

@@ -22,6 +22,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type agentIdentityCredentialsRepo struct {
+	ExecutionProviderStore
+
+	credentials map[string]any
+	provider    *ExecutionProvider
+	mu          sync.Mutex
+}
+
 func newTestAgentIdentityKey(t *testing.T) (openai.AgentIdentityKey, string) {
 	t.Helper()
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
@@ -111,14 +119,6 @@ func cloneAgentIdentityTestProvider(provider *ExecutionProvider) *ExecutionProvi
 	copy := *provider
 	copy.Record.Credentials = querycache.ShallowMap(provider.Record.Credentials)
 	return &copy
-}
-
-type agentIdentityCredentialsRepo struct {
-	ExecutionProviderStore
-
-	credentials map[string]any
-	provider    *ExecutionProvider
-	mu          sync.Mutex
 }
 
 func (r *agentIdentityCredentialsRepo) GetByID(_ context.Context, _ int64) (*ExecutionProvider, error) {

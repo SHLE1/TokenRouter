@@ -21,6 +21,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+var _ batchimageprovider.BatchImageProvider = (*batchImageSmokeProvider)(nil)
+
+type batchImageSmokeProvider struct {
+	name           string
+	states         []batchimage.BatchProviderInternalState
+	submits        []batchimage.BatchImageInput
+	result         string
+	cleanupTargets []batchimage.CleanupTarget
+}
+
 func TestBatchImageMVPFlow(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeBatchImageRepository()
@@ -197,14 +207,6 @@ func batchImageSmokeZipNames(reader *zip.Reader) []string {
 	return names
 }
 
-type batchImageSmokeProvider struct {
-	name           string
-	states         []batchimage.BatchProviderInternalState
-	submits        []batchimage.BatchImageInput
-	result         string
-	cleanupTargets []batchimage.CleanupTarget
-}
-
 func (p *batchImageSmokeProvider) Name() string { return p.name }
 
 func (p *batchImageSmokeProvider) SupportsProvider(provider *providercore.Record) bool {
@@ -246,5 +248,3 @@ func (p *batchImageSmokeProvider) Cleanup(_ context.Context, _ *batchimage.Batch
 	p.cleanupTargets = append(p.cleanupTargets, target)
 	return nil
 }
-
-var _ batchimageprovider.BatchImageProvider = (*batchImageSmokeProvider)(nil)

@@ -23,6 +23,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type bulkUpdateProbeProviderRepo struct {
+	provideradapter.OpenAIProviderTestStore
+	mu        sync.Mutex
+	providers map[int64]*providercore.Record
+	done      chan int64
+}
+
+type bulkUpdateProbeHTTPUpstream struct {
+	mu   sync.Mutex
+	urls []string
+}
+
 func TestProviderHandlerBulkUpdateOpenAIAPIKeyDoesNotProbe(t *testing.T) {
 	provider := providercore.Record{
 		ID:          11,
@@ -108,13 +120,6 @@ func TestBulkUpdateAcceptsFilterTargetRequest(t *testing.T) {
 	require.Equal(t, float64(0), resp["code"])
 }
 
-type bulkUpdateProbeProviderRepo struct {
-	provideradapter.OpenAIProviderTestStore
-	mu        sync.Mutex
-	providers map[int64]*providercore.Record
-	done      chan int64
-}
-
 func (r *bulkUpdateProbeProviderRepo) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -146,11 +151,6 @@ func (r *bulkUpdateProbeProviderRepo) UpdateExtra(ctx context.Context, id int64,
 		}
 	}
 	return nil
-}
-
-type bulkUpdateProbeHTTPUpstream struct {
-	mu   sync.Mutex
-	urls []string
 }
 
 func (u *bulkUpdateProbeHTTPUpstream) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {

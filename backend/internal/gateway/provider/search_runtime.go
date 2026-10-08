@@ -15,6 +15,8 @@ import (
 // searchSource 引用配置运行时拥有的同一个注册表，避免另建全局 Manager 指针。
 type searchSource struct{ registry *search.Registry }
 
+type searchGroupPolicy struct{ groupPolicies *routing.PricingConfigService }
+
 func (s searchSource) Current() searchtools.Searcher {
 	if s.registry == nil {
 		return nil
@@ -25,8 +27,6 @@ func (s searchSource) Current() searchtools.Searcher {
 	}
 	return manager
 }
-
-type searchGroupPolicy struct{ groupPolicies *routing.PricingConfigService }
 
 func (p searchGroupPolicy) Enabled(ctx context.Context, groupID int64, platform string) (bool, error) {
 	policy, err := p.groupPolicies.GetGroupPolicy(ctx, groupID)

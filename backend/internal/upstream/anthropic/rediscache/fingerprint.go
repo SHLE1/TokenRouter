@@ -18,6 +18,10 @@ const (
 	maskedSessionTTL       = 15 * time.Minute
 )
 
+type FingerprintStore struct {
+	rdb *redis.Client
+}
+
 // fingerprintKey generates the Redis key for provider fingerprint cache.
 func fingerprintKey(providerID int64) string {
 	return fmt.Sprintf("%s%d", FingerprintKeyPrefix, providerID)
@@ -26,10 +30,6 @@ func fingerprintKey(providerID int64) string {
 // maskedSessionKey generates the Redis key for masked session ID cache.
 func maskedSessionKey(providerID int64) string {
 	return fmt.Sprintf("%s%d", maskedSessionKeyPrefix, providerID)
-}
-
-type FingerprintStore struct {
-	rdb *redis.Client
 }
 
 func NewFingerprintStore(rdb *redis.Client) anthropic.FingerprintCache {

@@ -162,11 +162,11 @@ func TestDigestSessionStore_ConcurrentSafety(t *testing.T) {
 	const operations = 100
 
 	wg.Add(goroutines)
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		go func(id int) {
 			defer wg.Done()
 			prefix := fmt.Sprintf("prefix-%d", id%5)
-			for i := 0; i < operations; i++ {
+			for i := range operations {
 				chain := fmt.Sprintf("u:%d-m:%d", id, i)
 				uuid := fmt.Sprintf("uuid-%d-%d", id, i)
 				store.Save(1, prefix, chain, uuid, int64(id), "")
@@ -213,7 +213,7 @@ func TestDigestSessionStore_Performance1000Sessions(t *testing.T) {
 	store := NewDigestSessionStore()
 
 	// 插入 1000 个会话
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		chain := fmt.Sprintf("s:sys-u:user%d-m:reply%d", i, i)
 		store.Save(1, "prefix", chain, fmt.Sprintf("uuid-%d", i), int64(i), "")
 	}
@@ -221,7 +221,7 @@ func TestDigestSessionStore_Performance1000Sessions(t *testing.T) {
 	// 查找性能测试
 	start := time.Now()
 	const lookups = 10000
-	for i := 0; i < lookups; i++ {
+	for i := range lookups {
 		idx := i % 1000
 		chain := fmt.Sprintf("s:sys-u:user%d-m:reply%d-u:newmsg", idx, idx)
 		_, _, _, found := store.Find(1, "prefix", chain)
@@ -252,11 +252,11 @@ func TestDigestSessionStore_CacheItemCountStable(t *testing.T) {
 
 	// 模拟 100 个独立会话，每个进行 10 轮对话
 	// 正确传递 oldDigestChain 时，每个会话始终只保留 1 个 key
-	for conv := 0; conv < 100; conv++ {
+	for conv := range 100 {
 		var prevMatchedChain string
-		for round := 0; round < 10; round++ {
+		for round := range 10 {
 			chain := fmt.Sprintf("s:sys-u:user%d", conv)
-			for r := 0; r < round; r++ {
+			for r := range round {
 				chain += fmt.Sprintf("-m:a%d-u:q%d", r, r+1)
 			}
 			uuid := fmt.Sprintf("uuid-conv%d", conv)
@@ -282,7 +282,7 @@ func TestDigestSessionStore_TTLPreventsUnboundedGrowth(t *testing.T) {
 	}
 
 	// 插入 500 个不同的 key（无 oldDigestChain，模拟最坏场景：全是新会话首轮）
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		chain := fmt.Sprintf("u:user%d", i)
 		store.Save(1, "prefix", chain, fmt.Sprintf("uuid-%d", i), int64(i), "")
 	}

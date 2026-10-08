@@ -29,6 +29,54 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type qoderProviderWaitCacheStub struct {
+	*helperConcurrencyCacheStub
+
+	providerWaitAllowed        bool
+	providerWaitIncrementCalls int
+	providerWaitDecrementCalls int
+	providerWaitMaxWaiting     int
+}
+
+type qoderStickyBindCall struct {
+	groupID     int64
+	sessionHash string
+	providerID  int64
+}
+
+type qoderStickyBindCacheStub struct {
+	calls              []qoderStickyBindCall
+	sawCanceledContext bool
+	sawDeadline        bool
+}
+
+// qoderStickyExecutionStub 记录粘性会话接口调用。
+type qoderStickyExecutionStub struct {
+	QoderCompatibleExecution
+	cache session.GatewayCache
+}
+
+// 本文件为并发存储测试记录调用次数。
+type helperConcurrencyCacheStub struct {
+	mu sync.Mutex
+
+	providerSeq []bool
+	userSeq     []bool
+
+	providerAcquireCalls int
+	userAcquireCalls     int
+	providerReleaseCalls int
+	userReleaseCalls     int
+	waitAllowed          bool
+	waitIncrementCalls   int
+	waitDecrementCalls   int
+	waitMaxWait          int
+	waitIncrementHook    func()
+	apiKeyTrackCalls     int
+	apiKeyReleaseCalls   int
+	apiKeyTrackIDs       []int64
+}
+
 // TestQoderCompatibleNativeHTTPCompletionBoundary 验证两种兼容协议保持一次执行、已观测部分结果一次完成以及成功专属粘性绑定。
 func TestQoderCompatibleNativeHTTPCompletionBoundary(t *testing.T) {
 	for _, endpoint := range []QoderEndpoint{QoderMessages, QoderResponses} {
@@ -386,15 +434,6 @@ func TestQoderGatewayProviderSlotWaitCountDecrementsAfterAcquire(t *testing.T) {
 	require.Equal(t, 1, cache.providerReleaseCalls)
 }
 
-type qoderProviderWaitCacheStub struct {
-	*helperConcurrencyCacheStub
-
-	providerWaitAllowed        bool
-	providerWaitIncrementCalls int
-	providerWaitDecrementCalls int
-	providerWaitMaxWaiting     int
-}
-
 func (s *qoderProviderWaitCacheStub) IncrementProviderWaitCount(ctx context.Context, providerID int64, maxWait int) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -408,18 +447,6 @@ func (s *qoderProviderWaitCacheStub) DecrementProviderWaitCount(ctx context.Cont
 	defer s.mu.Unlock()
 	s.providerWaitDecrementCalls++
 	return nil
-}
-
-type qoderStickyBindCall struct {
-	groupID     int64
-	sessionHash string
-	providerID  int64
-}
-
-type qoderStickyBindCacheStub struct {
-	calls              []qoderStickyBindCall
-	sawCanceledContext bool
-	sawDeadline        bool
 }
 
 func (s *qoderStickyBindCacheStub) GetSessionProviderID(context.Context, int64, string) (int64, error) {
@@ -458,39 +485,12 @@ func (s *qoderStickyBindCacheStub) RefreshSessionOwnerTTL(context.Context, int64
 	return nil
 }
 
-// qoderStickyExecutionStub 记录粘性会话接口调用。
-type qoderStickyExecutionStub struct {
-	QoderCompatibleExecution
-	cache session.GatewayCache
-}
-
 func (s *qoderStickyExecutionStub) BindStickySession(ctx context.Context, id *int64, hash string, providerID int64) error {
 	var groupID int64
 	if id != nil {
 		groupID = *id
 	}
 	return s.cache.SetSessionProviderID(ctx, groupID, hash, providerID, time.Hour)
-}
-
-// 本文件为并发存储测试记录调用次数。
-type helperConcurrencyCacheStub struct {
-	mu sync.Mutex
-
-	providerSeq []bool
-	userSeq     []bool
-
-	providerAcquireCalls int
-	userAcquireCalls     int
-	providerReleaseCalls int
-	userReleaseCalls     int
-	waitAllowed          bool
-	waitIncrementCalls   int
-	waitDecrementCalls   int
-	waitMaxWait          int
-	waitIncrementHook    func()
-	apiKeyTrackCalls     int
-	apiKeyReleaseCalls   int
-	apiKeyTrackIDs       []int64
 }
 
 func (s *helperConcurrencyCacheStub) AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {

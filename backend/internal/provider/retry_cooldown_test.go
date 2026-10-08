@@ -18,6 +18,13 @@ type retryExhaustedCooldownRepoStub struct {
 	tempCalls int
 }
 
+type capacityShedProviderRepoStub struct {
+	RetryCooldownStore
+	// 嵌入接口，未实现的方法会 panic（不应被调用）
+
+	tempUnschedCalls int
+}
+
 func (r *retryExhaustedCooldownRepoStub) GetByID(context.Context, int64) (*Record, error) {
 	return r.provider, nil
 }
@@ -49,13 +56,6 @@ func TestTempUnscheduleRetryableError_PoolModeSkipsLegacyCooldown(t *testing.T) 
 	repo.provider = &Record{LoadLocation: time.LoadLocation, ID: 82, Type: capability.ProviderTypeOAuth, Platform: capability.PlatformAntigravity}
 	svc.Apply(context.Background(), RetryCooldownInput{ProviderID: repo.provider.ID, Status: 502, Retryable: true})
 	require.Equal(t, 1, repo.tempCalls)
-}
-
-type capacityShedProviderRepoStub struct {
-	RetryCooldownStore
-	// 嵌入接口，未实现的方法会 panic（不应被调用）
-
-	tempUnschedCalls int
 }
 
 func (r *capacityShedProviderRepoStub) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, _ string) error {

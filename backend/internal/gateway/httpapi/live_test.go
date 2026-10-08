@@ -30,6 +30,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// liveModerationSettings 只供应原 HTTP 测试的设置快照，实际审核仍执行原生服务与 HTTP 客户端。
+type liveModerationSettings struct {
+	settings.Repository
+	values map[string]string
+}
+
+// liveModerationLogs 为测试提供无历史违规记录的查询结果。
+type liveModerationLogs struct {
+	moderation.ContentModerationRepository
+}
+
 // newLiveModerationRuntime 仅装配实际审核核心与本地协议客户端；后台工作由当前测试等待。
 func newLiveModerationRuntime(t *testing.T, settings moderation.SettingRepository, repo moderation.ContentModerationRepository) *moderation.ContentModerationService {
 	t.Helper()
@@ -51,12 +62,6 @@ func newLiveModerationRuntime(t *testing.T, settings moderation.SettingRepositor
 		}
 	})
 	return core
-}
-
-// liveModerationSettings 只供应原 HTTP 测试的设置快照，实际审核仍执行原生服务与 HTTP 客户端。
-type liveModerationSettings struct {
-	settings.Repository
-	values map[string]string
 }
 
 func (s *liveModerationSettings) GetValue(_ context.Context, key string) (string, error) {
@@ -84,11 +89,6 @@ func (s *liveModerationSettings) GetMultiple(_ context.Context, keys []string) (
 	return out, nil
 }
 
-// liveModerationLogs 为测试提供无历史违规记录的查询结果。
-type liveModerationLogs struct {
-	moderation.ContentModerationRepository
-}
-
 func (*liveModerationLogs) CreateLog(context.Context, *moderation.ContentModerationLog) error {
 	return nil
 }
@@ -105,7 +105,7 @@ func TestParseLiveCallRequestMultipartPreservesSession(t *testing.T) {
 	require.NoError(t, writer.WriteField("session", session))
 	require.NoError(t, writer.Close())
 
-	request := httptest.NewRequest("POST", "/v1/live", &body)
+	request := httptest.NewRequest(http.MethodPost, "/v1/live", &body)
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 	context, _ := gin.CreateTestContext(httptest.NewRecorder())
 	context.Request = request
@@ -119,7 +119,7 @@ func TestParseLiveCallRequestMultipartPreservesSession(t *testing.T) {
 
 func TestParseLiveCallRequestJSONPreservesSessionWithoutDelegation(t *testing.T) {
 	body := `{"sdp":"v=0\\r\\n","session":{"model":"gpt-live-test","instructions":"standalone"}}`
-	request := httptest.NewRequest("POST", "/backend-api/codex/realtime/calls", bytes.NewBufferString(body))
+	request := httptest.NewRequest(http.MethodPost, "/backend-api/codex/realtime/calls", bytes.NewBufferString(body))
 	request.Header.Set("Content-Type", "application/json")
 	context, _ := gin.CreateTestContext(httptest.NewRecorder())
 	context.Request = request
@@ -138,7 +138,7 @@ func TestParseLiveCallRequestRejectsInvalidJSONShape(t *testing.T) {
 		`{"sdp":"v=0\\r\\n","session":{"type":"quicksilver"}} {}`,
 	}
 	for _, body := range testCases {
-		request := httptest.NewRequest("POST", "/backend-api/codex/realtime/calls", bytes.NewBufferString(body))
+		request := httptest.NewRequest(http.MethodPost, "/backend-api/codex/realtime/calls", bytes.NewBufferString(body))
 		request.Header.Set("Content-Type", "application/json")
 		context, _ := gin.CreateTestContext(httptest.NewRecorder())
 		context.Request = request

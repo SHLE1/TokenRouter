@@ -22,6 +22,12 @@ const (
 	DefaultVertexManagedGCSPrefix  = "batch-image/{env}/{batch_id}"
 )
 
+var (
+	_ BatchImageProvider     = (*VertexBatchImageProvider)(nil)
+	_ VertexBatchClient      = (*VertexBatchHTTPClient)(nil)
+	_ VertexBatchObjectStore = (*VertexGCSObjectStore)(nil)
+)
+
 type VertexBatchImageProviderOptions struct {
 	Enabled                bool
 	ProjectID              string
@@ -41,6 +47,38 @@ type VertexBatchImageProvider struct {
 	objectStore VertexBatchObjectStore
 	tokenCache  GeminiTokenCache
 }
+
+type VertexManagedRefs struct {
+	Prefix          string
+	InputURI        string
+	OutputPrefixURI string
+}
+
+type VertexBatchClient = vertex.VertexBatchClient
+
+type VertexBatchObjectStore = vertex.VertexBatchObjectStore
+
+type VertexCreateBatchPredictionJobRequest = vertex.VertexCreateBatchPredictionJobRequest
+
+type VertexBatchInputConfig = vertex.VertexBatchInputConfig
+
+type VertexBatchGCSSource = vertex.VertexBatchGCSSource
+
+type VertexBatchOutputConfig = vertex.VertexBatchOutputConfig
+
+type VertexBatchGCSDestination = vertex.VertexBatchGCSDestination
+
+type VertexBatchInstanceConfig = vertex.VertexBatchInstanceConfig
+
+type VertexBatchPredictionJob = vertex.VertexBatchPredictionJob
+
+type VertexBatchJobError = vertex.VertexBatchJobError
+
+type VertexBatchHTTPClient = vertex.VertexBatchHTTPClient
+
+type VertexGCSObjectStore = vertex.VertexGCSObjectStore
+
+type VertexAPIError = vertex.VertexAPIError
 
 func NewVertexBatchImageProvider(opts VertexBatchImageProviderOptions, client VertexBatchClient, objectStore VertexBatchObjectStore, tokenCache GeminiTokenCache) *VertexBatchImageProvider {
 	opts = NormalizeVertexBatchImageProviderOptions(opts)
@@ -316,12 +354,6 @@ func (p *VertexBatchImageProvider) IsSafeManagedOutput(job *core.BatchImageJob, 
 	return err == nil && strings.HasPrefix(strings.TrimSpace(uri), refs.OutputPrefixURI)
 }
 
-type VertexManagedRefs struct {
-	Prefix          string
-	InputURI        string
-	OutputPrefixURI string
-}
-
 func (p *VertexBatchImageProvider) ManagedRefs(batchID string) (VertexManagedRefs, error) {
 	batchID = strings.TrimSpace(batchID)
 	if !core.IsValidBatchImageID(batchID) {
@@ -469,41 +501,9 @@ func MapVertexClientError(err error) error {
 	return VertexProviderError("VERTEX_INVALID_RESPONSE", "Vertex API request failed", err)
 }
 
-var (
-	_ BatchImageProvider     = (*VertexBatchImageProvider)(nil)
-	_ VertexBatchClient      = (*VertexBatchHTTPClient)(nil)
-	_ VertexBatchObjectStore = (*VertexGCSObjectStore)(nil)
-)
-
-type VertexBatchClient = vertex.VertexBatchClient
-
-type VertexBatchObjectStore = vertex.VertexBatchObjectStore
-
-type VertexCreateBatchPredictionJobRequest = vertex.VertexCreateBatchPredictionJobRequest
-
-type VertexBatchInputConfig = vertex.VertexBatchInputConfig
-
-type VertexBatchGCSSource = vertex.VertexBatchGCSSource
-
-type VertexBatchOutputConfig = vertex.VertexBatchOutputConfig
-
-type VertexBatchGCSDestination = vertex.VertexBatchGCSDestination
-
-type VertexBatchInstanceConfig = vertex.VertexBatchInstanceConfig
-
-type VertexBatchPredictionJob = vertex.VertexBatchPredictionJob
-
-type VertexBatchJobError = vertex.VertexBatchJobError
-
 func NormalizeVertexBatchModelPath(model string) string {
 	return vertex.NormalizeVertexBatchModelPath(model)
 }
-
-type VertexBatchHTTPClient = vertex.VertexBatchHTTPClient
-
-type VertexGCSObjectStore = vertex.VertexGCSObjectStore
-
-type VertexAPIError = vertex.VertexAPIError
 
 func NewVertexBatchHTTPClient(baseURL string, client *http.Client) *VertexBatchHTTPClient {
 	return vertex.NewVertexBatchHTTPClient(baseURL, client)

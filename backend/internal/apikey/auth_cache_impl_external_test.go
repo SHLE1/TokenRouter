@@ -18,6 +18,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 )
 
+type teamContextErrorRepository struct {
+	team.TeamRepository
+	err error
+}
+
 func TestAPIKeyService_SnapshotRoundTrip_PreservesGroupCaptureControls(t *testing.T) {
 	svc := testkit.NewService(nil, nil, nil, nil, nil, nil, nil)
 	svc.Start()
@@ -417,11 +422,6 @@ func TestHydrateTeamAPIKeyOnlyMapsMissingContextToMembershipError(t *testing.T) 
 			require.ErrorIs(t, err, test.want)
 		})
 	}
-}
-
-type teamContextErrorRepository struct {
-	team.TeamRepository
-	err error
 }
 
 func (r *teamContextErrorRepository) GetContextByUserID(context.Context, int64) (*team.TeamContext, error) {

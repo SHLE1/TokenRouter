@@ -28,6 +28,8 @@ type nativeQueueProbe struct {
 	err                 error
 }
 
+type nativeBedrockPolicy struct{}
+
 func (q *nativeQueueProbe) AcquireWithWait(_ *gin.Context, _ int64, _ int, _ bool, started *bool, _ time.Duration, _ *zap.Logger) (func(), error) {
 	q.acquired++
 	*started = true
@@ -115,8 +117,6 @@ func TestUnifiedMessageThrottleAndToolResults(t *testing.T) {
 	release()
 	require.Equal(t, 1, queue.throttled, "工具结果不进入真实用户消息队列")
 }
-
-type nativeBedrockPolicy struct{}
 
 func (nativeBedrockPolicy) GetGroupPolicy(context.Context, int64) (*routing.GroupPolicyView, error) {
 	return &routing.GroupPolicyView{GroupRoutingPolicy: routing.GroupRoutingPolicy{Enabled: true, FeaturesConfig: map[string]any{"bedrock_cc_compat": map[string]any{"anthropic": true}}}}, nil

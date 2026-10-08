@@ -19,6 +19,11 @@ type archiveProvidersFixture struct {
 	created []CreateProviderInput
 }
 
+type archiveProxiesFixture struct {
+	ArchiveProxies
+	events *[]string
+}
+
 func (f *archiveProvidersFixture) GetProvidersByIDs(context.Context, []int64) ([]*Record, error) {
 	*f.events = append(*f.events, "providers")
 	return f.values, nil
@@ -31,11 +36,6 @@ func (f *archiveProvidersFixture) CreateProvider(_ context.Context, input *Creat
 		return nil, errors.New("fixture rejected")
 	}
 	return &Record{ID: 1, Name: input.Name, Platform: input.Platform, Type: input.Type}, nil
-}
-
-type archiveProxiesFixture struct {
-	ArchiveProxies
-	events *[]string
 }
 
 func (f archiveProxiesFixture) ImportForProviderBinding(context.Context, []egress.TransferProxy) (map[string]int64, egress.ProxyImportResult, error) {

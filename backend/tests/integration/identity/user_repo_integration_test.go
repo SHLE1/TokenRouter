@@ -388,7 +388,7 @@ func (s *UserRepoSuite) TestApplyRedeemBalanceAdjustment_ConcurrentNeverNegative
 
 	var wg sync.WaitGroup
 	errs := make(chan error, 2)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -481,7 +481,7 @@ func (s *UserRepoSuite) TestApplyRedeemConcurrencyAdjustment_ConcurrentNeverNega
 
 	var wg sync.WaitGroup
 	errs := make(chan error, 2)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -554,7 +554,6 @@ func (s *UserRepoSuite) TestCreateWithNormalizedEmailGuardSerializesProviderAlia
 	errs := make(chan error, len(candidates))
 	var wg sync.WaitGroup
 	for _, candidate := range candidates {
-		candidate := candidate
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

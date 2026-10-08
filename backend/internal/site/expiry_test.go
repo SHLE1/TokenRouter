@@ -15,6 +15,12 @@ type announcementExpiryRepoStub struct {
 	called chan time.Time
 }
 
+// blockingExpiryRepository 阻塞归档调用，供测试检查停止时的等待行为。
+type blockingExpiryRepository struct {
+	AnnouncementRepository
+	entered, release chan struct{}
+}
+
 func (r *announcementExpiryRepoStub) ArchiveExpired(_ context.Context, now time.Time) (int64, error) {
 	r.calls.Add(1)
 	if r.called != nil {
@@ -64,12 +70,6 @@ func waitForAnnouncementExpiryCall(t *testing.T, called <-chan time.Time) {
 	case <-time.After(time.Second):
 		t.Fatal("等待公告到期扫描超时")
 	}
-}
-
-// blockingExpiryRepository 阻塞归档调用，供测试检查停止时的等待行为。
-type blockingExpiryRepository struct {
-	AnnouncementRepository
-	entered, release chan struct{}
 }
 
 func (r *blockingExpiryRepository) ArchiveExpired(ctx context.Context, _ time.Time) (int64, error) {

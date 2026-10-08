@@ -12,13 +12,22 @@ import (
 	"sync/atomic"
 	"testing"
 
-	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/stretchr/testify/require"
+
+	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
 type MemorySettings struct {
 	mu     sync.RWMutex
 	values map[string]string
+}
+
+type SMTPServer struct {
+	listener      net.Listener
+	wg            sync.WaitGroup
+	messages      atomic.Int64
+	messageMu     sync.Mutex
+	messageBodies []string
 }
 
 func NewMemorySettings() *MemorySettings {
@@ -91,14 +100,6 @@ func (r *MemorySettings) Delete(_ context.Context, key string) error {
 	return nil
 }
 
-type SMTPServer struct {
-	listener      net.Listener
-	wg            sync.WaitGroup
-	messages      atomic.Int64
-	messageMu     sync.Mutex
-	messageBodies []string
-}
-
 func StartSMTPServer(t *testing.T) *SMTPServer {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -144,7 +145,7 @@ func (s *SMTPServer) LastMessageBody(t *testing.T) string {
 	message, err := mail.ReadMessage(strings.NewReader(s.LastMessage()))
 	require.NoError(t, err)
 
-	bodyReader := io.Reader(message.Body)
+	bodyReader := message.Body
 	if strings.EqualFold(message.Header.Get("Content-Transfer-Encoding"), "quoted-printable") {
 		bodyReader = quotedprintable.NewReader(message.Body)
 	}

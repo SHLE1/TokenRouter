@@ -9,6 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type blockingMailTask struct {
+	started chan struct{}
+	once    sync.Once
+}
+
 func TestMailQueueBoundedDrain(t *testing.T) {
 	p := &blockingMailTask{started: make(chan struct{})}
 	q := NewEmailQueueService(p, 1)
@@ -33,11 +38,6 @@ func TestMailQueueStopBeforeStartReportsPending(t *testing.T) {
 	require.ErrorContains(t, queue.StopContext(context.Background()), "1 tasks")
 	queue.Start()
 	require.False(t, queue.started)
-}
-
-type blockingMailTask struct {
-	started chan struct{}
-	once    sync.Once
 }
 
 func (p *blockingMailTask) SendVerifyCode(ctx context.Context, _, _ string, _ ...string) error {

@@ -20,6 +20,12 @@ type openAICodexExtraListRepo struct {
 	rateLimitCh chan time.Time
 }
 
+// codexListRecordsFixture 返回列表查询需要的提供商记录。
+type codexListRecordsFixture struct {
+	provider.AdminStore
+	providers []provider.Record
+}
+
 func (r *openAICodexExtraListRepo) SetRateLimited(_ context.Context, _ int64, resetAt time.Time) error {
 	if r.rateLimitCh != nil {
 		r.rateLimitCh <- resetAt
@@ -66,12 +72,6 @@ func TestAdminService_ListProviders_ExhaustedCodexExtraDoesNotSetRateLimit(t *te
 		t.Fatalf("不应在提供商列表查询时将 codex extra 持久化为运行时限流状态: %v", persisted)
 	case <-time.After(2 * time.Second):
 	}
-}
-
-// codexListRecordsFixture 返回列表查询需要的提供商记录。
-type codexListRecordsFixture struct {
-	provider.AdminStore
-	providers []provider.Record
 }
 
 // TestResetProviderQuota_RejectsShadow 检查影子的额度重置返回 400，母提供商可正常重置。

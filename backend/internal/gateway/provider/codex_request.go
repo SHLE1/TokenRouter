@@ -12,6 +12,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const (
+	// 旧标记仍用于识别历史请求，避免重复注入并维持桥接判断。
+	legacyClaudeCodeTodoGuardMarker = "<sub2api-claude-code-todo-guard>"
+
+	OpenAICompatClaudeCodeTodoGuardMarker = "<tokenrouter-claude-code-todo-guard>"
+	OpenAICompatClaudeCodeTodoGuardText   = OpenAICompatClaudeCodeTodoGuardMarker + "\nWhen using Claude Code todo or task tracking tools, keep the visible task list consistent. Do not send final or summary text while any item remains in_progress. Before finishing, asking the user to choose, or reporting a blocker, update the todo list so completed work is completed and deferred work is pending/open; leave an item in_progress only when active work will continue in the same turn.\n</tokenrouter-claude-code-todo-guard>"
+)
+
 func ApplyCodexOAuthTransform(reqBody map[string]any, isCodexCLI bool, isCompact bool) openai.CodexTransformResult {
 	return ApplyCodexOAuthTransformWithOptions(reqBody, openai.CodexOAuthTransformOptions{IsCodexCLI: isCodexCLI, IsCompact: isCompact})
 }
@@ -86,14 +94,6 @@ func IsOpenAICompatMessagesBridgePromptCacheKey(key string) bool {
 		strings.HasPrefix(key, "anthropic-cache-") ||
 		strings.HasPrefix(key, "anthropic-digest-")
 }
-
-// 旧标记仍用于识别历史请求，避免重复注入并维持桥接判断。
-const legacyClaudeCodeTodoGuardMarker = "<sub2api-claude-code-todo-guard>"
-
-const (
-	OpenAICompatClaudeCodeTodoGuardMarker = "<tokenrouter-claude-code-todo-guard>"
-	OpenAICompatClaudeCodeTodoGuardText   = OpenAICompatClaudeCodeTodoGuardMarker + "\nWhen using Claude Code todo or task tracking tools, keep the visible task list consistent. Do not send final or summary text while any item remains in_progress. Before finishing, asking the user to choose, or reporting a blocker, update the todo list so completed work is completed and deferred work is pending/open; leave an item in_progress only when active work will continue in the same turn.\n</tokenrouter-claude-code-todo-guard>"
-)
 
 func AppendOpenAICompatClaudeCodeTodoGuard(req *protocolopenai.ResponsesRequest) bool {
 	if req == nil || len(req.Input) == 0 {

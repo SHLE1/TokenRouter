@@ -15,11 +15,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// MaxTokenLength 限制 token 大小，避免超长 header 触发解析时的异常内存分配。
-const MaxTokenLength = 8192
+const (
+	// MaxTokenLength 限制 token 大小，避免超长 header 触发解析时的异常内存分配。
+	MaxTokenLength = 8192
 
-// RefreshTokenPrefix is the prefix for refresh tokens to distinguish them from access tokens.
-const RefreshTokenPrefix = "rt_"
+	// RefreshTokenPrefix is the prefix for refresh tokens to distinguish them from access tokens.
+	RefreshTokenPrefix = "rt_"
+)
 
 // JWTClaims JWT载荷数据
 type JWTClaims struct {
@@ -45,6 +47,32 @@ type TokenPair struct {
 type TokenPairWithUser struct {
 	TokenPair
 	UserRole string
+}
+
+// SessionOptions 固化启动 JWT 配置，运行时会话绑定开关按请求读取。
+type SessionOptions struct {
+	Now                      func() time.Time
+	Secret                   string
+	ExpireHour               int
+	AccessTokenExpireMinutes int
+	RefreshTokenExpireDays   int
+}
+type SessionUserReader interface {
+	GetByID(context.Context, int64) (*User, error)
+}
+type SessionSettings interface{ IsSessionBindingEnabled(context.Context) bool }
+
+// SessionService 持有唯一会话流程；Redis 状态仍由注入缓存保存。
+type SessionService struct {
+	options           SessionOptions
+	userRepo          SessionUserReader
+	refreshTokenCache RefreshTokenCache
+	settingService    SessionSettings
+	observer          Observer
+}
+
+func NewSessionService(options SessionOptions, users SessionUserReader, cache RefreshTokenCache, settings SessionSettings, logf LogFunc) *SessionService {
+	return &SessionService{options: options, userRepo: users, refreshTokenCache: cache, settingService: settings, observer: Observer{Log: logf}}
 }
 
 // ValidateToken 验证JWT token并返回用户声明
@@ -457,30 +485,4 @@ func RandomHexString(byteLength int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
-}
-
-// SessionOptions 固化启动 JWT 配置，运行时会话绑定开关按请求读取。
-type SessionOptions struct {
-	Now                      func() time.Time
-	Secret                   string
-	ExpireHour               int
-	AccessTokenExpireMinutes int
-	RefreshTokenExpireDays   int
-}
-type SessionUserReader interface {
-	GetByID(context.Context, int64) (*User, error)
-}
-type SessionSettings interface{ IsSessionBindingEnabled(context.Context) bool }
-
-// SessionService 持有唯一会话流程；Redis 状态仍由注入缓存保存。
-type SessionService struct {
-	options           SessionOptions
-	userRepo          SessionUserReader
-	refreshTokenCache RefreshTokenCache
-	settingService    SessionSettings
-	observer          Observer
-}
-
-func NewSessionService(options SessionOptions, users SessionUserReader, cache RefreshTokenCache, settings SessionSettings, logf LogFunc) *SessionService {
-	return &SessionService{options: options, userRepo: users, refreshTokenCache: cache, settingService: settings, observer: Observer{Log: logf}}
 }

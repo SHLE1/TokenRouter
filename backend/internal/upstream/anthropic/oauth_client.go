@@ -18,18 +18,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic/oauth"
 )
 
+type OAuthClient struct {
+	BaseURL       string
+	TokenURL      string
+	ClientFactory func(proxyURL string) (*req.Client, error)
+}
+
 func NewOAuthClient() *OAuthClient {
 	return &OAuthClient{
 		BaseURL:       "https://claude.ai",
 		TokenURL:      oauth.TokenURL,
 		ClientFactory: createReqClient,
 	}
-}
-
-type OAuthClient struct {
-	BaseURL       string
-	TokenURL      string
-	ClientFactory func(proxyURL string) (*req.Client, error)
 }
 
 func (s *OAuthClient) GetOrganizationUUID(ctx context.Context, sessionKey, proxyURL string) (string, error) {

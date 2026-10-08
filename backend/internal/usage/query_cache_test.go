@@ -10,6 +10,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// statsCancellationRepo 将查询停在读取阶段，便于交错两个 HTTP 请求的取消。
+type statsCancellationRepo struct {
+	UsageLogRepository
+	started chan struct{}
+	release chan struct{}
+	calls   atomic.Int32
+}
+
+// joinedStatsContext 在等待者进入取消选择时通知测试。
+type joinedStatsContext struct {
+	context.Context
+	joined chan struct{}
+	once   sync.Once
+}
+
 func TestUsageStatsCacheKey_StableAndDistinct(t *testing.T) {
 	start := time.Date(2026, 5, 29, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 5, 31, 0, 0, 0, 0, time.UTC)
@@ -43,14 +58,6 @@ func TestUsageStatsCacheKey_StableAndDistinct(t *testing.T) {
 	}
 }
 
-// statsCancellationRepo 将查询停在读取阶段，便于交错两个 HTTP 请求的取消。
-type statsCancellationRepo struct {
-	UsageLogRepository
-	started chan struct{}
-	release chan struct{}
-	calls   atomic.Int32
-}
-
 // GetStatsWithFilters 等待测试释放查询或底层上下文取消。
 func (r *statsCancellationRepo) GetStatsWithFilters(ctx context.Context, _ UsageLogFilters) (*UsageStats, error) {
 	if r.calls.Add(1) == 1 {
@@ -62,13 +69,6 @@ func (r *statsCancellationRepo) GetStatsWithFilters(ctx context.Context, _ Usage
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-}
-
-// joinedStatsContext 在等待者进入取消选择时通知测试。
-type joinedStatsContext struct {
-	context.Context
-	joined chan struct{}
-	once   sync.Once
 }
 
 // Done 在等待登记完成后通知主测试协程。

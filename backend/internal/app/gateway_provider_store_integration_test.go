@@ -16,6 +16,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
+// NewExecutionProviderStoreForTest 为集成测试构造执行提供商存储。
+var NewExecutionProviderStoreForTest = provideExecutionProviderStore
+
 // TestExecutionStoreUsesNativeStateAndOuterTransaction 检查执行入口使用提供商存储的资金字段保护，并加入外层 Ent 事务。
 func TestExecutionStoreUsesNativeStateAndOuterTransaction(t *testing.T) {
 	f := newDatabaseFixture(t)
@@ -65,6 +68,3 @@ func TestExecutionStoreUsesNativeStateAndOuterTransaction(t *testing.T) {
 	require.Equal(t, "renamed", after.Record.Name)
 	require.Equal(t, 2.5, after.View().GetQuotaUsed())
 }
-
-// NewExecutionProviderStoreForTest 为集成测试构造执行提供商存储。
-var NewExecutionProviderStoreForTest = provideExecutionProviderStore

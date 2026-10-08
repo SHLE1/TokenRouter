@@ -21,10 +21,6 @@ import (
 	wiregrok "github.com/TokenFlux/TokenRouter/internal/protocol/grok"
 )
 
-type OAuthClient struct {
-	tokenURL string
-}
-
 const (
 	providersBaseURL     = "https://accounts.x.ai"
 	loginRPCEndpoint     = providersBaseURL + "/api/rpc"
@@ -33,6 +29,10 @@ const (
 	yesCaptchaCreateTask = "https://api.yescaptcha.com/createTask"
 	yesCaptchaGetResult  = "https://api.yescaptcha.com/getTaskResult"
 )
+
+type OAuthClient struct {
+	tokenURL string
+}
 
 func NewOAuthClient() *OAuthClient {
 	// 采用 fail-closed：不能回退到未经校验的 EffectiveTokenURL，防止恶意环境变量窃取授权码或 refresh token。

@@ -18,6 +18,52 @@ type UsageTokens = purepricing.UsageTokens
 // CostBreakdown 保留旧用量/定价类型入口。
 type CostBreakdown = purepricing.CostBreakdown
 
+// CostInput 统一计费输入
+type CostInput struct {
+	Ctx             context.Context
+	Model           string
+	GroupID         *int64 // 用于共享价格配置定价查找
+	Tokens          UsageTokens
+	RequestCount    int     // 按次计费时使用
+	UsageUnits      float64 // 音频等连续计量单位（分钟/小时/百万字符）
+	SizeTier        string  // 按次/图片模式的层级标签（"1K","2K","4K","HD" 等）
+	RateMultiplier  float64
+	PricingAt       time.Time        // 共享价格配置分时定价使用的计费时刻
+	ServiceTier     string           // "priority","flex","" 等
+	ReasoningEffort string           // 最终转发的推理档位；max 可触发模型/共享价格配置倍率
+	Resolver        *PriceResolver   // 定价解析器
+	Resolved        *ResolvedPricing // 可选：预解析的定价结果（避免重复 Resolve 调用）
+}
+
+// ModelDisplayPricing 保留旧用量/定价类型入口。
+type ModelDisplayPricing = purepricing.ModelDisplayPricing
+
+// audioPriceConfig 保留旧用量/定价类型入口。
+type audioPriceConfig = purepricing.AudioPriceConfig
+
+// PriceCatalog 暴露目录读取及既有维护操作，不向核心暴露文件或网络客户端。
+type PriceCatalog interface {
+	GetModelPricing(string) *purepricing.CatalogModelPricing
+	ForceUpdate() error
+}
+
+// CalculatorOptions 包含 app 提供的时钟和时区加载器。
+type CalculatorOptions struct {
+	Now          func() time.Time
+	LoadLocation func(string) (*time.Location, error)
+}
+
+// Calculator 统一拥有查价及计费编排；价卡算法由 pricing 唯一实现。
+type Calculator struct {
+	catalog PriceCatalog
+	options CalculatorOptions
+}
+
+type (
+	CatalogModelPricing = purepricing.CatalogModelPricing
+	ModelPricingEntry   = purepricing.ModelPricingEntry
+)
+
 // applyCostBreakdownMultiplier 按倍率调整各项费用。
 func applyCostBreakdownMultiplier(cost *CostBreakdown, multiplier float64) {
 	purepricing.ApplyCostBreakdownMultiplier(cost, multiplier)
@@ -26,6 +72,16 @@ func applyCostBreakdownMultiplier(cost *CostBreakdown, multiplier float64) {
 // maxReasoningEffortBillingMultiplier 返回 max 推理强度的计费倍率。
 func maxReasoningEffortBillingMultiplier(model, effort string, pricing *ModelPricing) float64 {
 	return purepricing.MaxReasoningEffortBillingMultiplier(model, effort, pricing)
+}
+
+func NewCalculator(catalog PriceCatalog, options CalculatorOptions) *Calculator {
+	if options.Now == nil {
+		options.Now = time.Now
+	}
+	if options.LoadLocation == nil {
+		options.LoadLocation = time.LoadLocation
+	}
+	return &Calculator{catalog: catalog, options: options}
 }
 
 // GetModelPricing 获取模型价格配置
@@ -45,23 +101,6 @@ func (s *Calculator) GetModelPricingWithConfig(model string, configPricing *Mode
 		return nil, err
 	}
 	return purepricing.ApplyConfigPrice(pricing, configPricing), nil
-}
-
-// CostInput 统一计费输入
-type CostInput struct {
-	Ctx             context.Context
-	Model           string
-	GroupID         *int64 // 用于共享价格配置定价查找
-	Tokens          UsageTokens
-	RequestCount    int     // 按次计费时使用
-	UsageUnits      float64 // 音频等连续计量单位（分钟/小时/百万字符）
-	SizeTier        string  // 按次/图片模式的层级标签（"1K","2K","4K","HD" 等）
-	RateMultiplier  float64
-	PricingAt       time.Time        // 共享价格配置分时定价使用的计费时刻
-	ServiceTier     string           // "priority","flex","" 等
-	ReasoningEffort string           // 最终转发的推理档位；max 可触发模型/共享价格配置倍率
-	Resolver        *PriceResolver   // 定价解析器
-	Resolved        *ResolvedPricing // 可选：预解析的定价结果（避免重复 Resolve 调用）
 }
 
 // CalculateCostUnified 统一计费入口，支持三种计费模式。
@@ -144,9 +183,6 @@ func (s *Calculator) ForceUpdatePricing() error {
 	}
 	return fmt.Errorf("pricing service not initialized")
 }
-
-// ModelDisplayPricing 保留旧用量/定价类型入口。
-type ModelDisplayPricing = purepricing.ModelDisplayPricing
 
 // DisplayPricing 使用分组倍率计算模型广场展示价格。
 func (s *Calculator) DisplayPricing(model string, rateMultiplier float64) ModelDisplayPricing {
@@ -259,9 +295,6 @@ func (s *Calculator) CalculateSearchCost(numCalls int, groupPricePer1k *float64,
 	return purepricing.CalculateSearchCost(numCalls, operationPrice("search", groupPricePer1k, s.operationPrices().SearchPricePer1k), rateMultiplier)
 }
 
-// audioPriceConfig 保留旧用量/定价类型入口。
-type audioPriceConfig = purepricing.AudioPriceConfig
-
 // CalculateAudioCost 按模式和时长或单位数计算音频费用。
 func (s *Calculator) CalculateAudioCost(mode string, durationOrUnits float64, groupConfig *audioPriceConfig, rateMultiplier float64) *CostBreakdown {
 	return purepricing.CalculateAudioCost(mode, durationOrUnits, s.audioPrices(mode, groupConfig), rateMultiplier)
@@ -335,34 +368,6 @@ func (s *Calculator) DefaultVideoPrice(model string, resolution string) (float64
 	return 0, fmt.Errorf("video pricing not found for model %s: %w", model, purepricing.ErrModelPricingUnavailable)
 }
 
-// PriceCatalog 暴露目录读取及既有维护操作，不向核心暴露文件或网络客户端。
-type PriceCatalog interface {
-	GetModelPricing(string) *purepricing.CatalogModelPricing
-	ForceUpdate() error
-}
-
-// CalculatorOptions 包含 app 提供的时钟和时区加载器。
-type CalculatorOptions struct {
-	Now          func() time.Time
-	LoadLocation func(string) (*time.Location, error)
-}
-
-// Calculator 统一拥有查价及计费编排；价卡算法由 pricing 唯一实现。
-type Calculator struct {
-	catalog PriceCatalog
-	options CalculatorOptions
-}
-
-func NewCalculator(catalog PriceCatalog, options CalculatorOptions) *Calculator {
-	if options.Now == nil {
-		options.Now = time.Now
-	}
-	if options.LoadLocation == nil {
-		options.LoadLocation = time.LoadLocation
-	}
-	return &Calculator{catalog: catalog, options: options}
-}
-
 // ProjectCostInput 将解析结果转换为定价输入，按需查价并使用请求固定的计价时刻。
 func (s *Calculator) ProjectCostInput(input CostInput, resolved *ResolvedPricing) purepricing.CostInput {
 	var location *time.Location
@@ -379,11 +384,6 @@ func (s *Calculator) ProjectCostInput(input CostInput, resolved *ResolvedPricing
 	}
 	return purepricing.CostInput{ModelTimeLocation: modelLocation, Model: input.Model, Tokens: input.Tokens, RequestCount: input.RequestCount, UsageUnits: input.UsageUnits, SizeTier: input.SizeTier, RateMultiplier: input.RateMultiplier, PricingAt: input.PricingAt, ModelPricingAt: modelAt, ServiceTier: input.ServiceTier, ReasoningEffort: input.ReasoningEffort, TimePricingLocation: location}
 }
-
-type (
-	CatalogModelPricing = purepricing.CatalogModelPricing
-	ModelPricingEntry   = purepricing.ModelPricingEntry
-)
 
 // GetModelModalities 直接走目录的身份元数据查询，不能继承价格回退。
 func (s *Calculator) GetModelModalities(model string) ([]string, []string) {

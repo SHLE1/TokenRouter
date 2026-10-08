@@ -36,6 +36,16 @@ type forwardedIPMigrationRepoStub struct {
 	setMultipleErr error
 }
 
+type settingAntigravityUARepoStub struct {
+	values map[string]string
+}
+
+type defaultSubPlanReaderStub struct {
+	byID  map[int64]*billing.SubscriptionPlan
+	errBy map[int64]error
+	calls []int64
+}
+
 func (s *forwardedIPMigrationRepoStub) Get(context.Context, string) (*settingscore.Setting, error) {
 	panic("unexpected Get call")
 }
@@ -85,10 +95,6 @@ func (s *forwardedIPMigrationRepoStub) Delete(context.Context, string) error {
 	panic("unexpected Delete call")
 }
 
-type settingAntigravityUARepoStub struct {
-	values map[string]string
-}
-
 func (s *settingAntigravityUARepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
 	panic("unexpected Get call")
 }
@@ -118,12 +124,6 @@ func (s *settingAntigravityUARepoStub) GetAll(ctx context.Context) (map[string]s
 
 func (s *settingAntigravityUARepoStub) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
-}
-
-type defaultSubPlanReaderStub struct {
-	byID  map[int64]*billing.SubscriptionPlan
-	errBy map[int64]error
-	calls []int64
 }
 
 func TestSettingService_AffiliateAdminRechargeSetting(t *testing.T) {

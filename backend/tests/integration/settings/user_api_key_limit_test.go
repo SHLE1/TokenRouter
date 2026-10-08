@@ -16,6 +16,14 @@ import (
 	settingskit "github.com/TokenFlux/TokenRouter/internal/settings/testkit"
 )
 
+type settingRepoStub struct {
+	mu               sync.Mutex
+	values           map[string]string
+	err              error
+	getValueCalls    int
+	getMultipleCalls int
+}
+
 func TestSettingService_GetDefaultUserAPIKeyLimit(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -87,14 +95,6 @@ func TestSettingService_UpdateDefaultUserAPIKeyLimit(t *testing.T) {
 
 func stringPointer(value string) *string {
 	return &value
-}
-
-type settingRepoStub struct {
-	mu               sync.Mutex
-	values           map[string]string
-	err              error
-	getValueCalls    int
-	getMultipleCalls int
 }
 
 func (s *settingRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {

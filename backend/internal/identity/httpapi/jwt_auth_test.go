@@ -27,6 +27,10 @@ type stubJWTUserRepo struct {
 	users map[int64]*identity.User
 }
 
+type recordingActivityToucher struct {
+	userIDs []int64
+}
+
 func (r *stubJWTUserRepo) GetByID(_ context.Context, id int64) (*identity.User, error) {
 	u, ok := r.users[id]
 	if !ok {
@@ -41,10 +45,6 @@ func (r *stubJWTUserRepo) GetUserAvatar(_ context.Context, _ int64) (*identity.U
 
 func (r *stubJWTUserRepo) UpdateUserLastActiveAt(_ context.Context, _ int64, _ time.Time) error {
 	return nil
-}
-
-type recordingActivityToucher struct {
-	userIDs []int64
 }
 
 func (r *recordingActivityToucher) TouchLastActiveForUser(_ context.Context, user *identity.User) {
@@ -67,7 +67,7 @@ func newJWTTestEnv(users map[int64]*identity.User) (*gin.Engine, *identity.Sessi
 	mw := identityhttp.JWTAuth(authSvc, userSvc, userSvc, nil, nil)
 
 	r := gin.New()
-	r.Use(gin.HandlerFunc(mw))
+	r.Use(mw)
 	r.GET("/protected", func(c *gin.Context) {
 		subject, _ := authctx.GetAuthSubjectFromContext(c)
 		role, _ := authctx.GetUserRoleFromContext(c)

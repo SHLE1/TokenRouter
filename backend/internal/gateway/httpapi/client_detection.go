@@ -14,6 +14,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 )
 
+var claudeCodeValidator = clientmeta.NewClaudeCodeValidator()
+
+// ClientDetection 只携带识别结果；请求许可与平台默认值仍由相应用例裁决。
+type ClientDetection struct {
+	ClaudeCode bool
+	Version    string
+}
+
 // SetClaudeCodeClientContext 将客户端识别结果写入 HTTP 请求上下文，供后续处理读取。
 func SetClaudeCodeClientContext(c *gin.Context, body []byte, parsed *requeststate.ParsedRequest) {
 	if c == nil || c.Request == nil {
@@ -27,14 +35,6 @@ func SetClaudeCodeClientContext(c *gin.Context, body []byte, parsed *requeststat
 	}
 	c.Request = c.Request.WithContext(ctx)
 }
-
-// ClientDetection 只携带识别结果；请求许可与平台默认值仍由相应用例裁决。
-type ClientDetection struct {
-	ClaudeCode bool
-	Version    string
-}
-
-var claudeCodeValidator = clientmeta.NewClaudeCodeValidator()
 
 // DetectClaudeCodeRequest 返回客户端识别结果，兼容入口将结果写入 context。
 func DetectClaudeCodeRequest(c *gin.Context, body []byte, parsedReq *requeststate.ParsedRequest, probe bool) ClientDetection {

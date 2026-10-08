@@ -8,6 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// tokenVersionReader 返回版本复核使用的提供商记录。
+type tokenVersionReader struct {
+	value *Record
+	err   error
+}
+
 func TestCheckTokenVersion(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -121,12 +127,6 @@ func TestCheckTokenVersion_NilRepo(t *testing.T) {
 	}
 	_, isStale := CheckTokenVersion(context.Background(), provider, nil)
 	require.False(t, isStale) // nil repo，默认允许缓存
-}
-
-// tokenVersionReader 返回版本复核使用的提供商记录。
-type tokenVersionReader struct {
-	value *Record
-	err   error
 }
 
 func (r tokenVersionReader) GetByID(context.Context, int64) (*Record, error) {

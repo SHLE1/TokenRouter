@@ -14,6 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// failedRestoreReader 模拟归档尾部损坏。
+type failedRestoreReader struct{}
+
 // TestRestoreActivityPrefixChecksWholeInput 确认清理前缀和归档交给同一个单事务 psql。
 func TestRestoreActivityPrefixChecksWholeInput(t *testing.T) {
 	dir := t.TempDir()
@@ -36,9 +39,6 @@ func TestRestoreActivityPrefixChecksWholeInput(t *testing.T) {
 	err = dumper.Restore(context.Background(), io.MultiReader(strings.NewReader(archive), failedRestoreReader{}))
 	require.ErrorContains(t, err, "archive read failed")
 }
-
-// failedRestoreReader 模拟归档尾部损坏。
-type failedRestoreReader struct{}
 
 func (failedRestoreReader) Read([]byte) (int, error) {
 	return 0, errors.New("archive read failed")

@@ -14,8 +14,39 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+const (
+	RouteLimitLocalPolicyDenied = "local_policy_denied"
+
+	GroupClientProtocolErrorAnthropic GroupClientProtocolErrorFormat = "anthropic"
+	GroupClientProtocolErrorOpenAI    GroupClientProtocolErrorFormat = "openai"
+	GroupClientProtocolErrorGoogle    GroupClientProtocolErrorFormat = "google"
+)
+
 // GatewayErrorWriter 定义网关错误响应格式（不同协议使用不同格式）
 type GatewayErrorWriter func(c *gin.Context, status int, message string)
+
+// RouteAccess 是路由门禁从当前认证请求取得的数据。
+type RouteAccess struct {
+	HasGroup         bool
+	Composite        bool
+	AllowedProtocols []wireprotocol.ProtocolID
+}
+
+// RouteMiddleware 在 app 一次装配，路由不构造认证、配置或观测服务。
+type RouteMiddleware struct {
+	ClientGroupFallback                                                                                            ClientGroupFallbackResolver
+	APIKeyAuth, GoogleAPIKeyAuth, BodyLimit, TextBodyLimit, ClientRequestID, OpsErrorLogger, EndpointNormalization gin.HandlerFunc
+	RequireGroupAnthropic, RequireGroupGoogle, ForceAntigravity                                                    gin.HandlerFunc
+	Access                                                                                                         func(*gin.Context) RouteAccess
+	ForcedPlatform                                                                                                 func(*gin.Context) (string, bool)
+	InstallClientProtocol                                                                                          func(*gin.Context, wireprotocol.ProtocolID)
+	ObserveBusinessLimit                                                                                           func(*gin.Context, string)
+}
+
+// RouteGuards 使用路由表和当前请求的认证数据执行门禁。
+type RouteGuards struct{ options RouteMiddleware }
+
+type GroupClientProtocolErrorFormat string
 
 // AnthropicErrorWriter 按 Anthropic API 规范输出错误
 func AnthropicErrorWriter(c *gin.Context, status int, message string) {
@@ -36,40 +67,7 @@ func GoogleErrorWriter(c *gin.Context, status int, message string) {
 	})
 }
 
-// RouteAccess 是路由门禁从当前认证请求取得的数据。
-type RouteAccess struct {
-	HasGroup         bool
-	Composite        bool
-	AllowedProtocols []wireprotocol.ProtocolID
-}
-
-// RouteMiddleware 在 app 一次装配，路由不构造认证、配置或观测服务。
-type RouteMiddleware struct {
-	ClientGroupFallback                                                                                            ClientGroupFallbackResolver
-	APIKeyAuth, GoogleAPIKeyAuth, BodyLimit, TextBodyLimit, ClientRequestID, OpsErrorLogger, EndpointNormalization gin.HandlerFunc
-	RequireGroupAnthropic, RequireGroupGoogle, ForceAntigravity                                                    gin.HandlerFunc
-	Access                                                                                                         func(*gin.Context) RouteAccess
-	ForcedPlatform                                                                                                 func(*gin.Context) (string, bool)
-	InstallClientProtocol                                                                                          func(*gin.Context, wireprotocol.ProtocolID)
-	ObserveBusinessLimit                                                                                           func(*gin.Context, string)
-}
-
-const (
-	RouteLimitLocalPolicyDenied = "local_policy_denied"
-)
-
-// RouteGuards 使用路由表和当前请求的认证数据执行门禁。
-type RouteGuards struct{ options RouteMiddleware }
-
 func NewRouteGuards(options RouteMiddleware) *RouteGuards { return &RouteGuards{options: options} }
-
-type GroupClientProtocolErrorFormat string
-
-const (
-	GroupClientProtocolErrorAnthropic GroupClientProtocolErrorFormat = "anthropic"
-	GroupClientProtocolErrorOpenAI    GroupClientProtocolErrorFormat = "openai"
-	GroupClientProtocolErrorGoogle    GroupClientProtocolErrorFormat = "google"
-)
 
 // RequireGroupClientProtocol 在进入业务处理器前执行分组协议准入检查。
 func (g *RouteGuards) RequireGroupClientProtocol(protocol wireprotocol.ProtocolID, format GroupClientProtocolErrorFormat) gin.HandlerFunc {

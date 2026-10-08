@@ -15,6 +15,11 @@ type expiryLifecycleRepository struct {
 	ignoreCancel     bool
 }
 
+type providerExpiryRepo struct {
+	ExpiryRepository
+	started chan struct{}
+}
+
 func (r *expiryLifecycleRepository) AutoPauseExpiredProviders(ctx context.Context, _ time.Time) (int64, error) {
 	if r.calls.Add(1) == 1 {
 		close(r.entered)
@@ -54,11 +59,6 @@ func TestExpiryStopBudgetDoesNotReportUnfinishedScanAsComplete(t *testing.T) {
 	close(repo.release)
 	<-svc.runDone
 	require.ErrorIs(t, svc.StopContext(context.Background()), context.DeadlineExceeded)
-}
-
-type providerExpiryRepo struct {
-	ExpiryRepository
-	started chan struct{}
 }
 
 func (r *providerExpiryRepo) AutoPauseExpiredProviders(context.Context, time.Time) (int64, error) {

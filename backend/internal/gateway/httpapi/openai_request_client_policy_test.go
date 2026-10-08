@@ -19,6 +19,16 @@ import (
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
+type requestClientDetectorFixture struct {
+	result providerpolicy.CodexClientRestrictionDetectionResult
+}
+
+// tlsProfileTestStore 通过相同读取入口提供固定测试策略。
+type tlsProfileTestStore struct {
+	egress.TLSFingerprintProfileRepository
+	profiles []*egress.TLSFingerprintProfile
+}
+
 func TestLogCodexCLIOnlyDetection_NilSafety(t *testing.T) {
 	// 不校验日志内容，仅保证在 nil 入参下不会 panic。
 	require.NotPanics(t, func() {
@@ -114,10 +124,6 @@ func TestOpenAIGatewayService_GetCodexClientRestrictionDetector(t *testing.T) {
 	})
 }
 
-type requestClientDetectorFixture struct {
-	result providerpolicy.CodexClientRestrictionDetectionResult
-}
-
 func (s *requestClientDetectorFixture) DetectClient(read func() (string, string), record *providerpolicy.Record, allowed []string, matched bool) providerpolicy.CodexClientRestrictionDetectionResult {
 	return s.result
 }
@@ -197,12 +203,6 @@ func TestOpenAIGatewayService_ResolveTLSProfileRouterFallback(t *testing.T) {
 	})
 	require.NotNil(t, fallbackProfile)
 	require.Equal(t, "fixed", fallbackProfile.Name)
-}
-
-// tlsProfileTestStore 通过相同读取入口提供固定测试策略。
-type tlsProfileTestStore struct {
-	egress.TLSFingerprintProfileRepository
-	profiles []*egress.TLSFingerprintProfile
 }
 
 func (s *tlsProfileTestStore) List(context.Context) ([]*egress.TLSFingerprintProfile, error) {

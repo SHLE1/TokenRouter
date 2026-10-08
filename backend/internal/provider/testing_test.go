@@ -11,6 +11,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type testLoaderStub struct {
+	target  TestTarget
+	err     error
+	loads   int
+	request TestRequest
+}
+
+type testTargetStub struct {
+	info TestTargetInfo
+	run  func(context.Context, PreparedTestRequest, TestEventSink) error
+}
+
+type testSinkStub struct {
+	emitted []TestEvent
+	begin   int
+	err     error
+}
+
 func TestNormalizeProviderTestMode(t *testing.T) {
 	tests := []struct {
 		input string
@@ -57,34 +75,16 @@ func TestResolveProviderTestModeAndType(t *testing.T) {
 	}
 }
 
-type testLoaderStub struct {
-	target  TestTarget
-	err     error
-	loads   int
-	request TestRequest
-}
-
 func (l *testLoaderStub) LoadTestTarget(_ context.Context, request TestRequest) (TestTarget, error) {
 	l.loads++
 	l.request = request
 	return l.target, l.err
 }
 
-type testTargetStub struct {
-	info TestTargetInfo
-	run  func(context.Context, PreparedTestRequest, TestEventSink) error
-}
-
 func (t testTargetStub) Information() TestTargetInfo { return t.info }
 
 func (t testTargetStub) Execute(ctx context.Context, request PreparedTestRequest, sink TestEventSink) error {
 	return t.run(ctx, request, sink)
-}
-
-type testSinkStub struct {
-	emitted []TestEvent
-	begin   int
-	err     error
 }
 
 func (s *testSinkStub) Begin(context.Context, bool) error { s.begin++; return s.err }

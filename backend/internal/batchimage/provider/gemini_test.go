@@ -18,6 +18,26 @@ import (
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
+type fakeGeminiBatchClient struct {
+	calls               []string
+	uploaded            *GeminiUploadedFile
+	created             *GeminiBatchJob
+	got                 *GeminiBatchJob
+	uploadErr           error
+	createErr           error
+	getErr              error
+	cancelErr           error
+	downloadErr         error
+	deleteErr           error
+	uploadedJSONL       []byte
+	createdFile         string
+	cancelledBatch      string
+	downloadedFile      string
+	downloadBody        string
+	downloadContentType string
+	deletedFiles        []string
+}
+
 func TestBatchImageProviderRegistry_ReturnsGeminiAPI(t *testing.T) {
 	registry := newBatchProviderRegistryForTest()
 	platform, ok := registry.Get(batchimage.BatchImageProviderGeminiAPI)
@@ -280,26 +300,6 @@ func geminiAPIKeyProvider(apiKey string) *providercore.Record {
 
 func jobWithProviderName(name string) *batchimage.BatchImageJob {
 	return &batchimage.BatchImageJob{ProviderJobName: &name}
-}
-
-type fakeGeminiBatchClient struct {
-	calls               []string
-	uploaded            *GeminiUploadedFile
-	created             *GeminiBatchJob
-	got                 *GeminiBatchJob
-	uploadErr           error
-	createErr           error
-	getErr              error
-	cancelErr           error
-	downloadErr         error
-	deleteErr           error
-	uploadedJSONL       []byte
-	createdFile         string
-	cancelledBatch      string
-	downloadedFile      string
-	downloadBody        string
-	downloadContentType string
-	deletedFiles        []string
 }
 
 func (f *fakeGeminiBatchClient) UploadJSONL(_ context.Context, apiKey string, _ string, r io.Reader) (*GeminiUploadedFile, error) {

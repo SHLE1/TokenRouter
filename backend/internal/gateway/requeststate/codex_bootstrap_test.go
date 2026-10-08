@@ -9,6 +9,12 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+const (
+	automationBootstrapPrompt = "Review the project and report any important changes."
+
+	delegationEnvelope = `<codex_delegation><source_thread_id>thread-1</source_thread_id><input>do the work</input></codex_delegation>`
+)
+
 func TestNormalizeCodexAutomationBootstrapSupportedLastRunValues(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -319,8 +325,6 @@ func TestNormalizeCodexDelegationBootstrapPreservesOrderAndIsIdempotent(t *testi
 	require.Equal(t, got, again)
 }
 
-const automationBootstrapPrompt = "Review the project and report any important changes."
-
 func codexAutomationBootstrap(automationID, lastRun, prompt string) string {
 	return "Automation: Scheduled project review\n" +
 		"Automation ID: " + automationID + "\n" +
@@ -333,8 +337,6 @@ func codexAutomationBootstrapBody(t *testing.T, output, callID string) []byte {
 	return []byte(`{"model":"gpt-5","input":[{"type":"function_call_output","namespace":"codex_app","name":"automation_update","output":` +
 		mustJSON(t, output) + callID + `}]}`)
 }
-
-const delegationEnvelope = `<codex_delegation><source_thread_id>thread-1</source_thread_id><input>do the work</input></codex_delegation>`
 
 func mustJSON(t *testing.T, value string) string {
 	t.Helper()

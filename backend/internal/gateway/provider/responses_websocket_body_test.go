@@ -15,6 +15,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// openAIResponsesInputTextMaxChars 是长文本透传测试的输入长度。
+const openAIResponsesInputTextMaxChars = 10000000
+
 func TestWebSocketCompatibilityNormalizesTriggerAfterPairedOutputCleanup(t *testing.T) {
 	body := []byte(`{"type":"response.create","model":"gpt-5.4","input":[{"type":"compaction_trigger"},{"type":"function_call","call_id":"call_1","name":"lookup","arguments":"{}"},{"type":"function_call_output","call_id":"call_1","output":"ok"},{"type":"message","role":"user","content":"visible"}]}`)
 	provider := &providercore.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}
@@ -453,9 +456,6 @@ func TestOpenAIResponsesInputNeverRequestsPreemptiveTruncation(t *testing.T) {
 		require.Equal(t, largeOutput, preserved)
 	}
 }
-
-// openAIResponsesInputTextMaxChars 是长文本透传测试的输入长度。
-const openAIResponsesInputTextMaxChars = 10000000
 
 func TestNormalizeOpenAIResponsesLitePayloadForProvider_APIKeyOnlyDisablesParallelToolCalls(t *testing.T) {
 	provider := &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}

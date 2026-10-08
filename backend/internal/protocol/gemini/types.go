@@ -153,16 +153,6 @@ type GeminiUsageMetadata struct {
 	PromptTokensDetails     []GeminiTokenDetail `json:"promptTokensDetails,omitempty"`
 }
 
-// ImageOutputTokens 从 CandidatesTokensDetails 中提取 IMAGE 模态的 token 数
-func (m *GeminiUsageMetadata) ImageOutputTokens() int {
-	for _, d := range m.CandidatesTokensDetails {
-		if d.Modality == "IMAGE" {
-			return d.TokenCount
-		}
-	}
-	return 0
-}
-
 // GeminiGroundingMetadata Gemini grounding 元数据（Web Search）
 type GeminiGroundingMetadata struct {
 	WebSearchQueries []string               `json:"webSearchQueries,omitempty"`
@@ -178,4 +168,14 @@ type GeminiGroundingChunk struct {
 type GeminiGroundingWeb struct {
 	Title string `json:"title,omitempty"`
 	URI   string `json:"uri,omitempty"`
+}
+
+// ImageOutputTokens 从 CandidatesTokensDetails 中提取 IMAGE 模态的 token 数
+func (m *GeminiUsageMetadata) ImageOutputTokens() int {
+	for _, d := range m.CandidatesTokensDetails {
+		if d.Modality == "IMAGE" {
+			return d.TokenCount
+		}
+	}
+	return 0
 }

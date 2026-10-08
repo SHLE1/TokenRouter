@@ -27,6 +27,11 @@ type settingHandlerPublicRepoStub struct {
 	values map[string]string
 }
 
+type settingPublicRepoStub struct {
+	values map[string]string
+	err    error
+}
+
 func (s *settingHandlerPublicRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
 	panic("unexpected Get call")
 }
@@ -184,11 +189,6 @@ func TestSettingHandler_GetPublicSettings_ExposesWeChatOAuthModeCapabilities(t *
 	require.True(t, resp.Data.WeChatOAuthEnabled)
 	require.True(t, resp.Data.WeChatOAuthOpenEnabled)
 	require.True(t, resp.Data.WeChatOAuthMPEnabled)
-}
-
-type settingPublicRepoStub struct {
-	values map[string]string
-	err    error
 }
 
 func (s *settingPublicRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {

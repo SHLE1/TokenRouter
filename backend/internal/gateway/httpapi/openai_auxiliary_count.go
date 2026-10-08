@@ -23,9 +23,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-const openaiPlatformAPIInputTokensURL = "https://api.openai.com/v1/responses/input_tokens"
+const (
+	openaiPlatformAPIInputTokensURL = "https://api.openai.com/v1/responses/input_tokens"
 
-const openAIInputTokensFallbackMinimum = 1
+	openAIInputTokensFallbackMinimum = 1
+)
 
 // ForwardCountTokensAsAnthropic 将 Anthropic /v1/messages/count_tokens 桥接到
 // OpenAI POST /v1/responses/input_tokens，并返回 Anthropic 兼容结果。

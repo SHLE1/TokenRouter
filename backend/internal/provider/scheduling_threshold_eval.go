@@ -10,6 +10,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
+const providerSchedulingThresholdCredentialKey = "provider_scheduling_threshold"
+
 // ProviderSchedulingThresholdDecision 表示单个提供商的纯停调判定结果。
 type ProviderSchedulingThresholdDecision struct {
 	ShouldPause      bool
@@ -27,8 +29,6 @@ type SchedulingThresholdCandidate struct {
 	UsedPercent float64
 	Until       *time.Time
 }
-
-const providerSchedulingThresholdCredentialKey = "provider_scheduling_threshold"
 
 // EvaluateProviderSchedulingThreshold 根据当前平台阈值快照判断提供商是否应暂停调度。
 func EvaluateProviderSchedulingThreshold(provider *Record, thresholds map[string]int, now time.Time) ProviderSchedulingThresholdDecision {

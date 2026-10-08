@@ -14,6 +14,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
+type announcementRepoCapture struct {
+	site.AnnouncementRepository
+	listParams pagination.PaginationParams
+}
+
+type announcementUserRepoCapture struct {
+	site.UserReader
+	listParams pagination.PaginationParams
+}
+
+type announcementReadRepoCapture struct {
+	site.AnnouncementReadRepository
+}
+
+type announcementUserSubRepoCapture struct {
+	site.SubscriptionReader
+}
+
 func TestAdminAnnouncementListSortParams(t *testing.T) {
 	announcementRepo := &announcementRepoCapture{}
 	userRepo := &announcementUserRepoCapture{}
@@ -70,11 +88,6 @@ func TestAdminAnnouncementReadStatusSortDefaults(t *testing.T) {
 	require.Equal(t, "asc", userRepo.listParams.SortOrder)
 }
 
-type announcementRepoCapture struct {
-	site.AnnouncementRepository
-	listParams pagination.PaginationParams
-}
-
 // ArchiveExpired 使排序测试的列表查询跳过过期公告更新。
 func (r *announcementRepoCapture) ArchiveExpired(context.Context, time.Time) (int64, error) {
 	return 0, nil
@@ -101,11 +114,6 @@ func (r *announcementRepoCapture) GetByID(ctx context.Context, id int64) (*site.
 	}, nil
 }
 
-type announcementUserRepoCapture struct {
-	site.UserReader
-	listParams pagination.PaginationParams
-}
-
 func (r *announcementUserRepoCapture) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters site.UserListFilters) ([]site.UserSnapshot, *pagination.PaginationResult, error) {
 	r.listParams = params
 	return []site.UserSnapshot{}, &pagination.PaginationResult{
@@ -116,16 +124,8 @@ func (r *announcementUserRepoCapture) ListWithFilters(ctx context.Context, param
 	}, nil
 }
 
-type announcementReadRepoCapture struct {
-	site.AnnouncementReadRepository
-}
-
 func (r *announcementReadRepoCapture) GetReadMapByUsers(ctx context.Context, announcementID int64, userIDs []int64) (map[int64]time.Time, error) {
 	return map[int64]time.Time{}, nil
-}
-
-type announcementUserSubRepoCapture struct {
-	site.SubscriptionReader
 }
 
 func newAnnouncementSortTestRouter(announcementRepo *announcementRepoCapture, userRepo *announcementUserRepoCapture) *gin.Engine {

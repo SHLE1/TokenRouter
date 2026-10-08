@@ -28,6 +28,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 )
 
+// httpClientSink 保存基准测试结果，防止编译器省略赋值。
+var httpClientSink *http.Client
+
+type poolRoundTripFunc func(*http.Request) (*http.Response, error)
+
+type responseTestBody struct {
+	io.Reader
+}
+
+type blockingHeaderRoundTripper struct{}
+
 // TestUpstreamPoolActiveLimitAndCloseOnce 通过公开执行验证在途保护及重复关闭后的唯一释放。
 func TestUpstreamPoolActiveLimitAndCloseOnce(t *testing.T) {
 	pool := NewUpstreamPool()
@@ -456,7 +467,7 @@ func BenchmarkHTTPUpstreamProxyClient(b *testing.B) {
 		if err != nil {
 			b.Fatalf("解析代理地址失败: %v", err)
 		}
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			// 每次迭代都创建新客户端，包含 Transport 分配
 			transport, err := buildUpstreamTransport(settings, parsedProxy, TransportProtocol{CacheVariant: "default"})
 			if err != nil {
@@ -484,7 +495,7 @@ func BenchmarkHTTPUpstreamProxyClient(b *testing.B) {
 		}
 		client := entry.client
 		b.ResetTimer() // 重置计时器，排除预热时间
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			// 直接使用缓存的客户端，无内存分配
 			httpClientSink = client
 		}
@@ -681,8 +692,6 @@ func upstreamTestSettings() UpstreamSettings {
 	}
 }
 
-type poolRoundTripFunc func(*http.Request) (*http.Response, error)
-
 func (f poolRoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return f(r)
 }
@@ -696,7 +705,7 @@ func poolTestOptions(id int64, captured **http.Client) UpstreamRequestOptions {
 		clone := *client
 		clone.Transport = poolRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 			return &http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Header:     make(http.Header),
 				Body:       io.NopCloser(strings.NewReader("response")),
 				Request:    req,
@@ -711,10 +720,6 @@ func poolTestRequest(t *testing.T) *http.Request {
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://example.com/", nil)
 	require.NoError(t, err)
 	return req
-}
-
-type responseTestBody struct {
-	io.Reader
 }
 
 func (b *responseTestBody) Close() error {
@@ -793,9 +798,6 @@ func requireHTTP2Configured(t *testing.T, tr *http.Transport, msg string) {
 	require.True(t, tr.Protocols.HTTP2(), msg)
 }
 
-// httpClientSink 保存基准测试结果，防止编译器省略赋值。
-var httpClientSink *http.Client
-
 // redirectTestServer 提供本地重定向服务并统计目标地址的访问次数。
 func redirectTestServer(t *testing.T) (string, *atomic.Int64) {
 	t.Helper()
@@ -811,8 +813,6 @@ func redirectTestServer(t *testing.T) (string, *atomic.Int64) {
 	t.Cleanup(server.Close)
 	return server.URL + "/start", hits
 }
-
-type blockingHeaderRoundTripper struct{}
 
 func (blockingHeaderRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	// 模拟上游迟迟不返回响应头，直到请求上下文被取消。

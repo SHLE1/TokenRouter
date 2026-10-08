@@ -10,6 +10,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// ForbiddenObservation 将平台分类与提供商处罚权限分开。
+type ForbiddenObservation struct {
+	Message                  string
+	Body                     []byte
+	HTML                     bool
+	Kind                     string
+	ValidationURL            string
+	ConcurrentRequestLimited bool
+	ConcurrencyReason        string
+}
+
 func buildForbiddenErrorMessage(prefix string, upstreamMsg string, responseBody []byte, fallback string) string {
 	prefix = strings.TrimSpace(prefix)
 	if prefix != "" && !strings.HasSuffix(prefix, " ") {
@@ -129,15 +140,4 @@ func (s *HealthService) handleAntigravity403(ctx context.Context, provider *Reco
 		s.ApplyAuthenticationFailure(ctx, provider, msg)
 		return true
 	}
-}
-
-// ForbiddenObservation 将平台分类与提供商处罚权限分开。
-type ForbiddenObservation struct {
-	Message                  string
-	Body                     []byte
-	HTML                     bool
-	Kind                     string
-	ValidationURL            string
-	ConcurrentRequestLimited bool
-	ConcurrencyReason        string
 }

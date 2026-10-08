@@ -26,6 +26,12 @@ type openAITokenExecution struct {
 	choices *selection.Compatible
 }
 
+// openAITokenTarget 保存单次计数的凭据，向 HTTP 返回独立的选择结果快照。
+type openAITokenTarget struct {
+	source *gatewayhttp.OpenAIAuxiliary
+	value  *gatewayprovider.ExecutionProvider
+}
+
 func (p openAITokenExecution) PlanTokenRoute(ctx context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 	return p.planner.PlanKey(ctx, key, model)
 }
@@ -52,12 +58,6 @@ func (p openAITokenExecution) SelectInputTokens(ctx context.Context, group *int6
 		result.Release = selected.ReleaseFunc
 	}
 	return result, nil
-}
-
-// openAITokenTarget 保存单次计数的凭据，向 HTTP 返回独立的选择结果快照。
-type openAITokenTarget struct {
-	source *gatewayhttp.OpenAIAuxiliary
-	value  *gatewayprovider.ExecutionProvider
 }
 
 func (t openAITokenTarget) Snapshot() provider.ProviderSnapshot {

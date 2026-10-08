@@ -18,6 +18,48 @@ import (
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 )
 
+const (
+	// gpt56LadderCatalogJSON 提供 GPT-5.6 的目录阶梯价格。
+	gpt56LadderCatalogJSON = `{
+	"gpt-5.6-sol": {"provider": "openai", "mode": "chat", "cache_write_multiplier": 1.25, "flex_multiplier": 0.5,
+		"input_cost_per_token": 5e-06, "input_cost_per_token_priority": 1e-05,
+		"output_cost_per_token": 3e-05, "output_cost_per_token_priority": 6e-05,
+		"cache_read_input_token_cost": 5e-07, "cache_read_input_token_cost_priority": 1e-06,
+		"input_cost_per_token_above_272k_tokens": 1e-05,
+		"output_cost_per_token_above_272k_tokens": 4.5e-05,
+		"cache_read_input_token_cost_above_272k_tokens": 1e-06},
+	"gpt-5.6-terra": {"provider": "openai", "mode": "chat", "cache_write_multiplier": 1.25, "flex_multiplier": 0.5,
+		"input_cost_per_token": 2e-06, "input_cost_per_token_priority": 4e-06,
+		"output_cost_per_token": 1.2e-05, "output_cost_per_token_priority": 2.4e-05,
+		"cache_read_input_token_cost": 2e-07, "cache_read_input_token_cost_priority": 4e-07,
+		"input_cost_per_token_above_272k_tokens": 4e-06,
+		"output_cost_per_token_above_272k_tokens": 1.8e-05,
+		"cache_read_input_token_cost_above_272k_tokens": 4e-07},
+	"gpt-5.6-luna": {"provider": "openai", "mode": "chat", "cache_write_multiplier": 1.25, "flex_multiplier": 0.5,
+		"input_cost_per_token": 2e-07, "input_cost_per_token_priority": 4e-07,
+		"output_cost_per_token": 1.2e-06, "output_cost_per_token_priority": 2.4e-06,
+		"cache_read_input_token_cost": 2e-08, "cache_read_input_token_cost_priority": 4e-08,
+		"input_cost_per_token_above_272k_tokens": 4e-07,
+		"output_cost_per_token_above_272k_tokens": 1.8e-06,
+		"cache_read_input_token_cost_above_272k_tokens": 4e-08}
+}`
+
+	// openAILadderCatalogJSON 模拟同步目录：长上下文使用 above_272k 绝对价字段，
+	// 解析器将绝对价折算为计费阈值和倍率。
+	openAILadderCatalogJSON = `{
+	"gpt-5.4": {"provider": "openai", "mode": "chat", "fast_multiplier": 2, "flex_multiplier": 0.5,
+		"input_cost_per_token": 2.5e-06, "output_cost_per_token": 1.5e-05,
+		"cache_read_input_token_cost": 2.5e-07, "cache_creation_input_token_cost": 2.5e-06,
+		"input_cost_per_token_above_272k_tokens": 5e-06,
+		"output_cost_per_token_above_272k_tokens": 2.25e-05,
+		"cache_read_input_token_cost_above_272k_tokens": 5e-07},
+	"gpt-5.5-pro": {"provider": "openai", "mode": "chat",
+		"input_cost_per_token": 3e-05, "output_cost_per_token": 1.8e-04,
+		"input_cost_per_token_above_272k_tokens": 6e-05,
+		"output_cost_per_token_above_272k_tokens": 2.7e-04}
+}`
+)
+
 // TestCalculateCost_RateMultiplier_NegativeClampedToZero 检查负数倍率按零价计费。
 func TestCalculateCost_RateMultiplier_NegativeClampedToZero(t *testing.T) {
 	svc := newTestCalculator()
@@ -834,7 +876,6 @@ func TestGetModelPricing_Grok45OfficialFallback(t *testing.T) {
 	svc := newTestCalculator()
 
 	for _, model := range []string{"grok-4.5", "grok-4.5-latest"} {
-		model := model
 		t.Run(model, func(t *testing.T) {
 			pricing, err := svc.GetModelPricing(model)
 			if model == "grok-4.5-latest" || model == "grok-4.6-latest" || model == "grok-4.20-reasoning" || model == "grok-4.20-non-reasoning" || model == "grok-build" || model == "grok-composer" || model == "composer-2.5" || model == "doubao-embedding-vision-251215" {
@@ -864,7 +905,6 @@ func TestGetModelPricing_Grok46OfficialFallback(t *testing.T) {
 	svc := newTestCalculator()
 
 	for _, model := range []string{"grok-4.6", "grok-4.6-latest"} {
-		model := model
 		t.Run(model, func(t *testing.T) {
 			pricing, err := svc.GetModelPricing(model)
 			if model == "grok-4.5-latest" || model == "grok-4.6-latest" || model == "grok-4.20-reasoning" || model == "grok-4.20-non-reasoning" || model == "grok-build" || model == "grok-composer" || model == "composer-2.5" || model == "doubao-embedding-vision-251215" {
@@ -936,7 +976,6 @@ func TestGetModelPricing_UnknownGrokTextFallsBackToGrok46(t *testing.T) {
 		pricing, err := svc.GetModelPricing(model)
 		require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable, model)
 		require.Nil(t, pricing)
-
 	}
 
 	for _, model := range []string{
@@ -2488,46 +2527,6 @@ func newTestPricingConfigServiceWithCache(t *testing.T, cache *routingtestkit.Mo
 	cs := routingtestkit.ModelConfigFromData(cache)
 	return cs
 }
-
-// gpt56LadderCatalogJSON 提供 GPT-5.6 的目录阶梯价格。
-const gpt56LadderCatalogJSON = `{
-	"gpt-5.6-sol": {"provider": "openai", "mode": "chat", "cache_write_multiplier": 1.25, "flex_multiplier": 0.5,
-		"input_cost_per_token": 5e-06, "input_cost_per_token_priority": 1e-05,
-		"output_cost_per_token": 3e-05, "output_cost_per_token_priority": 6e-05,
-		"cache_read_input_token_cost": 5e-07, "cache_read_input_token_cost_priority": 1e-06,
-		"input_cost_per_token_above_272k_tokens": 1e-05,
-		"output_cost_per_token_above_272k_tokens": 4.5e-05,
-		"cache_read_input_token_cost_above_272k_tokens": 1e-06},
-	"gpt-5.6-terra": {"provider": "openai", "mode": "chat", "cache_write_multiplier": 1.25, "flex_multiplier": 0.5,
-		"input_cost_per_token": 2e-06, "input_cost_per_token_priority": 4e-06,
-		"output_cost_per_token": 1.2e-05, "output_cost_per_token_priority": 2.4e-05,
-		"cache_read_input_token_cost": 2e-07, "cache_read_input_token_cost_priority": 4e-07,
-		"input_cost_per_token_above_272k_tokens": 4e-06,
-		"output_cost_per_token_above_272k_tokens": 1.8e-05,
-		"cache_read_input_token_cost_above_272k_tokens": 4e-07},
-	"gpt-5.6-luna": {"provider": "openai", "mode": "chat", "cache_write_multiplier": 1.25, "flex_multiplier": 0.5,
-		"input_cost_per_token": 2e-07, "input_cost_per_token_priority": 4e-07,
-		"output_cost_per_token": 1.2e-06, "output_cost_per_token_priority": 2.4e-06,
-		"cache_read_input_token_cost": 2e-08, "cache_read_input_token_cost_priority": 4e-08,
-		"input_cost_per_token_above_272k_tokens": 4e-07,
-		"output_cost_per_token_above_272k_tokens": 1.8e-06,
-		"cache_read_input_token_cost_above_272k_tokens": 4e-08}
-}`
-
-// openAILadderCatalogJSON 模拟同步目录：长上下文使用 above_272k 绝对价字段，
-// 解析器将绝对价折算为计费阈值和倍率。
-const openAILadderCatalogJSON = `{
-	"gpt-5.4": {"provider": "openai", "mode": "chat", "fast_multiplier": 2, "flex_multiplier": 0.5,
-		"input_cost_per_token": 2.5e-06, "output_cost_per_token": 1.5e-05,
-		"cache_read_input_token_cost": 2.5e-07, "cache_creation_input_token_cost": 2.5e-06,
-		"input_cost_per_token_above_272k_tokens": 5e-06,
-		"output_cost_per_token_above_272k_tokens": 2.25e-05,
-		"cache_read_input_token_cost_above_272k_tokens": 5e-07},
-	"gpt-5.5-pro": {"provider": "openai", "mode": "chat",
-		"input_cost_per_token": 3e-05, "output_cost_per_token": 1.8e-04,
-		"input_cost_per_token_above_272k_tokens": 6e-05,
-		"output_cost_per_token_above_272k_tokens": 2.7e-04}
-}`
 
 // newStubCatalogFromJSON 通过与生产相同的解析路径创建价格目录 stub。
 func newStubCatalogFromJSON(t *testing.T, body string) *provider.Service {

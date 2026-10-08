@@ -17,6 +17,23 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type qoderRefreshProviderRepoStub struct {
+	qoderRequestProvidersFixture
+	updatedCredentials map[string]any
+	updateCalls        int
+}
+
+type qoderRefreshRaceRepoStub struct {
+	qoderRefreshProviderRepoStub
+	raceProvider *providercore.Record
+	getByIDCalls int
+}
+
+type qoderRefreshLockCacheStub struct{}
+
+// qoderRequestProvidersFixture 为读取测试返回提供商数据或配置的查询错误。
+type qoderRequestProvidersFixture struct{ providers []providercore.Record }
+
 func cloneQoderRequestCredentials(src map[string]any) map[string]any {
 	if src == nil {
 		return nil
@@ -32,12 +49,6 @@ func cloneQoderRequestCredentials(src map[string]any) map[string]any {
 	return dst
 }
 
-type qoderRefreshProviderRepoStub struct {
-	qoderRequestProvidersFixture
-	updatedCredentials map[string]any
-	updateCalls        int
-}
-
 func (r *qoderRefreshProviderRepoStub) UpdateCredentials(_ context.Context, id int64, credentials map[string]any) error {
 	r.updateCalls++
 	r.updatedCredentials = cloneQoderRequestCredentials(credentials)
@@ -50,12 +61,6 @@ func (r *qoderRefreshProviderRepoStub) UpdateCredentials(_ context.Context, id i
 	return nil
 }
 
-type qoderRefreshRaceRepoStub struct {
-	qoderRefreshProviderRepoStub
-	raceProvider *providercore.Record
-	getByIDCalls int
-}
-
 func (r *qoderRefreshRaceRepoStub) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
 	r.getByIDCalls++
 	if r.getByIDCalls > 1 && r.raceProvider != nil {
@@ -63,8 +68,6 @@ func (r *qoderRefreshRaceRepoStub) GetByID(ctx context.Context, id int64) (*prov
 	}
 	return r.qoderRequestProvidersFixture.GetByID(ctx, id)
 }
-
-type qoderRefreshLockCacheStub struct{}
 
 func (qoderRefreshLockCacheStub) GetAccessToken(context.Context, string) (string, error) {
 	return "", nil
@@ -384,9 +387,6 @@ func (r *qoderRefreshProviderRepoStub) UpdateOAuthCredentialsIfUnchanged(ctx con
 	err = r.UpdateCredentials(ctx, version.ID, credentials)
 	return err == nil, err
 }
-
-// qoderRequestProvidersFixture 为读取测试返回提供商数据或配置的查询错误。
-type qoderRequestProvidersFixture struct{ providers []providercore.Record }
 
 func (r qoderRequestProvidersFixture) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
 	for i := range r.providers {

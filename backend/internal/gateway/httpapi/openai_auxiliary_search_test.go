@@ -35,6 +35,14 @@ type alphaResponseBody struct {
 	closes int
 }
 
+type alphaSearchProviderStateRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	setErrorCalls      int
+	lastError          string
+	updatedCredentials map[string]any
+}
+
 func (b *alphaResponseBody) Close() error { b.closes++; return b.ReadCloser.Close() }
 
 // TestAlphaSearchFailoverClosesOriginalResponse 验证可重试错误在写出响应前返回 handler，供其切换提供商。
@@ -79,14 +87,6 @@ func TestAlphaSearchFailoverClosesOriginalResponse(t *testing.T) {
 	require.Empty(t, recorder.Body.String())
 
 	require.Equal(t, 1, closedBody.closes, "上游响应体必须在本次返回前释放")
-}
-
-type alphaSearchProviderStateRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	setErrorCalls      int
-	lastError          string
-	updatedCredentials map[string]any
 }
 
 func (r *alphaSearchProviderStateRepo) SetError(_ context.Context, _ int64, errorMsg string) error {

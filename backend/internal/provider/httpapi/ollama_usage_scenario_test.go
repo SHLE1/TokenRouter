@@ -18,6 +18,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 展示夹具提供列表和单条读取函数，检查列表数据一次批量解析。
+type ollamaManagementFixture struct {
+	ProviderManagement
+	providers []providercore.Record
+}
+
+type ollamaCloudUsageHandlerTestRepo struct {
+	provider          *providercore.Record
+	providers         []*providercore.Record
+	groupResolveCalls int
+}
+
 func TestOllamaCloudUsageEncryptionKeyStateConsistentAcrossProviderResponses(t *testing.T) {
 	for _, configured := range []bool{false, true} {
 		t.Run("configured="+strconv.FormatBool(configured), func(t *testing.T) {
@@ -160,12 +172,6 @@ func TestOllamaCloudUsageSharedStateMatchesListDetailAndSpecialEndpointWithoutLi
 	}
 }
 
-// 展示夹具提供列表和单条读取函数，检查列表数据一次批量解析。
-type ollamaManagementFixture struct {
-	ProviderManagement
-	providers []providercore.Record
-}
-
 func (f *ollamaManagementFixture) GetProvider(_ context.Context, id int64) (*providercore.Record, error) {
 	for _, value := range f.providers {
 		if value.ID == id {
@@ -188,12 +194,6 @@ func newOllamaManagementHandler(source *ollamaManagementFixture, usage *provider
 		Presenter:        presenter,
 		Ollama:           usage,
 	})
-}
-
-type ollamaCloudUsageHandlerTestRepo struct {
-	provider          *providercore.Record
-	providers         []*providercore.Record
-	groupResolveCalls int
 }
 
 func (r *ollamaCloudUsageHandlerTestRepo) GetByID(_ context.Context, id int64) (*providercore.Record, error) {

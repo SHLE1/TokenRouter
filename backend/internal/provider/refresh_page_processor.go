@@ -98,7 +98,7 @@ func (s RefreshPageProcessor) ProcessProvider(
 		workerCount = len(providers)
 	}
 	var wg sync.WaitGroup
-	for i := 0; i < workerCount; i++ {
+	for range workerCount {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

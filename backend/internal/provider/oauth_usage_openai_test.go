@@ -10,6 +10,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 五秒独立写回不阻塞查询返回，应用停止仍能等待或报告未完成。
+type openAIUsageWriteOwner struct {
+	OAuthUsageReader
+	entered, release, exited chan struct{}
+	version                  UsageObservationVersion
+	updates                  map[string]any
+}
+
 func TestShouldRefreshOpenAICodexSnapshot(t *testing.T) {
 	t.Parallel()
 
@@ -93,14 +101,6 @@ func TestShouldRefreshOpenAICodexSnapshot_SparkShadowIgnoresWSv2(t *testing.T) {
 	if ShouldRefreshOpenAICodexSnapshot(normalNoWS, usage, now) {
 		t.Fatal("expected non-WSv2 normal provider to skip codex probe refresh")
 	}
-}
-
-// 五秒独立写回不阻塞查询返回，应用停止仍能等待或报告未完成。
-type openAIUsageWriteOwner struct {
-	OAuthUsageReader
-	entered, release, exited chan struct{}
-	version                  UsageObservationVersion
-	updates                  map[string]any
 }
 
 func (w *openAIUsageWriteOwner) UpdateUsageExtraIfUnchanged(ctx context.Context, v UsageObservationVersion, updates map[string]any) (bool, error) {

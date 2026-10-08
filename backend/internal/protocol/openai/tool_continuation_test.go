@@ -9,12 +9,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	benchmarkToolContinuationBoolSink bool
+
+	// benchmarkIntSink 记录工具续链校验的执行次数。
+	benchmarkIntSink int
+)
+
 func BenchmarkToolContinuationValidationLegacy(b *testing.B) {
 	reqBody := benchmarkToolContinuationRequestBody()
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkToolContinuationBoolSink = legacyValidateFunctionCallOutputContext(reqBody)
 	}
 }
@@ -24,7 +31,7 @@ func BenchmarkToolContinuationValidationOptimized(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkToolContinuationBoolSink = optimizedValidateFunctionCallOutputContext(reqBody)
 	}
 }
@@ -321,17 +328,15 @@ func TestAnalyzeToolCallOutputContextCoverageBytes(t *testing.T) {
 	}
 }
 
-var benchmarkToolContinuationBoolSink bool
-
 func benchmarkToolContinuationRequestBody() map[string]any {
 	input := make([]any, 0, 64)
-	for i := 0; i < 24; i++ {
+	for range 24 {
 		input = append(input, map[string]any{
 			"type": "text",
 			"text": "benchmark text",
 		})
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		callID := "call_" + strconv.Itoa(i)
 		input = append(input, map[string]any{
 			"type":    "tool_call",
@@ -534,7 +539,7 @@ func BenchmarkOpenAIResponses_LargeInputFunctionCallValidation(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				validation := ValidateFunctionCallOutputContextBytes(body)
 				if !validation.HasFunctionCallOutput || !validation.HasItemReferenceForAllCallIDs {
 					b.Fatalf("工具续链校验结果异常: %+v", validation)
@@ -583,6 +588,3 @@ func buildLargeOpenAIResponsesToolContinuationBody(targetBytes int) []byte {
 	_, _ = builder.WriteString(`]}`)
 	return []byte(builder.String())
 }
-
-// benchmarkIntSink 记录工具续链校验的执行次数。
-var benchmarkIntSink int

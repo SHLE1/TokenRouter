@@ -15,6 +15,13 @@ import (
 	settingskit "github.com/TokenFlux/TokenRouter/internal/settings/testkit"
 )
 
+type mockSettingRepo struct {
+	mu            sync.Mutex
+	data          map[string]string
+	getValueErr   error
+	getValueCalls int
+}
+
 func newSettingServiceForPlatformThresholdTest(seed map[string]string) *settingskit.Composite {
 	svc, _ := newSettingServiceAndRepoForPlatformThresholdTest(seed)
 	return svc
@@ -146,13 +153,6 @@ func TestGetProviderSchedulingThresholds_NilRepoReturnsDefaults(t *testing.T) {
 		capability.PlatformAnthropic: 100,
 		capability.PlatformGrok:      100,
 	}, got)
-}
-
-type mockSettingRepo struct {
-	mu            sync.Mutex
-	data          map[string]string
-	getValueErr   error
-	getValueCalls int
 }
 
 func newMockSettingRepo() *mockSettingRepo {

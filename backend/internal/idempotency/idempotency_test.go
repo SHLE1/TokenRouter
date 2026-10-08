@@ -10,14 +10,35 @@ import (
 	"time"
 	"unicode/utf8"
 
-	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/stretchr/testify/require"
+
+	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
 type inMemoryIdempotencyRepo struct {
 	mu     sync.Mutex
 	nextID int64
 	data   map[string]*IdempotencyRecord
+}
+
+type failingIdempotencyRepo struct{}
+
+type utf8RejectingIdempotencyRepo struct {
+	inMemoryIdempotencyRepo
+}
+
+type noIDOwnerRepo struct{}
+
+type conflictBranchRepo struct {
+	existing      *IdempotencyRecord
+	tryReclaimErr error
+	tryReclaimOK  bool
+}
+
+type markBehaviorRepo struct {
+	inMemoryIdempotencyRepo
+	failMarkSucceeded bool
+	failMarkFailed    bool
 }
 
 func newInMemoryIdempotencyRepo() *inMemoryIdempotencyRepo {
@@ -372,7 +393,7 @@ func TestIdempotencyCoordinator_ConcurrentSameKeySingleSideEffect(t *testing.T) 
 
 	var execCount int32
 	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -398,8 +419,6 @@ func TestIdempotencyCoordinator_ConcurrentSameKeySingleSideEffect(t *testing.T) 
 	require.Equal(t, uint64(1), metrics.ReplayTotal)
 	require.GreaterOrEqual(t, metrics.ConflictTotal, uint64(1))
 }
-
-type failingIdempotencyRepo struct{}
 
 func (failingIdempotencyRepo) CreateProcessing(context.Context, *IdempotencyRecord) (bool, error) {
 	return false, errors.New("store unavailable")
@@ -447,10 +466,6 @@ func TestIdempotencyCoordinator_StoreUnavailableMetrics(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, infraerrors.CategoryOf(ErrIdempotencyStoreUnavail), infraerrors.CategoryOf(err))
 	require.GreaterOrEqual(t, GetIdempotencyMetricsSnapshot().StoreUnavailableTotal, uint64(1))
-}
-
-type utf8RejectingIdempotencyRepo struct {
-	inMemoryIdempotencyRepo
 }
 
 func newUTF8RejectingIdempotencyRepo() *utf8RejectingIdempotencyRepo {
@@ -573,8 +588,6 @@ func TestIdempotencyCoordinator_ExecuteNilExecutorAndNoKeyPassThrough(t *testing
 	require.False(t, result.Replayed)
 }
 
-type noIDOwnerRepo struct{}
-
 func (noIDOwnerRepo) CreateProcessing(context.Context, *IdempotencyRecord) (bool, error) {
 	return true, nil
 }
@@ -632,12 +645,6 @@ func TestIdempotencyCoordinator_RepoNilScopeRequiredAndRecordIDMissing(t *testin
 	})
 	require.Error(t, err)
 	require.Equal(t, infraerrors.CategoryOf(ErrIdempotencyStoreUnavail), infraerrors.CategoryOf(err))
-}
-
-type conflictBranchRepo struct {
-	existing      *IdempotencyRecord
-	tryReclaimErr error
-	tryReclaimOK  bool
 }
 
 func (r *conflictBranchRepo) CreateProcessing(context.Context, *IdempotencyRecord) (bool, error) {
@@ -759,12 +766,6 @@ func TestIdempotencyCoordinator_ConflictBranchesAndDecodeError(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, infraerrors.CategoryOf(ErrIdempotencyInProgress), infraerrors.CategoryOf(err))
-}
-
-type markBehaviorRepo struct {
-	inMemoryIdempotencyRepo
-	failMarkSucceeded bool
-	failMarkFailed    bool
 }
 
 func (r *markBehaviorRepo) MarkSucceeded(ctx context.Context, id int64, responseStatus int, responseBody string, expiresAt time.Time) error {

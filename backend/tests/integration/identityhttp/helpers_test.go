@@ -59,6 +59,101 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+var (
+	pendingOAuthCreateAccountPreCommitHook func(context.Context, *dbent.PendingAuthSession) error
+	wechatOAuthAccessTokenURL              = provider.DefaultWeChatTokenURL
+	wechatOAuthUserInfoURL                 = provider.DefaultWeChatUserInfoURL
+)
+
+type oauthPendingFlowTestHandlerOptions struct {
+	invitationEnabled  bool
+	emailVerifyEnabled bool
+	emailCache         identitycore.EmailCache
+	settingValues      map[string]string
+	defaultSubAssigner identitycore.DefaultSubscriptionAssigner
+	affiliateRepo      promotion.AffiliateRepository
+	totpCache          identitycore.TotpCache
+	totpEncryptor      identitycore.SecretEncryptor
+	userRepoOptions    oauthPendingFlowUserRepoOptions
+}
+
+type oauthPendingFlowSettingRepoStub struct {
+	values map[string]string
+}
+
+type oauthPendingFlowRefreshTokenCacheStub struct{}
+
+type oauthPendingFlowEmailCacheStub struct {
+	verificationCodes map[string]*identitycore.VerificationCodeData
+}
+
+type oauthPendingFlowRedeemCodeRepo struct {
+	client *dbent.Client
+}
+
+type oauthPendingFlowUserRepo struct {
+	client  *dbent.Client
+	options oauthPendingFlowUserRepoOptions
+}
+
+type oauthPendingFlowUserRepoOptions struct {
+	rejectDeleteWhileAuthIdentityExists bool
+}
+
+type oauthPendingFlowDefaultSubAssignerStub struct {
+	calls []billing.AssignSubscriptionInput
+}
+
+type oauthPendingFlowAffiliateRepo struct {
+	profiles map[int64]*promotion.AffiliateSummary
+	byCode   map[string]int64
+}
+
+type oauthPendingFlowTotpCacheStub struct {
+	setupSessions  map[int64]*identitycore.TotpSetupSession
+	loginSessions  map[string]*identitycore.TotpLoginSession
+	verifyAttempts map[int64]int
+}
+
+type oauthPendingFlowTotpEncryptorStub struct{}
+
+type wechatOAuthSettingRepoStub struct {
+	values map[string]string
+}
+
+type wechatOAuthRefreshTokenCacheStub struct{}
+
+// authHTTPFixture 保存测试依赖和认证、微信支付 HTTP 处理器。
+type authHTTPFixture struct {
+	*identityhttp.AuthenticationHandler
+	*paymenthttp.WeChatPaymentHandler
+	cfg                   *config.Config
+	authDB                *dbent.Client
+	authService           *identitycore.AuthService
+	userService           *identitycore.UserService
+	settingSvc            *authSettingsFixture
+	promoService          *promotion.PromoService
+	redeemService         *billing.RedeemService
+	totpService           *identitycore.TotpService
+	userAttributeService  *identitycore.UserAttributeService
+	googleIDTokenVerifier provider.GoogleIDTokenVerifier
+}
+
+// googleVerifierFixture 使用注入的 Google 令牌验证器，未注入时使用 GoogleAPIIDTokenVerifier。
+type googleVerifierFixture struct{ h *authHTTPFixture }
+
+// authSettingsFixture 组合认证设置读取器，共用同一个测试存储。
+type authSettingsFixture struct {
+	*identitycore.RuntimeSettings
+	*identitycore.GrantSettings
+	*site.DisplaySettings
+	oauth     *identitycore.OAuthSettings
+	promotion *promotion.RuntimeSettings
+	backend   *admission.BackendMode
+	public    *site.PublicService
+	composite *composite.Runtime
+}
+
 func newOAuthPendingFlowTestHandler(t *testing.T, invitationEnabled bool) (*authHTTPFixture, *dbent.Client) {
 	t.Helper()
 
@@ -97,18 +192,6 @@ func newOAuthPendingFlowTestHandlerWithOptions(
 		emailVerifyEnabled: emailVerifyEnabled,
 		emailCache:         emailCache,
 	})
-}
-
-type oauthPendingFlowTestHandlerOptions struct {
-	invitationEnabled  bool
-	emailVerifyEnabled bool
-	emailCache         identitycore.EmailCache
-	settingValues      map[string]string
-	defaultSubAssigner identitycore.DefaultSubscriptionAssigner
-	affiliateRepo      promotion.AffiliateRepository
-	totpCache          identitycore.TotpCache
-	totpEncryptor      identitycore.SecretEncryptor
-	userRepoOptions    oauthPendingFlowUserRepoOptions
 }
 
 func newOAuthPendingFlowTestHandlerWithDependencies(
@@ -225,10 +308,6 @@ func boolPtr(v bool) *bool {
 	return &v
 }
 
-type oauthPendingFlowSettingRepoStub struct {
-	values map[string]string
-}
-
 func (s *oauthPendingFlowSettingRepoStub) Get(context.Context, string) (*settings.Setting, error) {
 	return nil, settings.ErrSettingNotFound
 }
@@ -269,12 +348,6 @@ func (s *oauthPendingFlowSettingRepoStub) GetAll(context.Context) (map[string]st
 
 func (s *oauthPendingFlowSettingRepoStub) Delete(context.Context, string) error {
 	return nil
-}
-
-type oauthPendingFlowRefreshTokenCacheStub struct{}
-
-type oauthPendingFlowEmailCacheStub struct {
-	verificationCodes map[string]*identitycore.VerificationCodeData
 }
 
 func (s *oauthPendingFlowEmailCacheStub) GetVerificationCode(_ context.Context, email string) (*identitycore.VerificationCodeData, error) {
@@ -375,10 +448,6 @@ func (s *oauthPendingFlowRefreshTokenCacheStub) GetFamilyTokenHashes(context.Con
 
 func (s *oauthPendingFlowRefreshTokenCacheStub) IsTokenInFamily(context.Context, string, string) (bool, error) {
 	return false, nil
-}
-
-type oauthPendingFlowRedeemCodeRepo struct {
-	client *dbent.Client
 }
 
 func (r *oauthPendingFlowRedeemCodeRepo) Create(context.Context, *billing.RedeemCode) error {
@@ -564,15 +633,6 @@ func decodeJSONBody(t *testing.T, recorder *httptest.ResponseRecorder) map[strin
 	var payload map[string]any
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &payload))
 	return payload
-}
-
-type oauthPendingFlowUserRepo struct {
-	client  *dbent.Client
-	options oauthPendingFlowUserRepoOptions
-}
-
-type oauthPendingFlowUserRepoOptions struct {
-	rejectDeleteWhileAuthIdentityExists bool
 }
 
 func (r *oauthPendingFlowUserRepo) Create(ctx context.Context, user *identitycore.User) error {
@@ -947,15 +1007,6 @@ func oauthPendingFlowServiceUser(entity *dbent.User) *identitycore.User {
 	}
 }
 
-type oauthPendingFlowDefaultSubAssignerStub struct {
-	calls []billing.AssignSubscriptionInput
-}
-
-type oauthPendingFlowAffiliateRepo struct {
-	profiles map[int64]*promotion.AffiliateSummary
-	byCode   map[string]int64
-}
-
 func newOAuthPendingFlowAffiliateRepo() *oauthPendingFlowAffiliateRepo {
 	return &oauthPendingFlowAffiliateRepo{
 		profiles: make(map[int64]*promotion.AffiliateSummary),
@@ -1104,12 +1155,6 @@ func (s *oauthPendingFlowDefaultSubAssignerStub) AssignOrExtendSubscription(
 	return nil, false, nil
 }
 
-type oauthPendingFlowTotpCacheStub struct {
-	setupSessions  map[int64]*identitycore.TotpSetupSession
-	loginSessions  map[string]*identitycore.TotpLoginSession
-	verifyAttempts map[int64]int
-}
-
 func (s *oauthPendingFlowTotpCacheStub) GetSetupSession(_ context.Context, userID int64) (*identitycore.TotpSetupSession, error) {
 	if s == nil || s.setupSessions == nil {
 		return nil, nil
@@ -1177,8 +1222,6 @@ func (s *oauthPendingFlowTotpCacheStub) SetStepUpGrant(_ context.Context, _ int6
 func (s *oauthPendingFlowTotpCacheStub) HasStepUpGrant(_ context.Context, _ int64, _ string) (bool, error) {
 	return false, nil
 }
-
-type oauthPendingFlowTotpEncryptorStub struct{}
 
 func (oauthPendingFlowTotpEncryptorStub) Encrypt(plaintext string) (string, error) {
 	return plaintext, nil
@@ -1326,10 +1369,6 @@ func newWeChatOAuthTestHandlerWithSettings(t *testing.T, invitationEnabled bool,
 	}), client
 }
 
-type wechatOAuthSettingRepoStub struct {
-	values map[string]string
-}
-
 func (s *wechatOAuthSettingRepoStub) Get(context.Context, string) (*settings.Setting, error) {
 	return nil, settings.ErrSettingNotFound
 }
@@ -1371,8 +1410,6 @@ func (s *wechatOAuthSettingRepoStub) GetAll(context.Context) (map[string]string,
 func (s *wechatOAuthSettingRepoStub) Delete(context.Context, string) error {
 	return nil
 }
-
-type wechatOAuthRefreshTokenCacheStub struct{}
 
 func (s *wechatOAuthRefreshTokenCacheStub) StoreRefreshToken(context.Context, string, *identitycore.RefreshTokenData, time.Duration) error {
 	return nil
@@ -1418,28 +1455,6 @@ func (s *wechatOAuthRefreshTokenCacheStub) IsTokenInFamily(context.Context, stri
 func (s *wechatOAuthRefreshTokenCacheStub) ConsumeRefreshToken(context.Context, string) (bool, error) {
 	return false, nil
 }
-
-// authHTTPFixture 保存测试依赖和认证、微信支付 HTTP 处理器。
-type authHTTPFixture struct {
-	*identityhttp.AuthenticationHandler
-	*paymenthttp.WeChatPaymentHandler
-	cfg                   *config.Config
-	authDB                *dbent.Client
-	authService           *identitycore.AuthService
-	userService           *identitycore.UserService
-	settingSvc            *authSettingsFixture
-	promoService          *promotion.PromoService
-	redeemService         *billing.RedeemService
-	totpService           *identitycore.TotpService
-	userAttributeService  *identitycore.UserAttributeService
-	googleIDTokenVerifier provider.GoogleIDTokenVerifier
-}
-
-var (
-	pendingOAuthCreateAccountPreCommitHook func(context.Context, *dbent.PendingAuthSession) error
-	wechatOAuthAccessTokenURL              = provider.DefaultWeChatTokenURL
-	wechatOAuthUserInfoURL                 = provider.DefaultWeChatUserInfoURL
-)
 
 // authBackgroundFixture 的后台工作由测试拥有，数据库释放前先等待已接受操作。
 func authBackgroundFixture(t *testing.T) func(string, func()) bool {
@@ -1619,9 +1634,6 @@ func bindAuthHTTPFixture(t *testing.T, h *authHTTPFixture) {
 	}})
 }
 
-// googleVerifierFixture 使用注入的 Google 令牌验证器，未注入时使用 GoogleAPIIDTokenVerifier。
-type googleVerifierFixture struct{ h *authHTTPFixture }
-
 func (v googleVerifierFixture) Verify(ctx context.Context, credential, audience string) (*provider.GoogleIDTokenClaims, error) {
 	verifier := v.h.googleIDTokenVerifier
 	if verifier == nil {
@@ -1648,18 +1660,6 @@ func (h *authHTTPFixture) paymentResume() *payment.PaymentResumeService {
 	}
 	signing, fallbacks := payment.ResolvePaymentResumeSigningKeys(os.Getenv("PAYMENT_RESUME_SIGNING_KEY"), legacy)
 	return payment.NewPaymentResumeService(signing, fallbacks...)
-}
-
-// authSettingsFixture 组合认证设置读取器，共用同一个测试存储。
-type authSettingsFixture struct {
-	*identitycore.RuntimeSettings
-	*identitycore.GrantSettings
-	*site.DisplaySettings
-	oauth     *identitycore.OAuthSettings
-	promotion *promotion.RuntimeSettings
-	backend   *admission.BackendMode
-	public    *site.PublicService
-	composite *composite.Runtime
 }
 
 func newAuthSettingsFixture(repo settings.Repository, cfg *config.Config) *authSettingsFixture {

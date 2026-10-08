@@ -26,6 +26,111 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 )
 
+const apiKeyLimitUpperBound = apikey.KeyApiKeyLimitUpperBound
+
+// billingModeSubscriptionRepoStub 只实现 API Key 结算配置读取需要的订阅查询。
+type billingModeSubscriptionRepoStub struct {
+	billing.UserSubscriptionRepository
+	subscriptions map[int64]*billing.UserSubscription
+}
+
+// billingModeUserRepoStub 按 ID 返回成员或 Owner，便于验证团队 Key 的付款主体隔离。
+type billingModeUserRepoStub struct {
+	identity.UserRepository
+
+	users     map[int64]*identity.User
+	requested []int64
+}
+
+type authGroupRepoStub struct {
+	groupsByPlatform map[string][]routing.Group
+	groupsByID       map[int64]routing.Group
+}
+
+type authUserGroupRateRepoStub struct {
+	overrides map[int64]*int
+	calls     []int64
+}
+
+// apiKeyRepoStub 是 APIKeyRepository 接口的测试桩实现。
+// APIKeyService.Delete 的测试通过它设置仓储返回值并记录删除操作。
+//
+// 设计说明：
+//   - apiKey/getByIDErr: 模拟 GetKeyAndOwnerID 返回的记录与错误
+//   - deleteErr: 模拟 Delete 返回的错误
+//   - deletedIDs: 记录被调用删除的 API Key ID，用于断言验证
+type apiKeyRepoStub struct {
+	apiKey              *apikey.APIKey // 轻量查询返回的记录
+	getByIDErr          error          // 轻量查询的错误返回值
+	deleteErr           error          // 删除操作的错误返回值
+	updateErr           error          // 更新操作的错误返回值
+	deletedIDs          []int64        // 记录已删除的密钥编号列表
+	updatedKeys         []apikey.APIKey
+	allowListByUserID   bool
+	listByUserIDKeys    []apikey.APIKey
+	listByUserIDErr     error
+	listByUserIDCalls   []int64
+	listByUserIDParams  []pagination.PaginationParams
+	listByUserIDFilters []apikey.APIKeyListFilters
+	updateLastUsed      func(ctx context.Context, id int64, usedAt time.Time) error
+	touchedIDs          []int64
+	touchedUsedAts      []time.Time
+}
+
+// apiKeyCacheStub 是 APIKeyCache 接口的测试桩实现。
+// 用于验证删除操作时缓存清理逻辑是否被正确调用。
+//
+// 设计说明：
+//   - invalidated: 记录被清除缓存的用户 ID 列表
+type apiKeyCacheStub struct {
+	invalidated    []int64  // 记录调用 DeleteCreateAttemptCount 时传入的用户 ID
+	deleteAuthKeys []string // 记录调用 DeleteAuthCache 时传入的缓存 key
+}
+
+type apiKeyNameSanitizeRepoStub struct {
+	apiKey  *apikey.APIKey
+	created []*apikey.APIKey
+	updated []*apikey.APIKey
+}
+
+type quotaStateRepoStub struct {
+	quotaBaseAPIKeyRepoStub
+	stateCalls int
+	state      *apikey.APIKeyQuotaUsageState
+	stateErr   error
+}
+
+type quotaStateCacheStub struct {
+	deleteAuthKeys []string
+}
+
+type quotaBaseAPIKeyRepoStub struct {
+	getByIDCalls int
+}
+
+type updateFieldsAPIKeyRepoStub struct {
+	quotaBaseAPIKeyRepoStub
+	key          *apikey.APIKey
+	updateFields []apikey.APIKeyUpdateFields
+}
+
+// userRepoStub 为 Key 用例提供用户读取，未配置的方法调用会失败。
+type userRepoStub struct {
+	identity.UserRepository
+	user *identity.User
+}
+
+type fakeTeamRepository struct {
+	team.TeamRepository
+	teamContext *team.TeamContext
+}
+
+// stubConcurrencyCacheForTest 为 scheduler 并发读取器提供测试缓存数据。
+type stubConcurrencyCacheForTest struct {
+	scheduler.ConcurrencyCache
+	apiKeyConcurrency map[int64]int
+}
+
 func TestAPIKeyService_CreateBillingModeValidatesPreferredSubscriptionGroups(t *testing.T) {
 	const userID int64 = 7
 	allowedGroup := &routing.Group{ID: 11, Status: billing.StatusActive, IsExclusive: true}
@@ -842,7 +947,7 @@ func TestAPIKeyService_GetByKey_SingleflightCollapses(t *testing.T) {
 	start := make(chan struct{})
 	wg := sync.WaitGroup{}
 	errs := make([]error, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -1440,12 +1545,6 @@ func TestAPIKeyLoadingPreservesUnboundLegacyKey(t *testing.T) {
 	require.Nil(t, loaded.Group)
 }
 
-// billingModeSubscriptionRepoStub 只实现 API Key 结算配置读取需要的订阅查询。
-type billingModeSubscriptionRepoStub struct {
-	billing.UserSubscriptionRepository
-	subscriptions map[int64]*billing.UserSubscription
-}
-
 func (s *billingModeSubscriptionRepoStub) GetByID(_ context.Context, id int64) (*billing.UserSubscription, error) {
 	subscription := s.subscriptions[id]
 	if subscription == nil {
@@ -1463,14 +1562,6 @@ func (s *billingModeSubscriptionRepoStub) ListActiveByUserID(_ context.Context, 
 		}
 	}
 	return result, nil
-}
-
-// billingModeUserRepoStub 按 ID 返回成员或 Owner，便于验证团队 Key 的付款主体隔离。
-type billingModeUserRepoStub struct {
-	identity.UserRepository
-
-	users     map[int64]*identity.User
-	requested []int64
 }
 
 func (s *billingModeUserRepoStub) GetByID(_ context.Context, id int64) (*identity.User, error) {
@@ -1498,11 +1589,6 @@ func activeBillingModeSubscription(id, userID int64, groupIDs ...int64) *billing
 			GroupIDs: append([]int64(nil), groupIDs...),
 		},
 	}
-}
-
-type authGroupRepoStub struct {
-	groupsByPlatform map[string][]routing.Group
-	groupsByID       map[int64]routing.Group
 }
 
 func (s *authGroupRepoStub) Create(ctx context.Context, group *routing.Group) error {
@@ -1583,11 +1669,6 @@ func (s *authGroupRepoStub) UpdateSortOrders(ctx context.Context, updates []rout
 	panic("unexpected UpdateSortOrders call")
 }
 
-type authUserGroupRateRepoStub struct {
-	overrides map[int64]*int
-	calls     []int64
-}
-
 func (s *authUserGroupRateRepoStub) GetByUserID(ctx context.Context, userID int64) (map[int64]float64, error) {
 	panic("unexpected GetByUserID call")
 }
@@ -1627,31 +1708,6 @@ func (s *authUserGroupRateRepoStub) DeleteByGroupID(ctx context.Context, groupID
 
 func (s *authUserGroupRateRepoStub) DeleteByUserID(ctx context.Context, userID int64) error {
 	panic("unexpected DeleteByUserID call")
-}
-
-// apiKeyRepoStub 是 APIKeyRepository 接口的测试桩实现。
-// APIKeyService.Delete 的测试通过它设置仓储返回值并记录删除操作。
-//
-// 设计说明：
-//   - apiKey/getByIDErr: 模拟 GetKeyAndOwnerID 返回的记录与错误
-//   - deleteErr: 模拟 Delete 返回的错误
-//   - deletedIDs: 记录被调用删除的 API Key ID，用于断言验证
-type apiKeyRepoStub struct {
-	apiKey              *apikey.APIKey // 轻量查询返回的记录
-	getByIDErr          error          // 轻量查询的错误返回值
-	deleteErr           error          // 删除操作的错误返回值
-	updateErr           error          // 更新操作的错误返回值
-	deletedIDs          []int64        // 记录已删除的密钥编号列表
-	updatedKeys         []apikey.APIKey
-	allowListByUserID   bool
-	listByUserIDKeys    []apikey.APIKey
-	listByUserIDErr     error
-	listByUserIDCalls   []int64
-	listByUserIDParams  []pagination.PaginationParams
-	listByUserIDFilters []apikey.APIKeyListFilters
-	updateLastUsed      func(ctx context.Context, id int64, usedAt time.Time) error
-	touchedIDs          []int64
-	touchedUsedAts      []time.Time
 }
 
 func (s *apiKeyRepoStub) Create(ctx context.Context, key *apikey.APIKey) error {
@@ -1795,16 +1851,6 @@ func (s *apiKeyRepoStub) GetRateLimitData(ctx context.Context, id int64) (*apike
 	panic("unexpected GetRateLimitData call")
 }
 
-// apiKeyCacheStub 是 APIKeyCache 接口的测试桩实现。
-// 用于验证删除操作时缓存清理逻辑是否被正确调用。
-//
-// 设计说明：
-//   - invalidated: 记录被清除缓存的用户 ID 列表
-type apiKeyCacheStub struct {
-	invalidated    []int64  // 记录调用 DeleteCreateAttemptCount 时传入的用户 ID
-	deleteAuthKeys []string // 记录调用 DeleteAuthCache 时传入的缓存 key
-}
-
 // GetCreateAttemptCount 返回 0，表示用户未超过创建次数限制
 func (s *apiKeyCacheStub) GetCreateAttemptCount(ctx context.Context, userID int64) (int, error) {
 	return 0, nil
@@ -1851,12 +1897,6 @@ func (s *apiKeyCacheStub) PublishAuthCacheInvalidation(ctx context.Context, cach
 
 func (s *apiKeyCacheStub) SubscribeAuthCacheInvalidation(ctx context.Context, handler func(cacheKey string)) error {
 	return nil
-}
-
-type apiKeyNameSanitizeRepoStub struct {
-	apiKey  *apikey.APIKey
-	created []*apikey.APIKey
-	updated []*apikey.APIKey
 }
 
 func (s *apiKeyNameSanitizeRepoStub) Create(ctx context.Context, key *apikey.APIKey) error {
@@ -1975,13 +2015,6 @@ func (s *apiKeyNameSanitizeRepoStub) GetRateLimitData(ctx context.Context, id in
 // sanitizeFixtureGroupID 名称与配置测试使用明确的普通分组。
 func sanitizeFixtureGroupID() *int64 { id := int64(1); return &id }
 
-type quotaStateRepoStub struct {
-	quotaBaseAPIKeyRepoStub
-	stateCalls int
-	state      *apikey.APIKeyQuotaUsageState
-	stateErr   error
-}
-
 func (s *quotaStateRepoStub) IncrementQuotaUsedAndGetState(ctx context.Context, id int64, amount float64) (*apikey.APIKeyQuotaUsageState, error) {
 	s.stateCalls++
 	if s.stateErr != nil {
@@ -1992,10 +2025,6 @@ func (s *quotaStateRepoStub) IncrementQuotaUsedAndGetState(ctx context.Context, 
 	}
 	out := *s.state
 	return &out, nil
-}
-
-type quotaStateCacheStub struct {
-	deleteAuthKeys []string
 }
 
 func (s *quotaStateCacheStub) GetCreateAttemptCount(context.Context, int64) (int, error) {
@@ -2037,10 +2066,6 @@ func (s *quotaStateCacheStub) PublishAuthCacheInvalidation(context.Context, stri
 
 func (s *quotaStateCacheStub) SubscribeAuthCacheInvalidation(context.Context, func(string)) error {
 	return nil
-}
-
-type quotaBaseAPIKeyRepoStub struct {
-	getByIDCalls int
 }
 
 func (s *quotaBaseAPIKeyRepoStub) Create(context.Context, *apikey.APIKey) error {
@@ -2144,12 +2169,6 @@ func (s *quotaBaseAPIKeyRepoStub) GetRateLimitData(context.Context, int64) (*api
 	panic("unexpected GetRateLimitData call")
 }
 
-type updateFieldsAPIKeyRepoStub struct {
-	quotaBaseAPIKeyRepoStub
-	key          *apikey.APIKey
-	updateFields []apikey.APIKeyUpdateFields
-}
-
 // IncrementQuotaUsed 模拟计费热路径上的原子递增：只动 quota_used。
 func (s *updateFieldsAPIKeyRepoStub) IncrementQuotaUsed(_ context.Context, _ int64, amount float64) (float64, error) {
 	s.key.QuotaUsed += amount
@@ -2171,24 +2190,11 @@ func newUpdateFieldsAPIKeyService(key *apikey.APIKey) (*apikey.APIKeyService, *u
 	return newAPIKeyTestService(apiKeyTestDependencies{apiKeyRepo: repo}), repo
 }
 
-const apiKeyLimitUpperBound = apikey.KeyApiKeyLimitUpperBound
-
-// userRepoStub 为 Key 用例提供用户读取，未配置的方法调用会失败。
-type userRepoStub struct {
-	identity.UserRepository
-	user *identity.User
-}
-
 func (s *userRepoStub) GetByID(context.Context, int64) (*identity.User, error) {
 	if s.user == nil {
 		return nil, identity.ErrUserNotFound
 	}
 	return s.user, nil
-}
-
-type fakeTeamRepository struct {
-	team.TeamRepository
-	teamContext *team.TeamContext
 }
 
 func (r *fakeTeamRepository) GetContextByUserID(context.Context, int64) (*team.TeamContext, error) {
@@ -2197,12 +2203,6 @@ func (r *fakeTeamRepository) GetContextByUserID(context.Context, int64) (*team.T
 
 func (r *fakeTeamRepository) GetContextByTeamID(context.Context, int64) (*team.TeamContext, error) {
 	return r.teamContext, nil
-}
-
-// stubConcurrencyCacheForTest 为 scheduler 并发读取器提供测试缓存数据。
-type stubConcurrencyCacheForTest struct {
-	scheduler.ConcurrencyCache
-	apiKeyConcurrency map[int64]int
 }
 
 func (c *stubConcurrencyCacheForTest) TrackAPIKeySlot(context.Context, int64, string) error {

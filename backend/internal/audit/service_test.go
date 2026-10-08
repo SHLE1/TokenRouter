@@ -26,7 +26,7 @@ func TestRegressionAuditDuplicateStart(t *testing.T) {
 	s := NewAuditLogService(r, nil)
 	s.Start()
 	s.Start()
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		s.Record(&AuditLog{})
 	}
 	<-r.entered

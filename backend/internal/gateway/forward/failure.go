@@ -11,18 +11,65 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 )
 
-// AgentIdentityTaskRecoveredError 表示身份任务已恢复，调用方可重试请求。
-type AgentIdentityTaskRecoveredError struct{}
-
-func (e *AgentIdentityTaskRecoveredError) Error() string { return "agent identity task recovered" }
-
 const (
+	NextProviderLegacyRetry NextProviderAction = iota
+	NextProviderRetry
+	NextProviderStop
+
 	OpenAIRequestBodyTooLargeClientMessage     = "Request payload is too large"
 	OpenAIUpstreamAccessStateReason            = GatewayFailureReason("openai_upstream_access_state")
 	OpenAIHTTPContinuationUnsupportedReason    = GatewayFailureReason("openai_http_continuation_unsupported")
 	AntigravityCredentialRejectedClientMessage = "Antigravity rejected the OAuth credential after refresh; reauthorize the provider and verify project_id"
 	AntigravityCredentialRejectedReason        = GatewayFailureReason("antigravity_oauth_credential_rejected")
+
+	openAISilentRefusalErrorCode       = "openai_silent_refusal"
+	openAISilentRefusalUpstreamMessage = "OpenAI upstream returned an empty completion stream with finish_reason=stop and no usage"
+	openAISilentRefusalClientMessage   = "Upstream returned an empty completion without usage; no fallback provider was available"
+
+	GatewayFailureStageInference    GatewayFailureStage = "inference"
+	GatewayFailureStageProviderAuth GatewayFailureStage = "provider_auth"
+
+	GatewayFailureScopeProvider GatewayFailureScope = "provider"
+	GatewayFailureScopeShared   GatewayFailureScope = "shared"
+	GatewayFailureScopeRequest  GatewayFailureScope = "request"
 )
+
+// AgentIdentityTaskRecoveredError 表示身份任务已恢复，调用方可重试请求。
+type AgentIdentityTaskRecoveredError struct{}
+
+// GatewayFailureStage 标识请求失败的阶段，零值表示推理阶段。
+type GatewayFailureStage string
+
+// GatewayFailureScope 区分单个提供商、共享凭据设施和请求本身，供切换决策使用。
+type GatewayFailureScope string
+
+// NextProviderAction 描述提供商切换动作，零值继续尝试，NextProviderStop 终止切换。
+type NextProviderAction uint8
+
+type GatewayFailureReason string
+
+// UpstreamFailoverError 表示可能触发提供商切换的上游或凭据错误。
+// 切换动作缺省时按错误状态和重试预算决定下一步。
+type UpstreamFailoverError struct {
+	StatusCode                int
+	ResponseBody              []byte              // 上游响应体，用于错误透传规则匹配
+	ResponseHeaders           map[string][]string // 上游响应头值，供 HTTP 适配器读取。
+	ForceCacheBilling         bool                // Antigravity 粘性会话切换时设为 true
+	RetryableOnSameProvider   bool                // 临时性错误（如 Google 间歇性 400、空响应），应在同一提供商上重试 N 次再切换
+	SameProviderRetryDelay    time.Duration
+	SameProviderRetryDeadline time.Time
+	SameProviderRetryMax      int  // 可选的错误级同提供商重试上限，低于 handler 默认预算时优先采用
+	RequestScopedTransient    bool // 故障因素与提供商无关（如上游按客户端身份/模型容量降载）：可同提供商重试，但不得据此对提供商做临时封禁
+	SafeToFailoverAfterWrite  bool // 已写出的内容仅为 SSE 注释等控制字节时，允许在当前流中切换提供商。
+	Stage                     GatewayFailureStage
+	Scope                     GatewayFailureScope
+	Reason                    GatewayFailureReason
+	NextProviderAction        NextProviderAction
+	ClientStatusCode          int
+	ClientMessage             string
+}
+
+func (e *AgentIdentityTaskRecoveredError) Error() string { return "agent identity task recovered" }
 
 // OpenAISilentRefusalErrorBody 返回网关用于静默拒绝的错误码和安全消息。
 func OpenAISilentRefusalErrorBody() []byte {
@@ -47,61 +94,6 @@ func IsOpenAISilentRefusalErrorBody(body []byte) bool {
 // OpenAISilentRefusalClientMessage 返回静默拒绝且 failover 耗尽时给客户端看的错误文案。
 func OpenAISilentRefusalClientMessage() string {
 	return openAISilentRefusalClientMessage
-}
-
-const (
-	openAISilentRefusalErrorCode       = "openai_silent_refusal"
-	openAISilentRefusalUpstreamMessage = "OpenAI upstream returned an empty completion stream with finish_reason=stop and no usage"
-	openAISilentRefusalClientMessage   = "Upstream returned an empty completion without usage; no fallback provider was available"
-)
-
-// GatewayFailureStage 标识请求失败的阶段，零值表示推理阶段。
-type GatewayFailureStage string
-
-const (
-	GatewayFailureStageInference    GatewayFailureStage = "inference"
-	GatewayFailureStageProviderAuth GatewayFailureStage = "provider_auth"
-)
-
-// GatewayFailureScope 区分单个提供商、共享凭据设施和请求本身，供切换决策使用。
-type GatewayFailureScope string
-
-const (
-	GatewayFailureScopeProvider GatewayFailureScope = "provider"
-	GatewayFailureScopeShared   GatewayFailureScope = "shared"
-	GatewayFailureScopeRequest  GatewayFailureScope = "request"
-)
-
-// NextProviderAction 描述提供商切换动作，零值继续尝试，NextProviderStop 终止切换。
-type NextProviderAction uint8
-
-const (
-	NextProviderLegacyRetry NextProviderAction = iota
-	NextProviderRetry
-	NextProviderStop
-)
-
-type GatewayFailureReason string
-
-// UpstreamFailoverError 表示可能触发提供商切换的上游或凭据错误。
-// 切换动作缺省时按错误状态和重试预算决定下一步。
-type UpstreamFailoverError struct {
-	StatusCode                int
-	ResponseBody              []byte              // 上游响应体，用于错误透传规则匹配
-	ResponseHeaders           map[string][]string // 上游响应头值，供 HTTP 适配器读取。
-	ForceCacheBilling         bool                // Antigravity 粘性会话切换时设为 true
-	RetryableOnSameProvider   bool                // 临时性错误（如 Google 间歇性 400、空响应），应在同一提供商上重试 N 次再切换
-	SameProviderRetryDelay    time.Duration
-	SameProviderRetryDeadline time.Time
-	SameProviderRetryMax      int  // 可选的错误级同提供商重试上限，低于 handler 默认预算时优先采用
-	RequestScopedTransient    bool // 故障因素与提供商无关（如上游按客户端身份/模型容量降载）：可同提供商重试，但不得据此对提供商做临时封禁
-	SafeToFailoverAfterWrite  bool // 已写出的内容仅为 SSE 注释等控制字节时，允许在当前流中切换提供商。
-	Stage                     GatewayFailureStage
-	Scope                     GatewayFailureScope
-	Reason                    GatewayFailureReason
-	NextProviderAction        NextProviderAction
-	ClientStatusCode          int
-	ClientMessage             string
 }
 
 func (e *UpstreamFailoverError) Error() string {

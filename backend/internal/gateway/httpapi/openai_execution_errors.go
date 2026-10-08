@@ -127,7 +127,7 @@ func ValidForwardPassthroughRetryAfter(raw string, now time.Time) bool {
 		return false
 	}
 	delaySeconds := true
-	for i := 0; i < len(raw); i++ {
+	for i := range len(raw) {
 		if raw[i] < '0' || raw[i] > '9' {
 			delaySeconds = false
 			break

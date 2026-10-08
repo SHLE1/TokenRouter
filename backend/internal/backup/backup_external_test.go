@@ -23,12 +23,54 @@ import (
 	pg "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
+var (
+	ErrSettingNotFound = errors.New("setting not found")
+
+	databaseHeavyMaintenanceLockID = pg.HashAdvisoryLockID("maintenance:database-heavy")
+)
+
 type mockSettingRepo struct {
 	mu            sync.Mutex
 	data          map[string]string
 	getValueErr   error
 	getValueCalls int
 }
+
+// plainEncryptor 用 ENC: 前缀模拟加密结果。
+type plainEncryptor struct{}
+
+type mockDumper struct {
+	dumpData []byte
+	dumpErr  error
+	restored []byte
+	restErr  error
+	opts     backup.BackupDumpOptions
+}
+
+// blockingDumper 可控延迟的 dumper，用于测试异步行为
+type blockingDumper struct {
+	blockCh chan struct{}
+	data    []byte
+	restErr error
+	opts    backup.BackupDumpOptions
+}
+
+type mockObjectStore struct {
+	objects          map[string][]byte
+	mu               sync.Mutex
+	failUploadFileAt int
+	uploadFileCalls  int
+	deletedKeys      []string
+	failDeleteKeys   map[string]error
+}
+
+// testArchive 调用归档实现，夹具通过 partSize 控制分卷大小。
+type testArchive struct {
+	dumper   backup.DBDumper
+	partSize int64
+}
+
+type Setting struct{ Key, Value string }
 
 func newMockSettingRepo() *mockSettingRepo {
 	return &mockSettingRepo{data: make(map[string]string)}
@@ -103,9 +145,6 @@ func (m *mockSettingRepo) Delete(_ context.Context, key string) error {
 	return nil
 }
 
-// plainEncryptor 用 ENC: 前缀模拟加密结果。
-type plainEncryptor struct{}
-
 func (e *plainEncryptor) Encrypt(plaintext string) (string, error) {
 	return "ENC:" + plaintext, nil
 }
@@ -115,14 +154,6 @@ func (e *plainEncryptor) Decrypt(ciphertext string) (string, error) {
 		return strings.TrimPrefix(ciphertext, "ENC:"), nil
 	}
 	return ciphertext, fmt.Errorf("not encrypted")
-}
-
-type mockDumper struct {
-	dumpData []byte
-	dumpErr  error
-	restored []byte
-	restErr  error
-	opts     backup.BackupDumpOptions
 }
 
 func (m *mockDumper) Dump(_ context.Context, opts backup.BackupDumpOptions) (io.ReadCloser, error) {
@@ -145,14 +176,6 @@ func (m *mockDumper) Restore(_ context.Context, data io.Reader) error {
 	return nil
 }
 
-// blockingDumper 可控延迟的 dumper，用于测试异步行为
-type blockingDumper struct {
-	blockCh chan struct{}
-	data    []byte
-	restErr error
-	opts    backup.BackupDumpOptions
-}
-
 func (d *blockingDumper) Dump(ctx context.Context, opts backup.BackupDumpOptions) (io.ReadCloser, error) {
 	select {
 	case <-d.blockCh:
@@ -169,15 +192,6 @@ func (d *blockingDumper) Restore(_ context.Context, data io.Reader) error {
 	}
 	_, _ = io.ReadAll(data)
 	return nil
-}
-
-type mockObjectStore struct {
-	objects          map[string][]byte
-	mu               sync.Mutex
-	failUploadFileAt int
-	uploadFileCalls  int
-	deletedKeys      []string
-	failDeleteKeys   map[string]error
 }
 
 func newMockObjectStore() *mockObjectStore {
@@ -403,7 +417,7 @@ func TestBackupService_SaveRecordConcurrency(t *testing.T) {
 	var wg sync.WaitGroup
 	n := 20
 	wg.Add(n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		go func(idx int) {
 			defer wg.Done()
 			record := &backup.BackupRecord{
@@ -1070,7 +1084,7 @@ func TestBackupService_ListBackups_Sorted(t *testing.T) {
 	svc := newTestBackupService(t, repo, &mockDumper{}, newMockObjectStore())
 
 	now := time.Now()
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		_ = backup.AccessSaveRecord(svc, context.Background(), &backup.BackupRecord{
 			ID:        fmt.Sprintf("rec-%d", i),
 			Status:    "completed",
@@ -1333,12 +1347,6 @@ func TestStartRestore_Async(t *testing.T) {
 	require.NoError(t, sqlMock.ExpectationsWereMet())
 }
 
-// testArchive 调用归档实现，夹具通过 partSize 控制分卷大小。
-type testArchive struct {
-	dumper   backup.DBDumper
-	partSize int64
-}
-
 func (a *testArchive) Write(ctx context.Context, r *backup.BackupRecord, store backup.BackupObjectStore, cfg *backup.BackupS3Config, o backup.BackupDumpOptions, save func(context.Context, *backup.BackupRecord) error, cleanup func(time.Duration) (context.Context, context.CancelFunc)) (int64, error) {
 	return bp.NewArchive(a.dumper, a.partSize).Write(ctx, r, store, cfg, o, save, cleanup)
 }
@@ -1352,9 +1360,3 @@ func setTestMaintenance(s *backup.BackupService, db *sql.DB) {
 		return pg.TryAcquireDBAdvisoryLockWithError(ctx, db, pg.HashAdvisoryLockID("maintenance:database-heavy"))
 	})
 }
-
-type Setting struct{ Key, Value string }
-
-var ErrSettingNotFound = errors.New("setting not found")
-
-var databaseHeavyMaintenanceLockID = pg.HashAdvisoryLockID("maintenance:database-heavy")

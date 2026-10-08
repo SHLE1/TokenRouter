@@ -10,7 +10,41 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-const ImagesResponsesMainModel = "gpt-5.4-mini"
+const (
+	ImagesResponsesMainModel = "gpt-5.4-mini"
+
+	CodexCallIDMaxLength = 64
+	CodexCallIDPrefix    = "fc_"
+
+	CodexImageGenerationFunctionToolName = "image_gen.imagegen"
+
+	CodexImageGenerationBridgeMarker = "<tokenrouter-codex-image-generation>"
+	CodexImageGenerationBridgeText   = CodexImageGenerationBridgeMarker + "\nWhen the user asks for raster image generation or editing, use the OpenAI Responses native `image_generation` tool attached to this request. The local Codex client may not expose an `image_gen` namespace, but that does not mean image generation is unavailable. Do not ask the user to switch to CLI fallback solely because `image_gen` is absent.\n</tokenrouter-codex-image-generation>"
+	CodexSparkImageUnsupportedMarker = "<tokenrouter-codex-spark-image-unsupported>"
+	CodexSparkImageUnsupportedText   = CodexSparkImageUnsupportedMarker + "\nThe current model is gpt-5.3-codex-spark, which does not support image generation, image editing, image input, the `image_generation` tool, or Codex `image_gen`/`$imagegen` workflows. If the user asks for image generation or image editing, clearly explain this model limitation and ask them to switch to a non-Spark Codex model such as gpt-5.3-codex or gpt-5.4. Do not claim that the local environment merely lacks image_gen tooling, and do not suggest CLI fallback as the primary fix while the model remains Spark.\n</tokenrouter-codex-spark-image-unsupported>"
+)
+
+var (
+	OpenAIChatGPTInternalUnsupportedFields = []string{
+		"chat_template_kwargs",
+		"user",
+		"metadata",
+		"prompt_cache_retention",
+		"safety_identifier",
+		"stream_options",
+		"truncation",
+		"stop_sequences",
+	}
+
+	OpenAICodexOAuthUnsupportedFields = append([]string{
+		"max_output_tokens",
+		"max_completion_tokens",
+		"temperature",
+		"top_p",
+		"frequency_penalty",
+		"presence_penalty",
+	}, OpenAIChatGPTInternalUnsupportedFields...)
+)
 
 type CodexTransformResult struct {
 	Modified        bool
@@ -29,10 +63,10 @@ type CodexOAuthTransformOptions struct {
 	OmitPromotedSystemMessagesFromInput bool
 }
 
-const (
-	CodexCallIDMaxLength = 64
-	CodexCallIDPrefix    = "fc_"
-)
+type CodexInputFilterOptions struct {
+	PreserveReferences bool
+	PreserveCallIDs    bool
+}
 
 func NormalizeCodexCallID(id string) string {
 	return NormalizeCodexCallIDForItemType("function_call", id)
@@ -72,35 +106,6 @@ func TrimOpenAIResponsesKnownCallIDPrefix(id string) string {
 	}
 	return id
 }
-
-const CodexImageGenerationFunctionToolName = "image_gen.imagegen"
-
-const (
-	CodexImageGenerationBridgeMarker = "<tokenrouter-codex-image-generation>"
-	CodexImageGenerationBridgeText   = CodexImageGenerationBridgeMarker + "\nWhen the user asks for raster image generation or editing, use the OpenAI Responses native `image_generation` tool attached to this request. The local Codex client may not expose an `image_gen` namespace, but that does not mean image generation is unavailable. Do not ask the user to switch to CLI fallback solely because `image_gen` is absent.\n</tokenrouter-codex-image-generation>"
-	CodexSparkImageUnsupportedMarker = "<tokenrouter-codex-spark-image-unsupported>"
-	CodexSparkImageUnsupportedText   = CodexSparkImageUnsupportedMarker + "\nThe current model is gpt-5.3-codex-spark, which does not support image generation, image editing, image input, the `image_generation` tool, or Codex `image_gen`/`$imagegen` workflows. If the user asks for image generation or image editing, clearly explain this model limitation and ask them to switch to a non-Spark Codex model such as gpt-5.3-codex or gpt-5.4. Do not claim that the local environment merely lacks image_gen tooling, and do not suggest CLI fallback as the primary fix while the model remains Spark.\n</tokenrouter-codex-spark-image-unsupported>"
-)
-
-var OpenAIChatGPTInternalUnsupportedFields = []string{
-	"chat_template_kwargs",
-	"user",
-	"metadata",
-	"prompt_cache_retention",
-	"safety_identifier",
-	"stream_options",
-	"truncation",
-	"stop_sequences",
-}
-
-var OpenAICodexOAuthUnsupportedFields = append([]string{
-	"max_output_tokens",
-	"max_completion_tokens",
-	"temperature",
-	"top_p",
-	"frequency_penalty",
-	"presence_penalty",
-}, OpenAIChatGPTInternalUnsupportedFields...)
 
 func ApplyCodexOAuthTransformWithOptions(reqBody map[string]any, opts CodexOAuthTransformOptions) CodexTransformResult {
 	result := CodexTransformResult{}
@@ -1328,11 +1333,6 @@ func IsInstructionsEmpty(reqBody map[string]any) bool {
 		return true
 	}
 	return strings.TrimSpace(str) == ""
-}
-
-type CodexInputFilterOptions struct {
-	PreserveReferences bool
-	PreserveCallIDs    bool
 }
 
 func NormalizeCodexFilterCallID(itemType, id string, preserve bool) string {

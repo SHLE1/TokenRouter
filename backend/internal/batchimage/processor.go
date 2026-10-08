@@ -15,6 +15,15 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	BatchImageParsedStatusSucceeded = "succeeded"
+	BatchImageParsedStatusFailed    = "failed"
+
+	DefaultBatchImageProcessorRequeue = 30 * time.Second
+	BatchImageProviderErrorRequeue    = time.Minute
+	BatchImageMaxErrorMessageLength   = 1000
+)
+
 type BoundProvider interface {
 	Submit(context.Context, *BatchImageJob, BatchImageInput) (*BatchProviderJob, error)
 	Get(context.Context, *BatchImageJob) (*BatchProviderStatus, error)
@@ -33,26 +42,36 @@ type ProviderProcessor struct {
 	Observe         func(string, ...any)
 }
 
-func (p *ProviderProcessor) warn(event string, values ...any) {
-	if p.Observe != nil {
-		p.Observe(event, values...)
-	}
-}
-
 type ResultIndexer struct {
 	Now     func() time.Time
 	Repo    BatchImageRepository
 	Observe func(string, ...any)
 }
 
-const (
-	BatchImageParsedStatusSucceeded = "succeeded"
-	BatchImageParsedStatusFailed    = "failed"
+type BatchImageIndexResult struct {
+	SuccessCount int
+	FailCount    int
+	TotalCount   int
+}
 
-	DefaultBatchImageProcessorRequeue = 30 * time.Second
-	BatchImageProviderErrorRequeue    = time.Minute
-	BatchImageMaxErrorMessageLength   = 1000
-)
+type ParsedBatchImageResult struct {
+	CustomID      string
+	Status        string
+	MimeType      string
+	FileExtension string
+	ImageCount    int
+
+	ErrorCode    string
+	ErrorMessage string
+
+	SourceLineNumber int
+}
+
+func (p *ProviderProcessor) warn(event string, values ...any) {
+	if p.Observe != nil {
+		p.Observe(event, values...)
+	}
+}
 
 func (p *ProviderProcessor) Process(ctx context.Context, batchID string) (BatchImageProcessResult, error) {
 	if p == nil || p.Repo == nil || p.ResolveProvider == nil {
@@ -267,12 +286,6 @@ func IsBatchImageProcessorDoneStatus(status string) bool {
 	return IsTerminalBatchImageJobStatus(status)
 }
 
-type BatchImageIndexResult struct {
-	SuccessCount int
-	FailCount    int
-	TotalCount   int
-}
-
 func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, platform BoundProvider) (*BatchImageIndexResult, error) {
 	if i == nil || i.Repo == nil || job == nil || platform == nil {
 		return nil, ErrBatchImageIndexOutputMissing
@@ -439,19 +452,6 @@ func (i *ResultIndexer) ListExpectedCustomIDs(ctx context.Context, batchID strin
 		}
 		offset += len(page)
 	}
-}
-
-type ParsedBatchImageResult struct {
-	CustomID      string
-	Status        string
-	MimeType      string
-	FileExtension string
-	ImageCount    int
-
-	ErrorCode    string
-	ErrorMessage string
-
-	SourceLineNumber int
 }
 
 func ParseBatchImageResultLine(line []byte, lineNumber int) (*ParsedBatchImageResult, error) {

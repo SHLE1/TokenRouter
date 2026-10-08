@@ -60,7 +60,7 @@ func ExchangeNative(ctx context.Context, options ExchangeOptions) (ExchangeResul
 			respBody := options.ReadError(resp)
 			_ = resp.Body.Close()
 			// Don't treat insufficient-scope as transient.
-			if resp.StatusCode == 403 && IsGeminiInsufficientScope(resp.Header, respBody) {
+			if resp.StatusCode == http.StatusForbidden && IsGeminiInsufficientScope(resp.Header, respBody) {
 				resp = &http.Response{
 					StatusCode: resp.StatusCode,
 					Header:     resp.Header.Clone(),
@@ -68,7 +68,7 @@ func ExchangeNative(ctx context.Context, options ExchangeOptions) (ExchangeResul
 				}
 				break
 			}
-			if resp.StatusCode == 429 {
+			if resp.StatusCode == http.StatusTooManyRequests {
 				options.OnStatus(ctx, resp.StatusCode, resp.Header, respBody)
 			}
 			if attempt < options.MaxRetries {

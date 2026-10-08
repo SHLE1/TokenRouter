@@ -40,6 +40,17 @@ type wsIngressAdapter struct {
 	BindOwnerFn      func(ctx context.Context, responseID string)
 }
 
+// wsIngressLease 是池资源句柄；核心没有提供商凭据或具体客户端访问能力。
+type wsIngressLease struct{ lease *openaiws.WSConnLease }
+
+// wsReplayCodec 调用供应商报文算法，网关决定重放条件和次数。
+type wsReplayCodec struct{}
+
+// wsStrictTurn 保存逐轮协议比较状态。
+type wsStrictTurn struct {
+	state *openai.WSPreviousTurnStrictState
+}
+
 func (p *wsIngressAdapter) Parse(raw []byte, replace bool, turn int) (gatewayws.ClientPayload, error) {
 	return p.ParseFn(raw, replace, turn)
 }
@@ -117,9 +128,6 @@ func (*wsIngressAdapter) BindWarning(group, provider int64, response string, err
 	gatewayprovider.LogOpenAIWSBindResponseProviderWarn(group, provider, response, err)
 }
 
-// wsIngressLease 是池资源句柄；核心没有提供商凭据或具体客户端访问能力。
-type wsIngressLease struct{ lease *openaiws.WSConnLease }
-
 func (l *wsIngressLease) ConnID() string { return l.lease.ConnID() }
 func (l *wsIngressLease) MarkBroken()    { l.lease.MarkBroken() }
 func (l *wsIngressLease) Release()       { l.lease.Release() }
@@ -130,9 +138,6 @@ func (l *wsIngressLease) SupportsIdlePingWithoutReader() bool {
 func (l *wsIngressLease) PingWithTimeout(timeout time.Duration) error {
 	return l.lease.PingWithTimeout(timeout)
 }
-
-// wsReplayCodec 调用供应商报文算法，网关决定重放条件和次数。
-type wsReplayCodec struct{}
 
 func (wsReplayCodec) Extract(body []byte) ([]json.RawMessage, bool, error) {
 	return openai.OpenAIWSExtractNormalizedInputSequence(body)
@@ -200,11 +205,6 @@ func (wsReplayCodec) ShouldInfer(a bool, b int, c wire.ToolContinuationSignals, 
 
 func (wsReplayCodec) ClassifyPrevious(id string) string {
 	return wire.ClassifyOpenAIPreviousResponseIDKind(id)
-}
-
-// wsStrictTurn 保存逐轮协议比较状态。
-type wsStrictTurn struct {
-	state *openai.WSPreviousTurnStrictState
 }
 
 func (s wsStrictTurn) Keep(a []byte, b string, c bool) (bool, string, error) {

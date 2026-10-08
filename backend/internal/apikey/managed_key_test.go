@@ -9,6 +9,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 )
 
+type creativeFakeManagedKeyRepo struct {
+	key     *APIKey
+	getErr  error
+	createN int
+}
+
 // TestEnsureCreativeManagedKey 校验隐藏执行 Key 的幂等供应。
 func TestEnsureCreativeManagedKey(t *testing.T) {
 	repo := &creativeFakeManagedKeyRepo{}
@@ -28,12 +34,6 @@ func TestEnsureCreativeManagedKey(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, key.ID, reused.ID)
 	require.Equal(t, 1, repo.createN)
-}
-
-type creativeFakeManagedKeyRepo struct {
-	key     *APIKey
-	getErr  error
-	createN int
 }
 
 func (r *creativeFakeManagedKeyRepo) GetManagedKeyByUserAndGroup(ctx context.Context, userID, groupID int64, managedBy string) (*APIKey, error) {

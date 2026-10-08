@@ -29,6 +29,15 @@ import (
 	usagepostgres "github.com/TokenFlux/TokenRouter/internal/usage/postgres"
 )
 
+// UserRepoSuite 为跨文件的用户存储测试提供数据库和存储对象。
+type UserRepoSuite struct {
+	db *sql.DB
+	suite.Suite
+	ctx    context.Context
+	client *dbent.Client
+	repo   *postgres.UserStore
+}
+
 // identityDatabase 创建供当前测试提交事务的独立数据库和 Ent 客户端。
 func identityDatabase(t *testing.T) (*sql.DB, *dbent.Client) {
 	t.Helper()
@@ -227,15 +236,6 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *rout
 	g.CreatedAt = created.CreatedAt
 	g.UpdatedAt = created.UpdatedAt
 	return g
-}
-
-// UserRepoSuite 为跨文件的用户存储测试提供数据库和存储对象。
-type UserRepoSuite struct {
-	db *sql.DB
-	suite.Suite
-	ctx    context.Context
-	client *dbent.Client
-	repo   *postgres.UserStore
 }
 
 // SetupSuite 为用户存储套件创建独立数据库。

@@ -32,6 +32,25 @@ type claudeTokenCacheStub struct {
 	simulateLockRace bool
 }
 
+// claudeProviderRepoStub 模拟 Claude 令牌来源所需的存储操作。
+type claudeProviderRepoStub struct {
+	provider     *Record
+	getErr       error
+	updateErr    error
+	getCalled    int32
+	updateCalled int32
+}
+
+// claudeOAuthServiceStub 返回测试设置的 Claude 令牌交换结果。
+type claudeOAuthServiceStub struct {
+	tokenInfo     *ClaudeTokenInfo
+	refreshErr    error
+	refreshCalled int32
+}
+
+// Claude 执行器注入测试交换结果，并调用凭据资格判断和合并函数。
+type claudeExchangeFixture struct{ exchange *claudeOAuthServiceStub }
+
 func newClaudeTokenCacheStub() *claudeTokenCacheStub {
 	return &claudeTokenCacheStub{
 		tokens:       make(map[string]string),
@@ -86,15 +105,6 @@ func (s *claudeTokenCacheStub) ReleaseRefreshLock(ctx context.Context, cacheKey 
 	return s.releaseLockErr
 }
 
-// claudeProviderRepoStub 模拟 Claude 令牌来源所需的存储操作。
-type claudeProviderRepoStub struct {
-	provider     *Record
-	getErr       error
-	updateErr    error
-	getCalled    int32
-	updateCalled int32
-}
-
 func (r *claudeProviderRepoStub) GetByID(ctx context.Context, id int64) (*Record, error) {
 	atomic.AddInt32(&r.getCalled, 1)
 	if r.getErr != nil {
@@ -110,13 +120,6 @@ func (r *claudeProviderRepoStub) Update(ctx context.Context, provider *Record) e
 	}
 	r.provider = provider
 	return nil
-}
-
-// claudeOAuthServiceStub 返回测试设置的 Claude 令牌交换结果。
-type claudeOAuthServiceStub struct {
-	tokenInfo     *ClaudeTokenInfo
-	refreshErr    error
-	refreshCalled int32
 }
 
 func (s *claudeOAuthServiceStub) RefreshProviderToken(ctx context.Context, provider *Record) (*ClaudeTokenInfo, error) {
@@ -842,9 +845,6 @@ func newClaudeRefreshSourceFixture(repo *claudeProviderRepoStub, cache *claudeTo
 	}
 	return source
 }
-
-// Claude 执行器注入测试交换结果，并调用凭据资格判断和合并函数。
-type claudeExchangeFixture struct{ exchange *claudeOAuthServiceStub }
 
 func (claudeExchangeFixture) CanRefresh(value *Record) bool { return CanRefreshClaude(value) }
 

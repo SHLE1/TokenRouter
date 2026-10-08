@@ -26,6 +26,14 @@ type Attributes struct {
 	Attachment              *bool                  `json:"attachment,omitempty"`
 }
 
+// Presentation 是模型信息的展示值，不表达网关准入决策。
+type Presentation struct {
+	SearchTerms            []string           `json:"search_terms,omitempty"`
+	LocalizationResolution *locale.Resolution `json:"localization_resolution,omitempty"`
+	Attributes
+	RouteDifferences bool `json:"route_differences,omitempty"`
+}
+
 // fields 通过值编码复制所有可选字段，避免展示消费者改写目录快照。
 func (a Attributes) fields() map[string]json.RawMessage {
 	body, _ := json.Marshal(a)
@@ -128,12 +136,4 @@ func intersection(a, b *[]string) *[]string {
 		}
 	}
 	return &result
-}
-
-// Presentation 是模型信息的展示值，不表达网关准入决策。
-type Presentation struct {
-	SearchTerms            []string           `json:"search_terms,omitempty"`
-	LocalizationResolution *locale.Resolution `json:"localization_resolution,omitempty"`
-	Attributes
-	RouteDifferences bool `json:"route_differences,omitempty"`
 }

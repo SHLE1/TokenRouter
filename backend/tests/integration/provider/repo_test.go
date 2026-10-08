@@ -24,6 +24,20 @@ const parameterLimitTestDriverName = "tokenrouter_param_limit_test"
 
 var registerParameterLimitTestDriverOnce sync.Once
 
+type parameterLimitDriver struct{}
+
+type parameterLimitConn struct{}
+
+type parameterLimitStmt struct {
+	query string
+}
+
+type parameterLimitTx struct{}
+
+type parameterLimitRows struct {
+	columns []string
+}
+
 func TestProvidersToService_LargeActiveProviderSetDoesNotExceedPostgresParameterLimit(t *testing.T) {
 	repo := newParameterLimitProviderRepo(t)
 
@@ -64,13 +78,9 @@ func newParameterLimitProviderRepo(t *testing.T) *providerpostgres.ProviderStore
 	return newProviderStoreContract(client, nil, nil)
 }
 
-type parameterLimitDriver struct{}
-
 func (parameterLimitDriver) Open(string) (driver.Conn, error) {
 	return parameterLimitConn{}, nil
 }
-
-type parameterLimitConn struct{}
 
 func (parameterLimitConn) Prepare(query string) (driver.Stmt, error) {
 	return parameterLimitStmt{query: query}, nil
@@ -86,10 +96,6 @@ func (parameterLimitConn) Begin() (driver.Tx, error) {
 
 func (parameterLimitConn) QueryContext(_ context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	return queryWithParameterLimit(query, args)
-}
-
-type parameterLimitStmt struct {
-	query string
 }
 
 func (s parameterLimitStmt) Close() error {
@@ -111,8 +117,6 @@ func (s parameterLimitStmt) Query(args []driver.Value) (driver.Rows, error) {
 	}
 	return queryWithParameterLimit(s.query, namedArgs)
 }
-
-type parameterLimitTx struct{}
 
 func (parameterLimitTx) Commit() error {
 	return nil
@@ -141,10 +145,6 @@ func columnsForParameterLimitQuery(query string) []string {
 		return nil
 	}
 	return []string{"provider_id", "group_id", "priority", "created_at"}
-}
-
-type parameterLimitRows struct {
-	columns []string
 }
 
 func (r parameterLimitRows) Columns() []string {

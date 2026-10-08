@@ -18,6 +18,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
+// 固定本地供应商响应，使用相同缓存键检查凭据变化后的查询结果。
+type agUsageIdentityTransport struct{ calls atomic.Int32 }
+
 func TestFetchQuotaUsesConfiguredModelsListBodyLimit(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -196,14 +199,11 @@ func TestAntigravityUsageCacheDoesNotCrossCredentialIdentity(t *testing.T) {
 	require.Equal(t, int32(4), transport.calls.Load())
 }
 
-// 固定本地供应商响应，使用相同缓存键检查凭据变化后的查询结果。
-type agUsageIdentityTransport struct{ calls atomic.Int32 }
-
 func (t *agUsageIdentityTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	t.calls.Add(1)
 	body := `{"models":{}}`
 	if strings.Contains(r.URL.Path, "loadCodeAssist") {
 		body = `{"currentTier":{"id":"FREE"}}`
 	}
-	return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+	return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 }

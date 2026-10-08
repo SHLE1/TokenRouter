@@ -20,6 +20,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+// bindingUsersFixture 返回测试指定的目标身份，数据库由绑定事务适配持有。
+type bindingUsersFixture struct {
+	identitycore.UserRepository
+	user *identitycore.User
+}
+
 func TestAdminServiceBindUserAuthIdentityCreatesCanonicalAndChannelBinding(t *testing.T) {
 	client := newAdminServiceAuthIdentityBindingTestClient(t)
 	ctx := context.Background()
@@ -286,12 +292,6 @@ func newAdminServiceAuthIdentityBindingTestClient(t *testing.T) *dbent.Client {
 	client := enttest.NewClient(t, enttest.WithOptions(dbent.Driver(drv)))
 	t.Cleanup(func() { _ = client.Close() })
 	return client
-}
-
-// bindingUsersFixture 返回测试指定的目标身份，数据库由绑定事务适配持有。
-type bindingUsersFixture struct {
-	identitycore.UserRepository
-	user *identitycore.User
 }
 
 func (s bindingUsersFixture) GetByID(context.Context, int64) (*identitycore.User, error) {

@@ -19,6 +19,27 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type ingressRejectSettingRepo struct {
+	settingscore.Repository
+	getValueCalls int
+}
+
+type ingressRejectOpsRepo struct {
+	opscore.OpsRepository
+	insertCalls int
+	entries     []*opscore.OpsInsertErrorLogInput
+}
+
+type blockingOpsResponseWriter struct {
+	gin.ResponseWriter
+	writeStarted chan struct{}
+	writeRelease chan struct{}
+}
+
+type deterministicOpsCaptureWriterStatePool struct {
+	states []*opsCaptureWriterState
+}
+
 func setupOpsErrorLogTestQueue(t *testing.T, size int) {
 	t.Helper()
 	previous, previousQueue := opsErrorLogQueue, testOpsCaptureQueue
@@ -46,11 +67,6 @@ func newOpsServiceFixture(repo opscore.OpsRepository, settings opscore.Settings)
 
 func markOpsIngressRejectedFixture(c *gin.Context) { c.Set("ops_test_rejected", true) }
 
-type ingressRejectSettingRepo struct {
-	settingscore.Repository
-	getValueCalls int
-}
-
 func (r *ingressRejectSettingRepo) GetValue(context.Context, string) (string, error) {
 	r.getValueCalls++
 	return "", settingscore.ErrSettingNotFound
@@ -63,12 +79,6 @@ func (r *ingressRejectSettingRepo) GetMultiple(context.Context, []string) (map[s
 
 func (r *ingressRejectSettingRepo) Set(context.Context, string, string) error {
 	return nil
-}
-
-type ingressRejectOpsRepo struct {
-	opscore.OpsRepository
-	insertCalls int
-	entries     []*opscore.OpsInsertErrorLogInput
 }
 
 func (r *ingressRejectOpsRepo) InsertErrorLog(_ context.Context, entry *opscore.OpsInsertErrorLogInput) (int64, error) {
@@ -1737,7 +1747,7 @@ func BenchmarkOpsCaptureWriterSuccessfulSSEFrames(b *testing.B) {
 	frame := []byte("event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"ok\"}\n\n")
 	state := &opsCaptureWriterState{limit: opsCaptureWriterLimit}
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		state.captureResponseChunk(frame, http.StatusOK)
 	}
 	if state.buf.Len() != 0 {
@@ -1786,20 +1796,10 @@ func TestSetOpsEndpointContext_NilContext(t *testing.T) {
 	})
 }
 
-type blockingOpsResponseWriter struct {
-	gin.ResponseWriter
-	writeStarted chan struct{}
-	writeRelease chan struct{}
-}
-
 func (w *blockingOpsResponseWriter) WriteString(s string) (int, error) {
 	close(w.writeStarted)
 	<-w.writeRelease
 	return w.ResponseWriter.WriteString(s)
-}
-
-type deterministicOpsCaptureWriterStatePool struct {
-	states []*opsCaptureWriterState
 }
 
 func (p *deterministicOpsCaptureWriterStatePool) Get() any {
@@ -1845,7 +1845,7 @@ func TestOpsCaptureWriter_NilInnerWriter_NoPanic(t *testing.T) {
 		assert.NotNil(t, h)
 	})
 	assert.NotPanics(t, func() {
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	})
 	assert.NotPanics(t, func() {
 		w.WriteHeaderNow()

@@ -17,6 +17,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// OpenAIResponsesExecutor 绑定 Responses 请求构造、协议执行和响应输出。
+type OpenAIResponsesExecutor struct {
+	Requests    *OpenAIRequests
+	Output      *OpenAIResponseOutput
+	Text        *OpenAITextExecutor
+	Grok        *GrokExecutor
+	Lineage     *OpenAIEncryptedLineage
+	ImageBridge *gatewayprovider.ResponseImagePolicy
+}
+
 // Forward 保持单次 Responses 的准备、协议分派和执行顺序。
 func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte) (out *forwardcore.OpenAIResult, failure error) {
 	defer func() { captureResponseModel(c, out) }()
@@ -201,14 +211,4 @@ func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, p
 
 func shouldForwardOpenAIResponsesViaRawChatCompletions(provider *gatewayprovider.ExecutionProvider) bool {
 	return gatewayprovider.ExecutionModelPolicy(provider).RawChat()
-}
-
-// OpenAIResponsesExecutor 绑定 Responses 请求构造、协议执行和响应输出。
-type OpenAIResponsesExecutor struct {
-	Requests    *OpenAIRequests
-	Output      *OpenAIResponseOutput
-	Text        *OpenAITextExecutor
-	Grok        *GrokExecutor
-	Lineage     *OpenAIEncryptedLineage
-	ImageBridge *gatewayprovider.ResponseImagePolicy
 }

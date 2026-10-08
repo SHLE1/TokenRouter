@@ -1,9 +1,20 @@
 package httpapi
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 )
+
+// Key 上下文包含认证字段和排障用的 fallback 字段，认证结果由认证流程给出。
+const (
+	ContextKeyAPIKey            = "api_key"
+	ContextKeyOpsFallbackAPIKey = "ops_fallback_api_key"
+	ContextKeyForcePlatform     = "force_platform"
+)
+
+// APIKeyAuthMiddleware 是 API Key 认证的 Gin 中间件。
+type APIKeyAuthMiddleware gin.HandlerFunc
 
 // GetAPIKeyFromContext 从上下文中获取API key
 func GetAPIKeyFromContext(c *gin.Context) (*apikey.APIKey, bool) {
@@ -35,13 +46,6 @@ func GetOpsFallbackAPIKey(c *gin.Context) (*apikey.APIKey, bool) {
 	return apiKey, ok
 }
 
-// Key 上下文包含认证字段和排障用的 fallback 字段，认证结果由认证流程给出。
-const (
-	ContextKeyAPIKey            = "api_key"
-	ContextKeyOpsFallbackAPIKey = "ops_fallback_api_key"
-	ContextKeyForcePlatform     = "force_platform"
-)
-
 // ForcePlatform 返回设置强制平台的中间件
 // 同时设置 request.Context（供 Service 使用）和 gin.Context（供 Handler 快速检查）
 func ForcePlatform(platform string) gin.HandlerFunc {
@@ -70,6 +74,3 @@ func GetForcePlatformFromContext(c *gin.Context) (string, bool) {
 	platform, ok := value.(string)
 	return platform, ok
 }
-
-// APIKeyAuthMiddleware 是 API Key 认证的 Gin 中间件。
-type APIKeyAuthMiddleware gin.HandlerFunc

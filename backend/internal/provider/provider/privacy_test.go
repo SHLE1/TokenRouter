@@ -20,6 +20,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// 用本地 HTTP 控制隐私查询与管理员修改身份的执行顺序。
+type privacyIdentityWriter struct {
+	mu      sync.Mutex
+	current providercore.Record
+}
+
+type privacyProxyReader struct{ egress.ProxyRepository }
+
+type privacyProviderWriter struct {
+	writes atomic.Int32
+}
+
 // TestEnsureOpenAIPrivacySkipsShadow 验证影子提供商跳过隐私设置（不调用 privacyClientFactory）。
 // 影子提供商透传母提供商凭据，但 Extra 通常为空，需给它一个 access_token 才能让
 // 测试提供非空 token，使请求进入影子提供商检查。
@@ -181,12 +193,6 @@ func TestRefreshPrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T) {
 	}
 }
 
-// 用本地 HTTP 控制隐私查询与管理员修改身份的执行顺序。
-type privacyIdentityWriter struct {
-	mu      sync.Mutex
-	current providercore.Record
-}
-
 // UpdatePrivacyModeIfUnchanged 模拟 PostgreSQL 身份比较，发生冲突时跳过写入。
 func (w *privacyIdentityWriter) UpdatePrivacyModeIfUnchanged(_ context.Context, v providercore.UsageObservationVersion, mode string) (bool, error) {
 	w.mu.Lock()
@@ -198,14 +204,8 @@ func (w *privacyIdentityWriter) UpdatePrivacyModeIfUnchanged(_ context.Context, 
 	return true, nil
 }
 
-type privacyProxyReader struct{ egress.ProxyRepository }
-
 func (privacyProxyReader) GetByID(context.Context, int64) (*egress.Proxy, error) {
 	return nil, errors.New("forced proxy lookup failure")
-}
-
-type privacyProviderWriter struct {
-	writes atomic.Int32
 }
 
 func (r *privacyProviderWriter) UpdatePrivacyModeIfUnchanged(context.Context, providercore.UsageObservationVersion, string) (bool, error) {

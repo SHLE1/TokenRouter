@@ -18,6 +18,8 @@ type runtimeSettings struct {
 	cancelled atomic.Bool
 }
 
+type runtimeArchive struct{ calls atomic.Int32 }
+
 func (r *runtimeSettings) GetValue(ctx context.Context, key string) (string, error) {
 	if r.entered != nil {
 		r.once.Do(func() { close(r.entered) })
@@ -42,8 +44,6 @@ func (r *runtimeSettings) Set(ctx context.Context, key, value string) error {
 	r.values[key] = value
 	return nil
 }
-
-type runtimeArchive struct{ calls atomic.Int32 }
 
 func (a *runtimeArchive) Write(context.Context, *BackupRecord, BackupObjectStore, *BackupS3Config, BackupDumpOptions, func(context.Context, *BackupRecord) error, func(time.Duration) (context.Context, context.CancelFunc)) (int64, error) {
 	return 0, nil

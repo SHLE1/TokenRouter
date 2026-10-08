@@ -24,28 +24,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// OpsErrorLogQueue 将已冻结的请求观测值加入日志队列，app 管理队列的启停。
-type OpsErrorLogQueue interface {
-	Enqueue(*opscore.OpsService, *opscore.OpsInsertErrorLogInput)
-}
-
-// OpsObservationAccess 为错误日志提供身份数据和准入拒绝信息。
-type OpsObservationAccess struct {
-	APIKey   func(*gin.Context) *apikey.APIKey
-	Rejected func(*gin.Context) bool
-}
-
-func (a OpsObservationAccess) key(c *gin.Context) *apikey.APIKey {
-	if a.APIKey == nil {
-		return nil
-	}
-	return a.APIKey(c)
-}
-
-func (a OpsObservationAccess) rejected(c *gin.Context) bool {
-	return a.Rejected != nil && a.Rejected(c)
-}
-
 const (
 	OpsModelKey                  = "ops_model"
 	OpsStreamKey                 = "ops_stream"
@@ -64,7 +42,85 @@ const (
 	opsErrInsufficientBalance         = "insufficient balance"
 	opsErrInsufficientProviderBalance = "insufficient account balance"
 	opsErrInsufficientQuota           = "insufficient_quota"
+
+	opsCaptureWriterLimit         = opscore.OpsErrorLogQueueBodyMaxBytes
+	opsTerminalSSEFrameProbeLimit = 16 * 1024
+
+	opsCaptureWriterPoolMaxRetainedCapacity = opscore.OpsErrorLogQueueBodyMaxBytes
 )
+
+var (
+	opsCaptureWriterPool opsCaptureWriterStatePool = &sync.Pool{
+		New: func() any {
+			return &opsCaptureWriterState{limit: opsCaptureWriterLimit}
+		},
+	}
+
+	_ gin.ResponseWriter = (*opsCaptureWriter)(nil)
+)
+
+// OpsErrorLogQueue 将已冻结的请求观测值加入日志队列，app 管理队列的启停。
+type OpsErrorLogQueue interface {
+	Enqueue(*opscore.OpsService, *opscore.OpsInsertErrorLogInput)
+}
+
+// OpsObservationAccess 为错误日志提供身份数据和准入拒绝信息。
+type OpsObservationAccess struct {
+	APIKey   func(*gin.Context) *apikey.APIKey
+	Rejected func(*gin.Context) bool
+}
+
+type opsCaptureWriter struct {
+	// Handles are never pooled. A generation binds each handle to exactly one
+	// pooled state lease, so a stale handle cannot reach a later request.
+	state      *opsCaptureWriterState
+	generation uint64
+	pool       opsCaptureWriterStatePool
+}
+
+type opsCaptureWriterState struct {
+	mu             sync.RWMutex
+	inFlight       sync.WaitGroup
+	generation     uint64
+	responseWriter gin.ResponseWriter
+	limit          int
+	buf            bytes.Buffer
+	probe          []byte
+	lineProbe      []byte
+	frameLineLen   int
+	frameTruncated bool
+	lineTruncated  bool
+	skipLF         bool
+	sseCapturing   bool
+	terminalError  parsedOpsError
+	terminalFound  bool
+	ctx            *gin.Context
+	rejected       func(*gin.Context) bool
+}
+
+type opsCaptureWriterStatePool interface {
+	Get() any
+	Put(any)
+}
+
+type parsedOpsError struct {
+	ErrorType     string
+	Message       string
+	Code          string
+	StatusCode    int
+	StreamFailure bool
+}
+
+func (a OpsObservationAccess) key(c *gin.Context) *apikey.APIKey {
+	if a.APIKey == nil {
+		return nil
+	}
+	return a.APIKey(c)
+}
+
+func (a OpsObservationAccess) rejected(c *gin.Context) bool {
+	return a.Rejected != nil && a.Rejected(c)
+}
 
 // keyPrefix 返回脱敏前缀(前 n 个字符);不足 n 则原样返回。
 func keyPrefix(key string, n int) string {
@@ -163,52 +219,6 @@ func IsOpsNoAvailableProviderError(err error) bool {
 		return true
 	}
 	return opscore.IsNoAvailableProviderMessage(err.Error())
-}
-
-type opsCaptureWriter struct {
-	// Handles are never pooled. A generation binds each handle to exactly one
-	// pooled state lease, so a stale handle cannot reach a later request.
-	state      *opsCaptureWriterState
-	generation uint64
-	pool       opsCaptureWriterStatePool
-}
-
-type opsCaptureWriterState struct {
-	mu             sync.RWMutex
-	inFlight       sync.WaitGroup
-	generation     uint64
-	responseWriter gin.ResponseWriter
-	limit          int
-	buf            bytes.Buffer
-	probe          []byte
-	lineProbe      []byte
-	frameLineLen   int
-	frameTruncated bool
-	lineTruncated  bool
-	skipLF         bool
-	sseCapturing   bool
-	terminalError  parsedOpsError
-	terminalFound  bool
-	ctx            *gin.Context
-	rejected       func(*gin.Context) bool
-}
-
-const (
-	opsCaptureWriterLimit         = opscore.OpsErrorLogQueueBodyMaxBytes
-	opsTerminalSSEFrameProbeLimit = 16 * 1024
-)
-
-const opsCaptureWriterPoolMaxRetainedCapacity = opscore.OpsErrorLogQueueBodyMaxBytes
-
-type opsCaptureWriterStatePool interface {
-	Get() any
-	Put(any)
-}
-
-var opsCaptureWriterPool opsCaptureWriterStatePool = &sync.Pool{
-	New: func() any {
-		return &opsCaptureWriterState{limit: opsCaptureWriterLimit}
-	},
 }
 
 func acquireOpsCaptureWriter(rw gin.ResponseWriter) *opsCaptureWriter {
@@ -495,8 +505,6 @@ func (w *opsCaptureWriter) WriteString(s string) (int, error) {
 	defer finishDelegatedCall(state)
 	return rw.WriteString(s)
 }
-
-var _ gin.ResponseWriter = (*opsCaptureWriter)(nil)
 
 func isOpsTerminalSSEFrame(frame []byte) bool {
 	eventType, payload := parseOpsSSEFrameEnvelope(frame)
@@ -1392,14 +1400,6 @@ func getContextLatencyMs(c *gin.Context, key string) *int64 {
 		return nil
 	}
 	return &ms
-}
-
-type parsedOpsError struct {
-	ErrorType     string
-	Message       string
-	Code          string
-	StatusCode    int
-	StreamFailure bool
 }
 
 func parseOpsErrorResponse(body []byte) parsedOpsError {

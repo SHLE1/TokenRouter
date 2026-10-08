@@ -24,6 +24,12 @@ type CompatBufferedOptions struct {
 	Log              func(string, error, time.Duration)
 }
 
+// CompatBufferedReadError 只标记响应体读取阶段的错误；具体端点自行
+// 决定是否允许重放，避免共享读取器扩大故障转移范围。
+type CompatBufferedReadError struct {
+	cause error
+}
+
 // NewCompatSSEScanner 为扫描器分配 64 KiB 起始缓冲。
 func NewCompatSSEScanner(r io.Reader, maxLineSize int) *bufio.Scanner {
 	scanner := bufio.NewScanner(r)
@@ -43,12 +49,6 @@ func IsCompatResponsesTerminalEvent(eventType string) bool {
 func IsCompatDoneSentinelLine(line string) bool {
 	payload, ok := wire.ExtractSSEDataLine(line)
 	return ok && strings.TrimSpace(payload) == "[DONE]"
-}
-
-// CompatBufferedReadError 只标记响应体读取阶段的错误；具体端点自行
-// 决定是否允许重放，避免共享读取器扩大故障转移范围。
-type CompatBufferedReadError struct {
-	cause error
 }
 
 func (e *CompatBufferedReadError) Error() string { return e.cause.Error() }

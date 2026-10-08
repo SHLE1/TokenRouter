@@ -44,6 +44,15 @@ type schedulerCacheRecorder struct {
 	setCtxErr    error
 }
 
+type failAtomicSchedulerOutboxSQLExecutor struct {
+	postgres.Executor
+}
+
+type cancelAfterAtomicMutationSQLExecutor struct {
+	postgres.Executor
+	cancel context.CancelFunc
+}
+
 func (s *schedulerCacheRecorder) SetProvider(ctx context.Context, value scheduler.SnapshotProvider) error {
 	provider, err := codec.RecordValue(value)
 	if err != nil {
@@ -60,21 +69,12 @@ func (s *schedulerCacheRecorder) SetProvider(ctx context.Context, value schedule
 	return nil
 }
 
-type failAtomicSchedulerOutboxSQLExecutor struct {
-	postgres.Executor
-}
-
 func (e *failAtomicSchedulerOutboxSQLExecutor) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	if strings.Contains(query, "WITH updated AS") && strings.Contains(query, "INSERT INTO scheduler_outbox") && len(args) > 0 {
 		args = append([]any(nil), args...)
 		args[len(args)-1] = nil // event_type is NOT NULL; the whole statement must roll back.
 	}
 	return e.Executor.ExecContext(ctx, query, args...)
-}
-
-type cancelAfterAtomicMutationSQLExecutor struct {
-	postgres.Executor
-	cancel context.CancelFunc
 }
 
 func (e *cancelAfterAtomicMutationSQLExecutor) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {

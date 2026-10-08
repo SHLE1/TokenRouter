@@ -51,52 +51,52 @@ var (
 		"SECRET_ENCRYPTION_KEY_NOT_CONFIGURED",
 		"cannot store the S3 secret access key: no fixed secret encryption key is configured, so the auto-generated key would change on every restart and make the stored secret undecryptable after a restart or upgrade. Set a fixed TOTP_ENCRYPTION_KEY (e.g. generate one with `openssl rand -hex 32`) and try again",
 	)
-)
 
-var backupContentTableDataGroups = map[string][]string{
-	"usage_records": {
-		"public.usage_logs",
-		"public.usage_user_activity",
-		"public.usage_logs_*",
-		"public.billing_usage_entries",
-		"public.usage_billing_dedup",
-		"public.usage_billing_dedup_archive",
-		"public.usage_dashboard_hourly",
-		"public.usage_dashboard_daily",
-		"public.usage_dashboard_hourly_users",
-		"public.usage_dashboard_daily_users",
-		"public.usage_dashboard_aggregation_watermark",
-		"public.usage_analytics_hourly",
-		"public.usage_analytics_daily",
-		"public.usage_analytics_aggregation_state",
-	},
-	"ops_logs": {
-		"public.ops_system_logs",
-		"public.ops_error_logs",
-		"public.ops_retry_attempts",
-		"public.ops_system_metrics",
-		"public.ops_metrics_hourly",
-		"public.ops_metrics_daily",
-		"public.ops_alert_events",
-		"public.ops_job_heartbeats",
-		"public.ops_system_log_cleanup_audits",
-	},
-	"audit_logs": {
-		"public.payment_audit_logs",
-		"public.content_moderation_logs",
-		"public.announcement_reads",
-		"public.orphan_allowed_groups_audit",
-		"public.auth_identity_migration_reports",
-	},
-	"runtime_data": {
-		"public.idempotency_records",
-		"public.scheduler_outbox",
-		"public.pending_auth_sessions",
-		"public.identity_adoption_decisions",
-		"public.usage_cleanup_tasks",
-		"public.scheduled_test_results",
-	},
-}
+	backupContentTableDataGroups = map[string][]string{
+		"usage_records": {
+			"public.usage_logs",
+			"public.usage_user_activity",
+			"public.usage_logs_*",
+			"public.billing_usage_entries",
+			"public.usage_billing_dedup",
+			"public.usage_billing_dedup_archive",
+			"public.usage_dashboard_hourly",
+			"public.usage_dashboard_daily",
+			"public.usage_dashboard_hourly_users",
+			"public.usage_dashboard_daily_users",
+			"public.usage_dashboard_aggregation_watermark",
+			"public.usage_analytics_hourly",
+			"public.usage_analytics_daily",
+			"public.usage_analytics_aggregation_state",
+		},
+		"ops_logs": {
+			"public.ops_system_logs",
+			"public.ops_error_logs",
+			"public.ops_retry_attempts",
+			"public.ops_system_metrics",
+			"public.ops_metrics_hourly",
+			"public.ops_metrics_daily",
+			"public.ops_alert_events",
+			"public.ops_job_heartbeats",
+			"public.ops_system_log_cleanup_audits",
+		},
+		"audit_logs": {
+			"public.payment_audit_logs",
+			"public.content_moderation_logs",
+			"public.announcement_reads",
+			"public.orphan_allowed_groups_audit",
+			"public.auth_identity_migration_reports",
+		},
+		"runtime_data": {
+			"public.idempotency_records",
+			"public.scheduler_outbox",
+			"public.pending_auth_sessions",
+			"public.identity_adoption_decisions",
+			"public.usage_cleanup_tasks",
+			"public.scheduled_test_results",
+		},
+	}
+)
 
 // ─── 接口定义 ───
 
@@ -164,11 +164,6 @@ type BackupS3Config struct {
 	UploadConcurrency int    `json:"upload_concurrency"`
 	UploadPartSizeMB  int    `json:"upload_part_size_mb"`
 	UploadMode        string `json:"upload_mode"`
-}
-
-// IsConfigured 检查必要字段是否已配置
-func (c *BackupS3Config) IsConfigured() bool {
-	return c.Bucket != "" && c.AccessKeyID != "" && c.SecretAccessKey != ""
 }
 
 // BackupScheduleConfig 定时备份配置
@@ -259,6 +254,11 @@ type BackupService struct {
 	shuttingDown atomic.Bool        // 阻止新备份启动
 	bgCtx        context.Context    // 所有后台操作的 parent context
 	bgCancel     context.CancelFunc // 取消所有活跃后台操作
+}
+
+// IsConfigured 检查必要字段是否已配置
+func (c *BackupS3Config) IsConfigured() bool {
+	return c.Bucket != "" && c.AccessKeyID != "" && c.SecretAccessKey != ""
 }
 
 // SetMaintenanceDB 注入数据库连接，使备份与其他数据库重任务共享互斥锁。

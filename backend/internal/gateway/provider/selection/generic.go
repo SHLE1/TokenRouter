@@ -18,6 +18,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
+type selectionFailureStats struct {
+	Total              int
+	Eligible           int
+	Excluded           int
+	Unschedulable      int
+	PlatformFiltered   int
+	ModelUnsupported   int
+	ModelRateLimited   int
+	SamplePlatformIDs  []int64
+	SampleMappingIDs   []int64
+	SampleRateLimitIDs []string
+}
+
+type selectionFailureDiagnosis struct {
+	Category string
+	Detail   string
+}
+
 // SelectProviderForModel 选择支持指定模型的提供商（粘性会话+优先级+模型映射）
 func (s *Generic) SelectProviderForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*gatewayprovider.ExecutionProvider, error) {
 	return s.SelectProviderForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)
@@ -494,30 +512,11 @@ func (s *Generic) newSelectionResult(ctx context.Context, provider *gatewayprovi
 		WaitPlan:    waitPlan,
 	}
 	if group, ok := requeststate.GroupFromContext(ctx); ok && routing.IsGroupContextValid(group) && group.UsesAdvancedScheduler() {
-
 		selection.AdvancedScheduler = true
 		feedback := s.advancedSchedulerEffectiveSettingsForRequest(ctx, &group.ID).Feedback
 		selection.AdvancedSchedulerFeedback = &feedback
 	}
 	return selection, nil
-}
-
-type selectionFailureStats struct {
-	Total              int
-	Eligible           int
-	Excluded           int
-	Unschedulable      int
-	PlatformFiltered   int
-	ModelUnsupported   int
-	ModelRateLimited   int
-	SamplePlatformIDs  []int64
-	SampleMappingIDs   []int64
-	SampleRateLimitIDs []string
-}
-
-type selectionFailureDiagnosis struct {
-	Category string
-	Detail   string
 }
 
 func (s *Generic) logDetailedSelectionFailure(

@@ -10,6 +10,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+// 设置替身提供额度测试和后台缓存刷新所需的值。
+type quotaReadFixture struct{ values map[string]string }
+
 func TestGetOpenAIQuotaAutoPauseSettings_ReadsDefaultsFromOpsAdvancedSettings(t *testing.T) {
 	repo := newQuotaReadFixture()
 	repo.values[ops.SettingKeyOpsAdvancedSettings] = `{"openai_provider_quota_auto_pause":{"default_threshold_5h":0.95,"default_threshold_7d":0.9}}`
@@ -67,9 +70,6 @@ func TestSetOpenAIQuotaAutoPauseSettings_VisibleImmediately(t *testing.T) {
 		t.Fatalf("after Set, Get = %+v, want {0.88, 0.77}", got)
 	}
 }
-
-// 设置替身提供额度测试和后台缓存刷新所需的值。
-type quotaReadFixture struct{ values map[string]string }
 
 func newQuotaReadFixture() *quotaReadFixture { return &quotaReadFixture{values: map[string]string{}} }
 

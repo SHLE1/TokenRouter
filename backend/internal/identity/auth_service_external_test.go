@@ -20,6 +20,23 @@ import (
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+// invitationRaceUserRepo 为邀请码注册提供用户仓储替身。
+type invitationRaceUserRepo struct {
+	identity.UserRepository
+
+	mu      sync.Mutex
+	nextID  int64
+	byEmail map[string]*identity.User
+}
+
+// invitationRaceRedeemRepo 通过条件更新模拟数据库中的一次性邀请码占用。
+type invitationRaceRedeemRepo struct {
+	billing.RedeemCodeRepository
+
+	mu   sync.Mutex
+	code billing.RedeemCode
+}
+
 func TestAuthService_RegisterSnapshotsDefaultUserAPIKeyLimit(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -94,15 +111,6 @@ func stringPointer(value string) *string {
 	return &value
 }
 
-// invitationRaceUserRepo 为邀请码注册提供用户仓储替身。
-type invitationRaceUserRepo struct {
-	identity.UserRepository
-
-	mu      sync.Mutex
-	nextID  int64
-	byEmail map[string]*identity.User
-}
-
 func newInvitationRaceUserRepo() *invitationRaceUserRepo {
 	return &invitationRaceUserRepo{
 		nextID:  1,
@@ -132,14 +140,6 @@ func (r *invitationRaceUserRepo) Create(_ context.Context, user *identity.User) 
 	clone := *user
 	r.byEmail[user.Email] = &clone
 	return nil
-}
-
-// invitationRaceRedeemRepo 通过条件更新模拟数据库中的一次性邀请码占用。
-type invitationRaceRedeemRepo struct {
-	billing.RedeemCodeRepository
-
-	mu   sync.Mutex
-	code billing.RedeemCode
 }
 
 func (r *invitationRaceRedeemRepo) GetByCode(_ context.Context, code string) (*billing.RedeemCode, error) {
@@ -196,7 +196,7 @@ func TestAuthService_Register_InvitationCodeSingleUseUnderConcurrency(t *testing
 	start := make(chan struct{})
 	results := make(chan error, called)
 	var group sync.WaitGroup
-	for index := 0; index < called; index++ {
+	for index := range called {
 		group.Add(1)
 		go func(index int) {
 			defer group.Done()

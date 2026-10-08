@@ -8,6 +8,27 @@ import (
 	"time"
 )
 
+const (
+	opsAlertEvaluatorLeaderLockKeyDefault = "ops:alert:evaluator:leader"
+	opsAlertEvaluatorLeaderLockTTLDefault = 30 * time.Second
+
+	SettingKeyOpsMetricThresholds = "ops_metric_thresholds"
+
+	SettingKeyOpsRealtimeMonitoringEnabled = "ops_realtime_monitoring_enabled"
+
+	SettingKeyOpsMonitoringEnabled = "ops_monitoring_enabled"
+
+	SettingKeyOpsRuntimeLogConfig = "ops_runtime_log_config"
+
+	SettingKeyOpsAlertRuntimeSettings = "ops_alert_runtime_settings"
+
+	SettingKeyOpsEmailNotificationConfig = "ops_email_notification_config"
+
+	SettingKeyOpsAdvancedSettings = "ops_advanced_settings"
+
+	SettingKeyOpsMetricsIntervalSeconds = "ops_metrics_interval_seconds"
+)
+
 // IsRealtimeMonitoringEnabled returns true when realtime ops features are enabled.
 //
 // This is a soft switch controlled by the DB setting `ops_realtime_monitoring_enabled`,
@@ -36,11 +57,6 @@ func (s *OpsService) IsRealtimeMonitoringEnabled(ctx context.Context) bool {
 		return true
 	}
 }
-
-const (
-	opsAlertEvaluatorLeaderLockKeyDefault = "ops:alert:evaluator:leader"
-	opsAlertEvaluatorLeaderLockTTLDefault = 30 * time.Second
-)
 
 func (s *OpsService) GetEmailNotificationConfig(ctx context.Context) (*OpsEmailNotificationConfig, error) {
 	defaultCfg := defaultOpsEmailNotificationConfig()
@@ -565,8 +581,6 @@ func (s *OpsService) UpdateOpsAdvancedSettings(ctx context.Context, cfg *OpsAdva
 	return updated, nil
 }
 
-const SettingKeyOpsMetricThresholds = "ops_metric_thresholds"
-
 func defaultOpsMetricThresholds() *OpsMetricThresholds {
 	slaMin := 99.5
 	ttftMax := 500.0
@@ -645,17 +659,3 @@ func (s *OpsService) UpdateMetricThresholds(ctx context.Context, cfg *OpsMetricT
 	_ = json.Unmarshal(raw, updated)
 	return updated, nil
 }
-
-const SettingKeyOpsRealtimeMonitoringEnabled = "ops_realtime_monitoring_enabled"
-
-const SettingKeyOpsMonitoringEnabled = "ops_monitoring_enabled"
-
-const SettingKeyOpsRuntimeLogConfig = "ops_runtime_log_config"
-
-const SettingKeyOpsAlertRuntimeSettings = "ops_alert_runtime_settings"
-
-const SettingKeyOpsEmailNotificationConfig = "ops_email_notification_config"
-
-const SettingKeyOpsAdvancedSettings = "ops_advanced_settings"
-
-const SettingKeyOpsMetricsIntervalSeconds = "ops_metrics_interval_seconds"

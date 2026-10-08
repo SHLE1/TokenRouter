@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
-
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usagecontract"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )

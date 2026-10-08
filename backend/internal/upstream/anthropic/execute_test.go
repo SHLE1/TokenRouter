@@ -28,6 +28,11 @@ type executionSink struct {
 	fail    bool
 }
 
+type countedResponse struct {
+	io.ReadCloser
+	closed *atomic.Int32
+}
+
 func (s *executionSink) Begin(upstream.OutputHead) error { return nil }
 func (s *executionSink) Emit(event upstream.OutputEvent) error {
 	if len(event.Data) > 0 && s.entered != nil && s.once.CompareAndSwap(false, true) {
@@ -41,11 +46,6 @@ func (s *executionSink) Emit(event upstream.OutputEvent) error {
 	s.events = append(s.events, event)
 	_, _ = s.body.Write(event.Data)
 	return nil
-}
-
-type countedResponse struct {
-	io.ReadCloser
-	closed *atomic.Int32
 }
 
 func (r *countedResponse) Close() error { r.closed.Add(1); return r.ReadCloser.Close() }

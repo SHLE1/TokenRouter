@@ -16,14 +16,19 @@ type executionCredentialStore struct {
 	original *ExecutionProvider
 }
 
-func (s executionCredentialStore) Update(ctx context.Context, value *provider.Record) error {
-	s.original.Record.Credentials = value.Credentials
-	return s.source.Update(ctx, s.original)
-}
-
 type executionCredentialFields struct {
 	executionCredentialStore
 	updater providerCredentialsUpdater
+}
+
+// ExecutionTokenSource 定义执行请求读取提供商凭据的接口。
+type ExecutionTokenSource interface {
+	GetAccessToken(context.Context, *provider.Record) (string, error)
+}
+
+func (s executionCredentialStore) Update(ctx context.Context, value *provider.Record) error {
+	s.original.Record.Credentials = value.Credentials
+	return s.source.Update(ctx, s.original)
 }
 
 func (s executionCredentialFields) UpdateCredentials(ctx context.Context, id int64, credentials map[string]any) error {
@@ -46,11 +51,6 @@ func PersistExecutionCredentials(ctx context.Context, repo ExecutionProviderStor
 		value.Record.Credentials = view.Credentials
 	}
 	return err
-}
-
-// ExecutionTokenSource 定义执行请求读取提供商凭据的接口。
-type ExecutionTokenSource interface {
-	GetAccessToken(context.Context, *provider.Record) (string, error)
 }
 
 // ExecutionToken 读取令牌后，将 Gemini/Antigravity 回填的 project 凭据写入执行目标。

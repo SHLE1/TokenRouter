@@ -36,7 +36,7 @@ func TestContentModerationKeywordMatcherMatchesLegacyBehavior(t *testing.T) {
 func TestContentModerationKeywordMatcherRandomizedParity(t *testing.T) {
 	rng := rand.New(rand.NewSource(20260714))
 	const alphabet = "abcXYZ"
-	for iteration := 0; iteration < 1000; iteration++ {
+	for iteration := range 1000 {
 		keywords := make([]string, 1+rng.Intn(30))
 		for index := range keywords {
 			length := 1 + rng.Intn(8)

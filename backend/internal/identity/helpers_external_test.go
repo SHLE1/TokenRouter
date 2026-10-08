@@ -25,16 +25,6 @@ type defaultSubscriptionAssignerStub struct {
 	err   error
 }
 
-func (s *defaultSubscriptionAssignerStub) AssignOrExtendSubscription(_ context.Context, input *billing.AssignSubscriptionInput) (*billing.UserSubscription, bool, error) {
-	if input != nil {
-		s.calls = append(s.calls, *input)
-	}
-	if s.err != nil {
-		return nil, false, s.err
-	}
-	return &billing.UserSubscription{UserID: input.UserID, PlanID: input.PlanID}, false, nil
-}
-
 type ensureEmailCall struct {
 	userID int64
 	email  string
@@ -56,6 +46,114 @@ type emailSyncRepoStub struct {
 	replaceCalls []replaceEmailCall
 	ensureErr    error
 	replaceErr   error
+}
+
+type emailNormalizationRepoStub struct {
+	user *identity.User
+
+	existsByEmail           bool
+	existsByEmailErr        error
+	existsByNormalized      bool
+	existsByNormalizedErr   error
+	createErr               error
+	getByIDErr              error
+	updateErr               error
+	normalizedUpdateErr     error
+	existsByEmailCalls      []string
+	existsByNormalizedCalls []string
+	createCalls             []*identity.User
+	updateCalls             []*identity.User
+	normalizedUpdateCalls   []string
+	normalizedUpdateUsers   []*identity.User
+}
+
+type userRepoStub struct {
+	user             *identity.User
+	getErr           error
+	createErr        error
+	deleteErr        error
+	exists           bool
+	existsErr        error
+	nextID           int64
+	created          []*identity.User
+	updated          []*identity.User
+	deletedIDs       []int64
+	usersByEmail     map[string]*identity.User
+	getByEmailErr    error
+	domainCounts     map[string]int
+	domainCountErr   error
+	domainGuardCalls []string
+}
+
+type settingRepoStub struct {
+	mu               sync.Mutex
+	values           map[string]string
+	err              error
+	getValueCalls    int
+	getMultipleCalls int
+}
+
+type emailCacheStub struct {
+	data *identity.VerificationCodeData
+	err  error
+}
+
+type refreshTokenCacheStub struct{}
+
+type turnstileVerifierSpy struct {
+	called    int
+	lastToken string
+	result    *identity.TurnstileVerifyResponse
+	err       error
+}
+
+// authSettingsFixture 使用同一个设置仓储替身读取认证设置。
+type authSettingsFixture struct {
+	*identity.RuntimeSettings
+	*identity.GrantSettings
+	*identity.OAuthSettings
+	*site.DisplaySettings
+	promotion *promotion.RuntimeSettings
+}
+
+// captchaSettingsStore 记录读取次数并模拟读取失败。
+type captchaSettingsStore struct {
+	identity.RuntimeSettingsStore
+	mu               sync.Mutex
+	values           map[string]string
+	err              error
+	getValueCalls    int
+	getMultipleCalls int
+}
+
+// captchaAuthSettings 为验证码测试提供设置读取方法。
+type captchaAuthSettings struct {
+	identity.AuthSettings
+	runtime *identity.RuntimeSettings
+}
+
+type authSourceDefaultsRepoStub struct {
+	values  map[string]string
+	updates map[string]string
+}
+
+type tencentCaptchaVerifierStub struct {
+	response    *identity.TencentCaptchaVerifyResponse
+	err         error
+	calls       int
+	proof       identity.TencentCaptchaProof
+	remoteIP    string
+	credentials identity.TencentCaptchaCredentials
+}
+
+func (s *defaultSubscriptionAssignerStub) AssignOrExtendSubscription(_ context.Context, input *billing.AssignSubscriptionInput) (*billing.UserSubscription, bool, error) {
+	if input != nil {
+		s.calls = append(s.calls, *input)
+	}
+	if s.err != nil {
+		return nil, false, s.err
+	}
+	return &billing.UserSubscription{UserID: input.UserID, PlanID: input.PlanID}, false, nil
 }
 
 func (s *emailSyncRepoStub) Create(_ context.Context, user *identity.User) error {
@@ -208,25 +306,6 @@ func (s *emailSyncRepoStub) ReplaceEmailAuthIdentity(_ context.Context, userID i
 		newEmail: newEmail,
 	})
 	return s.replaceErr
-}
-
-type emailNormalizationRepoStub struct {
-	user *identity.User
-
-	existsByEmail           bool
-	existsByEmailErr        error
-	existsByNormalized      bool
-	existsByNormalizedErr   error
-	createErr               error
-	getByIDErr              error
-	updateErr               error
-	normalizedUpdateErr     error
-	existsByEmailCalls      []string
-	existsByNormalizedCalls []string
-	createCalls             []*identity.User
-	updateCalls             []*identity.User
-	normalizedUpdateCalls   []string
-	normalizedUpdateUsers   []*identity.User
 }
 
 func cloneEmailNormalizationUser(u *identity.User) *identity.User {
@@ -425,24 +504,6 @@ func (s *emailNormalizationRepoStub) EnableTotp(context.Context, int64) error {
 
 func (s *emailNormalizationRepoStub) DisableTotp(context.Context, int64) error {
 	panic("unexpected DisableTotp call")
-}
-
-type userRepoStub struct {
-	user             *identity.User
-	getErr           error
-	createErr        error
-	deleteErr        error
-	exists           bool
-	existsErr        error
-	nextID           int64
-	created          []*identity.User
-	updated          []*identity.User
-	deletedIDs       []int64
-	usersByEmail     map[string]*identity.User
-	getByEmailErr    error
-	domainCounts     map[string]int
-	domainCountErr   error
-	domainGuardCalls []string
 }
 
 func (s *userRepoStub) Create(ctx context.Context, user *identity.User) error {
@@ -690,14 +751,6 @@ func newOAuthEmailFlowAuthService(
 	)
 }
 
-type settingRepoStub struct {
-	mu               sync.Mutex
-	values           map[string]string
-	err              error
-	getValueCalls    int
-	getMultipleCalls int
-}
-
 func (s *settingRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
 	panic("unexpected Get call")
 }
@@ -746,13 +799,6 @@ func (s *settingRepoStub) GetAll(ctx context.Context) (map[string]string, error)
 func (s *settingRepoStub) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
 }
-
-type emailCacheStub struct {
-	data *identity.VerificationCodeData
-	err  error
-}
-
-type refreshTokenCacheStub struct{}
 
 func (s *refreshTokenCacheStub) StoreRefreshToken(context.Context, string, *identity.RefreshTokenData, time.Duration) error {
 	return nil
@@ -887,13 +933,6 @@ func (s *refreshTokenCacheStub) ConsumeRefreshToken(context.Context, string) (bo
 	return false, nil
 }
 
-type turnstileVerifierSpy struct {
-	called    int
-	lastToken string
-	result    *identity.TurnstileVerifyResponse
-	err       error
-}
-
 func (s *turnstileVerifierSpy) VerifyToken(_ context.Context, _ string, token, _ string) (*identity.TurnstileVerifyResponse, error) {
 	s.called++
 	s.lastToken = token
@@ -904,15 +943,6 @@ func (s *turnstileVerifierSpy) VerifyToken(_ context.Context, _ string, token, _
 		return s.result, nil
 	}
 	return &identity.TurnstileVerifyResponse{Success: true}, nil
-}
-
-// authSettingsFixture 使用同一个设置仓储替身读取认证设置。
-type authSettingsFixture struct {
-	*identity.RuntimeSettings
-	*identity.GrantSettings
-	*identity.OAuthSettings
-	*site.DisplaySettings
-	promotion *promotion.RuntimeSettings
 }
 
 func newAuthSettingsFixture(repo settingscore.Repository, cfg *config.Config) *authSettingsFixture {
@@ -958,16 +988,6 @@ func rebuildSessionForTest(service *identity.AuthService) {
 	service.SessionService = identity.NewSessionService(service.Options.JWT, service.Users, service.RefreshTokens, service.Settings, service.Observer.Log)
 }
 
-// captchaSettingsStore 记录读取次数并模拟读取失败。
-type captchaSettingsStore struct {
-	identity.RuntimeSettingsStore
-	mu               sync.Mutex
-	values           map[string]string
-	err              error
-	getValueCalls    int
-	getMultipleCalls int
-}
-
 func (s *captchaSettingsStore) GetValue(_ context.Context, key string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -997,12 +1017,6 @@ func (s *captchaSettingsStore) GetMultiple(_ context.Context, keys []string) (ma
 	return result, nil
 }
 
-// captchaAuthSettings 为验证码测试提供设置读取方法。
-type captchaAuthSettings struct {
-	identity.AuthSettings
-	runtime *identity.RuntimeSettings
-}
-
 func (s captchaAuthSettings) GetCaptchaProviderConfig(ctx context.Context) (identity.CaptchaProviderConfig, error) {
 	return s.runtime.GetCaptchaProviderConfig(ctx)
 }
@@ -1016,11 +1030,6 @@ func captchaAuthOptions(required bool) *identity.AuthOptions {
 	options.Server.Mode = "release"
 	options.Turnstile.Required = required
 	return options
-}
-
-type authSourceDefaultsRepoStub struct {
-	values  map[string]string
-	updates map[string]string
 }
 
 func (s *authSourceDefaultsRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
@@ -1063,15 +1072,6 @@ func (s *authSourceDefaultsRepoStub) GetAll(ctx context.Context) (map[string]str
 
 func (s *authSourceDefaultsRepoStub) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
-}
-
-type tencentCaptchaVerifierStub struct {
-	response    *identity.TencentCaptchaVerifyResponse
-	err         error
-	calls       int
-	proof       identity.TencentCaptchaProof
-	remoteIP    string
-	credentials identity.TencentCaptchaCredentials
 }
 
 func (s *tencentCaptchaVerifierStub) VerifyTicket(_ context.Context, credentials identity.TencentCaptchaCredentials, proof identity.TencentCaptchaProof, remoteIP string) (*identity.TencentCaptchaVerifyResponse, error) {

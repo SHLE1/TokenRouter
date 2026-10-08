@@ -18,17 +18,6 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-type OIDCHandler struct {
-	*PendingHandler
-	binding    *OAuthBindHandler
-	client     identity.OIDCOAuthClient
-	loadConfig func(context.Context) (identity.OIDCOAuthOptions, error)
-}
-
-func NewOIDCHandler(p *PendingHandler, b *OAuthBindHandler, client identity.OIDCOAuthClient, load func(context.Context) (identity.OIDCOAuthOptions, error)) *OIDCHandler {
-	return &OIDCHandler{p, b, client, load}
-}
-
 const (
 	OidcOAuthCookiePath         = "/api/v1/auth/oauth/oidc"
 	OidcOAuthStateCookieName    = "oidc_oauth_state"
@@ -41,6 +30,24 @@ const (
 	OidcOAuthDefaultRedirectTo  = "/dashboard"
 	OidcOAuthDefaultFrontendCB  = "/auth/oidc/callback"
 )
+
+type OIDCHandler struct {
+	*PendingHandler
+	binding    *OAuthBindHandler
+	client     identity.OIDCOAuthClient
+	loadConfig func(context.Context) (identity.OIDCOAuthOptions, error)
+}
+
+type CompleteOIDCOAuthRequest struct {
+	InvitationCode   string `json:"invitation_code" binding:"required"`
+	AffCode          string `json:"aff_code,omitempty"` // 邀请返利码，仅注册新用户时绑定邀请关系。
+	AdoptDisplayName *bool  `json:"adopt_display_name,omitempty"`
+	AdoptAvatar      *bool  `json:"adopt_avatar,omitempty"`
+}
+
+func NewOIDCHandler(p *PendingHandler, b *OAuthBindHandler, client identity.OIDCOAuthClient, load func(context.Context) (identity.OIDCOAuthOptions, error)) *OIDCHandler {
+	return &OIDCHandler{p, b, client, load}
+}
 
 // OIDCOAuthStart 启动通用 OIDC OAuth 登录流程。
 // GET /api/v1/auth/oauth/oidc/start?redirect=/dashboard
@@ -542,13 +549,6 @@ func (h *OIDCHandler) CompleteOIDCOAuthRegistration(c *gin.Context) {
 		"expires_in":    tokenPair.ExpiresIn,
 		"token_type":    "Bearer",
 	})
-}
-
-type CompleteOIDCOAuthRequest struct {
-	InvitationCode   string `json:"invitation_code" binding:"required"`
-	AffCode          string `json:"aff_code,omitempty"` // 邀请返利码，仅注册新用户时绑定邀请关系。
-	AdoptDisplayName *bool  `json:"adopt_display_name,omitempty"`
-	AdoptAvatar      *bool  `json:"adopt_avatar,omitempty"`
 }
 
 func BuildOIDCAuthorizeURL(cfg identity.OIDCOAuthOptions, state, nonce, codeChallenge, redirectURI string) (string, error) {

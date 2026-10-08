@@ -24,14 +24,14 @@ import (
 // 替身只代替资金预检与上游执行；HTTP、报文、完成捕获和计费均使用生产实现。
 type searchFundingProbe struct{ calls int }
 
-func (p *searchFundingProbe) Check(context.Context, billing.CheckInput) error { p.calls++; return nil }
-
 type searchTargetProbe struct {
 	calls     int
 	releases  int
 	snapshots int
 	body      []byte
 }
+
+func (p *searchFundingProbe) Check(context.Context, billing.CheckInput) error { p.calls++; return nil }
 
 func (p *searchTargetProbe) Select(_ context.Context, group int64, _ string, _ map[int64]struct{}) (StandaloneSearchTarget, searchtools.Selection, bool, error) {
 	return p, searchtools.Selection{ProviderID: 7, Acquired: true, Release: func() { p.releases++ }}, true, nil

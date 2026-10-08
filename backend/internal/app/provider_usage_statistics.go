@@ -16,6 +16,14 @@ type providerLocalStatsPairSource interface {
 	GetProviderWindowStatsPair(context.Context, int64, time.Time, time.Time) (*usage.ProviderStats, *usage.ProviderStats, error)
 }
 
+type providerLocalStatsBatchSource interface {
+	GetProviderWindowStatsBatch(context.Context, []int64, time.Time) (map[int64]*usage.ProviderStats, error)
+}
+type providerLocalStatsBatch struct {
+	providerLocalStats
+	batch providerLocalStatsBatchSource
+}
+
 // GetProviderWindowStatsPair 绑定合并查询；不可用时由提供商用例选择逐窗口回退。
 func (r providerLocalStats) GetProviderWindowStatsPair(ctx context.Context, id int64, first, second time.Time) (*provider.WindowStats, *provider.WindowStats, error) {
 	reader, ok := r.source.(providerLocalStatsPairSource)
@@ -41,14 +49,6 @@ func (r providerLocalStats) GetProviderWindowStats(ctx context.Context, id int64
 func (r providerLocalStats) GetProviderTodayStats(ctx context.Context, id int64) (*provider.WindowStats, error) {
 	v, err := r.source.GetProviderTodayStats(ctx, id)
 	return localWindowStats(v), err
-}
-
-type providerLocalStatsBatchSource interface {
-	GetProviderWindowStatsBatch(context.Context, []int64, time.Time) (map[int64]*usage.ProviderStats, error)
-}
-type providerLocalStatsBatch struct {
-	providerLocalStats
-	batch providerLocalStatsBatchSource
 }
 
 func (r providerLocalStatsBatch) GetProviderWindowStatsBatch(ctx context.Context, ids []int64, start time.Time) (map[int64]*provider.WindowStats, error) {

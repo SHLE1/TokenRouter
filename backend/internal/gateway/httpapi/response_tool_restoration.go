@@ -18,6 +18,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const responseToolsContextKey = "gateway_response_tools"
+
+// 初始化只保护每个 HTTP 请求的状态指针发布，工具内容仍由请求自己持有。
+var responseToolsInit sync.Mutex
+
 func SetCodexToolNameReverse(c *gin.Context, reverse map[string]string) {
 	if c == nil {
 		return
@@ -163,11 +168,6 @@ func RestoreOpenAIResponsesNamespacePayload(c *gin.Context, payload []byte) ([]b
 	}
 	return payload, nil
 }
-
-const responseToolsContextKey = "gateway_response_tools"
-
-// 初始化只保护每个 HTTP 请求的状态指针发布，工具内容仍由请求自己持有。
-var responseToolsInit sync.Mutex
 
 func responseTools(c *gin.Context, create bool) *requeststate.ResponseTools {
 	if c == nil {

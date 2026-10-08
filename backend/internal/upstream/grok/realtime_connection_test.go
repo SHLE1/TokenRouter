@@ -23,6 +23,11 @@ type testWSFrames struct {
 	closed *atomic.Int64
 }
 
+type testDownFrames struct {
+	input  chan []byte
+	output chan []byte
+}
+
 func (f testWSFrames) ReadFrame(ctx context.Context) (upstream.FrameKind, []byte, error) {
 	kind, data, err := f.conn.Read(ctx)
 	return upstream.FrameKind(kind), data, err
@@ -32,11 +37,6 @@ func (f testWSFrames) WriteFrame(ctx context.Context, kind upstream.FrameKind, d
 	return f.conn.Write(ctx, websocket.MessageType(kind), data)
 }
 func (f testWSFrames) Close() error { f.closed.Add(1); return f.conn.CloseNow() }
-
-type testDownFrames struct {
-	input  chan []byte
-	output chan []byte
-}
 
 func (f testDownFrames) ReadFrame(ctx context.Context) (upstream.FrameKind, []byte, error) {
 	select {

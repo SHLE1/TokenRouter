@@ -11,7 +11,24 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
 )
 
+// DefaultTestModel 是提供商测试流程预选的模型。
+const DefaultTestModel = "gemini-2.0-flash"
+
 type Client struct{ BaseURL string }
+
+type (
+	// LoadCodeAssistRequest 是 Code Assist 账户加载请求。
+	LoadCodeAssistRequest  = wire.LoadCodeAssistRequest
+	LoadCodeAssistMetadata = wire.LoadCodeAssistMetadata
+	TierInfo               = wire.TierInfo
+	LoadCodeAssistResponse = wire.LoadCodeAssistResponse
+)
+
+type (
+	// OnboardUserRequest 是 Code Assist 用户开通请求。
+	OnboardUserRequest  = wire.OnboardUserRequest
+	OnboardUserResponse = wire.OnboardUserResponse
+)
 
 func NewClient() *Client { return &Client{BaseURL: GeminiCliBaseURL} }
 
@@ -128,20 +145,3 @@ func defaultOnboardUserRequest() *OnboardUserRequest {
 		},
 	}
 }
-
-type (
-	// LoadCodeAssistRequest 是 Code Assist 账户加载请求。
-	LoadCodeAssistRequest  = wire.LoadCodeAssistRequest
-	LoadCodeAssistMetadata = wire.LoadCodeAssistMetadata
-	TierInfo               = wire.TierInfo
-	LoadCodeAssistResponse = wire.LoadCodeAssistResponse
-)
-
-type (
-	// OnboardUserRequest 是 Code Assist 用户开通请求。
-	OnboardUserRequest  = wire.OnboardUserRequest
-	OnboardUserResponse = wire.OnboardUserResponse
-)
-
-// DefaultTestModel 是提供商测试流程预选的模型。
-const DefaultTestModel = "gemini-2.0-flash"

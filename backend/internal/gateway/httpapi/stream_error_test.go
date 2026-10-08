@@ -14,6 +14,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 )
 
+// 错误输出使用这三个观测接口，执行接口为 nil。
+type streamErrorBackendFixture struct{ OpenAITextBackend }
+
 func newGinContextForEndpoint(t *testing.T, endpoint string) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
 
@@ -233,9 +236,6 @@ func TestMapResponsesErrorCode(t *testing.T) {
 		assert.Equal(t, tc.out, MapResponsesErrorCode(tc.in), "in=%q", tc.in)
 	}
 }
-
-// 错误输出使用这三个观测接口，执行接口为 nil。
-type streamErrorBackendFixture struct{ OpenAITextBackend }
 
 func (streamErrorBackendFixture) StopCompact(c *gin.Context) bool {
 	return StopOpenAICompactSSEKeepaliveCommitted(c)

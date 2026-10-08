@@ -18,6 +18,44 @@ import (
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
+// parallelCreativeQueue 通过内存通道为并行 worker 提供任务。
+type parallelCreativeQueue struct {
+	ready chan string
+}
+
+// parallelCreativeRunRepo 为并行测试保护 fake 仓储的 map 访问。
+type parallelCreativeRunRepo struct {
+	*creativeFakeRunRepo
+	mu sync.Mutex
+}
+
+// parallelCreativeTransient 保护并行结算写入的输出 map。
+type parallelCreativeTransient struct {
+	*creativeFakeTransient
+	mu sync.Mutex
+}
+
+// parallelCreativeBilling 保护并行结算更新的 fake 计数器。
+type parallelCreativeBilling struct {
+	*creativeFakeBillingRepo
+	mu sync.Mutex
+}
+
+// parallelCreativeUserCache 以原子计数模拟用户并发槽位。
+type parallelCreativeUserCache struct {
+	creativeUserCacheFixture
+	active atomic.Int64
+}
+
+// overlappingCreativeExecutor 在两个 platform 调用同时进入时通知测试，然后等待统一放行。
+type overlappingCreativeExecutor struct {
+	active      atomic.Int64
+	overlapped  chan struct{}
+	overlapOnce sync.Once
+	release     chan struct{}
+	releaseOnce sync.Once
+}
+
 // TestCreativeWorkerRuntimeWorkerCount 检查 worker 数量默认值和正数热更新。
 func TestCreativeWorkerRuntimeWorkerCount(t *testing.T) {
 	runtime := newCreativeRuntimeFixture(nil, nil, &config.Config{})
@@ -185,11 +223,6 @@ func bindCreativeRepoFixture(public *creative.Public, repo creative.CreativeRunR
 	public.Results.Repo = repo
 }
 
-// parallelCreativeQueue 通过内存通道为并行 worker 提供任务。
-type parallelCreativeQueue struct {
-	ready chan string
-}
-
 func (q *parallelCreativeQueue) Enqueue(_ context.Context, runID string) error {
 	q.ready <- runID
 	return nil
@@ -228,12 +261,6 @@ func (q *parallelCreativeQueue) RecoverStaleActive(context.Context, time.Duratio
 
 func (q *parallelCreativeQueue) TryAcquireJobLock(context.Context, string, time.Duration) (creative.CreativeRunJobLock, bool, error) {
 	return &creativeFakeJobLock{}, true, nil
-}
-
-// parallelCreativeRunRepo 为并行测试保护 fake 仓储的 map 访问。
-type parallelCreativeRunRepo struct {
-	*creativeFakeRunRepo
-	mu sync.Mutex
 }
 
 func (r *parallelCreativeRunRepo) GetCreativeRunByRunID(ctx context.Context, runID string) (*creative.CreativeRun, error) {
@@ -280,34 +307,16 @@ func (r *parallelCreativeRunRepo) ListCreativeRunOutputs(ctx context.Context, ru
 	return cloneCreativeParallelValue(v), nil
 }
 
-// parallelCreativeTransient 保护并行结算写入的输出 map。
-type parallelCreativeTransient struct {
-	*creativeFakeTransient
-	mu sync.Mutex
-}
-
 func (s *parallelCreativeTransient) SaveOutput(ctx context.Context, runID string, index int, data []byte, ttl time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.creativeFakeTransient.SaveOutput(ctx, runID, index, data, ttl)
 }
 
-// parallelCreativeBilling 保护并行结算更新的 fake 计数器。
-type parallelCreativeBilling struct {
-	*creativeFakeBillingRepo
-	mu sync.Mutex
-}
-
 func (r *parallelCreativeBilling) Capture(ctx context.Context, cmd *billingcore.TaskFundsCommand) (*billingcore.TaskFundsResult, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.creativeFakeBillingRepo.Capture(ctx, cmd)
-}
-
-// parallelCreativeUserCache 以原子计数模拟用户并发槽位。
-type parallelCreativeUserCache struct {
-	creativeUserCacheFixture
-	active atomic.Int64
 }
 
 func (c *parallelCreativeUserCache) AcquireUserSlot(_ context.Context, _ int64, maxConcurrency int, _ string) (bool, error) {
@@ -325,15 +334,6 @@ func (c *parallelCreativeUserCache) AcquireUserSlot(_ context.Context, _ int64, 
 func (c *parallelCreativeUserCache) ReleaseUserSlot(context.Context, int64, string) error {
 	c.active.Add(-1)
 	return nil
-}
-
-// overlappingCreativeExecutor 在两个 platform 调用同时进入时通知测试，然后等待统一放行。
-type overlappingCreativeExecutor struct {
-	active      atomic.Int64
-	overlapped  chan struct{}
-	overlapOnce sync.Once
-	release     chan struct{}
-	releaseOnce sync.Once
 }
 
 func (e *overlappingCreativeExecutor) Prepare(_ context.Context, run creative.CreativeRun) (*creative.CreativeExecution, error) {

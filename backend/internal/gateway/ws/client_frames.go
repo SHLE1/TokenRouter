@@ -35,6 +35,12 @@ type policyFrameConn struct {
 	onBlock     func(blocked *PolicyBlocked)
 }
 
+// TurnActivity 通过同一个原子标记协调终态提交和下一轮空闲等待。
+type TurnActivity struct {
+	Waiting *atomic.Bool
+	Started chan struct{}
+}
+
 func (c *policyFrameConn) ReadFrame(ctx context.Context) (int, []byte, error) {
 	if c == nil || c.inner == nil {
 		return TextFrame, nil, c.closedError
@@ -164,12 +170,6 @@ func (c *clientFrameConn) Close() error {
 // NewPolicyFrames 组合同步入站/出站过滤，供 HTTP 与协议 Adapter 复用。
 func NewPolicyFrames(inner FrameConn, filter func(int, []byte) ([]byte, *PolicyBlocked, error), writeFilter func(int, []byte) ([]byte, error), onBlock func(*PolicyBlocked), closeError func(int, string, error) error, closedError error) FrameConn {
 	return &policyFrameConn{inner: inner, filter: filter, writeFilter: writeFilter, onBlock: onBlock, closeError: closeError, closedError: closedError}
-}
-
-// TurnActivity 通过同一个原子标记协调终态提交和下一轮空闲等待。
-type TurnActivity struct {
-	Waiting *atomic.Bool
-	Started chan struct{}
 }
 
 func (a TurnActivity) MarkStarted() { a.Waiting.Store(false) }

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
@@ -18,7 +19,7 @@ import (
 
 func newCyberBlockTestCtx(headers map[string]string, body string) (*gin.Context, []byte) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	req := httptest.NewRequest("POST", "/openai/v1/responses", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/openai/v1/responses", strings.NewReader(body))
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}

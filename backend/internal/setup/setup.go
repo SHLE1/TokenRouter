@@ -10,22 +10,56 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/app/bootstrap"
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
+
+	"github.com/TokenFlux/TokenRouter/internal/app/bootstrap"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
-// Config paths
 const (
+	// Config paths
 	ConfigFileName          = "config.yaml"
 	InstallLockFile         = ".installed"
 	defaultUserConcurrency  = 5
 	defaultMigrationTimeout = 60 * time.Second
+
+	adminBootstrapReasonAdminExists            = "admin_exists"
+	adminBootstrapReasonUsersExistWithoutAdmin = "users_exist_without_admin"
 )
+
+// SetupConfig 保存初始设置所需的配置。
+type SetupConfig struct {
+	Database                DatabaseConfig `json:"database" yaml:"database"`
+	Redis                   RedisConfig    `json:"redis" yaml:"redis"`
+	Admin                   AdminConfig    `json:"admin" yaml:"-"` // 不写入配置文件。
+	Server                  ServerConfig   `json:"server" yaml:"server"`
+	JWT                     JWTConfig      `json:"jwt" yaml:"jwt"`
+	Timezone                string         `json:"timezone" yaml:"timezone"` // 例如 "Asia/Shanghai" 或 "UTC"。
+	MigrationTimeoutSeconds int            `json:"migration_timeout_seconds" yaml:"migration_timeout_seconds,omitempty"`
+}
+
+type DatabaseConfig = bootstrap.SetupDatabaseConfig
+
+type RedisConfig = bootstrap.SetupRedisConfig
+
+type AdminConfig struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type ServerConfig struct {
+	Host string `json:"host" yaml:"host"`
+	Port int    `json:"port" yaml:"port"`
+	Mode string `json:"mode" yaml:"mode"`
+}
+
+type JWTConfig struct {
+	Secret     string `json:"secret" yaml:"secret"`
+	ExpireHour int    `json:"expire_hour" yaml:"expire_hour"`
+}
 
 // setupDefaultAdminConcurrency 使用统一的首次管理员并发默认值。
 func setupDefaultAdminConcurrency() int {
@@ -65,42 +99,6 @@ func GetConfigFilePath() string {
 func GetInstallLockPath() string {
 	return GetDataDir() + "/" + InstallLockFile
 }
-
-// SetupConfig 保存初始设置所需的配置。
-type SetupConfig struct {
-	Database                DatabaseConfig `json:"database" yaml:"database"`
-	Redis                   RedisConfig    `json:"redis" yaml:"redis"`
-	Admin                   AdminConfig    `json:"admin" yaml:"-"` // 不写入配置文件。
-	Server                  ServerConfig   `json:"server" yaml:"server"`
-	JWT                     JWTConfig      `json:"jwt" yaml:"jwt"`
-	Timezone                string         `json:"timezone" yaml:"timezone"` // 例如 "Asia/Shanghai" 或 "UTC"。
-	MigrationTimeoutSeconds int            `json:"migration_timeout_seconds" yaml:"migration_timeout_seconds,omitempty"`
-}
-
-type DatabaseConfig = bootstrap.SetupDatabaseConfig
-
-type RedisConfig = bootstrap.SetupRedisConfig
-
-type AdminConfig struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type ServerConfig struct {
-	Host string `json:"host" yaml:"host"`
-	Port int    `json:"port" yaml:"port"`
-	Mode string `json:"mode" yaml:"mode"`
-}
-
-type JWTConfig struct {
-	Secret     string `json:"secret" yaml:"secret"`
-	ExpireHour int    `json:"expire_hour" yaml:"expire_hour"`
-}
-
-const (
-	adminBootstrapReasonAdminExists            = "admin_exists"
-	adminBootstrapReasonUsersExistWithoutAdmin = "users_exist_without_admin"
-)
 
 // skipSetupEnabled 解析显式跳过首次安装向导的环境开关。
 func skipSetupEnabled() bool {

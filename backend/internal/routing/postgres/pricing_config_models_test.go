@@ -15,6 +15,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+var configPricingTimeColumns = []string{
+	"id", "pricing_config_id", "models", "billing_mode", "price_multiplier", "fast_mode_multiplier", "fast_multiplier", "flex_multiplier", "max_reasoning_effort_multiplier",
+	"input_price", "output_price", "cache_write_price", "cache_write_1h_price", "cache_read_price", "image_input_price", "image_output_price",
+	"per_request_price", "time_pricing", "created_at", "updated_at",
+}
+
 func TestEscapeLike(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -152,12 +158,6 @@ func TestConfigPricingTimeCreateWritesJSON(t *testing.T) {
 
 	require.NoError(t, repo.CreateModelPricing(context.Background(), pricing))
 	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-var configPricingTimeColumns = []string{
-	"id", "pricing_config_id", "models", "billing_mode", "price_multiplier", "fast_mode_multiplier", "fast_multiplier", "flex_multiplier", "max_reasoning_effort_multiplier",
-	"input_price", "output_price", "cache_write_price", "cache_write_1h_price", "cache_read_price", "image_input_price", "image_output_price",
-	"per_request_price", "time_pricing", "created_at", "updated_at",
 }
 
 func newConfigPricingTimeRepo(t *testing.T) (*PricingConfigStore, sqlmock.Sqlmock) {

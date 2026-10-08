@@ -29,6 +29,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// openAIRawStreamDisconnectedWriter 模拟客户端断开，Write 和 WriteString 均返回错误。
+// 直转路径调用 WriteString，两个方法分别覆盖对应写入。
+type openAIRawStreamDisconnectedWriter struct {
+	gin.ResponseWriter
+}
+
 // newExecutionReadersFixture 测试读取器共享同一设置存储。
 func newExecutionReadersFixture(repo settings.Repository, _ *wsFixtureOptions) *gatewayprovider.RuntimeReaders {
 	if repo != nil {
@@ -631,12 +637,6 @@ func TestForwardAsRawChatCompletions_MissingDoneWithFinishReasonStillSucceeds(t 
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Contains(t, rec.Body.String(), `"finish_reason":"stop"`)
-}
-
-// openAIRawStreamDisconnectedWriter 模拟客户端断开，Write 和 WriteString 均返回错误。
-// 直转路径调用 WriteString，两个方法分别覆盖对应写入。
-type openAIRawStreamDisconnectedWriter struct {
-	gin.ResponseWriter
 }
 
 func (w *openAIRawStreamDisconnectedWriter) Write([]byte) (int, error) {

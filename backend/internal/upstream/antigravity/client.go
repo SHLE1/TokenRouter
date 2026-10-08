@@ -19,11 +19,69 @@ import (
 	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
 )
 
+const (
+	// proxyDialTimeout 代理 TCP 连接超时（含代理握手），代理不通时快速失败
+	proxyDialTimeout = 5 * time.Second
+	// proxyTLSHandshakeTimeout 代理 TLS 握手超时
+	proxyTLSHandshakeTimeout = 5 * time.Second
+	// clientTimeout 整体请求超时（含连接、发送、等待响应、读取 body）
+	clientTimeout = 10 * time.Second
+
+	// ── Privacy API ──────────────────────────────────────────────────────
+
+	// privacyBaseURL 隐私设置 API 仅使用 daily 端点（与 Antigravity 客户端行为一致）
+	privacyBaseURL = antigravityDailyBaseURL
+)
+
 // ForbiddenError 表示上游返回 403 Forbidden
 type ForbiddenError struct {
 	StatusCode int
 	Body       string
 }
+
+// Client Antigravity API 客户端
+type Client struct {
+	httpClient *http.Client
+}
+
+type AvailableCredit = googlewire.AntigravityAvailableCredit
+
+type DeprecatedModelInfo = googlewire.AntigravityDeprecatedModelInfo
+
+type FetchAvailableModelsRequest = googlewire.AntigravityFetchAvailableModelsRequest
+
+type FetchAvailableModelsResponse = googlewire.AntigravityFetchAvailableModelsResponse
+
+type FetchUserInfoRequest = googlewire.AntigravityFetchUserInfoRequest
+
+type FetchUserInfoResponse = googlewire.AntigravityFetchUserInfoResponse
+
+type LoadCodeAssistRequest = googlewire.AntigravityLoadCodeAssistRequest
+
+type LoadCodeAssistResponse = googlewire.AntigravityLoadCodeAssistResponse
+
+type ModelInfo = googlewire.AntigravityModelInfo
+
+type ModelQuotaInfo = googlewire.AntigravityModelQuotaInfo
+
+type OnboardUserRequest = googlewire.AntigravityOnboardUserRequest
+
+type OnboardUserResponse = googlewire.AntigravityOnboardUserResponse
+
+type PaidTierInfo = googlewire.AntigravityPaidTierInfo
+
+type SetUserSettingsRequest = googlewire.AntigravitySetUserSettingsRequest
+
+type SetUserSettingsResponse = googlewire.AntigravitySetUserSettingsResponse
+
+type TierInfo = googlewire.AntigravityTierInfo
+
+type TokenResponse = googlewire.AntigravityTokenResponse
+
+type UserInfo = googlewire.AntigravityUserInfo
+
+// ClientOptions 接受已经装配的技术客户端，不改变默认代理或超时策略。
+type ClientOptions struct{ HTTPClient *http.Client }
 
 func (e *ForbiddenError) Error() string {
 	return fmt.Sprintf("fetchAvailableModels failed (HTTP %d): %s", e.StatusCode, e.Body)
@@ -56,20 +114,6 @@ func NewAPIRequestWithURL(ctx context.Context, baseURL, action, accessToken stri
 func NewAPIRequest(ctx context.Context, action, accessToken string, body []byte) (*http.Request, error) {
 	return NewAPIRequestWithURL(ctx, BaseURL, action, accessToken, body)
 }
-
-// Client Antigravity API 客户端
-type Client struct {
-	httpClient *http.Client
-}
-
-const (
-	// proxyDialTimeout 代理 TCP 连接超时（含代理握手），代理不通时快速失败
-	proxyDialTimeout = 5 * time.Second
-	// proxyTLSHandshakeTimeout 代理 TLS 握手超时
-	proxyTLSHandshakeTimeout = 5 * time.Second
-	// clientTimeout 整体请求超时（含连接、发送、等待响应、读取 body）
-	clientTimeout = 10 * time.Second
-)
 
 func NewClient(proxyURL string) (*Client, error) {
 	client := &http.Client{
@@ -130,6 +174,18 @@ func shouldFallbackToNextURL(err error, statusCode int) bool {
 		statusCode == http.StatusRequestTimeout ||
 		statusCode == http.StatusNotFound ||
 		statusCode >= 500
+}
+
+// NewClientWithOptions 接收传输客户端，未提供时创建默认客户端。
+func NewClientWithOptions(proxyURL string, options ClientOptions) (*Client, error) {
+	client, err := NewClient(proxyURL)
+	if err != nil {
+		return nil, err
+	}
+	if options.HTTPClient != nil {
+		client.httpClient = options.HTTPClient
+	}
+	return client, nil
 }
 
 // ExchangeCode 用 authorization code 交换 token
@@ -552,11 +608,6 @@ func isAllowedFetchAvailableModelsRedirectHost(host string) bool {
 	return false
 }
 
-// ── Privacy API ──────────────────────────────────────────────────────
-
-// privacyBaseURL 隐私设置 API 仅使用 daily 端点（与 Antigravity 客户端行为一致）
-const privacyBaseURL = antigravityDailyBaseURL
-
 // SetUserSettings 调用 setUserSettings API 设置用户隐私，返回解析后的响应
 func (c *Client) SetUserSettings(ctx context.Context, accessToken string) (*SetUserSettingsResponse, error) {
 	// 发送空 user_settings 以清除隐私设置
@@ -642,55 +693,4 @@ func (c *Client) FetchUserInfo(ctx context.Context, accessToken, projectID strin
 	}
 
 	return &result, nil
-}
-
-type AvailableCredit = googlewire.AntigravityAvailableCredit
-
-type DeprecatedModelInfo = googlewire.AntigravityDeprecatedModelInfo
-
-type FetchAvailableModelsRequest = googlewire.AntigravityFetchAvailableModelsRequest
-
-type FetchAvailableModelsResponse = googlewire.AntigravityFetchAvailableModelsResponse
-
-type FetchUserInfoRequest = googlewire.AntigravityFetchUserInfoRequest
-
-type FetchUserInfoResponse = googlewire.AntigravityFetchUserInfoResponse
-
-type LoadCodeAssistRequest = googlewire.AntigravityLoadCodeAssistRequest
-
-type LoadCodeAssistResponse = googlewire.AntigravityLoadCodeAssistResponse
-
-type ModelInfo = googlewire.AntigravityModelInfo
-
-type ModelQuotaInfo = googlewire.AntigravityModelQuotaInfo
-
-type OnboardUserRequest = googlewire.AntigravityOnboardUserRequest
-
-type OnboardUserResponse = googlewire.AntigravityOnboardUserResponse
-
-type PaidTierInfo = googlewire.AntigravityPaidTierInfo
-
-type SetUserSettingsRequest = googlewire.AntigravitySetUserSettingsRequest
-
-type SetUserSettingsResponse = googlewire.AntigravitySetUserSettingsResponse
-
-type TierInfo = googlewire.AntigravityTierInfo
-
-type TokenResponse = googlewire.AntigravityTokenResponse
-
-type UserInfo = googlewire.AntigravityUserInfo
-
-// ClientOptions 接受已经装配的技术客户端，不改变默认代理或超时策略。
-type ClientOptions struct{ HTTPClient *http.Client }
-
-// NewClientWithOptions 接收传输客户端，未提供时创建默认客户端。
-func NewClientWithOptions(proxyURL string, options ClientOptions) (*Client, error) {
-	client, err := NewClient(proxyURL)
-	if err != nil {
-		return nil, err
-	}
-	if options.HTTPClient != nil {
-		client.httpClient = options.HTTPClient
-	}
-	return client, nil
 }

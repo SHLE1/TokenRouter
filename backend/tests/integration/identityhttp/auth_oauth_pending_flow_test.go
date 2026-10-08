@@ -29,6 +29,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 )
 
+type oauthPendingFlowAvatarRecord struct {
+	StorageProvider string
+	URL             string
+}
+
 func TestApplySuggestedProfileToCompletionResponse(t *testing.T) {
 	payload := map[string]any{
 		"access_token": "token",
@@ -1956,7 +1961,7 @@ func TestBindOIDCOAuthLoginAppliesFirstBindGrantOnce(t *testing.T) {
 	require.Equal(t, 5, storedUser.Concurrency)
 	require.Zero(t, storedUser.TotalRecharged)
 	require.Len(t, defaultSubAssigner.calls, 1)
-	require.Equal(t, int64(existingUser.ID), defaultSubAssigner.calls[0].UserID)
+	require.Equal(t, existingUser.ID, defaultSubAssigner.calls[0].UserID)
 	require.Equal(t, int64(101), defaultSubAssigner.calls[0].PlanID)
 	require.Equal(t, 1, countProviderGrantRecords(t, client, existingUser.ID, "oidc", "first_bind"))
 
@@ -2237,11 +2242,6 @@ func TestLogin2FACompletesPendingOAuthBindAndConsumesSession(t *testing.T) {
 	require.Equal(t, 6, storedUser.Concurrency)
 	require.Equal(t, 1, countProviderGrantRecords(t, client, existingUser.ID, "oidc", "first_bind"))
 	require.Empty(t, defaultSubAssigner.calls)
-}
-
-type oauthPendingFlowAvatarRecord struct {
-	StorageProvider string
-	URL             string
 }
 
 func loadUserAvatarRecord(t *testing.T, client *dbent.Client, userID int64) *oauthPendingFlowAvatarRecord {

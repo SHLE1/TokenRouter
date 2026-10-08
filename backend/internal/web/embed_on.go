@@ -20,10 +20,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
-	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 )
 
 const (
@@ -31,8 +31,13 @@ const (
 	NonceHTMLPlaceholder = "__CSP_NONCE_VALUE__"
 )
 
-//go:embed all:dist
-var frontendFS embed.FS
+var (
+	//go:embed all:dist
+	frontendFS embed.FS
+
+	// htmlLanguagePattern 匹配构建入口的语言属性。
+	htmlLanguagePattern = regexp.MustCompile(`<html(?:\s+lang="[^"]*")?`)
+)
 
 // PublicSettingsProvider is an interface to fetch public settings
 type PublicSettingsProvider interface {
@@ -485,6 +490,3 @@ func HasEmbeddedFrontend() bool {
 	_, err := frontendFS.ReadFile("dist/index.html")
 	return err == nil
 }
-
-// htmlLanguagePattern 匹配构建入口的语言属性。
-var htmlLanguagePattern = regexp.MustCompile(`<html(?:\s+lang="[^"]*")?`)

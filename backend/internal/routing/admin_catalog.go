@@ -4,9 +4,6 @@ import (
 	"sort"
 )
 
-// AdminCatalogKind 标识管理目录的数据来源。
-type AdminCatalogKind string
-
 const (
 	CatalogClaude      AdminCatalogKind = "claude"
 	CatalogOpenAI      AdminCatalogKind = "openai"
@@ -16,6 +13,9 @@ const (
 	CatalogQoder       AdminCatalogKind = "qoder"
 	CatalogGrok        AdminCatalogKind = "grok"
 )
+
+// AdminCatalogKind 标识管理目录的数据来源。
+type AdminCatalogKind string
 
 // AdminCatalogModel 保留各目录的值，HTTP 按原 wire 变体输出。
 type AdminCatalogModel struct {

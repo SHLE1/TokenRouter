@@ -23,6 +23,15 @@ type authInvalidationRepoStub struct {
 	statsErr   error
 }
 
+type authInvalidationCacheStub struct {
+	mu          sync.Mutex
+	deleteFn    func(context.Context, string) error
+	publishFn   func(context.Context, string) error
+	subscribeFn func(context.Context, func(string)) error
+	deleted     []string
+	published   []string
+}
+
 func (r *authInvalidationRepoStub) Claim(_ context.Context, _ string, limit int, _ time.Duration) ([]AuthCacheInvalidationEvent, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -54,15 +63,6 @@ func (r *authInvalidationRepoStub) RetryClaimed(_ context.Context, id int64, _ s
 
 func (r *authInvalidationRepoStub) Stats(context.Context) (AuthCacheInvalidationOutboxStats, error) {
 	return r.stats, r.statsErr
-}
-
-type authInvalidationCacheStub struct {
-	mu          sync.Mutex
-	deleteFn    func(context.Context, string) error
-	publishFn   func(context.Context, string) error
-	subscribeFn func(context.Context, func(string)) error
-	deleted     []string
-	published   []string
 }
 
 func (*authInvalidationCacheStub) GetCreateAttemptCount(context.Context, int64) (int, error) {

@@ -6,9 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/config"
 )
 
 // 测试辅助函数。
@@ -125,7 +126,7 @@ func TestAESEncryptor_Encrypt_NonceRandomness(t *testing.T) {
 	plaintext := "same plaintext for every iteration"
 
 	seen := make(map[string]struct{}, iterations)
-	for i := 0; i < iterations; i++ {
+	for range iterations {
 		ct, err := enc.Encrypt(plaintext)
 		require.NoError(t, err)
 		seen[ct] = struct{}{}

@@ -16,6 +16,12 @@ const (
 	openAIResponsesEmptyCompletedMessage = "OpenAI upstream returned an empty response.completed stream with no output and no usage"
 )
 
+// UpstreamErrorProvider 只传递已选提供商的安全观测字段。
+type UpstreamErrorProvider struct {
+	ID             int64
+	Name, Platform string
+}
+
 func NewOpenAISilentRefusalFailoverError(c *gin.Context, provider *UpstreamErrorProvider, upstreamRequestID string) *forwardcore.UpstreamFailoverError {
 	providerID := int64(0)
 	providerName := ""
@@ -78,10 +84,4 @@ func NewOpenAIResponsesEmptyCompletedFailoverError(c *gin.Context, provider *Ups
 		ResponseBody:    forwardcore.OpenAISilentRefusalErrorBody(),
 		ResponseHeaders: headers,
 	}
-}
-
-// UpstreamErrorProvider 只传递已选提供商的安全观测字段。
-type UpstreamErrorProvider struct {
-	ID             int64
-	Name, Platform string
 }

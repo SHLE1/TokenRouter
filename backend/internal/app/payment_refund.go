@@ -24,6 +24,11 @@ import (
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 )
 
+type paymentRefundRights struct {
+	balances      *billingpostgres.BalanceStore
+	subscriptions *billing.SubscriptionService
+}
+
 func providePaymentRuntime(client *dbent.Client, registry *payment.Registry, balancer payment.LoadBalancer, redeem *billing.RedeemService, subscriptions *billing.SubscriptionService, affiliate *promotion.AffiliateService, notification *notificationcore.NotificationEmailService, instances *paymentpostgres.InstanceStore, routingGroups *routingpostgres.GroupStore, identityUsers *identitypostgres.UserStore, coreConfig *payment.ConfigService, key payment.EncryptionKey, settings *identity.OAuthSettings, tasks *lifecycle.Tasks, calendar timezone.Calendar) *payment.Runtime {
 	bindings := payment.NewProviderBindings(instances, registry, balancer, payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider, Warn: slog.Warn}, false)
 	store := paymentpostgres.NewRefundStore(client, func(tx *dbent.Tx) payment.RefundRights {
@@ -108,11 +113,6 @@ func providePaymentRuntime(client *dbent.Client, registry *payment.Registry, bal
 	})
 	orderLifecycle := payment.NewOrderLifecycle(fulfillment, resume, func(ctx context.Context) func() { return timing.ObserveDependency(ctx, "payment") })
 	return &payment.Runtime{Checkout: checkout, OrderQueries: queries, RefundWorkflow: workflow, OrderLifecycle: orderLifecycle, ProviderBindings: bindings}
-}
-
-type paymentRefundRights struct {
-	balances      *billingpostgres.BalanceStore
-	subscriptions *billing.SubscriptionService
 }
 
 func (p paymentRefundRights) DeductBalance(ctx context.Context, id int64, amount float64) (float64, error) {

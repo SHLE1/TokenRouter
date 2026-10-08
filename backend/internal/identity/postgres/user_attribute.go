@@ -14,6 +14,11 @@ type userAttributeDefinitionRepository struct {
 	client *dbent.Client
 }
 
+// UserAttributeValueRepository implementation
+type userAttributeValueRepository struct {
+	client *dbent.Client
+}
+
 // NewUserAttributeDefinitionRepository creates a new repository instance
 func NewUserAttributeDefinitionRepository(client *dbent.Client) identity.UserAttributeDefinitionRepository {
 	return &userAttributeDefinitionRepository{client: client}
@@ -142,11 +147,6 @@ func (r *userAttributeDefinitionRepository) ExistsByKey(ctx context.Context, key
 	return client.UserAttributeDefinition.Query().
 		Where(userattributedefinition.KeyEQ(key)).
 		Exist(ctx)
-}
-
-// UserAttributeValueRepository implementation
-type userAttributeValueRepository struct {
-	client *dbent.Client
 }
 
 // NewUserAttributeValueRepository creates a new repository instance

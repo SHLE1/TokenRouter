@@ -20,6 +20,13 @@ import (
 	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
+type ProviderGroupQueryOptions struct {
+	status               string
+	schedulable          bool
+	ignoreTransientState bool
+	platforms            []string // 允许的多个平台，空切片表示不进行平台过滤
+}
+
 func (r *ProviderStore) GetByCRSAccountID(ctx context.Context, crsProviderID string) (*acctcore.Record, error) {
 	if crsProviderID == "" {
 		return nil, nil
@@ -672,13 +679,6 @@ func (r *ProviderStore) QueryProvidersByGroup(ctx context.Context, groupID int64
 	}
 
 	return r.RecordsFromEntities(ctx, providers)
-}
-
-type ProviderGroupQueryOptions struct {
-	status               string
-	schedulable          bool
-	ignoreTransientState bool
-	platforms            []string // 允许的多个平台，空切片表示不进行平台过滤
 }
 
 func ProviderListOrder(params pagination.PaginationParams) []func(*entsql.Selector) {

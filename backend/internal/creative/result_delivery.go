@@ -69,7 +69,7 @@ func (d ResultDelivery) Record(ctx context.Context, id string, providerID int64,
 			continue
 		}
 		var saved bool
-		for attempt := 0; attempt < 3; attempt++ {
+		for attempt := range 3 {
 			if saveCtx.Err() != nil {
 				break
 			}

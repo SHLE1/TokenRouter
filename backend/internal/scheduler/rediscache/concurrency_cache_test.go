@@ -30,7 +30,6 @@ func BenchmarkProviderConcurrency(b *testing.B) {
 	ctx := context.Background()
 
 	for _, size := range []int{10, 100, 1000} {
-		size := size
 		b.Run(fmt.Sprintf("zset/slots=%d", size), func(b *testing.B) {
 			providerID := time.Now().UnixNano()
 			key := providerSlotKey(providerID)
@@ -38,7 +37,7 @@ func BenchmarkProviderConcurrency(b *testing.B) {
 			b.StopTimer()
 			members := make([]redis.Z, 0, size)
 			now := float64(time.Now().Unix())
-			for i := 0; i < size; i++ {
+			for i := range size {
 				members = append(members, redis.Z{
 					Score:  now,
 					Member: fmt.Sprintf("req_%d", i),
@@ -53,7 +52,7 @@ func BenchmarkProviderConcurrency(b *testing.B) {
 			b.StartTimer()
 
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				if _, err := cache.GetProviderConcurrency(ctx, providerID); err != nil {
 					b.Fatalf("获取并发数量失败: %v", err)
 				}
@@ -72,7 +71,7 @@ func BenchmarkProviderConcurrency(b *testing.B) {
 
 			b.StopTimer()
 			pipe := rdb.Pipeline()
-			for i := 0; i < size; i++ {
+			for i := range size {
 				key := fmt.Sprintf("%s%d:req_%d", providerSlotKeyPrefix, providerID, i)
 				keys = append(keys, key)
 				pipe.Set(ctx, key, "1", benchSlotTTL)
@@ -83,7 +82,7 @@ func BenchmarkProviderConcurrency(b *testing.B) {
 			b.StartTimer()
 
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				if _, err := scanSlotCount(ctx, rdb, pattern); err != nil {
 					b.Fatalf("SCAN 计数失败: %v", err)
 				}

@@ -19,6 +19,16 @@ import (
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
+// groupAwareMockProviderRepo 嵌入 mockProviderRepoForPlatform，覆写分组隔离相关方法。
+// allProviders 保存所有提供商，分组查询按 ProviderGroups 字段过滤。
+type groupAwareMockProviderRepo struct {
+	*mockProviderRepoForPlatform
+	allProviders []gatewayprovider.
+
+		// ListSchedulableUngroupedByPlatform 仅返回未分组提供商（ProviderGroups 为空）
+		ExecutionProvider
+}
+
 func TestAdvancedSchedulerCoreSelectsNonOpenAIGroupAndMarksResult(t *testing.T) {
 	groupID := int64(42)
 	group := &routing.Group{ID: groupID, SchedulerType: routing.GroupSchedulerTypeAdvanced}
@@ -44,16 +54,6 @@ func TestAdvancedSchedulerCoreSelectsNonOpenAIGroupAndMarksResult(t *testing.T) 
 	basicSelection, err := service.newSelectionResult(basicCtx, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 102}}, true, func() {}, nil)
 	require.NoError(t, err)
 	require.False(t, basicSelection.AdvancedScheduler)
-}
-
-// groupAwareMockProviderRepo 嵌入 mockProviderRepoForPlatform，覆写分组隔离相关方法。
-// allProviders 保存所有提供商，分组查询按 ProviderGroups 字段过滤。
-type groupAwareMockProviderRepo struct {
-	*mockProviderRepoForPlatform
-	allProviders []gatewayprovider.
-
-		// ListSchedulableUngroupedByPlatform 仅返回未分组提供商（ProviderGroups 为空）
-		ExecutionProvider
 }
 
 func (m *groupAwareMockProviderRepo) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {

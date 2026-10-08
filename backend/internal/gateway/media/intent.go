@@ -27,6 +27,12 @@ type ImageToolRules struct {
 }
 type ImageIntentPolicy struct{ rules ImageToolRules }
 
+type OpenAIResponsesImageBillingConfig struct {
+	Model     string
+	SizeTier  string
+	InputSize string
+}
+
 func NewImageIntentPolicy(rules ImageToolRules) ImageIntentPolicy {
 	return ImageIntentPolicy{rules: rules}
 }
@@ -387,12 +393,6 @@ func (p ImageIntentPolicy) OpenAIAnyToolChoiceSelectsExplicitImageGeneration(cho
 		)
 	}
 	return false
-}
-
-type OpenAIResponsesImageBillingConfig struct {
-	Model     string
-	SizeTier  string
-	InputSize string
 }
 
 func (p ImageIntentPolicy) ResolveOpenAIResponsesImageBillingConfigDetailed(reqBody map[string]any, fallbackModel string) (OpenAIResponsesImageBillingConfig, error) {

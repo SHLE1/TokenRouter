@@ -20,6 +20,85 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
+// epFixedUpstream returns a fixed response for every request.
+type epFixedUpstream struct {
+	statusCode int
+	body       string
+	calls      int
+}
+
+// epProviderRepo records SetTempUnschedulable / SetError calls.
+type epProviderRepo struct {
+	acct.HealthStore
+	tempCalls   int
+	setErrCalls int
+}
+
+type epTrackingRepo struct {
+	acct.HealthStore
+	rateLimitedCalls int
+	rateLimitedID    int64
+	setErrCalls      int
+	setErrID         int64
+	tempCalls        int
+}
+
+// 保存每次模型窗口写入，用于核对原模型与家族键。
+type antigravityFamilyStoreFixture struct {
+	acct.AntigravityHealthStore
+	modelRateLimitCalls []struct{ modelKey string }
+}
+
+// 夹具记录健康状态写入，策略和供应商错误分类使用生产实现。
+type antigravityPolicyStoreFixture struct {
+	acct.HealthStore
+	tempCalls           int
+	modelRateLimitCalls []struct{ scope, modelKey string }
+}
+
+// 记录两个测试端点，检查重试期间使用同一提供商。
+type stubAntigravityUpstream struct {
+	firstBase, secondBase string
+	calls                 []string
+}
+
+// 预检查测试记录是否发送请求，成功响应使用固定报文。
+type recordingOKUpstream struct{ calls int }
+
+// stubSmartRetryCache 用于 handleSmartRetry 测试的 GatewayCache mock
+// 仅关注 DeleteSessionProviderID 的调用记录
+type stubSmartRetryCache struct {
+	session.GatewayCache // 调用未实现的方法会 panic。
+	deleteCalls          []deleteSessionCall
+}
+
+type deleteSessionCall struct {
+	groupID     int64
+	sessionHash string
+}
+
+// mockSmartRetryUpstream 用于 handleSmartRetry 测试的 mock upstream
+type mockSmartRetryUpstream struct {
+	responses      []*http.Response
+	responseBodies [][]byte // 缓存的 response body 字节（用于 repeatLast 重建）
+	errors         []error
+	callIdx        int
+	calls          []string
+	userAgents     []string
+	requestBodies  [][]byte
+	repeatLast     bool // 超出范围时重复最后一个响应
+}
+
+type antigravityRetryStoreFixture struct {
+	extraUpdateCalls []map[string]any
+	acct.AntigravityHealthStore
+	modelRateLimitCalls []struct {
+		providerID int64
+		modelKey   string
+		resetAt    time.Time
+	}
+}
+
 func TestIsCreditsExhausted_UsesAICreditsKey(t *testing.T) {
 	t.Run("无 AICredits key 则积分可用", func(t *testing.T) {
 		provider := &acct.Record{
@@ -1512,7 +1591,7 @@ func TestHandleSingleProviderRetryInPlace_AllRetriesFail(t *testing.T) {
 	// 构造 3 个 503 响应（对应 3 次原地重试）
 	var responses []*http.Response
 	var errors []error
-	for i := 0; i < antigravity.AntigravitySingleProviderSmartRetryMaxAttempts; i++ {
+	for range antigravity.AntigravitySingleProviderSmartRetryMaxAttempts {
 		responses = append(responses, &http.Response{
 			StatusCode: http.StatusServiceUnavailable,
 			Header:     http.Header{},
@@ -3253,13 +3332,6 @@ func TestAntigravityRetryLoop_SmartRetryFailed_StickySession_SwitchErrorPropagat
 	require.Equal(t, "sticky-loop-test", cache.deleteCalls[0].sessionHash)
 }
 
-// epFixedUpstream returns a fixed response for every request.
-type epFixedUpstream struct {
-	statusCode int
-	body       string
-	calls      int
-}
-
 func (u *epFixedUpstream) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
 	u.calls++
 	return &http.Response{
@@ -3271,13 +3343,6 @@ func (u *epFixedUpstream) Do(req *http.Request, proxyURL string, providerID int6
 
 func (u *epFixedUpstream) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
 	return u.Do(req, proxyURL, providerID, providerConcurrency)
-}
-
-// epProviderRepo records SetTempUnschedulable / SetError calls.
-type epProviderRepo struct {
-	acct.HealthStore
-	tempCalls   int
-	setErrCalls int
 }
 
 func (r *epProviderRepo) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, _ string) error {
@@ -3318,15 +3383,6 @@ func newRetryParams(provider *acct.Record, upstream *epFixedUpstream, handleErro
 	}
 }
 
-type epTrackingRepo struct {
-	acct.HealthStore
-	rateLimitedCalls int
-	rateLimitedID    int64
-	setErrCalls      int
-	setErrID         int64
-	tempCalls        int
-}
-
 func (r *epTrackingRepo) SetRateLimited(_ context.Context, id int64, _ time.Time) error {
 	r.rateLimitedCalls++
 	r.rateLimitedID = id
@@ -3353,22 +3409,9 @@ func (r *epTrackingRepo) SetModelRateLimit(context.Context, int64, string, time.
 	return nil
 }
 
-// 保存每次模型窗口写入，用于核对原模型与家族键。
-type antigravityFamilyStoreFixture struct {
-	acct.AntigravityHealthStore
-	modelRateLimitCalls []struct{ modelKey string }
-}
-
 func (s *antigravityFamilyStoreFixture) SetModelRateLimit(_ context.Context, _ int64, key string, _ time.Time, _ ...string) error {
 	s.modelRateLimitCalls = append(s.modelRateLimitCalls, struct{ modelKey string }{key})
 	return nil
-}
-
-// 夹具记录健康状态写入，策略和供应商错误分类使用生产实现。
-type antigravityPolicyStoreFixture struct {
-	acct.HealthStore
-	tempCalls           int
-	modelRateLimitCalls []struct{ scope, modelKey string }
 }
 
 func (s *antigravityPolicyStoreFixture) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
@@ -3389,12 +3432,6 @@ func newAntigravityPolicyFixture(store *antigravityPolicyStoreFixture, policy *a
 	return &AntigravityRetry{Policy: policy, Health: &acct.AntigravityHealth{Store: store, ModelKeys: AntigravityModelLimitKeys, Info: func(string, ...any) {}, Logf: func(string, ...any) {}}}
 }
 
-// 记录两个测试端点，检查重试期间使用同一提供商。
-type stubAntigravityUpstream struct {
-	firstBase, secondBase string
-	calls                 []string
-}
-
 func (s *stubAntigravityUpstream) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
 	url := req.URL.String()
 	s.calls = append(s.calls, url)
@@ -3404,41 +3441,14 @@ func (s *stubAntigravityUpstream) Do(req *http.Request, _ string, _ int64, _ int
 	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("ok"))}, nil
 }
 
-// 预检查测试记录是否发送请求，成功响应使用固定报文。
-type recordingOKUpstream struct{ calls int }
-
 func (r *recordingOKUpstream) Do(*http.Request, string, int64, int) (*http.Response, error) {
 	r.calls++
 	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("ok"))}, nil
 }
 
-// stubSmartRetryCache 用于 handleSmartRetry 测试的 GatewayCache mock
-// 仅关注 DeleteSessionProviderID 的调用记录
-type stubSmartRetryCache struct {
-	session.GatewayCache // 调用未实现的方法会 panic。
-	deleteCalls          []deleteSessionCall
-}
-
-type deleteSessionCall struct {
-	groupID     int64
-	sessionHash string
-}
-
 func (c *stubSmartRetryCache) DeleteSessionProviderID(_ context.Context, groupID int64, sessionHash string) error {
 	c.deleteCalls = append(c.deleteCalls, deleteSessionCall{groupID: groupID, sessionHash: sessionHash})
 	return nil
-}
-
-// mockSmartRetryUpstream 用于 handleSmartRetry 测试的 mock upstream
-type mockSmartRetryUpstream struct {
-	responses      []*http.Response
-	responseBodies [][]byte // 缓存的 response body 字节（用于 repeatLast 重建）
-	errors         []error
-	callIdx        int
-	calls          []string
-	userAgents     []string
-	requestBodies  [][]byte
-	repeatLast     bool // 超出范围时重复最后一个响应
 }
 
 func (m *mockSmartRetryUpstream) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
@@ -3501,16 +3511,6 @@ func newAntigravityRetryFixture() *AntigravityRetry {
 		BaseURL: func(v *acct.Record) string {
 			return antigravity.ResolveAntigravityForwardBaseURL("", AntigravityPaidTier(v))
 		}, BodyLimit: func() int64 { return 512 << 10 },
-	}
-}
-
-type antigravityRetryStoreFixture struct {
-	extraUpdateCalls []map[string]any
-	acct.AntigravityHealthStore
-	modelRateLimitCalls []struct {
-		providerID int64
-		modelKey   string
-		resetAt    time.Time
 	}
 }
 

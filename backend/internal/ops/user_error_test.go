@@ -2,6 +2,7 @@ package ops
 
 import (
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -96,7 +97,7 @@ func TestToUserErrorRequest_RedactsSensitiveFields(t *testing.T) {
 	if out.Category != "rate_limit" {
 		t.Errorf("category=%q", out.Category)
 	}
-	if out.StatusCode != 429 || out.InboundEndpoint != "/v1/chat/completions" || out.Platform != "openai" {
+	if out.StatusCode != http.StatusTooManyRequests || out.InboundEndpoint != "/v1/chat/completions" || out.Platform != "openai" {
 		t.Errorf("basic fields wrong: %+v", out)
 	}
 	if out.Message != "rate limit exceeded" {

@@ -15,44 +15,72 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
-// 错误定义
-// 注：ErrInsufficientBalance在redeem_service.go中定义
-// 注：ErrDailyLimitExceeded/ErrWeeklyLimitExceeded/ErrMonthlyLimitExceeded在subscription_service.go中定义
-var (
-	ErrBillingServiceUnavailable = apperror.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
-)
-
-// 缓存写入任务类型
-type cacheWriteKind int
-
 const (
 	cacheWriteSetBalance cacheWriteKind = iota
 	cacheWriteDeductBalance
 	cacheWriteUpdateRateLimitUsage
-)
 
-type cacheWriteEnqueueResult int
-
-const (
-	cacheWriteEnqueued cacheWriteEnqueueResult = iota
-	cacheWriteQueueFull
-	cacheWriteQueueClosed
-)
-
-// 异步缓存写入工作池配置
-//
-// 固定大小的工作池限制并发写入：
-// 1. 预创建 10 个 worker goroutine，避免频繁创建销毁
-// 2. 使用带缓冲的 Go 通道（1000）作为任务队列，平滑写入峰值
-// 3. 非阻塞写入，队列满时关键任务同步回退，非关键任务丢弃并告警
-// 4. 统一超时控制，避免慢操作阻塞工作池
-const (
+	// 异步缓存写入工作池配置
+	//
+	// 固定大小的工作池限制并发写入：
+	// 1. 预创建 10 个 worker goroutine，避免频繁创建销毁
+	// 2. 使用带缓冲的 Go 通道（1000）作为任务队列，平滑写入峰值
+	// 3. 非阻塞写入，队列满时关键任务同步回退，非关键任务丢弃并告警
+	// 4. 统一超时控制，避免慢操作阻塞工作池
 	cacheWriteWorkerCount     = 10              // 工作协程数量
 	cacheWriteBufferSize      = 1000            // 任务队列缓冲大小
 	cacheWriteTimeout         = 2 * time.Second // 单个写入操作超时
 	cacheWriteDropLogInterval = 5 * time.Second // 丢弃日志节流间隔
 	balanceLoadTimeout        = 3 * time.Second
 )
+
+//nolint:decorder // iota 按块内序号计数，每个枚举需要独立的 const 块。
+const (
+	cacheWriteEnqueued cacheWriteEnqueueResult = iota
+	cacheWriteQueueFull
+	cacheWriteQueueClosed
+)
+
+//nolint:decorder // iota 按块内序号计数，每个枚举需要独立的 const 块。
+const (
+	billingCircuitClosed billingCircuitBreakerState = iota
+	billingCircuitOpen
+	billingCircuitHalfOpen
+)
+
+var (
+	// 错误定义
+	// 注：ErrInsufficientBalance在redeem_service.go中定义
+	// 注：ErrDailyLimitExceeded/ErrWeeklyLimitExceeded/ErrMonthlyLimitExceeded在subscription_service.go中定义
+	ErrBillingServiceUnavailable = apperror.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
+
+	ErrAPIKeyNotFound = apperror.NotFound("API_KEY_NOT_FOUND", "api key not found")
+
+	ErrAPIKeyQuotaExhausted = apperror.TooManyRequests("API_KEY_QUOTA_EXHAUSTED", "api key quota exhausted")
+
+	ErrAPIKeyRateLimit1dExceeded = apperror.TooManyRequests("API_KEY_RATE_1D_EXCEEDED", "The API key daily limit has been reached")
+
+	ErrAPIKeyRateLimit5hExceeded = apperror.TooManyRequests("API_KEY_RATE_5H_EXCEEDED", "The API key five-hour limit has been reached")
+
+	ErrAPIKeyRateLimit7dExceeded = apperror.TooManyRequests("API_KEY_RATE_7D_EXCEEDED", "The API key seven-day limit has been reached")
+
+	ErrProviderNotFound = apperror.NotFound("PROVIDER_NOT_FOUND", "provider not found")
+
+	ErrPreferredSubscriptionInsufficient = apperror.TooManyRequests("PREFERRED_SUBSCRIPTION_EXHAUSTED", "preferred subscription has insufficient remaining quota")
+
+	ErrPreferredSubscriptionInvalid = apperror.Forbidden("PREFERRED_SUBSCRIPTION_INVALID", "preferred subscription is unavailable")
+
+	ErrUserNotFound = apperror.NotFound("USER_NOT_FOUND", "user not found")
+
+	ErrInsufficientBalance = apperror.BadRequest("INSUFFICIENT_BALANCE", "insufficient balance")
+
+	ErrPreferredSubscriptionGroup = apperror.Forbidden("PREFERRED_SUBSCRIPTION_GROUP_NOT_ALLOWED", "preferred subscription does not allow this group")
+)
+
+// 缓存写入任务类型
+type cacheWriteKind int
+
+type cacheWriteEnqueueResult int
 
 // cacheWriteTask 缓存写入任务
 type cacheWriteTask struct {
@@ -86,6 +114,32 @@ type Eligibility struct {
 	cacheWriteDropFullLastLog   int64
 	cacheWriteDropClosedCount   uint64
 	cacheWriteDropClosedLastLog int64
+}
+
+type billingCircuitBreakerState int
+
+type billingCircuitBreaker struct {
+	observer          Observe
+	mu                sync.Mutex
+	state             billingCircuitBreakerState
+	failures          int
+	openedAt          time.Time
+	failureThreshold  int
+	resetTimeout      time.Duration
+	halfOpenRequests  int
+	halfOpenRemaining int
+}
+
+func NewEligibility(cache BillingCache, users BalanceReader, keys APIKeyRateLimitLoader, options func() EligibilityOptions, observe Observe, background ...func(string, func())) *Eligibility {
+	s := &Eligibility{cache: cache, userRepo: users, apiKeyRateLimitLoader: keys, options: options, observer: observe}
+	if len(background) > 0 {
+		s.background = background[0]
+	}
+	s.circuitBreaker = newBillingCircuitBreaker(options().Billing.CircuitBreaker)
+	if s.circuitBreaker != nil {
+		s.circuitBreaker.observer = observe
+	}
+	return s
 }
 
 // Start 在应用完成绑定后启动缓存写入 worker。
@@ -127,7 +181,7 @@ func (s *Eligibility) Stop() {
 func (s *Eligibility) startCacheWriteWorkers() {
 	ch := make(chan cacheWriteTask, cacheWriteBufferSize)
 	s.cacheWriteChan = ch
-	for i := 0; i < cacheWriteWorkerCount; i++ {
+	for range cacheWriteWorkerCount {
 		s.cacheWriteWg.Add(1)
 		go s.cacheWriteWorker(ch)
 	}
@@ -629,26 +683,6 @@ func (s *Eligibility) checkBalanceEligibility(ctx context.Context, userID int64)
 	return nil
 }
 
-type billingCircuitBreakerState int
-
-const (
-	billingCircuitClosed billingCircuitBreakerState = iota
-	billingCircuitOpen
-	billingCircuitHalfOpen
-)
-
-type billingCircuitBreaker struct {
-	observer          Observe
-	mu                sync.Mutex
-	state             billingCircuitBreakerState
-	failures          int
-	openedAt          time.Time
-	failureThreshold  int
-	resetTimeout      time.Duration
-	halfOpenRequests  int
-	halfOpenRemaining int
-}
-
 func newBillingCircuitBreaker(cfg CircuitBreakerOptions) *billingCircuitBreaker {
 	if !cfg.Enabled {
 		return nil
@@ -761,18 +795,6 @@ func circuitStateString(state billingCircuitBreakerState) string {
 	}
 }
 
-func NewEligibility(cache BillingCache, users BalanceReader, keys APIKeyRateLimitLoader, options func() EligibilityOptions, observe Observe, background ...func(string, func())) *Eligibility {
-	s := &Eligibility{cache: cache, userRepo: users, apiKeyRateLimitLoader: keys, options: options, observer: observe}
-	if len(background) > 0 {
-		s.background = background[0]
-	}
-	s.circuitBreaker = newBillingCircuitBreaker(options().Billing.CircuitBreaker)
-	if s.circuitBreaker != nil {
-		s.circuitBreaker.observer = observe
-	}
-	return s
-}
-
 // Check 只执行资金准入；RPM 仍由旧请求编排在资金检查后决定。
 func (s *Eligibility) Check(ctx context.Context, input CheckInput) error {
 	return s.CheckBillingEligibility(ctx, input.Payer, input.Key, input.Group, input.Subscription, input.Platform)
@@ -793,25 +815,3 @@ func (s *Eligibility) dateRuntime() DateRuntime {
 	}
 	return DateRuntime{}
 }
-
-var ErrAPIKeyNotFound = apperror.NotFound("API_KEY_NOT_FOUND", "api key not found")
-
-var ErrAPIKeyQuotaExhausted = apperror.TooManyRequests("API_KEY_QUOTA_EXHAUSTED", "api key quota exhausted")
-
-var ErrAPIKeyRateLimit1dExceeded = apperror.TooManyRequests("API_KEY_RATE_1D_EXCEEDED", "The API key daily limit has been reached")
-
-var ErrAPIKeyRateLimit5hExceeded = apperror.TooManyRequests("API_KEY_RATE_5H_EXCEEDED", "The API key five-hour limit has been reached")
-
-var ErrAPIKeyRateLimit7dExceeded = apperror.TooManyRequests("API_KEY_RATE_7D_EXCEEDED", "The API key seven-day limit has been reached")
-
-var ErrProviderNotFound = apperror.NotFound("PROVIDER_NOT_FOUND", "provider not found")
-
-var ErrPreferredSubscriptionInsufficient = apperror.TooManyRequests("PREFERRED_SUBSCRIPTION_EXHAUSTED", "preferred subscription has insufficient remaining quota")
-
-var ErrPreferredSubscriptionInvalid = apperror.Forbidden("PREFERRED_SUBSCRIPTION_INVALID", "preferred subscription is unavailable")
-
-var ErrUserNotFound = apperror.NotFound("USER_NOT_FOUND", "user not found")
-
-var ErrInsufficientBalance = apperror.BadRequest("INSUFFICIENT_BALANCE", "insufficient balance")
-
-var ErrPreferredSubscriptionGroup = apperror.Forbidden("PREFERRED_SUBSCRIPTION_GROUP_NOT_ALLOWED", "preferred subscription does not allow this group")

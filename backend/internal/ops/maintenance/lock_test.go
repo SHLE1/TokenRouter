@@ -14,6 +14,35 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	IdempotencyStatusFailedRetryable = idempotency.IdempotencyStatusFailedRetryable
+)
+
+type flakySystemLockRenewRepo struct {
+	*inMemoryIdempotencyRepo
+	extendCalls int32
+}
+
+type systemLockRepoStub struct {
+	createOwner bool
+	createErr   error
+	existing    *IdempotencyRecord
+	getErr      error
+	reclaimOK   bool
+	reclaimErr  error
+	markSuccErr error
+	markFailErr error
+}
+
+type IdempotencyRecord = idempotency.IdempotencyRecord
+
+// inMemoryIdempotencyRepo 为维护锁测试保存幂等记录。
+type inMemoryIdempotencyRepo struct {
+	mu     sync.Mutex
+	nextID int64
+	data   map[string]*IdempotencyRecord
+}
+
 func TestSystemOperationLockService_AcquireBusyAndRelease(t *testing.T) {
 	repo := newInMemoryIdempotencyRepo()
 	svc := NewSystemOperationLockService(repo, Options{
@@ -266,11 +295,6 @@ func TestSameOperationReclaimed(t *testing.T) {
 	require.NoError(t, s.Release(context.Background(), second, false, "late"))
 }
 
-type flakySystemLockRenewRepo struct {
-	*inMemoryIdempotencyRepo
-	extendCalls int32
-}
-
 func (r *flakySystemLockRenewRepo) RenewOperation(ctx context.Context, id int64, requestFingerprint, ownership string, newLockedUntil, newExpiresAt time.Time) (bool, error) {
 	call := atomic.AddInt32(&r.extendCalls, 1)
 	if call == 1 {
@@ -278,23 +302,6 @@ func (r *flakySystemLockRenewRepo) RenewOperation(ctx context.Context, id int64,
 	}
 	return r.inMemoryIdempotencyRepo.RenewOperation(ctx, id, requestFingerprint, ownership, newLockedUntil, newExpiresAt)
 }
-
-type systemLockRepoStub struct {
-	createOwner bool
-	createErr   error
-	existing    *IdempotencyRecord
-	getErr      error
-	reclaimOK   bool
-	reclaimErr  error
-	markSuccErr error
-	markFailErr error
-}
-
-type IdempotencyRecord = idempotency.IdempotencyRecord
-
-const (
-	IdempotencyStatusFailedRetryable = idempotency.IdempotencyStatusFailedRetryable
-)
 
 func HashIdempotencyKey(s string) string { return idempotency.HashIdempotencyKey(s) }
 
@@ -383,13 +390,6 @@ func (s *systemLockRepoStub) FinishOperation(ctx context.Context, id int64, op, 
 		return true, s.markSuccErr
 	}
 	return true, s.markFailErr
-}
-
-// inMemoryIdempotencyRepo 为维护锁测试保存幂等记录。
-type inMemoryIdempotencyRepo struct {
-	mu     sync.Mutex
-	nextID int64
-	data   map[string]*IdempotencyRecord
 }
 
 func newInMemoryIdempotencyRepo() *inMemoryIdempotencyRepo {

@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+// StreamTimeoutAction 流超时处理方式常量
+const (
+	StreamTimeoutActionTempUnsched = "temp_unsched" // 临时不可调度
+	StreamTimeoutActionError       = "error"        // 标记为错误状态
+	StreamTimeoutActionNone        = "none"         // 不处理
+)
+
 // StreamTimeoutSettings 流超时处理配置（仅控制超时后的处理方式，超时判定由网关配置控制）
 type StreamTimeoutSettings struct {
 	// Enabled 是否启用流超时处理
@@ -18,13 +25,6 @@ type StreamTimeoutSettings struct {
 	// ThresholdWindowMinutes 阈值窗口时间（分钟）
 	ThresholdWindowMinutes int `json:"threshold_window_minutes"`
 }
-
-// StreamTimeoutAction 流超时处理方式常量
-const (
-	StreamTimeoutActionTempUnsched = "temp_unsched" // 临时不可调度
-	StreamTimeoutActionError       = "error"        // 标记为错误状态
-	StreamTimeoutActionNone        = "none"         // 不处理
-)
 
 // TimeoutCounterCache 超时计数器缓存接口
 type TimeoutCounterCache interface {

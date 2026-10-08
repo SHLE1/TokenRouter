@@ -18,13 +18,6 @@ type Failure struct {
 	Message string
 }
 
-func (f *Failure) Error() string {
-	if f == nil || strings.TrimSpace(f.Message) == "" {
-		return "upstream compact request failed"
-	}
-	return f.Message
-}
-
 // Models 按需读取提供商专用规则和全局回退，不提前触发无须执行的映射。
 type Models interface {
 	ProviderModel(string) (string, bool)
@@ -44,6 +37,21 @@ type Request struct {
 	Explicit, AlreadyRetried bool
 	RequestedModel           string
 	Body                     []byte
+}
+
+// RetryEffects 提供恢复决定后的单步输出和资源操作，恢复流程决定调用顺序。
+type RetryEffects interface {
+	ObserveRetry([]byte, string)
+	CloseResponse()
+	SetModel(string)
+	LogRetry(string, string, string)
+}
+
+func (f *Failure) Error() string {
+	if f == nil || strings.TrimSpace(f.Message) == "" {
+		return "upstream compact request failed"
+	}
+	return f.Message
 }
 
 // ResolveModel 保留提供商 compact 专用规则优先，以及全局规则的延迟求值。
@@ -84,14 +92,6 @@ func (r Recovery) Prepare(in Request, status int, message string, payload []byte
 		return in.Body, "", false
 	}
 	return body, fallback, true
-}
-
-// RetryEffects 提供恢复决定后的单步输出和资源操作，恢复流程决定调用顺序。
-type RetryEffects interface {
-	ObserveRetry([]byte, string)
-	CloseResponse()
-	SetModel(string)
-	LogRetry(string, string, string)
 }
 
 // ApplySignal 保留先记录恢复、关闭旧响应、更新模型观测、记录诊断的顺序。

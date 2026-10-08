@@ -31,6 +31,22 @@ type mockErrorPassthroughCache struct {
 	notifyCalled     int
 }
 
+// controlledRules 用通道控制读取与更新的执行顺序。
+type controlledRules struct {
+	ErrorPassthroughRepository
+	mu      sync.Mutex
+	current *ErrorPassthroughRule
+	entered chan struct{}
+	resume  chan struct{}
+	block   bool
+}
+
+type callbackRuleCache struct {
+	ErrorPassthroughCache
+	callback func()
+	done     chan struct{}
+}
+
 func newMockErrorPassthroughCache(rules []*ErrorPassthroughRule, hasData bool) *mockErrorPassthroughCache {
 	return &mockErrorPassthroughCache{
 		rules:   cloneFixtureRules(rules),
@@ -991,16 +1007,6 @@ func testIntPtr(i int) *int { return &i }
 
 func testStrPtr(s string) *string { return &s }
 
-// controlledRules 用通道控制读取与更新的执行顺序。
-type controlledRules struct {
-	ErrorPassthroughRepository
-	mu      sync.Mutex
-	current *ErrorPassthroughRule
-	entered chan struct{}
-	resume  chan struct{}
-	block   bool
-}
-
 func (r *controlledRules) List(ctx context.Context) ([]*ErrorPassthroughRule, error) {
 	r.mu.Lock()
 	snapshot := cloneRule(r.current)
@@ -1111,12 +1117,6 @@ func TestStopCancelsStartupRuleLoad(t *testing.T) {
 	require.ErrorIs(t, <-started, context.Canceled)
 	require.NoError(t, svc.StopContext(ctx))
 	require.NoError(t, svc.StartContext(ctx))
-}
-
-type callbackRuleCache struct {
-	ErrorPassthroughCache
-	callback func()
-	done     chan struct{}
 }
 
 func (c *callbackRuleCache) Get(context.Context) ([]*ErrorPassthroughRule, bool) { return nil, false }

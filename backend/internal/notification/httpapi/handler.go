@@ -21,6 +21,28 @@ type TestSMTPRequest struct {
 	SMTPUseTLS   *bool  `json:"smtp_use_tls"`
 }
 
+// SendTestEmailRequest 发送测试邮件请求
+type SendTestEmailRequest struct {
+	Email        string `json:"email" binding:"required,email"`
+	SMTPHost     string `json:"smtp_host"`
+	SMTPPort     int    `json:"smtp_port"`
+	SMTPUsername string `json:"smtp_username"`
+	SMTPPassword string `json:"smtp_password"`
+	SMTPFrom     string `json:"smtp_from_email"`
+	SMTPFromName string `json:"smtp_from_name"`
+	SMTPUseTLS   *bool  `json:"smtp_use_tls"`
+}
+
+// SiteNameReader 只读取公开站点名称。
+type (
+	SiteNameReader interface{ GetSiteName(context.Context) string }
+	Handler        struct {
+		emailService             *notification.Mailer
+		notificationEmailService *notification.NotificationEmailService
+		settingService           SiteNameReader
+	}
+)
+
 func ResolveSMTPUseTLS(requested *bool, savedConfig *notification.SMTPConfig) bool {
 	if requested != nil {
 		return *requested
@@ -82,18 +104,6 @@ func (h *Handler) TestSMTPConnection(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "SMTP connection successful"})
-}
-
-// SendTestEmailRequest 发送测试邮件请求
-type SendTestEmailRequest struct {
-	Email        string `json:"email" binding:"required,email"`
-	SMTPHost     string `json:"smtp_host"`
-	SMTPPort     int    `json:"smtp_port"`
-	SMTPUsername string `json:"smtp_username"`
-	SMTPPassword string `json:"smtp_password"`
-	SMTPFrom     string `json:"smtp_from_email"`
-	SMTPFromName string `json:"smtp_from_name"`
-	SMTPUseTLS   *bool  `json:"smtp_use_tls"`
 }
 
 // SendTestEmail 发送测试邮件
@@ -353,16 +363,6 @@ func emailTemplatePlaceholderUnion(events []notification.NotificationEmailEventI
 	}
 	return placeholders
 }
-
-// SiteNameReader 只读取公开站点名称。
-type (
-	SiteNameReader interface{ GetSiteName(context.Context) string }
-	Handler        struct {
-		emailService             *notification.Mailer
-		notificationEmailService *notification.NotificationEmailService
-		settingService           SiteNameReader
-	}
-)
 
 func New(email *notification.Mailer, n *notification.NotificationEmailService, site SiteNameReader) *Handler {
 	return &Handler{emailService: email, notificationEmailService: n, settingService: site}

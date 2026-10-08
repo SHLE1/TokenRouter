@@ -15,6 +15,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+type compositeAPIKeyRepoStub struct {
+	apikey.APIKeyRepository
+	key           *apikey.APIKey
+	updated       *apikey.APIKey
+	updatedFields []apikey.APIKeyUpdateFields
+}
+
+type compositeUserRepoStub struct {
+	identity.UserRepository
+
+	user *identity.User
+}
+
 func TestAPIKeyResolveCompositeModel(t *testing.T) {
 	key := &apikey.APIKey{IsComposite: true, CompositeGroups: []apikey.APIKeyCompositeGroup{
 		{GroupID: 1, Prefix: "GPT", NormalizedPrefix: "gpt"},
@@ -174,13 +187,6 @@ func TestCompositeAPIKeyUpdateAddsMappingsWithoutConfirmation(t *testing.T) {
 	require.Equal(t, apikey.APIKeyUpdateFields{GroupID: true, CompositeConfiguration: true}, repo.updatedFields[0])
 }
 
-type compositeAPIKeyRepoStub struct {
-	apikey.APIKeyRepository
-	key           *apikey.APIKey
-	updated       *apikey.APIKey
-	updatedFields []apikey.APIKeyUpdateFields
-}
-
 func (s *compositeAPIKeyRepoStub) GetByID(_ context.Context, _ int64) (*apikey.APIKey, error) {
 	copyKey := *s.key
 	copyKey.CompositeGroups = apikey.KeyCloneCompositeBindings(s.key.CompositeGroups)
@@ -194,12 +200,6 @@ func (s *compositeAPIKeyRepoStub) Update(_ context.Context, key *apikey.APIKey, 
 	s.key = &copyKey
 	s.updatedFields = append(s.updatedFields, fields)
 	return nil
-}
-
-type compositeUserRepoStub struct {
-	identity.UserRepository
-
-	user *identity.User
 }
 
 func (s *compositeUserRepoStub) GetByID(_ context.Context, _ int64) (*identity.User, error) {

@@ -20,6 +20,8 @@ const (
 	cnUsageMonitorReasonPrefix    = "cn_usage_monitor:"
 )
 
+var ErrCNMonitorStopped = errors.New("CN usage monitor is stopped")
+
 // CNMonitorStore 只提供监控所需的提供商读取、快照 CAS 和身份条件健康写入。
 type CNMonitorStore interface {
 	GetByID(context.Context, int64) (*Record, error)
@@ -119,8 +121,6 @@ func (s *CNUsageMonitor) StartContext(parent context.Context) error {
 	}()
 	return nil
 }
-
-var ErrCNMonitorStopped = errors.New("CN usage monitor is stopped")
 
 func (s *CNUsageMonitor) Stop() { _ = s.StopContext(context.Background()) }
 func (s *CNUsageMonitor) StopContext(ctx context.Context) error {

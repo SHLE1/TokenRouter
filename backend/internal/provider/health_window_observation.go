@@ -6,6 +6,27 @@ import (
 	"time"
 )
 
+// SessionWindowStore 提供会话窗口观测字段的写入接口。
+type SessionWindowStore interface {
+	UpdateSessionWindow(context.Context, int64, *time.Time, *time.Time, string) error
+	UpdateExtra(context.Context, int64, map[string]any) error
+}
+
+// QuotaWindowObservation 是供应商 Adapter 提供的限流窗口观测。
+type QuotaWindowObservation struct {
+	Window        string
+	ResetAt       time.Time
+	FiveHourReset *time.Time
+	Reason        string
+}
+
+// SessionWindowObservation 保存响应中的窗口字段和解析后的被动用量统计。
+type SessionWindowObservation struct {
+	Status  string
+	Reset   string
+	Passive map[string]any
+}
+
 func shouldPersistAnthropicWindowLimit(provider *Record, limit *QuotaWindowObservation, now time.Time) bool {
 	if provider == nil || limit == nil || !limit.ResetAt.After(now) {
 		return false
@@ -171,27 +192,6 @@ func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Recor
 			s.options.Warn("rate_limit_clear_failed", "provider_id", provider.ID, "error", err)
 		}
 	}
-}
-
-// SessionWindowStore 提供会话窗口观测字段的写入接口。
-type SessionWindowStore interface {
-	UpdateSessionWindow(context.Context, int64, *time.Time, *time.Time, string) error
-	UpdateExtra(context.Context, int64, map[string]any) error
-}
-
-// QuotaWindowObservation 是供应商 Adapter 提供的限流窗口观测。
-type QuotaWindowObservation struct {
-	Window        string
-	ResetAt       time.Time
-	FiveHourReset *time.Time
-	Reason        string
-}
-
-// SessionWindowObservation 保存响应中的窗口字段和解析后的被动用量统计。
-type SessionWindowObservation struct {
-	Status  string
-	Reset   string
-	Passive map[string]any
 }
 
 // PersistPassiveUsage 在有采样字段时写入，采样时读取当前时间。

@@ -22,6 +22,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+type conversionReadFailure struct{}
+
+type conversionFailingWriter struct{ gin.ResponseWriter }
+
 func TestHandleCCBufferedFromAnthropic_ToolArgumentsAreValidJSON(t *testing.T) {
 	t.Parallel()
 
@@ -576,8 +580,6 @@ func conversionSSEFormat(t *testing.T, body, format string) string {
 	return result.String()
 }
 
-type conversionReadFailure struct{}
-
 func (conversionReadFailure) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
 
 // TestMessagesConversionSSEFailures 检查尾部用量交付、截断 JSON 和累计帧超限的 HTTP 输出。
@@ -674,8 +676,6 @@ func TestMessagesConversionSSEFailures(t *testing.T) {
 		}
 	}
 }
-
-type conversionFailingWriter struct{ gin.ResponseWriter }
 
 func (conversionFailingWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
 

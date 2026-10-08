@@ -46,9 +46,9 @@ func TestGeminiQuotaPolicyConcurrentReaderIsolation(t *testing.T) {
 	core.Policy(context.Background())
 	var group sync.WaitGroup
 	var corrupted atomic.Bool
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		group.Go(func() {
-			for j := 0; j < 20; j++ {
+			for j := range 20 {
 				value := int64(j + 1)
 				policy := core.Policy(context.Background())
 				policy.ApplyOverrides(map[string]GeminiTierQuotaOverride{"aistudio_free": {ProRPD: &value}})

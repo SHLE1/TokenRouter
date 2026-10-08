@@ -5,14 +5,18 @@ import (
 	"strings"
 )
 
-// UsageRankingSortBy 表示用户侧用量排行的排名指标。
-type UsageRankingSortBy string
-
 const (
 	UsageRankingSortByTotalTokens UsageRankingSortBy = "total_tokens"
 	UsageRankingSortByRequests    UsageRankingSortBy = "requests"
 	UsageRankingSortByActualCost  UsageRankingSortBy = "actual_cost"
+
+	DefaultUsageRankingLimit = 20
+
+	MaxUsageRankingLimit = 100
 )
+
+// UsageRankingSortBy 表示用户侧用量排行的排名指标。
+type UsageRankingSortBy string
 
 // UsageRankingSettings 是用户侧排行读取和展示共用的运行时配置。
 type UsageRankingSettings struct {
@@ -77,7 +81,3 @@ func NormalizeUsageRankingLimitString(raw string) int {
 	}
 	return NormalizeUsageRankingLimit(value)
 }
-
-const DefaultUsageRankingLimit = 20
-
-const MaxUsageRankingLimit = 100

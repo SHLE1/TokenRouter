@@ -15,6 +15,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
+// 模型映射和失败决策由 Antigravity 错误适配器执行，替身记录写入次数。
+type antigravityErrorStoreFixture struct {
+	acct.AntigravityHealthStore
+	rateCalls           []int64
+	modelRateLimitCalls []struct{ modelKey string }
+}
+
 // TestHandleUpstreamError_429_ModelRateLimit 测试 429 模型限流场景
 func TestHandleUpstreamError_429_ModelRateLimit(t *testing.T) {
 	repo := &antigravityErrorStoreFixture{}
@@ -150,13 +157,6 @@ func TestHandleUpstreamError_503_EmptyBody(t *testing.T) {
 
 func buildGeminiRateLimitBody(delay string) []byte {
 	return []byte(fmt.Sprintf(`{"error":{"message":"too many requests","details":[{"metadata":{"quotaResetDelay":%q}}]}}`, delay))
-}
-
-// 模型映射和失败决策由 Antigravity 错误适配器执行，替身记录写入次数。
-type antigravityErrorStoreFixture struct {
-	acct.AntigravityHealthStore
-	rateCalls           []int64
-	modelRateLimitCalls []struct{ modelKey string }
 }
 
 func (s *antigravityErrorStoreFixture) SetModelRateLimit(_ context.Context, _ int64, key string, _ time.Time, _ ...string) error {

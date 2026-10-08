@@ -15,6 +15,8 @@ type AvailabilityProviders interface {
 	ListModelAvailabilityCandidates(context.Context, *int64, []string, bool) ([]provider.Record, error)
 }
 
+type modelRejectionRules struct{ *provider.Record }
+
 // NewModelAvailability 绑定提供商查询和分组映射读取接口。
 // @project-doc docs/architecture/provider_scheduling_and_cache.md#advanced_scheduler_selection
 func NewModelAvailability(source AvailabilityProviders, groupPolicies *routing.PricingConfigService, compatible bool) *routing.ModelAvailability {
@@ -65,8 +67,6 @@ func (p ModelPolicy) SupportsCompatibleRouting(ctx context.Context, model string
 	}
 	return p.Supports(ctx, model)
 }
-
-type modelRejectionRules struct{ *provider.Record }
 
 func (r modelRejectionRules) GetConfiguredRequestModels() []string {
 	return r.Record.GetConfiguredRequestModels(provideradapter.ModelDefaults())

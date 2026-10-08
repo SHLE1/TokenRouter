@@ -19,6 +19,34 @@ type proxyRepoStub struct {
 	deletedIDs    []int64
 }
 
+type proxyRepoStubForAdminList struct {
+	ProxyRepository
+
+	listWithFiltersCalls    int
+	listWithFiltersParams   pagination.PaginationParams
+	listWithFiltersProtocol string
+	listWithFiltersStatus   string
+	listWithFiltersSearch   string
+	listWithFiltersProxies  []Proxy
+	listWithFiltersResult   *pagination.PaginationResult
+	listWithFiltersErr      error
+
+	listWithFiltersAndProviderCountCalls    int
+	listWithFiltersAndProviderCountParams   pagination.PaginationParams
+	listWithFiltersAndProviderCountProtocol string
+	listWithFiltersAndProviderCountStatus   string
+	listWithFiltersAndProviderCountSearch   string
+	listWithFiltersAndProviderCountProxies  []ProxyWithProviderCount
+	listWithFiltersAndProviderCountResult   *pagination.PaginationResult
+	listWithFiltersAndProviderCountErr      error
+}
+
+type updatingProxyRepoStub struct {
+	*proxyRepoStub
+	proxy       *Proxy
+	updateCalls int
+}
+
 func (s *proxyRepoStub) Create(ctx context.Context, proxy *Proxy) error {
 	panic("unexpected Create call")
 }
@@ -127,28 +155,6 @@ func TestAdminService_DeleteProxy_Error(t *testing.T) {
 	require.ErrorIs(t, err, deleteErr)
 }
 
-type proxyRepoStubForAdminList struct {
-	ProxyRepository
-
-	listWithFiltersCalls    int
-	listWithFiltersParams   pagination.PaginationParams
-	listWithFiltersProtocol string
-	listWithFiltersStatus   string
-	listWithFiltersSearch   string
-	listWithFiltersProxies  []Proxy
-	listWithFiltersResult   *pagination.PaginationResult
-	listWithFiltersErr      error
-
-	listWithFiltersAndProviderCountCalls    int
-	listWithFiltersAndProviderCountParams   pagination.PaginationParams
-	listWithFiltersAndProviderCountProtocol string
-	listWithFiltersAndProviderCountStatus   string
-	listWithFiltersAndProviderCountSearch   string
-	listWithFiltersAndProviderCountProxies  []ProxyWithProviderCount
-	listWithFiltersAndProviderCountResult   *pagination.PaginationResult
-	listWithFiltersAndProviderCountErr      error
-}
-
 func (s *proxyRepoStubForAdminList) ListWithFilters(_ context.Context, params pagination.PaginationParams, protocol, status, search string) ([]Proxy, *pagination.PaginationResult, error) {
 	s.listWithFiltersCalls++
 	s.listWithFiltersParams = params
@@ -253,12 +259,6 @@ func TestFinalizeProxyQualityResult_ScoreAndGrade(t *testing.T) {
 	require.Contains(t, result.Summary, "告警 1 项")
 	require.Contains(t, result.Summary, "失败 1 项")
 	require.Contains(t, result.Summary, "挑战 1 项")
-}
-
-type updatingProxyRepoStub struct {
-	*proxyRepoStub
-	proxy       *Proxy
-	updateCalls int
 }
 
 func (s *updatingProxyRepoStub) GetByID(context.Context, int64) (*Proxy, error) {

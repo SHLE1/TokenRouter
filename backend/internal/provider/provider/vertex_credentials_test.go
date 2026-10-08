@@ -15,6 +15,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
+// 控制锁返回时刻，在缓存返回之前确定地取消调用。
+type vertexCancelCache struct {
+	providercore.AccessTokenCache
+	cancel context.CancelFunc
+	reads  int
+}
+
 func TestVertexLockWaitCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -64,13 +71,6 @@ func TestVertexServiceAccountProxyURL(t *testing.T) {
 	require.Equal(t, "http://proxy.example.com:8080", vertexServiceAccountProxyURL(provider))
 	require.Empty(t, vertexServiceAccountProxyURL(&providercore.Record{Proxy: provider.Proxy}))
 	require.Empty(t, vertexServiceAccountProxyURL(&providercore.Record{ProxyID: &proxyID}))
-}
-
-// 控制锁返回时刻，在缓存返回之前确定地取消调用。
-type vertexCancelCache struct {
-	providercore.AccessTokenCache
-	cancel context.CancelFunc
-	reads  int
 }
 
 func (c *vertexCancelCache) GetAccessToken(context.Context, string) (string, error) {

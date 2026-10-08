@@ -18,13 +18,13 @@ type UpstreamUsageQueries interface {
 }
 type UpstreamUsageHandler struct{ queries UpstreamUsageQueries }
 
-func NewUpstreamUsageHandler(queries UpstreamUsageQueries) *UpstreamUsageHandler {
-	return &UpstreamUsageHandler{queries: queries}
-}
-
 // UpstreamUsageBatchRequest 是 API Key 上游用量批量查询请求。
 type UpstreamUsageBatchRequest struct {
 	ProviderIDs []int64 `json:"provider_ids" binding:"required"`
+}
+
+func NewUpstreamUsageHandler(queries UpstreamUsageQueries) *UpstreamUsageHandler {
+	return &UpstreamUsageHandler{queries: queries}
 }
 
 // QueryUpstreamUsage 查询 API Key 提供商的实时上游用量。

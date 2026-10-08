@@ -14,28 +14,33 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/gateway"
-	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
-	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/identity/provider"
-
-	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/require"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/authidentity"
 	"github.com/TokenFlux/TokenRouter/ent/identityadoptiondecision"
 	"github.com/TokenFlux/TokenRouter/ent/pendingauthsession"
-
 	dbuser "github.com/TokenFlux/TokenRouter/ent/user"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
-
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/stretchr/testify/require"
+	"github.com/TokenFlux/TokenRouter/internal/gateway"
+	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
+	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/identity/provider"
 )
+
+type oidcProviderFixture struct {
+	Subject           string
+	PreferredUsername string
+	DisplayName       string
+	AvatarURL         string
+	Email             string
+	EmailVerified     bool
+}
 
 func buildRSAJWK(kid string, pub *rsa.PublicKey) provider.OidcJWK {
 	n := base64.RawURLEncoding.EncodeToString(pub.N.Bytes())
@@ -633,9 +638,10 @@ func TestCompleteOIDCOAuthRegistrationRejectsAdoptExistingUserSession(t *testing
 		SetUpstreamIdentityClaims(map[string]any{
 			"username": "oidc_user",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"step": "bind_login_required",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"step": "bind_login_required",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -675,13 +681,14 @@ func TestCompleteOIDCOAuthRegistrationReturnsPendingSessionWhenChoiceStillRequir
 			"username": "oidc_user",
 			"issuer":   "https://issuer.example.com",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"step":                  identityhttp.OauthPendingChoiceStep,
-			"redirect":              "/dashboard",
-			"email":                 "fresh@example.com",
-			"resolved_email":        "fresh@example.com",
-			"force_email_on_signup": true,
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"step":                  identityhttp.OauthPendingChoiceStep,
+				"redirect":              "/dashboard",
+				"email":                 "fresh@example.com",
+				"resolved_email":        "fresh@example.com",
+				"force_email_on_signup": true,
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -1065,15 +1072,6 @@ func TestTryOIDCVerifiedEmailFastPathSkippedWhenForceEmailEnabled(t *testing.T) 
 	userCount, err := client.User.Query().Where(dbuser.EmailEQ("force-email@example.com")).Count(context.Background())
 	require.NoError(t, err)
 	require.Zero(t, userCount)
-}
-
-type oidcProviderFixture struct {
-	Subject           string
-	PreferredUsername string
-	DisplayName       string
-	AvatarURL         string
-	Email             string
-	EmailVerified     bool
 }
 
 func newOIDCOAuthTestHandler(t *testing.T, invitationEnabled bool, oauthCfg config.OIDCConnectConfig) *authHTTPFixture {

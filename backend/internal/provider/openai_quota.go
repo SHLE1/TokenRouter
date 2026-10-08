@@ -10,17 +10,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-var (
-	ErrSparkShadowResetNotSupported = apperror.New(409, "SPARK_SHADOW_RESET_NOT_SUPPORTED", "spark shadow provider does not support credit reset; reset the parent provider")
-	ErrOpenAIQuotaStopped           = apperror.New(503, "OPENAI_QUOTA_STOPPED", "openai quota service is stopped")
-)
-
 const (
 	chatGPTUsagePath                   = "/wham/usage"
 	chatGPTRateLimitCreditsPath        = "/wham/rate-limit-reset-credits"
 	chatGPTRateLimitResetPath          = "/wham/rate-limit-reset-credits/consume"
 	codexInviteResetSupportsRewardless = "true"
 	openaiQuotaResetCreditsKey         = "codex_reset_credit_snapshot"
+)
+
+var (
+	ErrSparkShadowResetNotSupported = apperror.New(409, "SPARK_SHADOW_RESET_NOT_SUPPORTED", "spark shadow provider does not support credit reset; reset the parent provider")
+	ErrOpenAIQuotaStopped           = apperror.New(503, "OPENAI_QUOTA_STOPPED", "openai quota service is stopped")
 )
 
 type OpenAIQuotaClient interface {
@@ -34,8 +34,6 @@ type PreparedOpenAIQuota struct {
 	Token    string            `json:"-"`
 	Client   OpenAIQuotaClient `json:"-"`
 }
-
-func (p PreparedOpenAIQuota) String() string { return "prepared OpenAI quota request" }
 
 type OpenAIQuotaOptions struct {
 	Configured func() bool
@@ -51,6 +49,14 @@ type OpenAIQuotaService struct {
 	Options  OpenAIQuotaOptions
 	activity operationActivity
 }
+
+// QuotaResult 额度获取结果
+type QuotaResult struct {
+	UsageInfo *UsageInfo     // 转换后的使用信息
+	Raw       map[string]any // 原始响应，可存入 provider.Extra
+}
+
+func (p PreparedOpenAIQuota) String() string { return "prepared OpenAI quota request" }
 
 func NewOpenAIQuotaService(options OpenAIQuotaOptions) *OpenAIQuotaService {
 	return &OpenAIQuotaService{Options: options}
@@ -397,10 +403,4 @@ func BuildCodexSparkWindowExtraUpdates(usage *openai.OpenAIQuotaUsage, now time.
 
 func (s *OpenAIQuotaService) StopContext(ctx context.Context) error {
 	return s.activity.stop(ctx, "OpenAIQuotaService")
-}
-
-// QuotaResult 额度获取结果
-type QuotaResult struct {
-	UsageInfo *UsageInfo     // 转换后的使用信息
-	Raw       map[string]any // 原始响应，可存入 provider.Extra
 }

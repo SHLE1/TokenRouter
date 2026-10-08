@@ -23,17 +23,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/migrations"
 )
 
+var (
+	integrationDB        *sql.DB
+	integrationEntClient *dbent.Client
+)
+
 // TestMain 设置 Gin 测试模式和 UTC 时区，再启动 PostgreSQL 运行全部测试。
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 	time.Local = time.UTC
 	os.Exit(runPostgresTests(m))
 }
-
-var (
-	integrationDB        *sql.DB
-	integrationEntClient *dbent.Client
-)
 
 // runPostgresTests 在隔离 PostgreSQL 中应用迁移并运行支付资金测试，退出前关闭连接和容器。
 func runPostgresTests(m *testing.M) int {

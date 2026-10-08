@@ -37,7 +37,7 @@ func QoderTokenCacheKey(provider *Record) string {
 
 func MergeQoderRefreshCredentials(oldCredentials, newCredentials map[string]any, site, refreshMode string, expiresAt time.Time) map[string]any {
 	newCredentials = MergeCredentials(oldCredentials, newCredentials)
-	newCredentials["site"] = string(site)
+	newCredentials["site"] = site
 	newCredentials["refresh_mode"] = refreshMode
 	if site == "cn" {
 		// 合并凭据后再次清理历史随机机器字段，使国内提供商使用对应站点的身份字段。

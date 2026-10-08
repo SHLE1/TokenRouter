@@ -14,6 +14,34 @@ import (
 	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
+const (
+	codexFingerprintSeedCanonicalPattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+
+	codexFingerprintNilSeed = "00000000-0000-0000-0000-000000000000"
+)
+
+var (
+	schedulerNeutralExtraKeyPrefixes = []string{
+		"codex_primary_",
+		"codex_secondary_",
+		"codex_5h_",
+		"codex_7d_",
+		"codex_reset_credit_",
+		"passive_usage_",
+		"ollama_cloud_usage",
+		"cn_usage_monitor",
+	}
+
+	schedulerNeutralExtraKeys = map[string]struct{}{
+		"codex_usage_updated_at":                {},
+		"grok_billing_snapshot":                 {},
+		"qoder_quota_snapshot":                  {},
+		"qoder_quota_updated_at":                {},
+		"session_window_utilization":            {},
+		acctcore.CNUsageMonitorSnapshotExtraKey: {},
+	}
+)
+
 func (r *ProviderStore) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
 	return r.updateExtra(ctx, id, updates, nil)
 }
@@ -394,30 +422,6 @@ func (r *ProviderStore) BulkUpdate(ctx context.Context, ids []int64, updates acc
 	}
 	return rows, nil
 }
-
-var schedulerNeutralExtraKeyPrefixes = []string{
-	"codex_primary_",
-	"codex_secondary_",
-	"codex_5h_",
-	"codex_7d_",
-	"codex_reset_credit_",
-	"passive_usage_",
-	"ollama_cloud_usage",
-	"cn_usage_monitor",
-}
-
-var schedulerNeutralExtraKeys = map[string]struct{}{
-	"codex_usage_updated_at":                {},
-	"grok_billing_snapshot":                 {},
-	"qoder_quota_snapshot":                  {},
-	"qoder_quota_updated_at":                {},
-	"session_window_utilization":            {},
-	acctcore.CNUsageMonitorSnapshotExtraKey: {},
-}
-
-const codexFingerprintSeedCanonicalPattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-
-const codexFingerprintNilSeed = "00000000-0000-0000-0000-000000000000"
 
 func codexFingerprintSeedValidSQL(extraExpr string) string {
 	value := "(" + extraExpr + " ->> 'codex_fingerprint_seed')"

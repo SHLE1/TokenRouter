@@ -20,13 +20,27 @@ type QoderOAuthHandler struct {
 	qoderOAuthService QoderAuthorizationUseCase
 }
 
-func NewQoderOAuthHandler(qoderOAuthService QoderAuthorizationUseCase) *QoderOAuthHandler {
-	return &QoderOAuthHandler{qoderOAuthService: qoderOAuthService}
-}
-
 type QoderGenerateAuthURLRequest struct {
 	ProxyID *int64 `json:"proxy_id"`
 	Site    string `json:"site"`
+}
+
+type QoderExchangeCodeRequest struct {
+	SessionID   string `json:"session_id" binding:"required"`
+	State       string `json:"state"`
+	Code        string `json:"code"`
+	CallbackURL string `json:"callback_url"`
+	ProxyID     *int64 `json:"proxy_id"`
+}
+
+type QoderPollRequest struct {
+	SessionID string `json:"session_id" binding:"required"`
+	State     string `json:"state" binding:"required"`
+	ProxyID   *int64 `json:"proxy_id"`
+}
+
+func NewQoderOAuthHandler(qoderOAuthService QoderAuthorizationUseCase) *QoderOAuthHandler {
+	return &QoderOAuthHandler{qoderOAuthService: qoderOAuthService}
 }
 
 // GenerateAuthURL 生成 Qoder 浏览器授权 URL。
@@ -52,14 +66,6 @@ func (h *QoderOAuthHandler) GenerateAuthURL(c *gin.Context) {
 	response.Success(c, result)
 }
 
-type QoderExchangeCodeRequest struct {
-	SessionID   string `json:"session_id" binding:"required"`
-	State       string `json:"state"`
-	Code        string `json:"code"`
-	CallbackURL string `json:"callback_url"`
-	ProxyID     *int64 `json:"proxy_id"`
-}
-
 // ExchangeCode 完成 Qoder 设备授权并返回提供商凭据。
 // 路由：POST /api/v1/admin/qoder/oauth/exchange-code
 func (h *QoderOAuthHandler) ExchangeCode(c *gin.Context) {
@@ -82,12 +88,6 @@ func (h *QoderOAuthHandler) ExchangeCode(c *gin.Context) {
 	}
 
 	response.Success(c, tokenInfo)
-}
-
-type QoderPollRequest struct {
-	SessionID string `json:"session_id" binding:"required"`
-	State     string `json:"state" binding:"required"`
-	ProxyID   *int64 `json:"proxy_id"`
 }
 
 // Poll 检查 Qoder 浏览器授权是否已完成。

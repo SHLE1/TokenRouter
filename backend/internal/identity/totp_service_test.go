@@ -20,6 +20,17 @@ type totpVMUserRepoStub struct {
 	disableCalled bool
 }
 
+type totpVMSettingRepoStub struct {
+	settingscore.Repository
+	values map[string]string
+}
+
+// totpVerificationSettings 为验证方式测试读取邮箱验证开关。
+type totpVerificationSettings struct {
+	TotpSettings
+	runtime *RuntimeSettings
+}
+
 func (s *totpVMUserRepoStub) GetByID(ctx context.Context, id int64) (*User, error) {
 	if s.user == nil {
 		return nil, errors.New("user not found")
@@ -31,11 +42,6 @@ func (s *totpVMUserRepoStub) DisableTotp(ctx context.Context, userID int64) erro
 	s.disableCalled = true
 	s.totpDisabled = true
 	return nil
-}
-
-type totpVMSettingRepoStub struct {
-	settingscore.Repository
-	values map[string]string
 }
 
 func (s *totpVMSettingRepoStub) GetValue(ctx context.Context, key string) (string, error) {
@@ -106,12 +112,6 @@ func TestTotpDisableRegularUserStillRequiresEmailCode(t *testing.T) {
 
 	err := svc.Disable(context.Background(), user.ID, "", "whatever")
 	require.ErrorIs(t, err, ErrVerifyCodeRequired)
-}
-
-// totpVerificationSettings 为验证方式测试读取邮箱验证开关。
-type totpVerificationSettings struct {
-	TotpSettings
-	runtime *RuntimeSettings
 }
 
 func (s totpVerificationSettings) IsEmailVerifyEnabled(ctx context.Context) bool {

@@ -25,14 +25,20 @@ import (
 	usagepg "github.com/TokenFlux/TokenRouter/internal/usage/postgres"
 )
 
+// 完成记录集成测试使用应用中的记录器和倍率缓存。
+var (
+	NewCompletionRecordersForTest = ProvideGatewayCompletionRecorders
+	NewGatewayBillingRatesForTest = provideGatewayBillingRates
+)
+
 type nativeCompletionCatalog struct{ billing.PriceCatalog }
+
+// 测试直接执行存储 SQL，写入按同步方式完成。
+type nativeCompletionSQL struct{ *sql.DB }
 
 func (nativeCompletionCatalog) GetModelPricing(string) *pricing.CatalogModelPricing {
 	return &pricing.CatalogModelPricing{InputCostPerToken: 0.01, OutputCostPerToken: 0.02}
 }
-
-// 测试直接执行存储 SQL，写入按同步方式完成。
-type nativeCompletionSQL struct{ *sql.DB }
 
 // TestNativeCompletionRuntimeOneFinancialEffect 检查两种完成记录器调用结算和用量存储，重放后各保留一次资金变动和记录。
 func TestNativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
@@ -99,9 +105,3 @@ func TestNativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 		})
 	}
 }
-
-// 完成记录集成测试使用应用中的记录器和倍率缓存。
-var (
-	NewCompletionRecordersForTest = ProvideGatewayCompletionRecorders
-	NewGatewayBillingRatesForTest = provideGatewayBillingRates
-)

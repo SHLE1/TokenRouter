@@ -15,16 +15,30 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-const qoderXMLToolCallFixture = `<tool_call>Read<arg_value><arg_key>file_path</arg_key><arg_value>/workspace/campus-navigation/README.md</arg_value></tool_call>`
+const (
+	qoderXMLToolCallFixture = `<tool_call>Read<arg_value><arg_key>file_path</arg_key><arg_value>/workspace/campus-navigation/README.md</arg_value></tool_call>`
 
-const qoderJSONShellToolCallFixture = `<tool_call>{"name":"shell","arguments":{"command":"pwd","description":"Print working directory"}}</tool_call>`
+	qoderJSONShellToolCallFixture = `<tool_call>{"name":"shell","arguments":{"command":"pwd","description":"Print working directory"}}</tool_call>`
 
-const qoderDSMLToolCallFixture = `<｜｜DSML｜｜tool_calls>
+	qoderDSMLToolCallFixture = `<｜｜DSML｜｜tool_calls>
 <｜｜DSML｜｜invoke name="Bash">
 <｜｜DSML｜｜parameter name="command" string="true">ls -la</｜｜DSML｜｜parameter>
 <｜｜DSML｜｜parameter name="description" string="true">List root files</｜｜DSML｜｜parameter>
 </｜｜DSML｜｜invoke>
 </｜｜DSML｜｜tool_calls>`
+)
+
+var qoderCachedUsageEventForTest = SSEEvent{
+	Type:             "usage",
+	PromptTokens:     66637,
+	CompletionTokens: 6,
+	TotalTokens:      66643,
+	UsageDetails: UsageDetails{
+		PromptTokensDetails:     &PromptTokensDetails{CachedTokens: 66612, CacheableTokens: 19},
+		CompletionTokensDetails: &CompletionTokensDetails{ReasoningTokens: 0},
+	},
+	HasUsage: true,
+}
 
 func qoderNoIndexNamedParallelToolCallEventsForTest() []SSEEvent {
 	return []SSEEvent{
@@ -42,18 +56,6 @@ func qoderRepeatedIndexNamedParallelToolCallEventsForTest() []SSEEvent {
 		{Type: "tool_call_delta", ToolCallIndex: 0, HasToolCallIndex: true, ToolName: "glob", Arguments: `{"pattern":"docs/*.md"}`},
 		{IsDone: true},
 	}
-}
-
-var qoderCachedUsageEventForTest = SSEEvent{
-	Type:             "usage",
-	PromptTokens:     66637,
-	CompletionTokens: 6,
-	TotalTokens:      66643,
-	UsageDetails: UsageDetails{
-		PromptTokensDetails:     &PromptTokensDetails{CachedTokens: 66612, CacheableTokens: 19},
-		CompletionTokensDetails: &CompletionTokensDetails{ReasoningTokens: 0},
-	},
-	HasUsage: true,
 }
 
 func TestResolveQoderModelUsesOpus46AliasForUltimate(t *testing.T) {

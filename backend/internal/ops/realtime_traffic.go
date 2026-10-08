@@ -7,6 +7,22 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+// OpsRealtimeTrafficSummary is a lightweight summary used by the Ops dashboard "Realtime Traffic" card.
+// It reports QPS/TPS current/peak/avg for the requested time window.
+type OpsRealtimeTrafficSummary struct {
+	// Window is a normalized label (e.g. "1min", "5min", "30min", "1h").
+	Window string `json:"window"`
+
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+
+	Platform string `json:"platform"`
+	GroupID  *int64 `json:"group_id"`
+
+	QPS OpsRateSummary `json:"qps"`
+	TPS OpsRateSummary `json:"tps"`
+}
+
 // GetRealtimeTrafficSummary returns QPS/TPS current/peak/avg for the provided window.
 // This is used by the Ops dashboard "Realtime Traffic" card and is intentionally lightweight.
 func (s *OpsService) GetRealtimeTrafficSummary(ctx context.Context, filter *OpsDashboardFilter) (*OpsRealtimeTrafficSummary, error) {
@@ -34,22 +50,6 @@ func (s *OpsService) GetRealtimeTrafficSummary(ctx context.Context, filter *OpsD
 	s.applyOpsIgnoredStatusCodes(ctx, filter)
 
 	return s.opsRepo.GetRealtimeTrafficSummary(ctx, filter)
-}
-
-// OpsRealtimeTrafficSummary is a lightweight summary used by the Ops dashboard "Realtime Traffic" card.
-// It reports QPS/TPS current/peak/avg for the requested time window.
-type OpsRealtimeTrafficSummary struct {
-	// Window is a normalized label (e.g. "1min", "5min", "30min", "1h").
-	Window string `json:"window"`
-
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-
-	Platform string `json:"platform"`
-	GroupID  *int64 `json:"group_id"`
-
-	QPS OpsRateSummary `json:"qps"`
-	TPS OpsRateSummary `json:"tps"`
 }
 
 // GetWindowStats 返回指定窗口的请求数和 token 数，供 WebSocket 等实时采样使用。

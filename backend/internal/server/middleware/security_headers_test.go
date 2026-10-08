@@ -30,7 +30,7 @@ func TestGenerateNonce(t *testing.T) {
 
 	t.Run("generates_unique_nonces", func(t *testing.T) {
 		nonces := make(map[string]bool)
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			nonce, err := GenerateNonce()
 			require.NoError(t, err)
 			assert.False(t, nonces[nonce], "nonce should be unique")
@@ -261,7 +261,7 @@ func TestSecurityHeaders(t *testing.T) {
 		middleware := SecurityHeaders(cfg, nil)
 
 		nonces := make(map[string]bool)
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
@@ -455,7 +455,7 @@ func TestAddToDirective(t *testing.T) {
 
 // BenchmarkGenerateNonce 测量 nonce 生成的开销。
 func BenchmarkGenerateNonce(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = GenerateNonce()
 	}
 }
@@ -468,7 +468,7 @@ func BenchmarkSecurityHeadersMiddleware(b *testing.B) {
 	middleware := SecurityHeaders(cfg, nil)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest(http.MethodGet, "/", nil)

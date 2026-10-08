@@ -28,6 +28,12 @@ const (
 	ScopeInference = "user:inference"
 )
 
+type (
+	TokenResponse = wire.OAuthTokenResponse
+	OrgInfo       = wire.OAuthOrgInfo
+	ProviderInfo  = wire.OAuthProviderInfo
+)
+
 // OAuthSession stores OAuth flow state
 
 // GenerateRandomBytes generates cryptographically secure random bytes
@@ -83,9 +89,3 @@ func BuildAuthorizationURL(state, codeChallenge, scope string) string {
 		state,
 	)
 }
-
-type (
-	TokenResponse = wire.OAuthTokenResponse
-	OrgInfo       = wire.OAuthOrgInfo
-	ProviderInfo  = wire.OAuthProviderInfo
-)

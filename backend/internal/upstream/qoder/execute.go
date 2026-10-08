@@ -33,16 +33,6 @@ type Target struct {
 	Doer       RequestDoer
 }
 
-func (t *Target) TargetID() int64 {
-	if t == nil {
-		return 0
-	}
-	return t.ProviderID
-}
-
-// String 防止诊断格式化展开闭包、代理及凭据。
-func (t *Target) String() string { return fmt.Sprintf("qoder target provider=%d", t.TargetID()) }
-
 // ExecuteOptions 配置会话存储、执行超时和活动登记函数。
 type ExecuteOptions struct {
 	Conversations *QoderConversationStore
@@ -54,6 +44,16 @@ type Executor struct {
 	timeout       time.Duration
 	enter         func() (func(), error)
 }
+
+func (t *Target) TargetID() int64 {
+	if t == nil {
+		return 0
+	}
+	return t.ProviderID
+}
+
+// String 防止诊断格式化展开闭包、代理及凭据。
+func (t *Target) String() string { return fmt.Sprintf("qoder target provider=%d", t.TargetID()) }
 
 func NewExecutor(options ExecuteOptions) *Executor {
 	if options.Conversations == nil {

@@ -20,6 +20,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
 )
 
+var schedulerCachePayloadBenchmarkSink int
+
 func TestSchedulerCacheUpdateLastUsedUsesSideKeyWithoutRewritingPayloads(t *testing.T) {
 	ctx := context.Background()
 	cache := newSchedulerCacheUnit(t)
@@ -171,7 +173,7 @@ func TestSchedulerCacheUpdateLastUsedChunksLargeBatches(t *testing.T) {
 	providers := make([]providercore.Record, 0, total)
 	updates := make(map[int64]time.Time, total)
 	base := time.Now().UTC().Truncate(time.Millisecond)
-	for i := 0; i < total; i++ {
+	for i := range total {
 		id := int64(9300 + i)
 		providers = append(providers, providercore.Record{ID: id, Platform: capability.PlatformGrok})
 		updates[id] = base.Add(time.Duration(i) * time.Millisecond)
@@ -886,14 +888,12 @@ func TestSchedulerCacheGroupLifecycleLeaseRejectsInvalidInput(t *testing.T) {
 	require.Zero(t, keys)
 }
 
-var schedulerCachePayloadBenchmarkSink int
-
 func BenchmarkSchedulerCacheProviderPayloadReuse(b *testing.B) {
 	for _, size := range []int{1, 100, 10_000} {
 		providers := schedulerCacheBenchmarkProviders(size)
 		b.Run(fmt.Sprintf("pair_baseline_%d_providers", size), func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				first, err := benchmarkSchedulerLegacySnapshotPayload(providers)
 				if err != nil {
 					b.Fatal(err)
@@ -907,7 +907,7 @@ func BenchmarkSchedulerCacheProviderPayloadReuse(b *testing.B) {
 		})
 		b.Run(fmt.Sprintf("pair_reuse_%d_providers", size), func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				ids, total, err := benchmarkSchedulerReusableSnapshotPayload(providers)
 				if err != nil {
 					b.Fatal(err)
@@ -919,7 +919,7 @@ func BenchmarkSchedulerCacheProviderPayloadReuse(b *testing.B) {
 		})
 		b.Run(fmt.Sprintf("first_baseline_%d_providers", size), func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				total, err := benchmarkSchedulerLegacySnapshotPayload(providers)
 				if err != nil {
 					b.Fatal(err)
@@ -929,7 +929,7 @@ func BenchmarkSchedulerCacheProviderPayloadReuse(b *testing.B) {
 		})
 		b.Run(fmt.Sprintf("first_reuse_%d_providers", size), func(b *testing.B) {
 			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				ids, total, err := benchmarkSchedulerReusableSnapshotPayload(providers)
 				if err != nil {
 					b.Fatal(err)

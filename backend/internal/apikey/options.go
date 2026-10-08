@@ -13,6 +13,26 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 )
 
+const (
+	StatusActive = "active"
+
+	TeamStatusActive = team.TeamStatusActive
+	TeamRoleOwner    = team.TeamRoleOwner
+)
+
+var (
+	ErrUserNotFound = identity.ErrUserNotFound
+
+	ErrInsufficientPerms         = identity.ErrInsufficientPerms
+	ErrTeamFeatureDisabled       = team.ErrTeamFeatureDisabled
+	ErrTeamMembershipRequired    = team.ErrTeamMembershipRequired
+	ErrTeamNotFound              = team.ErrTeamNotFound
+	ErrTeamSuspended             = team.ErrTeamSuspended
+	ErrTeamMemberDailyExceeded   = billing.ErrTeamMemberDailyExceeded
+	ErrTeamMemberWeeklyExceeded  = billing.ErrTeamMemberWeeklyExceeded
+	ErrTeamMemberMonthlyExceeded = billing.ErrTeamMemberMonthlyExceeded
+)
+
 // APIKeyAuthCacheConfig API Key 认证缓存配置
 type APIKeyAuthCacheConfig struct {
 	L1Size             int                    `mapstructure:"l1_size"`
@@ -75,26 +95,6 @@ type TeamRepository interface {
 type ConcurrencyReader interface {
 	GetAPIKeyConcurrencyBatch(context.Context, []int64) (map[int64]int, error)
 }
-
-const (
-	StatusActive = "active"
-
-	TeamStatusActive = team.TeamStatusActive
-	TeamRoleOwner    = team.TeamRoleOwner
-)
-
-var (
-	ErrUserNotFound = identity.ErrUserNotFound
-
-	ErrInsufficientPerms         = identity.ErrInsufficientPerms
-	ErrTeamFeatureDisabled       = team.ErrTeamFeatureDisabled
-	ErrTeamMembershipRequired    = team.ErrTeamMembershipRequired
-	ErrTeamNotFound              = team.ErrTeamNotFound
-	ErrTeamSuspended             = team.ErrTeamSuspended
-	ErrTeamMemberDailyExceeded   = billing.ErrTeamMemberDailyExceeded
-	ErrTeamMemberWeeklyExceeded  = billing.ErrTeamMemberWeeklyExceeded
-	ErrTeamMemberMonthlyExceeded = billing.ErrTeamMemberMonthlyExceeded
-)
 
 func cloneGroupClientProtocols(values []protocol.ProtocolID) []protocol.ProtocolID {
 	if values == nil {

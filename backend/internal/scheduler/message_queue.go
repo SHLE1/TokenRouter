@@ -40,6 +40,13 @@ type UserMessageQueueService struct {
 	cfg         *MessageQueueOptions
 }
 
+// MessageQueueOptions 保存消息队列的静态时间参数。
+type MessageQueueOptions struct {
+	LockTTLMs  int
+	MinDelayMs int
+	MaxDelayMs int
+}
+
 // NewUserMessageQueueService 创建用户消息串行队列服务
 func NewUserMessageQueueService(cache UserMsgQueueCache, rpmCache RPMCache, cfg *MessageQueueOptions, options ...Diagnostics) *UserMessageQueueService {
 	var diagnostics Diagnostics
@@ -253,11 +260,4 @@ func generateUMQRequestID() string {
 		return fmt.Sprintf("%x", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
-}
-
-// MessageQueueOptions 保存消息队列的静态时间参数。
-type MessageQueueOptions struct {
-	LockTTLMs  int
-	MinDelayMs int
-	MaxDelayMs int
 }

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -13,6 +14,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
+
+// calendarPublicSource 提供空站点设置，供测试使用实例注入的日历。
+type calendarPublicSource struct{}
 
 func TestPublicCalendarMatchesAPIAndInjection(t *testing.T) {
 	for _, item := range []struct{ location, name string }{
@@ -28,7 +32,7 @@ func TestPublicCalendarMatchesAPIAndInjection(t *testing.T) {
 			handler := NewPublicHandler(service, "calendar-version")
 			response := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(response)
-			ctx.Request = httptest.NewRequest("GET", "/settings/public", nil)
+			ctx.Request = httptest.NewRequest(http.MethodGet, "/settings/public", nil)
 			handler.GetPublicSettings(ctx)
 			require.Equal(t, 200, response.Code)
 			var envelope struct {
@@ -48,9 +52,6 @@ func TestPublicCalendarMatchesAPIAndInjection(t *testing.T) {
 		})
 	}
 }
-
-// calendarPublicSource 提供空站点设置，供测试使用实例注入的日历。
-type calendarPublicSource struct{}
 
 func (calendarPublicSource) LoadSitePublicInputs(context.Context) (site.PublicInputs, error) {
 	return site.PublicInputs{Values: map[string]string{}}, nil

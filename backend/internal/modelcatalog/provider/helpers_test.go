@@ -15,10 +15,34 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 )
 
+const (
+	mediaAliasFixture = `{
+	"models":{"openai/gpt-image-2":{"name":"Image"}},
+	"providers":{
+		"openai":{"models":{
+			"gpt-image-2":{"cost":{"input":5,"output":30}},
+			"gpt-image-2-snapshot":{"canonical_model_id":"openai/gpt-image-2","cost":{"input":4,"output":20}}
+		}},
+		"openrouter":{"models":{"gpt-image-2":{"canonical_model_id":"openai/gpt-image-2","cost":{"input":1,"output":2}}}}
+	}
+}`
+
+	modelsCatalogFixture = `{"models":{"anthropic/claude-test":{"name":"Claude"}},"providers":{"anthropic":{"models":{"claude-test":{"name":"Claude","reasoning":true,"limit":{"output":10},"cost":{"input":3,"output":15,"cache_write":3.75,"cache_read":0.3,"tiers":[{"tier":{"type":"context","size":100},"input":6,"output":30,"cache_write":7.5,"cache_read":0.6},{"tier":{"type":"context","size":200},"input":9,"output":45,"cache_write":11.25,"cache_read":0.9}]}},"attributes-only":{"name":"No price","temperature":false}}}}}`
+)
+
 // modelCatalogFixture 在服务启动前准备目录选项和模型价格数据。
 type modelCatalogFixture struct {
 	options     Options
 	pricingData map[string]*pricing.CatalogModelPricing
+}
+
+type catalogRemoteFixture struct {
+	mu         sync.Mutex
+	body       []byte
+	err        error
+	etag       string
+	unchanged  bool
+	validators []string
 }
 
 func newModelCatalogFixture(fixture modelCatalogFixture) *Service {
@@ -67,28 +91,6 @@ func catalogPriceForTest(t *testing.T, service *Service, model string) *pricing.
 	value, err := pricing.ResolveModelPricing(model, service.GetModelPricing(model))
 	require.NoError(t, err)
 	return value
-}
-
-const mediaAliasFixture = `{
-	"models":{"openai/gpt-image-2":{"name":"Image"}},
-	"providers":{
-		"openai":{"models":{
-			"gpt-image-2":{"cost":{"input":5,"output":30}},
-			"gpt-image-2-snapshot":{"canonical_model_id":"openai/gpt-image-2","cost":{"input":4,"output":20}}
-		}},
-		"openrouter":{"models":{"gpt-image-2":{"canonical_model_id":"openai/gpt-image-2","cost":{"input":1,"output":2}}}}
-	}
-}`
-
-const modelsCatalogFixture = `{"models":{"anthropic/claude-test":{"name":"Claude"}},"providers":{"anthropic":{"models":{"claude-test":{"name":"Claude","reasoning":true,"limit":{"output":10},"cost":{"input":3,"output":15,"cache_write":3.75,"cache_read":0.3,"tiers":[{"tier":{"type":"context","size":100},"input":6,"output":30,"cache_write":7.5,"cache_read":0.6},{"tier":{"type":"context","size":200},"input":9,"output":45,"cache_write":11.25,"cache_read":0.9}]}},"attributes-only":{"name":"No price","temperature":false}}}}}`
-
-type catalogRemoteFixture struct {
-	mu         sync.Mutex
-	body       []byte
-	err        error
-	etag       string
-	unchanged  bool
-	validators []string
 }
 
 func (r *catalogRemoteFixture) FetchCatalog(_ context.Context, _ string, validator string) ([]byte, string, bool, error) {

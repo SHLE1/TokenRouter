@@ -1,8 +1,5 @@
 package egress
 
-// OpenAIUpstreamTransport 表示 OpenAI 上游传输协议。
-type OpenAIUpstreamTransport string
-
 const (
 	OpenAIUpstreamTransportAny                  OpenAIUpstreamTransport = ""
 	OpenAIUpstreamTransportHTTPSSE              OpenAIUpstreamTransport = "http_sse"
@@ -10,6 +7,9 @@ const (
 	// OpenAIUpstreamTransportResponsesWebsocketV2Ingress 仅用于 WS ingress 选号，允许 ctx_pool/passthrough/http_bridge。
 	OpenAIUpstreamTransportResponsesWebsocketV2Ingress OpenAIUpstreamTransport = "responses_websockets_v2_ingress"
 )
+
+// OpenAIUpstreamTransport 表示 OpenAI 上游传输协议。
+type OpenAIUpstreamTransport string
 
 // OpenAIWSProtocolDecision 表示协议决策结果。
 type OpenAIWSProtocolDecision struct {

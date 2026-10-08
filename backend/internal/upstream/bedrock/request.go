@@ -15,12 +15,51 @@ import (
 	claude "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
-const DefaultBedrockRegion = "us-east-1"
+const (
+	DefaultBedrockRegion = "us-east-1"
 
-// FeatureKeyBedrockCCCompat 是 GroupRoutingPolicy.FeaturesConfig 中 Bedrock CC 兼容开关的配置键。
-const FeatureKeyBedrockCCCompat = "bedrock_cc_compat"
+	// FeatureKeyBedrockCCCompat 是 GroupRoutingPolicy.FeaturesConfig 中 Bedrock CC 兼容开关的配置键。
+	FeatureKeyBedrockCCCompat = "bedrock_cc_compat"
 
-var BedrockCrossRegionPrefixes = []string{"us.", "eu.", "apac.", "jp.", "au.", "us-gov.", "global."}
+	BedrockContextManagementBetaToken = "context-management-2025-06-27"
+
+	DefaultThinkingBudgetTokens = 10000
+
+	DefaultCCMaxTokens = 81920
+)
+
+var (
+	BedrockCrossRegionPrefixes = []string{"us.", "eu.", "apac.", "jp.", "au.", "us-gov.", "global."}
+
+	// ClaudeVersionRe 匹配 Claude 模型 ID 中的版本号部分
+	// 支持 claude-{tier}-{major}、claude-{tier}-{major}-{minor} 和 claude-{tier}-{major}.{minor} 格式；
+	// 省略 minor 时按 0 处理，以兼容 Claude 5 这类主版本模型 ID。
+	ClaudeVersionRe = regexp.MustCompile(`claude-(?:haiku|sonnet|opus)-(\d+)(?:[-.](\d+))?`)
+
+	// BedrockSupportedBetaTokens 是 Bedrock Invoke 支持的 beta 头白名单
+	// 参考: AWS Bedrock 官方文档 + litellm anthropic_beta_headers_config.json
+	// 更新策略: 当 AWS Bedrock 新增支持的 beta token 时需同步更新此白名单
+	BedrockSupportedBetaTokens = map[string]bool{
+		"computer-use-2025-01-24":                true,
+		"computer-use-2025-11-24":                true,
+		"context-1m-2025-08-07":                  true,
+		"context-management-2025-06-27":          true, // 支持压缩与 clear_thinking，AWS 文档已支持
+		"compact-2026-01-12":                     true, // 官方支持，仅 InvokeModel API（Opus 4.6+）
+		"fine-grained-tool-streaming-2025-05-14": true, // AWS 工具调用文档已支持
+		// "interleaved-thinking-2025-05-14": false, // 无官方文档支持
+		"tool-search-tool-2025-10-19": true,
+		"tool-examples-2025-10-29":    true,
+	}
+
+	// BedrockBetaTokenTransforms 定义 Bedrock Invoke 特有的 beta 头转换规则
+	// Anthropic 直接 API 使用通用头，Bedrock Invoke 需要特定的替代头
+	BedrockBetaTokenTransforms = map[string]string{
+		"advanced-tool-use-2025-11-20": "tool-search-tool-2025-10-19",
+	}
+
+	// BedrockToolUseIDRe 匹配 Bedrock 允许的 tool_use ID 字符（字母、数字、下划线、连字符）
+	BedrockToolUseIDRe = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+)
 
 func BedrockRuntimeRegion(provider *RouteInput) string {
 	if provider == nil {
@@ -264,11 +303,6 @@ func RemoveCustomFieldFromTools(body []byte) []byte {
 	return body
 }
 
-// ClaudeVersionRe 匹配 Claude 模型 ID 中的版本号部分
-// 支持 claude-{tier}-{major}、claude-{tier}-{major}-{minor} 和 claude-{tier}-{major}.{minor} 格式；
-// 省略 minor 时按 0 处理，以兼容 Claude 5 这类主版本模型 ID。
-var ClaudeVersionRe = regexp.MustCompile(`claude-(?:haiku|sonnet|opus)-(\d+)(?:[-.](\d+))?`)
-
 // IsBedrockClaude45OrNewer 判断 Bedrock 模型 ID 是否为 Claude 4.5 或更新版本
 // Claude 4.5+ 支持 cache_control 中的 ttl 字段（"5m" 和 "1h"）
 func IsBedrockClaude45OrNewer(modelID string) bool {
@@ -364,29 +398,6 @@ func DeleteCacheControlUnsupportedFields(body []byte, basePath string, cc gjson.
 }
 
 func ParseAnthropicBetaHeader(header string) []string { return claude.ParseAnthropicBetaHeader(header) }
-
-// BedrockSupportedBetaTokens 是 Bedrock Invoke 支持的 beta 头白名单
-// 参考: AWS Bedrock 官方文档 + litellm anthropic_beta_headers_config.json
-// 更新策略: 当 AWS Bedrock 新增支持的 beta token 时需同步更新此白名单
-var BedrockSupportedBetaTokens = map[string]bool{
-	"computer-use-2025-01-24":                true,
-	"computer-use-2025-11-24":                true,
-	"context-1m-2025-08-07":                  true,
-	"context-management-2025-06-27":          true, // 支持压缩与 clear_thinking，AWS 文档已支持
-	"compact-2026-01-12":                     true, // 官方支持，仅 InvokeModel API（Opus 4.6+）
-	"fine-grained-tool-streaming-2025-05-14": true, // AWS 工具调用文档已支持
-	// "interleaved-thinking-2025-05-14": false, // 无官方文档支持
-	"tool-search-tool-2025-10-19": true,
-	"tool-examples-2025-10-29":    true,
-}
-
-const BedrockContextManagementBetaToken = "context-management-2025-06-27"
-
-// BedrockBetaTokenTransforms 定义 Bedrock Invoke 特有的 beta 头转换规则
-// Anthropic 直接 API 使用通用头，Bedrock Invoke 需要特定的替代头
-var BedrockBetaTokenTransforms = map[string]string{
-	"advanced-tool-use-2025-11-20": "tool-search-tool-2025-10-19",
-}
 
 // AutoInjectBedrockBetaTokens 根据请求体内容自动补齐必要的 beta token
 // 参考 litellm: AnthropicModelInfo.get_anthropic_beta_list() 和
@@ -566,9 +577,6 @@ func ContainsAnyBedrockBetaToken(tokens []string, targets ...string) bool {
 	return false
 }
 
-// BedrockToolUseIDRe 匹配 Bedrock 允许的 tool_use ID 字符（字母、数字、下划线、连字符）
-var BedrockToolUseIDRe = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
-
 // IsBedrockOpus47OrNewer 判断 Bedrock 模型 ID 是否为 Claude Opus 4.7 或更新版本
 // Opus 4.7 仅支持 thinking.type: "adaptive"，不支持 "enabled"
 func IsBedrockOpus47OrNewer(modelID string) bool {
@@ -591,8 +599,6 @@ func IsBedrockOpus47OrNewer(modelID string) bool {
 func IsBedrockFable5(modelID string) bool {
 	return strings.Contains(strings.ToLower(modelID), "claude-fable-5")
 }
-
-const DefaultThinkingBudgetTokens = 10000
 
 // SanitizeBedrockThinking 修复 thinking 字段的 Bedrock 兼容性问题：
 //   - Fable 5: 仅使用 always-on adaptive thinking，不支持手动 budget_tokens
@@ -668,8 +674,6 @@ func SanitizeIDField(body []byte, id, path string) []byte {
 	}
 	return body
 }
-
-const DefaultCCMaxTokens = 81920
 
 // SanitizeBedrockCCFields 处理 Claude Code 发送的 Bedrock 不兼容字段：
 //   - 移除 service_tier（Anthropic API 专有，Bedrock 不支持）

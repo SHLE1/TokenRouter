@@ -22,6 +22,18 @@ import (
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
+// fakeSMTPServer 提供隐式 TLS、STARTTLS 和纯明文连接，供 SMTP 客户端测试使用。
+type fakeSMTPServer struct {
+	listener          net.Listener
+	tlsConfig         *tls.Config
+	advertiseStartTLS bool
+
+	mu       sync.Mutex
+	commands []string
+	conns    atomic.Int64
+	wg       sync.WaitGroup
+}
+
 // TestSMTPAcknowledgementCancellationBoundary 检查收到 DATA 成功响应后取消 QUIT 仍返回成功。
 // 缺失 DATA 响应时，发送结果保持不明。
 func TestSMTPAcknowledgementCancellationBoundary(t *testing.T) {
@@ -251,18 +263,6 @@ func newSMTPTestCert(t *testing.T) (tls.Certificate, *x509.CertPool) {
 	pool := x509.NewCertPool()
 	pool.AddCert(leaf)
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: priv}, pool
-}
-
-// fakeSMTPServer 提供隐式 TLS、STARTTLS 和纯明文连接，供 SMTP 客户端测试使用。
-type fakeSMTPServer struct {
-	listener          net.Listener
-	tlsConfig         *tls.Config
-	advertiseStartTLS bool
-
-	mu       sync.Mutex
-	commands []string
-	conns    atomic.Int64
-	wg       sync.WaitGroup
 }
 
 func startFakeSMTPServer(t *testing.T, implicitTLS, advertiseStartTLS bool) (*fakeSMTPServer, int) {

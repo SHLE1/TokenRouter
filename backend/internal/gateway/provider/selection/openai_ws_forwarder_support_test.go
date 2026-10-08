@@ -18,18 +18,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
 )
 
+// selectionSnapshotFixture 提供待解码的快照，数据库复核读取独立记录。
+type selectionSnapshotFixture struct {
+	schedulercore.SnapshotCache
+	providersByID map[int64]*gatewayprovider.ExecutionProvider
+}
+
 // selectPreviousResponseForTest 构造上下文和模型输入，调用上一响应的提供商选择方法。
 func selectPreviousResponseForTest(s *Compatible, ctx context.Context, group *int64, previous, model string, excluded map[int64]struct{}, compact bool) (*gatewayprovider.SelectionResult, error) {
 	ctx = s.withCandidatePolicy(ctx, group, "")
 	ctx = s.withOpenAIGroupPrivacyRequirement(ctx, group)
 	model = s.resolveGroupRoutingModel(ctx, group, model)
 	return s.selectProviderByPreviousResponseIDForCapability(ctx, group, previous, model, excluded, "", compact)
-}
-
-// selectionSnapshotFixture 提供待解码的快照，数据库复核读取独立记录。
-type selectionSnapshotFixture struct {
-	schedulercore.SnapshotCache
-	providersByID map[int64]*gatewayprovider.ExecutionProvider
 }
 
 func (s *selectionSnapshotFixture) GetProvider(_ context.Context, id int64) (schedulercore.SnapshotProvider, error) {

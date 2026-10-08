@@ -15,6 +15,25 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 )
 
+// stepUpEnabled 为二次验证测试启用功能开关。
+var stepUpEnabled = stubStepUpSettingReader{enabled: true}
+
+type stubStepUpGrantChecker struct {
+	granted bool
+	err     error
+}
+
+type stubStepUpUserReader struct {
+	user *identity.User
+	err  error
+}
+
+type stubStepUpSettingReader struct {
+	enabled bool
+}
+
+type principalStepUpEnabled struct{}
+
 func TestEnforceStepUpRejectsAdminAPIKey(t *testing.T) {
 	c, rec := newStepUpTestContext(t)
 	c.Set("auth_method", audit.AuditAuthMethodAdminAPIKey)
@@ -185,34 +204,17 @@ func TestStepUpUsesCanonicalJWTSession(t *testing.T) {
 	require.Equal(t, "verified", StepUpSessionKey(c, 1))
 }
 
-type stubStepUpGrantChecker struct {
-	granted bool
-	err     error
-}
-
 func (s stubStepUpGrantChecker) HasStepUpGrant(ctx context.Context, userID int64, sessionKey string) (bool, error) {
 	return s.granted, s.err
-}
-
-type stubStepUpUserReader struct {
-	user *identity.User
-	err  error
 }
 
 func (s stubStepUpUserReader) GetByID(ctx context.Context, id int64) (*identity.User, error) {
 	return s.user, s.err
 }
 
-type stubStepUpSettingReader struct {
-	enabled bool
-}
-
 func (s stubStepUpSettingReader) IsStepUpEnabled(ctx context.Context) bool {
 	return s.enabled
 }
-
-// stepUpEnabled 为二次验证测试启用功能开关。
-var stepUpEnabled = stubStepUpSettingReader{enabled: true}
 
 func newStepUpTestContext(t *testing.T) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
@@ -222,7 +224,5 @@ func newStepUpTestContext(t *testing.T) (*gin.Context, *httptest.ResponseRecorde
 	c.Request = httptest.NewRequest(http.MethodPost, "/sensitive", nil)
 	return c, rec
 }
-
-type principalStepUpEnabled struct{}
 
 func (principalStepUpEnabled) IsStepUpEnabled(context.Context) bool { return true }

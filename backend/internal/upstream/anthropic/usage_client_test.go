@@ -13,10 +13,22 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+var (
+	canListenOnce sync.Once
+	canListen     bool
+	canListenErr  error
+)
+
 type ClaudeUsageServiceSuite struct {
 	suite.Suite
 	srv     *httptest.Server
 	fetcher *UsageClient
+}
+
+// usageRequestCapture 保存用量查询的认证头，供主 goroutine 断言。
+type usageRequestCapture struct {
+	authorization string
+	anthropicBeta string
 }
 
 func (s *ClaudeUsageServiceSuite) TearDownTest() {
@@ -24,12 +36,6 @@ func (s *ClaudeUsageServiceSuite) TearDownTest() {
 		s.srv.Close()
 		s.srv = nil
 	}
-}
-
-// usageRequestCapture 保存用量查询的认证头，供主 goroutine 断言。
-type usageRequestCapture struct {
-	authorization string
-	anthropicBeta string
 }
 
 func (s *ClaudeUsageServiceSuite) TestFetchUsage_Success() {
@@ -128,12 +134,6 @@ func (s *ClaudeUsageServiceSuite) TestFetchUsage_InvalidProxyReturnsError() {
 func TestClaudeUsageServiceSuite(t *testing.T) {
 	suite.Run(t, new(ClaudeUsageServiceSuite))
 }
-
-var (
-	canListenOnce sync.Once
-	canListen     bool
-	canListenErr  error
-)
 
 func localListenerAvailable() bool {
 	canListenOnce.Do(func() {

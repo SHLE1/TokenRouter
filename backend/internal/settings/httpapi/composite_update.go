@@ -41,11 +41,34 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// semverPattern 校验由三段数字组成的版本号。
-var semverPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+var (
+	// semverPattern 校验由三段数字组成的版本号。
+	semverPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
-// menuItemIDPattern 校验由字母、数字、连字符和下划线组成的菜单项 ID。
-var menuItemIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	// menuItemIDPattern 校验由字母、数字、连字符和下划线组成的菜单项 ID。
+	menuItemIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+	// markdownMenuSlugPattern 校验自定义 Markdown 页面 slug，需与页面读取接口保持一致。
+	markdownMenuSlugPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]*$`)
+
+	// settingKeyJSONAliases 记录 JSON 名称与持久化设置键不同的请求字段。
+	// UpdateSettingsRequest 的其他字段均使用对应设置键作为 JSON 名称。
+	settingKeyJSONAliases = map[string]string{
+		"smtp_from_email": notification.SettingKeySMTPFrom,
+	}
+
+	// settingKeyByJSONName 将 UpdateSettingsRequest 中非指针顶层 JSON 字段映射到其写入的设置键。
+	// 该映射只根据结构体标签构建一次，使新增字段无需修改此处也能自动纳入处理。
+	//
+	// 指针字段由 UpdateSettings 合并，省略时保留存储值，因此本表排除这些字段。
+	// 部分字段还依赖每次保存时重新写入，以重新规范化故障关闭的安全状态，参见
+	// TestUpdateSettingsMalformedForwardedClientIPHeadersRemainFailClosedWhenOmitted。
+	// 只有非指针字段无法区分省略与主动清空。
+	settingKeyByJSONName = buildSettingKeyByJSONName()
+)
+
+// UpdateSettingsRequest 更新设置请求
+type UpdateSettingsRequest = settingsdto.UpdateSettingsRequest
 
 // generateMenuItemID 为自定义菜单项生成随机十六进制 ID。
 func generateMenuItemID() (string, error) {
@@ -75,12 +98,6 @@ func firstNonEmpty(values ...string) string {
 	}
 	return ""
 }
-
-// markdownMenuSlugPattern 校验自定义 Markdown 页面 slug，需与页面读取接口保持一致。
-var markdownMenuSlugPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]*$`)
-
-// UpdateSettingsRequest 更新设置请求
-type UpdateSettingsRequest = settingsdto.UpdateSettingsRequest
 
 // ensureActorTotpForStepUp 校验操作者是否具备开启 step-up 验证的条件。
 // 操作者必须通过管理员会话登录且已启用 TOTP；管理 API Key 不满足条件。
@@ -117,25 +134,10 @@ func (h *Handler) ensureActorTotpForStepUp(c *gin.Context) bool {
 	return true
 }
 
-// settingKeyJSONAliases 记录 JSON 名称与持久化设置键不同的请求字段。
-// UpdateSettingsRequest 的其他字段均使用对应设置键作为 JSON 名称。
-var settingKeyJSONAliases = map[string]string{
-	"smtp_from_email": notification.SettingKeySMTPFrom,
-}
-
-// settingKeyByJSONName 将 UpdateSettingsRequest 中非指针顶层 JSON 字段映射到其写入的设置键。
-// 该映射只根据结构体标签构建一次，使新增字段无需修改此处也能自动纳入处理。
-//
-// 指针字段由 UpdateSettings 合并，省略时保留存储值，因此本表排除这些字段。
-// 部分字段还依赖每次保存时重新写入，以重新规范化故障关闭的安全状态，参见
-// TestUpdateSettingsMalformedForwardedClientIPHeadersRemainFailClosedWhenOmitted。
-// 只有非指针字段无法区分省略与主动清空。
-var settingKeyByJSONName = buildSettingKeyByJSONName()
-
 func buildSettingKeyByJSONName() map[string]string {
 	t := reflect.TypeOf(UpdateSettingsRequest{})
 	out := make(map[string]string, t.NumField())
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 		if field.Type.Kind() == reflect.Pointer {
 			continue

@@ -17,13 +17,180 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 )
 
+const (
+	qoderJSONAuthCOSY qoderJSONAuthMode = iota
+	qoderJSONAuthSignature
+	qoderJSONAuthBearer
+
+	// GenerationPath 是 Qoder LLM 推理的 SSE 流式端点。
+	GenerationPath = "/algo/api/v2/service/pro/sse/agent_chat_generation?FetchKeys=llm_model_result&AgentId=agent_common&Encode=1"
+)
+
+var (
+	qoderBearerTokenPattern  = regexp.MustCompile(`(?i)\b(authorization\s*[:=]\s*bearer\s+|bearer\s+)([^\s"',;]+)`)
+	qoderCookiePattern       = regexp.MustCompile(`(?i)\b(cookie|set-cookie)(\s*[:=]\s*)([^\r\n"]+)`)
+	qoderInlineSecretPattern = regexp.MustCompile(`(?i)\b(securityOauthToken|security_oauth_token|refreshToken|refresh_token|personalToken|personal_token|cosy-key|cosyKey)(\s*[:=]\s*)([^,\s"']+)`)
+	qoderJSONCodeStringRe    = regexp.MustCompile(`(?i)("code"\s*:\s*")([0-9]{1,8})(")`)
+	qoderJSONCodeNumberRe    = regexp.MustCompile(`(?i)("code"\s*:\s*)([0-9]{1,8})(\b)`)
+	qoderPlainCodeNumberRe   = regexp.MustCompile(`(?i)\b(code)(\s*[:=]\s*)([0-9]{1,8})\b`)
+	redactedJSONCodeRe       = regexp.MustCompile(`(?i)("code"\s*:\s*)"\*\*\*"`)
+	redactedPlainCodeRe      = regexp.MustCompile(`(?i)\b(code)(\s*[:=]\s*)\*\*\*`)
+
+	qoderSensitiveErrorKeys = []string{
+		"authorization",
+		"cookie",
+		"set-cookie",
+		"securityOauthToken",
+		"security_oauth_token",
+		"refreshToken",
+		"refresh_token",
+		"personalToken",
+		"personal_token",
+		"token",
+		"cosy-key",
+		"cosyKey",
+		"cosy_user",
+		"cosy-user",
+		"uid",
+		"aid",
+	}
+)
+
+// Client 是支持 COSY 协议的 Qoder API HTTP 客户端。
+type Client struct {
+	APIBaseURL    string
+	ClientVersion string
+	Site          Site
+	MachineOS     string
+	ClientIP      string
+	HTTPClient    *http.Client
+}
+
+// RequestDoer 执行已构造好的 HTTP 请求。
+type RequestDoer func(req *http.Request) (*http.Response, error)
+
+type qoderJSONAuthMode uint8
+
+// APIError 表示 Qoder API 返回的错误。
+type APIError struct {
+	StatusCode          int
+	Body                string
+	Code                string
+	Message             string
+	AgentLimitResetTime int64
+}
+
+// SSEEvent 表示从 Qoder 流中解析出的 SSE 事件。
+type SSEEvent struct {
+	Type             string // text_delta、reasoning_delta、tool_call_delta、usage、error
+	Text             string // text_delta 和 reasoning_delta 事件内容
+	ToolCallID       string // tool_call_delta 事件 ID
+	ToolCallIndex    int    // tool_call_delta 事件序号
+	HasToolCallIndex bool   // Qoder 返回 tool call index 时为 true
+	ToolType         string // tool_call_delta 事件类型
+	ToolName         string // tool_call_delta 事件名称
+	Arguments        string // tool_call_delta 事件参数，JSON 字符串
+	PromptTokens     int    // usage 事件的输入 token
+	CompletionTokens int    // usage 事件的输出 token
+	TotalTokens      int    // usage 事件的总 token
+	UsageDetails     UsageDetails
+	HasUsage         bool // Qoder 返回 usage payload 时为 true
+	IsDone           bool // 收到 [DONE] 信号时为 true
+}
+
+type UsageDetails struct {
+	PromptTokensDetails     *PromptTokensDetails
+	CompletionTokensDetails *CompletionTokensDetails
+}
+
+type PromptTokensDetails struct {
+	CachedTokens    int
+	CacheableTokens int
+}
+
+type CompletionTokensDetails struct {
+	ReasoningTokens int
+}
+
+// QoderSSEWrapper 是 Qoder SSE 外层结构。
+type QoderSSEWrapper struct {
+	Body            string `json:"body"`
+	StatusCode      string `json:"statusCode"`
+	StatusCodeValue int    `json:"statusCodeValue"`
+}
+
+type qoderErrorBody struct {
+	Code                qoderErrorCode  `json:"code"`
+	Message             string          `json:"message"`
+	Data                json.RawMessage `json:"data"`
+	AgentLimitResetTime int64           `json:"agentLimitResetTime"`
+}
+
+type qoderErrorCode string
+
+// QoderSSEInner 是 Qoder SSE body 的内层结构。
+type QoderSSEInner struct {
+	Choices []QoderSSEChoice `json:"choices"`
+	Usage   *QoderSSEUsage   `json:"usage,omitempty"`
+	Event   string           `json:"event,omitempty"`
+	Type    string           `json:"type,omitempty"`
+	Data    json.RawMessage  `json:"data,omitempty"`
+	Index   *int             `json:"index,omitempty"`
+}
+
+type QoderSSEChoice struct {
+	Delta        QoderSSEDelta   `json:"delta"`
+	Message      QoderSSEMessage `json:"message"`
+	FinishReason string          `json:"finish_reason"`
+}
+
+type QoderSSEDelta struct {
+	Content          string             `json:"content"`
+	ReasoningContent string             `json:"reasoning_content"`
+	ToolCalls        []QoderSSEToolCall `json:"tool_calls"`
+}
+
+type QoderSSEMessage struct {
+	Content          any                `json:"content"`
+	ReasoningContent string             `json:"reasoning_content"`
+	ToolCalls        []QoderSSEToolCall `json:"tool_calls"`
+}
+
+type QoderSSEToolCall struct {
+	Index      *int            `json:"index,omitempty"`
+	ID         string          `json:"id"`
+	ToolCallID string          `json:"tool_call_id"`
+	CallID     string          `json:"call_id"`
+	Type       string          `json:"type"`
+	Name       string          `json:"name"`
+	ToolName   string          `json:"tool_name"`
+	Arguments  json.RawMessage `json:"arguments"`
+	Input      json.RawMessage `json:"input"`
+	Parameters json.RawMessage `json:"parameters"`
+	Function   struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	} `json:"function"`
+}
+
+// QoderSSEUsage 是 Qoder SSE payload 中携带的 token usage 对象。
+type QoderSSEUsage struct {
+	PromptTokens            int                      `json:"-"`
+	CompletionTokens        int                      `json:"-"`
+	TotalTokens             int                      `json:"-"`
+	InputTokens             int                      `json:"-"`
+	OutputTokens            int                      `json:"-"`
+	PromptTokensDetails     *PromptTokensDetails     `json:"prompt_tokens_details,omitempty"`
+	CompletionTokensDetails *CompletionTokensDetails `json:"completion_tokens_details,omitempty"`
+}
+
 // MayRefreshAttempt 允许刷新 401 和 403 认证错误，额度和权益拒绝返回 false。
 func MayRefreshAttempt(err error) bool {
 	var failure *APIError
 	if !errors.As(err, &failure) || failure.IsAgentLimit() || failure.IsEntitlementDenied() {
 		return false
 	}
-	return failure.StatusCode == 401 || failure.StatusCode == 403
+	return failure.StatusCode == http.StatusUnauthorized || failure.StatusCode == http.StatusForbidden
 }
 
 // MaySwitchAttempt 判断 Qoder 错误是否支持切换提供商，重试窗口和次数由调用方决定。
@@ -41,24 +208,8 @@ func maySwitchAttempt(err error, unknown bool) bool {
 	if !errors.As(err, &failure) {
 		return unknown
 	}
-	return failure.IsAgentLimit() || failure.IsEntitlementDenied() || failure.StatusCode == 429 || failure.StatusCode >= 500
+	return failure.IsAgentLimit() || failure.IsEntitlementDenied() || failure.StatusCode == http.StatusTooManyRequests || failure.StatusCode >= 500
 }
-
-// GenerationPath 是 Qoder LLM 推理的 SSE 流式端点。
-const GenerationPath = "/algo/api/v2/service/pro/sse/agent_chat_generation?FetchKeys=llm_model_result&AgentId=agent_common&Encode=1"
-
-// Client 是支持 COSY 协议的 Qoder API HTTP 客户端。
-type Client struct {
-	APIBaseURL    string
-	ClientVersion string
-	Site          Site
-	MachineOS     string
-	ClientIP      string
-	HTTPClient    *http.Client
-}
-
-// RequestDoer 执行已构造好的 HTTP 请求。
-type RequestDoer func(req *http.Request) (*http.Response, error)
 
 // NewClient 创建新的 Qoder API 客户端。
 func NewClient(apiBaseURL string) *Client {
@@ -102,7 +253,7 @@ func (c *Client) StreamRequestContextWithDoer(ctx context.Context, session *Sess
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, strings.NewReader(encodedBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullURL, strings.NewReader(encodedBody))
 	if err != nil {
 		return nil, fmt.Errorf("qoder: create request: %w", err)
 	}
@@ -127,7 +278,7 @@ func (c *Client) StreamRequestContextWithDoer(ctx context.Context, session *Sess
 		return nil, fmt.Errorf("qoder: request failed: %w", err)
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		_ = resp.Body.Close()
 		apiErr := ParseAPIErrorBody(resp.StatusCode, string(body))
@@ -188,14 +339,6 @@ func (c *Client) BearerJSONRequestContextWithDoer(
 ) error {
 	return c.jsonRequestContextWithDoer(ctx, method, session, logicalPath, bodyJSON, extraHeaders, doer, out, qoderJSONAuthBearer)
 }
-
-type qoderJSONAuthMode uint8
-
-const (
-	qoderJSONAuthCOSY qoderJSONAuthMode = iota
-	qoderJSONAuthSignature
-	qoderJSONAuthBearer
-)
 
 func (c *Client) jsonRequestContextWithDoer(
 	ctx context.Context,
@@ -347,15 +490,6 @@ func unwrapQoderJSONResponse(body []byte) ([]byte, int, error) {
 	return decoded, http.StatusOK, nil
 }
 
-// APIError 表示 Qoder API 返回的错误。
-type APIError struct {
-	StatusCode          int
-	Body                string
-	Code                string
-	Message             string
-	AgentLimitResetTime int64
-}
-
 func (e *APIError) Error() string {
 	if e == nil {
 		return ""
@@ -407,36 +541,6 @@ func ParseAPIErrorBody(statusCode int, body string) *APIError {
 	applyQoderErrorPayload(apiErr, []byte(body))
 	redactQoderAPIError(apiErr)
 	return apiErr
-}
-
-var (
-	qoderBearerTokenPattern  = regexp.MustCompile(`(?i)\b(authorization\s*[:=]\s*bearer\s+|bearer\s+)([^\s"',;]+)`)
-	qoderCookiePattern       = regexp.MustCompile(`(?i)\b(cookie|set-cookie)(\s*[:=]\s*)([^\r\n"]+)`)
-	qoderInlineSecretPattern = regexp.MustCompile(`(?i)\b(securityOauthToken|security_oauth_token|refreshToken|refresh_token|personalToken|personal_token|cosy-key|cosyKey)(\s*[:=]\s*)([^,\s"']+)`)
-	qoderJSONCodeStringRe    = regexp.MustCompile(`(?i)("code"\s*:\s*")([0-9]{1,8})(")`)
-	qoderJSONCodeNumberRe    = regexp.MustCompile(`(?i)("code"\s*:\s*)([0-9]{1,8})(\b)`)
-	qoderPlainCodeNumberRe   = regexp.MustCompile(`(?i)\b(code)(\s*[:=]\s*)([0-9]{1,8})\b`)
-	redactedJSONCodeRe       = regexp.MustCompile(`(?i)("code"\s*:\s*)"\*\*\*"`)
-	redactedPlainCodeRe      = regexp.MustCompile(`(?i)\b(code)(\s*[:=]\s*)\*\*\*`)
-)
-
-var qoderSensitiveErrorKeys = []string{
-	"authorization",
-	"cookie",
-	"set-cookie",
-	"securityOauthToken",
-	"security_oauth_token",
-	"refreshToken",
-	"refresh_token",
-	"personalToken",
-	"personal_token",
-	"token",
-	"cosy-key",
-	"cosyKey",
-	"cosy_user",
-	"cosy-user",
-	"uid",
-	"aid",
 }
 
 // RedactSensitiveText 在错误返回给客户端或写入日志/快照前脱敏 Qoder 凭据。
@@ -616,54 +720,6 @@ func (c *Client) requestClientVersion(session *SessionContext) string {
 	return clientVersion
 }
 
-// SSEEvent 表示从 Qoder 流中解析出的 SSE 事件。
-type SSEEvent struct {
-	Type             string // text_delta、reasoning_delta、tool_call_delta、usage、error
-	Text             string // text_delta 和 reasoning_delta 事件内容
-	ToolCallID       string // tool_call_delta 事件 ID
-	ToolCallIndex    int    // tool_call_delta 事件序号
-	HasToolCallIndex bool   // Qoder 返回 tool call index 时为 true
-	ToolType         string // tool_call_delta 事件类型
-	ToolName         string // tool_call_delta 事件名称
-	Arguments        string // tool_call_delta 事件参数，JSON 字符串
-	PromptTokens     int    // usage 事件的输入 token
-	CompletionTokens int    // usage 事件的输出 token
-	TotalTokens      int    // usage 事件的总 token
-	UsageDetails     UsageDetails
-	HasUsage         bool // Qoder 返回 usage payload 时为 true
-	IsDone           bool // 收到 [DONE] 信号时为 true
-}
-
-type UsageDetails struct {
-	PromptTokensDetails     *PromptTokensDetails
-	CompletionTokensDetails *CompletionTokensDetails
-}
-
-type PromptTokensDetails struct {
-	CachedTokens    int
-	CacheableTokens int
-}
-
-type CompletionTokensDetails struct {
-	ReasoningTokens int
-}
-
-// QoderSSEWrapper 是 Qoder SSE 外层结构。
-type QoderSSEWrapper struct {
-	Body            string `json:"body"`
-	StatusCode      string `json:"statusCode"`
-	StatusCodeValue int    `json:"statusCodeValue"`
-}
-
-type qoderErrorBody struct {
-	Code                qoderErrorCode  `json:"code"`
-	Message             string          `json:"message"`
-	Data                json.RawMessage `json:"data"`
-	AgentLimitResetTime int64           `json:"agentLimitResetTime"`
-}
-
-type qoderErrorCode string
-
 func (c *qoderErrorCode) UnmarshalJSON(data []byte) error {
 	var raw any
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -676,62 +732,6 @@ func (c *qoderErrorCode) UnmarshalJSON(data []byte) error {
 		*c = qoderErrorCode(strconv.FormatFloat(v, 'f', -1, 64))
 	}
 	return nil
-}
-
-// QoderSSEInner 是 Qoder SSE body 的内层结构。
-type QoderSSEInner struct {
-	Choices []QoderSSEChoice `json:"choices"`
-	Usage   *QoderSSEUsage   `json:"usage,omitempty"`
-	Event   string           `json:"event,omitempty"`
-	Type    string           `json:"type,omitempty"`
-	Data    json.RawMessage  `json:"data,omitempty"`
-	Index   *int             `json:"index,omitempty"`
-}
-
-type QoderSSEChoice struct {
-	Delta        QoderSSEDelta   `json:"delta"`
-	Message      QoderSSEMessage `json:"message"`
-	FinishReason string          `json:"finish_reason"`
-}
-
-type QoderSSEDelta struct {
-	Content          string             `json:"content"`
-	ReasoningContent string             `json:"reasoning_content"`
-	ToolCalls        []QoderSSEToolCall `json:"tool_calls"`
-}
-
-type QoderSSEMessage struct {
-	Content          any                `json:"content"`
-	ReasoningContent string             `json:"reasoning_content"`
-	ToolCalls        []QoderSSEToolCall `json:"tool_calls"`
-}
-
-type QoderSSEToolCall struct {
-	Index      *int            `json:"index,omitempty"`
-	ID         string          `json:"id"`
-	ToolCallID string          `json:"tool_call_id"`
-	CallID     string          `json:"call_id"`
-	Type       string          `json:"type"`
-	Name       string          `json:"name"`
-	ToolName   string          `json:"tool_name"`
-	Arguments  json.RawMessage `json:"arguments"`
-	Input      json.RawMessage `json:"input"`
-	Parameters json.RawMessage `json:"parameters"`
-	Function   struct {
-		Name      string          `json:"name"`
-		Arguments json.RawMessage `json:"arguments"`
-	} `json:"function"`
-}
-
-// QoderSSEUsage 是 Qoder SSE payload 中携带的 token usage 对象。
-type QoderSSEUsage struct {
-	PromptTokens            int                      `json:"-"`
-	CompletionTokens        int                      `json:"-"`
-	TotalTokens             int                      `json:"-"`
-	InputTokens             int                      `json:"-"`
-	OutputTokens            int                      `json:"-"`
-	PromptTokensDetails     *PromptTokensDetails     `json:"prompt_tokens_details,omitempty"`
-	CompletionTokensDetails *CompletionTokensDetails `json:"completion_tokens_details,omitempty"`
 }
 
 func (u *QoderSSEUsage) UnmarshalJSON(data []byte) error {

@@ -91,7 +91,6 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 	shouldMimicClaudeCode := in.OAuth && !isClaudeCode
 
 	if shouldMimicClaudeCode {
-
 		systemRewritten := false
 		systemPromptInjectionEnabled, systemPrompt, systemPromptBlocks := p.SystemSettings(ctx)
 		if systemPromptInjectionEnabled {
@@ -125,7 +124,6 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 		} else if err := replaceBody(p.ToolsLast(body)); err != nil {
 			return nil, err
 		}
-
 	}
 
 	if next, ok := p.NormalizeDateline(ctx, body); ok {
@@ -249,7 +247,6 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 			return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameProvider)
 		}
 		if resp.StatusCode >= 400 {
-
 			if resp.StatusCode == 400 && in.FailoverOn400 {
 				respBody, readErr := p.ReadErrorBody()
 				if readErr != nil {
@@ -332,7 +329,6 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 	if reqStream {
 		if err != nil {
 			if raw, ok := p.StreamError(err); ok {
-
 				body := []byte(raw)
 				semanticStatus := 403
 				var semanticDecision ErrorDecision

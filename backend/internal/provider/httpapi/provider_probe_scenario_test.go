@@ -40,6 +40,141 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+const compactionTestV2SSESuccessBody = "data: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"compaction\",\"id\":\"cmp_probe\",\"encrypted_content\":\"blob\"}}\n\n" +
+	"data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_probe\",\"output\":[]}}\n\n"
+
+type cnProviderTestRepo struct {
+	provider *providercore.Record
+}
+
+type cnProviderTestHTTP struct {
+	request *http.Request
+	body    string
+}
+
+type grokProviderTestRateLimitRepo struct {
+	*grokTestStoreFixture
+	rateLimitedCalls int
+	resetAt          time.Time
+}
+
+// 夹具记录存储写入和平台请求，提供商测试使用生产实现。
+type grokTestStoreFixture struct {
+	providersByID map[int64]*providercore.Record
+}
+
+type grokTestTransportFixture struct {
+	resp     *http.Response
+	lastReq  *http.Request
+	lastBody []byte
+}
+
+type grokTestTargetLoader struct{ target providercore.TestTarget }
+
+// 替身记录健康字段写入和调用次数。
+type grokTestFailureStoreFixture struct {
+	tempUnschedCalls, rateLimitedCalls int
+	lastRateLimitedID                  int64
+	lastRateLimitResetAt               time.Time
+}
+
+type probeAgentStore struct {
+	provideradapter.OpenAIProviderTestStore
+	provider      *providercore.Record
+	setErrorCalls int
+}
+
+type probeAgentInvalidations struct{ providerIDs []int64 }
+
+type queuedHTTPUpstream struct {
+	responses []*http.Response
+	requests  []*http.Request
+	tlsFlags  []bool
+}
+
+type openAIProbeStore struct {
+	openAIProbeRecords
+	updateExtraCalls   chan map[string]any
+	updatedExtra       map[string]any
+	bulkUpdatedIDs     []int64
+	bulkUpdatedPayload providercore.ProviderBulkUpdate
+	rateLimitedID      int64
+	rateLimitedAt      *time.Time
+	clearedErrorID     int64
+	setErrorID         int64
+	setErrorMsg        string
+}
+
+// openAIProbeOutput 包含 HTTP 请求和响应记录器。
+type openAIProbeOutput struct {
+	Request  *http.Request
+	recorder *httptest.ResponseRecorder
+}
+
+type openAIProbeRecords struct {
+	providersByID map[int64]*providercore.Record
+}
+
+type openAIProbeTransport struct {
+	requests       []*http.Request
+	bodies         [][]byte
+	responses      []*http.Response
+	resp           *http.Response
+	err            error
+	lastReq        *http.Request
+	lastBody       []byte
+	lastTLSProfile *tlsfingerprint.Profile
+}
+
+type automaticProbeProfileStore struct {
+	egress.TLSFingerprintProfileRepository
+	values []*egress.TLSFingerprintProfile
+}
+
+type automaticProbeRouterStore struct {
+	egress.TLSFingerprintRouterRepository
+	values []*egress.TLSFingerprintRouter
+}
+
+type qoderProviderTestSessionProviderStub struct {
+	session     *qoder.SessionContext
+	err         error
+	invalidated []int64
+}
+
+type qoderProviderTestClientStub struct {
+	request  *http.Request
+	requests []*http.Request
+	body     string
+	bodies   [][]byte
+	err      error
+	headers  map[string]string
+}
+
+type qoderProviderTestOAuthClientStub struct {
+	token string
+	err   error
+}
+
+type qoderHTTPUpstreamRecorder struct {
+	body                string
+	userInfoBody        string
+	userInfoStatusCode  int
+	proxyURL            string
+	providerID          int64
+	providerConcurrency int
+	profileSet          bool
+	requests            []*http.Request
+}
+
+// 夹具组合测试用例、平台目标和 HTTP 输出器，执行分支使用生产实现。
+type qoderTestOutputFixture struct {
+	context.Context
+	recorder *httptest.ResponseRecorder
+}
+
+type qoderTargetFixture struct{ target providercore.TestTarget }
+
 func TestProviderTestService_AdaptiveChatOnlyProvidersTestChatAndAnthropicEndpoints(t *testing.T) {
 	provider := adaptiveCNProviderTestProvider(301, capability.PlatformZhipu)
 	svc, upstream := adaptiveCNProviderTestService(
@@ -2579,18 +2714,9 @@ data: {"type":"response.completed"}
 	}
 }
 
-type cnProviderTestRepo struct {
-	provider *providercore.Record
-}
-
 func (r *cnProviderTestRepo) GetByID(context.Context, int64) (*providercore.Record, error) {
 	copy := *r.provider
 	return &copy, nil
-}
-
-type cnProviderTestHTTP struct {
-	request *http.Request
-	body    string
 }
 
 func (h *cnProviderTestHTTP) Do(req *http.Request, proxyURL string, providerID int64, concurrency int) (*http.Response, error) {
@@ -2613,21 +2739,10 @@ func (h *cnProviderTestHTTP) DoWithTLS(
 	}, nil
 }
 
-type grokProviderTestRateLimitRepo struct {
-	*grokTestStoreFixture
-	rateLimitedCalls int
-	resetAt          time.Time
-}
-
 func (r *grokProviderTestRateLimitRepo) SetRateLimited(_ context.Context, _ int64, resetAt time.Time) error {
 	r.rateLimitedCalls++
 	r.resetAt = resetAt
 	return nil
-}
-
-// 夹具记录存储写入和平台请求，提供商测试使用生产实现。
-type grokTestStoreFixture struct {
-	providersByID map[int64]*providercore.Record
 }
 
 func (s *grokTestStoreFixture) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
@@ -2646,12 +2761,6 @@ func (*grokTestStoreFixture) SetTempUnschedulable(context.Context, int64, time.T
 	return nil
 }
 
-type grokTestTransportFixture struct {
-	resp     *http.Response
-	lastReq  *http.Request
-	lastBody []byte
-}
-
 func (u *grokTestTransportFixture) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
 	u.lastReq = req
 	body, err := io.ReadAll(req.Body)
@@ -2661,8 +2770,6 @@ func (u *grokTestTransportFixture) Do(req *http.Request, _ string, _ int64, _ in
 	u.lastBody = body
 	return u.resp, nil
 }
-
-type grokTestTargetLoader struct{ target providercore.TestTarget }
 
 func (l grokTestTargetLoader) LoadTestTarget(context.Context, providercore.TestRequest) (providercore.TestTarget, error) {
 	return l.target, nil
@@ -2694,13 +2801,6 @@ func healthyGrokOAuthGatewayTestProvider(id int64, token string) *providercore.R
 			"base_url":      xai.DefaultCLIBaseURL,
 		},
 	}
-}
-
-// 替身记录健康字段写入和调用次数。
-type grokTestFailureStoreFixture struct {
-	tempUnschedCalls, rateLimitedCalls int
-	lastRateLimitedID                  int64
-	lastRateLimitResetAt               time.Time
 }
 
 func (f *grokTestFailureStoreFixture) UpdateExtra(context.Context, int64, map[string]any) error {
@@ -2736,12 +2836,6 @@ func newProbeAgentKey(t *testing.T) (openai.AgentIdentityKey, string) {
 	return openai.AgentIdentityKey{RuntimeID: "runtime-test", TaskID: "task-test", PrivateKey: private}, base64.StdEncoding.EncodeToString(der)
 }
 
-type probeAgentStore struct {
-	provideradapter.OpenAIProviderTestStore
-	provider      *providercore.Record
-	setErrorCalls int
-}
-
 func (r *probeAgentStore) GetByID(context.Context, int64) (*providercore.Record, error) {
 	return providercore.CloneRecord(r.provider), nil
 }
@@ -2762,8 +2856,6 @@ func (r *probeAgentStore) SetError(context.Context, int64, string) error {
 	return nil
 }
 
-type probeAgentInvalidations struct{ providerIDs []int64 }
-
 func (r *probeAgentInvalidations) Invalidate(id int64) { r.providerIDs = append(r.providerIDs, id) }
 
 func probeAgentTasks(store *probeAgentStore, endpoint string, invalidator *probeAgentInvalidations) *provideradapter.ProbeTasks {
@@ -2783,18 +2875,9 @@ func probeAgentTasks(store *probeAgentStore, endpoint string, invalidator *probe
 	return &provideradapter.ProbeTasks{Coordinator: &providercore.OpenAITaskCoordinator{}, Options: options}
 }
 
-const compactionTestV2SSESuccessBody = "data: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"compaction\",\"id\":\"cmp_probe\",\"encrypted_content\":\"blob\"}}\n\n" +
-	"data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_probe\",\"output\":[]}}\n\n"
-
 func executeOpenAIProbeRequestType(t *testing.T, executor *provideradapter.OpenAIProviderTest, output *openAIProbeOutput, id int64, model, prompt, kind, mode, protocol string) error {
 	t.Helper()
 	return openAIProbeCore(executor).Test(output.Request.Context(), providercore.TestRequest{ProviderID: id, Model: model, Prompt: prompt, Mode: mode, Type: &kind, Protocol: protocol}, NewTestEventSink(output.recorder))
-}
-
-type queuedHTTPUpstream struct {
-	responses []*http.Response
-	requests  []*http.Request
-	tlsFlags  []bool
 }
 
 func (u *queuedHTTPUpstream) Do(_ *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
@@ -2823,19 +2906,6 @@ func newJSONResponse(status int, body string) *http.Response {
 func newTestContext() (*openAIProbeOutput, *httptest.ResponseRecorder) {
 	recorder := httptest.NewRecorder()
 	return &openAIProbeOutput{Request: httptest.NewRequest(http.MethodPost, "/test", nil), recorder: recorder}, recorder
-}
-
-type openAIProbeStore struct {
-	openAIProbeRecords
-	updateExtraCalls   chan map[string]any
-	updatedExtra       map[string]any
-	bulkUpdatedIDs     []int64
-	bulkUpdatedPayload providercore.ProviderBulkUpdate
-	rateLimitedID      int64
-	rateLimitedAt      *time.Time
-	clearedErrorID     int64
-	setErrorID         int64
-	setErrorMsg        string
 }
 
 func (r *openAIProbeStore) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
@@ -2871,16 +2941,6 @@ func (r *openAIProbeStore) SetError(_ context.Context, id int64, errorMsg string
 	r.setErrorID = id
 	r.setErrorMsg = errorMsg
 	return nil
-}
-
-// openAIProbeOutput 包含 HTTP 请求和响应记录器。
-type openAIProbeOutput struct {
-	Request  *http.Request
-	recorder *httptest.ResponseRecorder
-}
-
-type openAIProbeRecords struct {
-	providersByID map[int64]*providercore.Record
 }
 
 func (r openAIProbeRecords) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
@@ -2941,17 +3001,6 @@ func openAIProbeCore(executor *provideradapter.OpenAIProviderTest) *providercore
 func executeOpenAIProbeRequest(t *testing.T, executor *provideradapter.OpenAIProviderTest, output *openAIProbeOutput, id int64, model, prompt, mode string) error {
 	t.Helper()
 	return openAIProbeCore(executor).Test(output.Request.Context(), providercore.TestRequest{ProviderID: id, Model: model, Prompt: prompt, Mode: mode}, NewTestEventSink(output.recorder))
-}
-
-type openAIProbeTransport struct {
-	requests       []*http.Request
-	bodies         [][]byte
-	responses      []*http.Response
-	resp           *http.Response
-	err            error
-	lastReq        *http.Request
-	lastBody       []byte
-	lastTLSProfile *tlsfingerprint.Profile
 }
 
 func (f *openAIProbeTransport) DoWithTLS(req *http.Request, _ string, _ int64, _ int, profile *tlsfingerprint.Profile) (*http.Response, error) {
@@ -3031,28 +3080,12 @@ func newOpenAIAutomaticProbeTestService(t *testing.T, values []providercore.Reco
 	return openAIProbeCore(executor)
 }
 
-type automaticProbeProfileStore struct {
-	egress.TLSFingerprintProfileRepository
-	values []*egress.TLSFingerprintProfile
-}
-
 func (s *automaticProbeProfileStore) List(context.Context) ([]*egress.TLSFingerprintProfile, error) {
 	return s.values, nil
 }
 
-type automaticProbeRouterStore struct {
-	egress.TLSFingerprintRouterRepository
-	values []*egress.TLSFingerprintRouter
-}
-
 func (s *automaticProbeRouterStore) List(context.Context) ([]*egress.TLSFingerprintRouter, error) {
 	return s.values, nil
-}
-
-type qoderProviderTestSessionProviderStub struct {
-	session     *qoder.SessionContext
-	err         error
-	invalidated []int64
 }
 
 func (s *qoderProviderTestSessionProviderStub) GetSession(context.Context, *providercore.Record) (*qoder.SessionContext, error) {
@@ -3064,15 +3097,6 @@ func (s *qoderProviderTestSessionProviderStub) GetSession(context.Context, *prov
 
 func (s *qoderProviderTestSessionProviderStub) Invalidate(providerID int64) {
 	s.invalidated = append(s.invalidated, providerID)
-}
-
-type qoderProviderTestClientStub struct {
-	request  *http.Request
-	requests []*http.Request
-	body     string
-	bodies   [][]byte
-	err      error
-	headers  map[string]string
 }
 
 func (s *qoderProviderTestClientStub) StreamRequestContext(ctx context.Context, _ *qoder.SessionContext, _ string, bodyJSON []byte, headers map[string]string) (*http.Response, error) {
@@ -3102,28 +3126,12 @@ func (s *qoderProviderTestClientStub) StreamRequestContextWithDoer(ctx context.C
 	return doer(req)
 }
 
-type qoderProviderTestOAuthClientStub struct {
-	token string
-	err   error
-}
-
 func (s *qoderProviderTestOAuthClientStub) GetUserInfo(_ context.Context, token string) (*qoder.UserInfo, error) {
 	s.token = token
 	if s.err != nil {
 		return nil, s.err
 	}
 	return &qoder.UserInfo{ID: "user-1", Name: "Qoder User"}, nil
-}
-
-type qoderHTTPUpstreamRecorder struct {
-	body                string
-	userInfoBody        string
-	userInfoStatusCode  int
-	proxyURL            string
-	providerID          int64
-	providerConcurrency int
-	profileSet          bool
-	requests            []*http.Request
 }
 
 func (u *qoderHTTPUpstreamRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
@@ -3153,18 +3161,10 @@ func (u *qoderHTTPUpstreamRecorder) DoWithTLS(req *http.Request, proxyURL string
 	}, nil
 }
 
-// 夹具组合测试用例、平台目标和 HTTP 输出器，执行分支使用生产实现。
-type qoderTestOutputFixture struct {
-	context.Context
-	recorder *httptest.ResponseRecorder
-}
-
 func newQoderProviderTestContext() (*qoderTestOutputFixture, *httptest.ResponseRecorder) {
 	recorder := httptest.NewRecorder()
 	return &qoderTestOutputFixture{Context: context.Background(), recorder: recorder}, recorder
 }
-
-type qoderTargetFixture struct{ target providercore.TestTarget }
 
 func (l qoderTargetFixture) LoadTestTarget(context.Context, providercore.TestRequest) (providercore.TestTarget, error) {
 	return l.target, nil

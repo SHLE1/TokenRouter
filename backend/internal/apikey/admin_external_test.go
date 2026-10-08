@@ -17,6 +17,40 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+// userRepoStubForGroupUpdate implements UserRepository for AdminUpdateAPIKeyGroupID tests.
+type userRepoStubForGroupUpdate struct {
+	addGroupErr    error
+	addGroupCalled bool
+	addedUserID    int64
+	addedGroupID   int64
+	user           *identity.User
+	getErr         error
+}
+
+// apiKeyRepoStubForGroupUpdate implements APIKeyRepository for AdminUpdateAPIKeyGroupID tests.
+type apiKeyRepoStubForGroupUpdate struct {
+	key       *apikey.APIKey
+	getErr    error
+	updateErr error
+	updated   *apikey.APIKey // captures what was passed to Update
+}
+
+// groupRepoStubForGroupUpdate implements GroupRepository for AdminUpdateAPIKeyGroupID tests.
+type groupRepoStubForGroupUpdate struct {
+	group          *routing.Group
+	getErr         error
+	lastGetByIDArg int64
+}
+
+// keyGroupsFixture 返回分组数据副本，测试需要的方法由 source 提供。
+type keyGroupsFixture struct {
+	apikey.GroupRepository
+	source *groupRepoStubForGroupUpdate
+}
+
+// authCacheInvalidatorStub 记录管理操作触发失效的密钥。
+type authCacheInvalidatorStub struct{ keys []string }
+
 func TestAdminService_AdminUpdateAPIKeyGroupID_KeyNotFound(t *testing.T) {
 	repo := &apiKeyRepoStubForGroupUpdate{getErr: apikey.ErrAPIKeyNotFound}
 	svc := newKeyAdminForTest(repo, nil, nil, nil)
@@ -261,16 +295,6 @@ func TestAdminService_AdminUpdateAPIKeyGroupID_Unbind_NoAllowedGroupUpdate(t *te
 	require.False(t, got.AutoGrantedGroupAccess)
 }
 
-// userRepoStubForGroupUpdate implements UserRepository for AdminUpdateAPIKeyGroupID tests.
-type userRepoStubForGroupUpdate struct {
-	addGroupErr    error
-	addGroupCalled bool
-	addedUserID    int64
-	addedGroupID   int64
-	user           *identity.User
-	getErr         error
-}
-
 func (s *userRepoStubForGroupUpdate) AddGroupToAllowedGroups(_ context.Context, userID int64, groupID int64) error {
 	s.addGroupCalled = true
 	s.addedUserID = userID
@@ -429,14 +453,6 @@ func (s *userRepoStubForGroupUpdate) RemoveGroupFromUserAllowedGroups(context.Co
 	panic("unexpected")
 }
 
-// apiKeyRepoStubForGroupUpdate implements APIKeyRepository for AdminUpdateAPIKeyGroupID tests.
-type apiKeyRepoStubForGroupUpdate struct {
-	key       *apikey.APIKey
-	getErr    error
-	updateErr error
-	updated   *apikey.APIKey // captures what was passed to Update
-}
-
 func (s *apiKeyRepoStubForGroupUpdate) GetByID(_ context.Context, _ int64) (*apikey.APIKey, error) {
 	if s.getErr != nil {
 		return nil, s.getErr
@@ -545,13 +561,6 @@ func (s *apiKeyRepoStubForGroupUpdate) UpdateGroupIDByUserAndGroup(context.Conte
 	panic("unexpected")
 }
 
-// groupRepoStubForGroupUpdate implements GroupRepository for AdminUpdateAPIKeyGroupID tests.
-type groupRepoStubForGroupUpdate struct {
-	group          *routing.Group
-	getErr         error
-	lastGetByIDArg int64
-}
-
 func (s *groupRepoStubForGroupUpdate) GetByID(_ context.Context, id int64) (*routing.Group, error) {
 	s.lastGetByIDArg = id
 	if s.getErr != nil {
@@ -639,19 +648,10 @@ func newKeyAdminForTest(keys apikey.APIKeyRepository, groups *groupRepoStubForGr
 	return out
 }
 
-// keyGroupsFixture 返回分组数据副本，测试需要的方法由 source 提供。
-type keyGroupsFixture struct {
-	apikey.GroupRepository
-	source *groupRepoStubForGroupUpdate
-}
-
 func (p keyGroupsFixture) GetByID(ctx context.Context, id int64) (*routing.Group, error) {
 	value, err := p.source.GetByID(ctx, id)
 	return apikey.GroupFromRouting(value), err
 }
-
-// authCacheInvalidatorStub 记录管理操作触发失效的密钥。
-type authCacheInvalidatorStub struct{ keys []string }
 
 func (s *authCacheInvalidatorStub) InvalidateAuthCacheByKey(_ context.Context, key string) {
 	s.keys = append(s.keys, key)

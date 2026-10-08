@@ -19,10 +19,6 @@ import (
 
 var passthroughUsageParseFailureTotal atomic.Int64
 
-func recordUsageParseFailure() {
-	passthroughUsageParseFailureTotal.Add(1)
-}
-
 type FrameConn interface {
 	ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error)
 	WriteFrame(ctx context.Context, msgType coderws.MessageType, payload []byte) error
@@ -133,6 +129,10 @@ type relayTurnTiming struct {
 	firstTokenMs                *int
 	terminalResponseServiceTier string
 	modelObserver               protocol.ResponseModelObserver
+}
+
+func recordUsageParseFailure() {
+	passthroughUsageParseFailureTotal.Add(1)
 }
 
 func Relay(

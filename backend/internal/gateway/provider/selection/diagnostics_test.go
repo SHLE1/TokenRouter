@@ -33,6 +33,14 @@ type advancedSchedulerDiagnosticConcurrencyCache struct {
 	requests [][]schedulercore.ProviderWithConcurrency
 }
 
+// diagnosticWindowCache 的批量读取返回测试用量，单条读取返回错误。
+type diagnosticWindowCache struct {
+	billing.WindowCostCache
+	costs map[int64]float64
+}
+
+type diagnosticWindowSource struct{}
+
 func (c *advancedSchedulerDiagnosticConcurrencyCache) GetProvidersLoadBatch(_ context.Context, providers []schedulercore.ProviderWithConcurrency) (map[int64]*schedulercore.ProviderLoadInfo, error) {
 	c.requests = append(c.requests, append([]schedulercore.ProviderWithConcurrency(nil), providers...))
 	result := make(map[int64]*schedulercore.ProviderLoadInfo, len(providers))
@@ -341,7 +349,7 @@ func TestAdvancedSchedulerScoreDiagnosticService_CountsMoreThanOneThousandExclud
 	}
 	allProviders := make([]gatewayprovider.ExecutionProvider, 0, 1002)
 	allProviders = append(allProviders, *target)
-	for index := 0; index < 1001; index++ {
+	for index := range 1001 {
 		allProviders = append(allProviders, gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: int64(9100 + index), Platform: capability.PlatformGemini, Status: billing.StatusDisabled}})
 	}
 	source := &advancedSchedulerDiagnosticSourceStub{provider: target, group: group, providers: allProviders, pool: []gatewayprovider.ExecutionProvider{*target}}
@@ -490,12 +498,6 @@ func withDiagnosticParameters(value *Diagnostics, configs ...*config.Config) *Di
 	return value
 }
 
-// diagnosticWindowCache 的批量读取返回测试用量，单条读取返回错误。
-type diagnosticWindowCache struct {
-	billing.WindowCostCache
-	costs map[int64]float64
-}
-
 func (c *diagnosticWindowCache) GetWindowCostBatch(_ context.Context, ids []int64) (map[int64]float64, error) {
 	out := make(map[int64]float64)
 	for _, id := range ids {
@@ -505,8 +507,6 @@ func (c *diagnosticWindowCache) GetWindowCostBatch(_ context.Context, ids []int6
 	}
 	return out, nil
 }
-
-type diagnosticWindowSource struct{}
 
 // providers 将测试候选转换为诊断列表，输入为 nil 时返回 nil。
 func (s *diagnosticScope) providers(values []*gatewayprovider.ExecutionProvider) []*schedulercore.DiagnosticProvider {

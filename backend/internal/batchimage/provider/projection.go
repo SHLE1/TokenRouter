@@ -11,17 +11,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const (
+	PlatformGemini             = provider.PlatformGemini
+	ProviderTypeAPIKey         = provider.ProviderTypeAPIKey
+	ProviderTypeServiceAccount = provider.ProviderTypeServiceAccount
+)
+
 type (
 	// Provider 是批量图片执行使用的提供商记录。
 	Provider = provider.Record
 	// GeminiTokenCache 缓存 Gemini 访问令牌。
 	GeminiTokenCache = provider.AccessTokenCache
-)
-
-const (
-	PlatformGemini             = provider.PlatformGemini
-	ProviderTypeAPIKey         = provider.ProviderTypeAPIKey
-	ProviderTypeServiceAccount = provider.ProviderTypeServiceAccount
 )
 
 // BatchImageProvider 定义图片作业的提交、轮询、取消、结果读取和资源清理。

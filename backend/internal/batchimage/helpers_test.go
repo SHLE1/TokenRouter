@@ -28,6 +28,153 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+const batchImageTestData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+
+var (
+	_ batchimage.BatchImageDownloadLimiter = (*fakeBatchImageDownloadLimiter)(nil)
+	_ batchimage.BatchImageDownloadPermit  = (*fakeBatchImageDownloadPermit)(nil)
+
+	_ batchProvidersFixtureSource           = (*publicBatchImageProviderRepo)(nil)
+	_ batchimage.BatchImageQueue            = (*publicBatchImageQueue)(nil)
+	_ batchimageprovider.BatchImageProvider = (*publicBatchImageProvider)(nil)
+
+	_ batchGroupFixtureSource                      = (*publicBatchImageGroupRepo)(nil)
+	_ batchimage.BatchImageUserGroupRateRepository = (*publicBatchImageUserGroupRateRepo)(nil)
+
+	_ batchimage.FundingStore = (*fakeBatchImageBillingRepo)(nil)
+	_ batchimage.ImagePricer  = (*fakeBatchImagePricingResolver)(nil)
+)
+
+type fakeBatchImageDownloadLimiter struct {
+	acquireCount int
+	releaseCount int
+	deny         bool
+}
+
+type fakeBatchImageDownloadPermit struct {
+	once    bool
+	release func()
+}
+
+type fakeBatchImageProviderResolver struct {
+	provider *providercore.Record
+	err      error
+}
+
+type fakeProcessorProvider struct {
+	status *batchimage.BatchProviderStatus
+	getErr error
+	result string
+
+	getCalled        bool
+	openResultCalled bool
+}
+
+// batchProvidersFixtureSource 提供候选查询数据，候选筛选与资金处理由生产模块执行。
+type batchProvidersFixtureSource interface {
+	GetByID(context.Context, int64) (*providercore.Record, error)
+	ListSchedulableByPlatform(context.Context, string) ([]providercore.Record, error)
+	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]providercore.Record, error)
+}
+
+type batchGroupFixtureSource interface {
+	GetByIDLite(context.Context, int64) (*batchimage.GroupView, error)
+}
+
+type batchProviderFixture struct {
+	source   batchProvidersFixtureSource
+	registry *batchimage.Registry[batchimageprovider.BatchImageProvider]
+}
+
+type batchGroupReader struct{ source batchGroupFixtureSource }
+
+type publicBatchImageProviderRepo struct {
+	providers []providercore.Record
+}
+
+type publicBatchImageQueue struct {
+	enqueued []string
+	err      error
+}
+
+type publicBatchImageGroupRepo struct {
+	groups map[int64]*batchimage.GroupView
+}
+
+type publicBatchImageUserGroupRateRepo struct {
+	rates map[int64]*float64
+}
+
+type publicBatchImageProvider struct {
+	name           string
+	submits        []batchimage.BatchImageInput
+	submitErr      error
+	cancelCount    int
+	cancelErr      error
+	result         string
+	cleanupTargets []batchimage.CleanupTarget
+	cleanupErr     error
+}
+
+type fakeBatchImageRepository struct {
+	jobs          map[string]*batchimage.BatchImageJob
+	items         map[string][]batchimage.CreateBatchImageItemParams
+	counts        map[string]batchimage.BatchImageCounts
+	transitions   map[string][]string
+	events        map[string][]string
+	transitionErr error
+	replaceCalls  int
+}
+
+// resultProviderFixture 返回作业绑定的提供商，供下载和清理使用。
+type resultProviderFixture struct{ provider *providercore.Record }
+
+type fakeBatchImagePricingResolver struct {
+	unitPrice     float64
+	missingModels map[string]bool
+	err           error
+	models        []string
+}
+
+type fakeBatchImageBillingRepo struct {
+	usableSubscription *billing.UserSubscription
+	subscriptionErr    error
+	reserves           []*billing.TaskFundsCommand
+	captures           []*billing.TaskFundsCommand
+	releases           []*billing.TaskFundsCommand
+	seen               map[string]struct{}
+	alreadyApplied     map[string]bool
+
+	err        error
+	reserveErr error
+	captureErr error
+	releaseErr error
+}
+
+type fakeBatchImageQueue struct {
+	reserved     batchimage.ReservedBatchImageJob
+	lockAcquired bool
+	acked        []string
+	requeued     []fakeBatchImageRequeue
+	releaseCount int
+}
+
+type fakeBatchImageRequeue struct {
+	batchID string
+	delay   time.Duration
+}
+
+type fakeBatchImageLock struct {
+	release func()
+	queue   *fakeBatchImageQueue
+}
+
+type fakeBatchImageProcessor struct {
+	result    batchimage.BatchImageProcessResult
+	err       error
+	processed []string
+}
+
 func newTestBatchImageDownloadService() (*batchimage.Download, *fakeBatchImageRepository, *fakeBatchImageDownloadLimiter) {
 	repo := newFakeBatchImageRepository()
 	apiKeyID := int64(22)
@@ -96,23 +243,12 @@ func mapValues(in map[string][]byte) [][]byte {
 	return out
 }
 
-type fakeBatchImageDownloadLimiter struct {
-	acquireCount int
-	releaseCount int
-	deny         bool
-}
-
 func (l *fakeBatchImageDownloadLimiter) Acquire(context.Context, string, string) (batchimage.BatchImageDownloadPermit, error) {
 	l.acquireCount++
 	if l.deny {
 		return nil, batchimage.ErrBatchImageDownloadLimited
 	}
 	return &fakeBatchImageDownloadPermit{release: func() { l.releaseCount++ }}, nil
-}
-
-type fakeBatchImageDownloadPermit struct {
-	once    bool
-	release func()
 }
 
 func (p *fakeBatchImageDownloadPermit) Release(context.Context) error {
@@ -125,11 +261,6 @@ func (p *fakeBatchImageDownloadPermit) Release(context.Context) error {
 	}
 	return nil
 }
-
-var (
-	_ batchimage.BatchImageDownloadLimiter = (*fakeBatchImageDownloadLimiter)(nil)
-	_ batchimage.BatchImageDownloadPermit  = (*fakeBatchImageDownloadPermit)(nil)
-)
 
 // newBatchProcessorFixture 为提供商处理器配置仓储、结果索引和资金操作。
 func newBatchProcessorFixture(repo batchimage.BatchImageRepository, registry *batchimage.Registry[batchimageprovider.BatchImageProvider], providers batchimageprovider.ResultProviders, indexer *batchimage.ResultIndexer, funds batchimage.FundingStore, auth apikey.APIKeyAuthCacheInvalidator, delay time.Duration) *batchimage.ProviderProcessor {
@@ -169,27 +300,11 @@ func nativeTaskFundingFixture(store batchimage.FundingStore) batchimage.Funding 
 	return batchimage.Funding{Store: store}
 }
 
-const batchImageTestData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
-
-type fakeBatchImageProviderResolver struct {
-	provider *providercore.Record
-	err      error
-}
-
 func (r *fakeBatchImageProviderResolver) GetByID(context.Context, int64) (*providercore.Record, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
 	return r.provider, nil
-}
-
-type fakeProcessorProvider struct {
-	status *batchimage.BatchProviderStatus
-	getErr error
-	result string
-
-	getCalled        bool
-	openResultCalled bool
 }
 
 func (p *fakeProcessorProvider) Name() string { return "fake" }
@@ -230,22 +345,6 @@ func resultObserve(event string, values ...any) {
 	logging.LegacyPrintf("service.batch_image", "%s %v", event, values)
 }
 
-// batchProvidersFixtureSource 提供候选查询数据，候选筛选与资金处理由生产模块执行。
-type batchProvidersFixtureSource interface {
-	GetByID(context.Context, int64) (*providercore.Record, error)
-	ListSchedulableByPlatform(context.Context, string) ([]providercore.Record, error)
-	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]providercore.Record, error)
-}
-
-type batchGroupFixtureSource interface {
-	GetByIDLite(context.Context, int64) (*batchimage.GroupView, error)
-}
-
-type batchProviderFixture struct {
-	source   batchProvidersFixtureSource
-	registry *batchimage.Registry[batchimageprovider.BatchImageProvider]
-}
-
 func (r *batchProviderFixture) project(value *providercore.Record) *batchimage.Candidate {
 	return (&batchimageprovider.Candidates{Registry: r.registry, ObserveModel: modeltrace.RegisterStage}).Project(providercore.CloneRecord(value))
 }
@@ -272,8 +371,6 @@ func (r *batchProviderFixture) ListSchedulableByGroupIDAndPlatform(ctx context.C
 	v, err := r.source.ListSchedulableByGroupIDAndPlatform(ctx, id, p)
 	return r.values(v), err
 }
-
-type batchGroupReader struct{ source batchGroupFixtureSource }
 
 func (r batchGroupReader) GetByIDLite(ctx context.Context, id int64) (*batchimage.GroupView, error) {
 	v, err := r.source.GetByIDLite(ctx, id)
@@ -363,10 +460,6 @@ func testBatchImageProvider(id int64, providerType string) providercore.Record {
 	}
 }
 
-type publicBatchImageProviderRepo struct {
-	providers []providercore.Record
-}
-
 func (r *publicBatchImageProviderRepo) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
 	for i := range r.providers {
 		if r.providers[i].ID == id {
@@ -388,11 +481,6 @@ func (r *publicBatchImageProviderRepo) ListSchedulableByPlatform(_ context.Conte
 
 func (r *publicBatchImageProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, _ int64, platform string) ([]providercore.Record, error) {
 	return r.ListSchedulableByPlatform(ctx, platform)
-}
-
-type publicBatchImageQueue struct {
-	enqueued []string
-	err      error
 }
 
 func (q *publicBatchImageQueue) Enqueue(_ context.Context, batchID string) error {
@@ -436,16 +524,6 @@ func (q *publicBatchImageQueue) TryAcquireJobLock(context.Context, string, time.
 	return nil, false, nil
 }
 
-var (
-	_ batchProvidersFixtureSource           = (*publicBatchImageProviderRepo)(nil)
-	_ batchimage.BatchImageQueue            = (*publicBatchImageQueue)(nil)
-	_ batchimageprovider.BatchImageProvider = (*publicBatchImageProvider)(nil)
-)
-
-type publicBatchImageGroupRepo struct {
-	groups map[int64]*batchimage.GroupView
-}
-
 func (r *publicBatchImageGroupRepo) GetByIDLite(_ context.Context, id int64) (*batchimage.GroupView, error) {
 	if r != nil && r.groups != nil {
 		if group, ok := r.groups[id]; ok {
@@ -455,31 +533,11 @@ func (r *publicBatchImageGroupRepo) GetByIDLite(_ context.Context, id int64) (*b
 	return nil, routing.ErrGroupNotFound
 }
 
-type publicBatchImageUserGroupRateRepo struct {
-	rates map[int64]*float64
-}
-
 func (r *publicBatchImageUserGroupRateRepo) GetByUserAndGroup(_ context.Context, _ int64, groupID int64) (*float64, error) {
 	if r != nil && r.rates != nil {
 		return r.rates[groupID], nil
 	}
 	return nil, nil
-}
-
-var (
-	_ batchGroupFixtureSource                      = (*publicBatchImageGroupRepo)(nil)
-	_ batchimage.BatchImageUserGroupRateRepository = (*publicBatchImageUserGroupRateRepo)(nil)
-)
-
-type publicBatchImageProvider struct {
-	name           string
-	submits        []batchimage.BatchImageInput
-	submitErr      error
-	cancelCount    int
-	cancelErr      error
-	result         string
-	cleanupTargets []batchimage.CleanupTarget
-	cleanupErr     error
 }
 
 func (p *publicBatchImageProvider) Name() string { return p.name }
@@ -514,16 +572,6 @@ func (p *publicBatchImageProvider) OpenResult(context.Context, *batchimage.Batch
 func (p *publicBatchImageProvider) Cleanup(_ context.Context, _ *batchimage.BatchImageJob, _ *providercore.Record, target batchimage.CleanupTarget) error {
 	p.cleanupTargets = append(p.cleanupTargets, target)
 	return p.cleanupErr
-}
-
-type fakeBatchImageRepository struct {
-	jobs          map[string]*batchimage.BatchImageJob
-	items         map[string][]batchimage.CreateBatchImageItemParams
-	counts        map[string]batchimage.BatchImageCounts
-	transitions   map[string][]string
-	events        map[string][]string
-	transitionErr error
-	replaceCalls  int
 }
 
 func newFakeBatchImageRepository() *fakeBatchImageRepository {
@@ -1094,9 +1142,6 @@ func requireBatchImagePublicJSONHasNoInternals(t *testing.T, body string) {
 	}
 }
 
-// resultProviderFixture 返回作业绑定的提供商，供下载和清理使用。
-type resultProviderFixture struct{ provider *providercore.Record }
-
 func (r *resultProviderFixture) GetByID(context.Context, int64) (*providercore.Record, error) {
 	return r.provider, nil
 }
@@ -1121,13 +1166,6 @@ func cloneResultAllocations(values []billing.BillingAllocation) []billing.Billin
 	return out
 }
 
-type fakeBatchImagePricingResolver struct {
-	unitPrice     float64
-	missingModels map[string]bool
-	err           error
-	models        []string
-}
-
 func (r *fakeBatchImagePricingResolver) BatchImageUnitPrice(_ context.Context, input batchimage.BatchImagePriceInput) (float64, error) {
 	if input.Model != "" {
 		r.models = append(r.models, input.Model)
@@ -1139,21 +1177,6 @@ func (r *fakeBatchImagePricingResolver) BatchImageUnitPrice(_ context.Context, i
 		return 0, batchimage.ErrBatchImageSettlementPricingMissing
 	}
 	return r.unitPrice, nil
-}
-
-type fakeBatchImageBillingRepo struct {
-	usableSubscription *billing.UserSubscription
-	subscriptionErr    error
-	reserves           []*billing.TaskFundsCommand
-	captures           []*billing.TaskFundsCommand
-	releases           []*billing.TaskFundsCommand
-	seen               map[string]struct{}
-	alreadyApplied     map[string]bool
-
-	err        error
-	reserveErr error
-	captureErr error
-	releaseErr error
 }
 
 func (r *fakeBatchImageBillingRepo) Reserve(_ context.Context, cmd *billing.TaskFundsCommand) (*billing.TaskFundsResult, error) {
@@ -1225,26 +1248,8 @@ func (r *fakeBatchImageBillingRepo) applyHold(cmd *billing.TaskFundsCommand, cal
 	return &billing.TaskFundsResult{Applied: true}, nil
 }
 
-var (
-	_ batchimage.FundingStore = (*fakeBatchImageBillingRepo)(nil)
-	_ batchimage.ImagePricer  = (*fakeBatchImagePricingResolver)(nil)
-)
-
 func (r *fakeBatchImageBillingRepo) ResolveUsableSubscriptionForGroup(context.Context, int64, int64) (*billing.UserSubscription, error) {
 	return r.usableSubscription, r.subscriptionErr
-}
-
-type fakeBatchImageQueue struct {
-	reserved     batchimage.ReservedBatchImageJob
-	lockAcquired bool
-	acked        []string
-	requeued     []fakeBatchImageRequeue
-	releaseCount int
-}
-
-type fakeBatchImageRequeue struct {
-	batchID string
-	delay   time.Duration
 }
 
 func newFakeBatchImageQueue(batchID string) *fakeBatchImageQueue {
@@ -1291,22 +1296,11 @@ func (q *fakeBatchImageQueue) TryAcquireJobLock(context.Context, string, time.Du
 	return fakeBatchImageLock{release: func() { q.releaseCount++ }, queue: q}, true, nil
 }
 
-type fakeBatchImageLock struct {
-	release func()
-	queue   *fakeBatchImageQueue
-}
-
 func (l fakeBatchImageLock) Release(context.Context) error {
 	if l.release != nil {
 		l.release()
 	}
 	return nil
-}
-
-type fakeBatchImageProcessor struct {
-	result    batchimage.BatchImageProcessResult
-	err       error
-	processed []string
 }
 
 func (p *fakeBatchImageProcessor) Process(_ context.Context, batchID string) (batchimage.BatchImageProcessResult, error) {

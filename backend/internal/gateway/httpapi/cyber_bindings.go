@@ -30,7 +30,7 @@ func (p cyberHTTPBackend) Mark(c *gin.Context) *moderationflow.Mark {
 	if m == nil {
 		return nil
 	}
-	v := moderationflow.Mark(*m)
+	v := *m
 	return &v
 }
 

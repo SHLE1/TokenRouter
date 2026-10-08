@@ -19,6 +19,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type syncUpstreamHTTPUpstream struct {
+	resp *http.Response
+	err  error
+}
+
 func TestProviderHandlerSyncUpstreamModels_ConfigErrorReturnsBadRequest(t *testing.T) {
 	svc := &availableModelsAdminService{
 		managementMutationFixture: newManagementMutationFixture(),
@@ -115,11 +120,6 @@ func TestProviderHandlerSyncUpstreamModelsPreview_ConfigErrorReturnsBadRequest(t
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	require.Contains(t, rec.Body.String(), "required")
-}
-
-type syncUpstreamHTTPUpstream struct {
-	resp *http.Response
-	err  error
 }
 
 func (u *syncUpstreamHTTPUpstream) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {

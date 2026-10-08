@@ -30,6 +30,15 @@ type ConcurrencyCacheSuite struct {
 	rawCache *concurrencyCache
 }
 
+type apiKeyConcurrencyCacheForTest interface {
+	TrackAPIKeySlot(ctx context.Context, apiKeyID int64, requestID string) error
+	ReleaseAPIKeySlot(ctx context.Context, apiKeyID int64, requestID string) error
+	GetAPIKeyConcurrencyBatch(ctx context.Context, apiKeyIDs []int64) (map[int64]int, error)
+}
+
+// waitIncrementFault 为增加操作注入传输错误，查询和释放访问测试 Redis。
+type waitIncrementFault struct{ scheduler.ConcurrencyCache }
+
 func TestConcurrencyCacheSuite(t *testing.T) {
 	suite.Run(t, new(ConcurrencyCacheSuite))
 }
@@ -40,12 +49,6 @@ func (s *ConcurrencyCacheSuite) SetupTest() {
 	s.Require().True(ok, "concurrency cache constructor type")
 	s.rawCache = cache
 	s.cache = s.rawCache
-}
-
-type apiKeyConcurrencyCacheForTest interface {
-	TrackAPIKeySlot(ctx context.Context, apiKeyID int64, requestID string) error
-	ReleaseAPIKeySlot(ctx context.Context, apiKeyID int64, requestID string) error
-	GetAPIKeyConcurrencyBatch(ctx context.Context, apiKeyIDs []int64) (map[int64]int, error)
 }
 
 func (s *ConcurrencyCacheSuite) apiKeyConcurrencyCache() apiKeyConcurrencyCacheForTest {
@@ -880,9 +883,6 @@ func (s *ConcurrencyCacheSuite) TestCleanupStaleProcessSlots_DeletesEmptySlotKey
 	require.NoError(s.T(), err)
 	require.EqualValues(s.T(), 0, exists)
 }
-
-// waitIncrementFault 为增加操作注入传输错误，查询和释放访问测试 Redis。
-type waitIncrementFault struct{ scheduler.ConcurrencyCache }
 
 func (c waitIncrementFault) IncrementWaitCount(context.Context, int64, int) (bool, error) {
 	return false, errors.New("增加等待计数未确认")

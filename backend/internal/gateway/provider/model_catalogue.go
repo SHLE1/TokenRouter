@@ -14,6 +14,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
+type catalogueRules struct{ policy ModelPolicy }
+
 // CatalogueDefaults 从统一目录提供候选，专用路由别名由提供商配置读取器加入。
 func CatalogueDefaults(catalog modelcatalog.Reader) routing.CatalogueDefaults {
 	ids := func() []string {
@@ -24,8 +26,6 @@ func CatalogueDefaults(catalog modelcatalog.Reader) routing.CatalogueDefaults {
 	}
 	return routing.CatalogueDefaults{Platform: func(string) []string { return ids() }}
 }
-
-type catalogueRules struct{ policy ModelPolicy }
 
 // SupportsClientProtocol 不把专用 Embeddings、Images 模型展示为普通对话候选。
 // 提供商模型别名先按同一规则展开，再判断已有适配器支持的调用形状。

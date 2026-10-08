@@ -15,6 +15,10 @@ import (
 // PlanStore 拥有套餐与分组映射的原子存储，不读取支付状态或配置。
 type PlanStore struct{ entClient *dbent.Client }
 
+type planGroupMappingExecutor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
 func NewPlanStore(client *dbent.Client) *PlanStore { return &PlanStore{entClient: client} }
 
 func (s *PlanStore) ListPlans(ctx context.Context) ([]*billing.SubscriptionPlan, error) {
@@ -87,7 +91,7 @@ func (s *PlanStore) CreatePlan(ctx context.Context, req billing.CreatePlanReques
 	if err != nil {
 		return nil, err
 	}
-	if err := syncPlanGroupMappings(ctx, client, int64(plan.ID), groupIDs, groupRates); err != nil {
+	if err := syncPlanGroupMappings(ctx, client, plan.ID, groupIDs, groupRates); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -233,10 +237,6 @@ func (s *PlanStore) UpdatePlan(ctx context.Context, id int64, req billing.Update
 		}
 	}
 	return PlanFromEntity(plan), nil
-}
-
-type planGroupMappingExecutor interface {
-	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 
 func syncPlanGroupMappings(ctx context.Context, exec planGroupMappingExecutor, planID int64, groupIDs []int64, rates map[int64]float64) error {

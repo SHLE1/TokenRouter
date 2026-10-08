@@ -28,6 +28,16 @@ import (
 	schedulerredis "github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache"
 )
 
+type mixedSessionLimits struct {
+	schedulercore.SessionLimitCache
+	blocked int64
+	calls   map[int64][]string
+}
+
+type mixedSnapshot struct {
+	values []gatewayprovider.ExecutionProvider
+}
+
 func TestAdvancedSchedulerUsesRoutingModelAndKeepsRequestedModel(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
@@ -200,12 +210,6 @@ func TestMixedGroupRequiresExplicitGroupAndHonorsForcedPlatform(t *testing.T) {
 	}
 }
 
-type mixedSessionLimits struct {
-	schedulercore.SessionLimitCache
-	blocked int64
-	calls   map[int64][]string
-}
-
 func (s *mixedSessionLimits) RegisterSession(_ context.Context, id int64, hash string, _ int, _ time.Duration) (bool, error) {
 	if s.calls == nil {
 		s.calls = map[int64][]string{}
@@ -237,10 +241,6 @@ func TestMixedGroupRespectsAnthropicSessionLimit(t *testing.T) {
 	if selected.ReleaseFunc != nil {
 		selected.ReleaseFunc()
 	}
-}
-
-type mixedSnapshot struct {
-	values []gatewayprovider.ExecutionProvider
 }
 
 func (s mixedSnapshot) ListProviders(_ context.Context, _ *int64, _ string, _ bool) ([]providercore.Record, bool, error) {
@@ -1764,7 +1764,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_StickyWeightedSessionU
 	cfg.Gateway.AdvancedScheduler.ScoreWeights.TTFT = 0.5
 	cfg.Gateway.AdvancedScheduler.ScoreWeights.SessionSticky = 3
 	cache := &schedulerTestGatewayCache{sessionBindings: map[string]int64{}}
-	for index := 0; index < 128; index++ {
+	for index := range 128 {
 		cache.sessionBindings["openai:"+fmt.Sprintf("session_hash_weighted_topk_%d", index)] = 37101
 	}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
@@ -1778,7 +1778,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_StickyWeightedSessionU
 	}, cfg)
 
 	var observedSticky, observedNonSticky bool
-	for index := 0; index < 128; index++ {
+	for index := range 128 {
 		selection, decision, err := svc.SelectProviderWithScheduler(
 			ctx,
 			&groupID,
@@ -2561,7 +2561,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_SessionStickyEscapeByT
 	}
 
 	slowTTFT := 20000
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		svc.openaiProviderStats.Report(21101, true, &slowTTFT)
 	}
 
@@ -2606,7 +2606,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_SessionStickyEscapeByE
 	}, cfg)
 
 	svc.openaiProviderStats = schedulercore.NewRuntimeStats(time.Now)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		svc.openaiProviderStats.Report(21201, false, nil)
 	}
 	selection, decision, err := svc.SelectProviderWithScheduler(ctx, &groupID, "", "session_hash_sticky_error_rate", "gpt-5.1", nil, egress.OpenAIUpstreamTransportAny, false)
@@ -2721,7 +2721,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_SessionStickyEscapeDis
 	svc.openaiProviderStats = schedulercore.NewRuntimeStats(time.Now)
 	slowTTFT := 20000
 	svc.openaiProviderStats.Report(21401, true, &slowTTFT)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		svc.openaiProviderStats.Report(21401, false, nil)
 	}
 
@@ -3536,7 +3536,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_LoadBalanceDistributes
 	}, cfg)
 
 	selected := make(map[int64]int, len(providers))
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		sessionHash := fmt.Sprintf("session_hash_lb_%d", i)
 		selection, decision, err := svc.SelectProviderWithScheduler(
 			ctx,

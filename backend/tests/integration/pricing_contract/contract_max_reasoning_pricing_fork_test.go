@@ -4,24 +4,20 @@ import (
 	"context"
 	"math"
 	"testing"
-
-	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
-
 	time "time"
 
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	completion "github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
-	"github.com/stretchr/testify/require"
+	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 )
 
 // TestMaxReasoningPricing_IntervalsAndBillingModes 验证核对区间、缓存桶和分组倍率的组合，并确保按次费用不受推理倍率影响。

@@ -11,6 +11,10 @@ const (
 	FallbackModeNone   = "none"
 	FallbackModeProxy  = "proxy"
 	FallbackModeDirect = "direct"
+
+	// StatusActive 和 StatusExpired 是持久化的代理状态值。
+	StatusActive  = "active"
+	StatusExpired = "expired"
 )
 
 type Proxy struct {
@@ -28,26 +32,6 @@ type Proxy struct {
 	FallbackMode   string
 	BackupProxyID  *int64
 	ExpiryWarnDays int
-}
-
-func (p *Proxy) IsActive() bool {
-	return p.Status == StatusActive
-}
-
-// IsExpired 报告代理是否已过期（基于 expires_at，与 status 无关）。
-func (p *Proxy) IsExpired(now time.Time) bool {
-	return p.ExpiresAt != nil && !p.ExpiresAt.After(now)
-}
-
-func (p *Proxy) URL() string {
-	u := &url.URL{
-		Scheme: p.Protocol,
-		Host:   net.JoinHostPort(p.Host, strconv.Itoa(p.Port)),
-	}
-	if p.Username != "" && p.Password != "" {
-		u.User = url.UserPassword(p.Username, p.Password)
-	}
-	return u.String()
 }
 
 type ProxyWithProviderCount struct {
@@ -86,6 +70,26 @@ type ProxyConnectionIdentity struct {
 	Status   string
 }
 
+func (p *Proxy) IsActive() bool {
+	return p.Status == StatusActive
+}
+
+// IsExpired 报告代理是否已过期（基于 expires_at，与 status 无关）。
+func (p *Proxy) IsExpired(now time.Time) bool {
+	return p.ExpiresAt != nil && !p.ExpiresAt.After(now)
+}
+
+func (p *Proxy) URL() string {
+	u := &url.URL{
+		Scheme: p.Protocol,
+		Host:   net.JoinHostPort(p.Host, strconv.Itoa(p.Port)),
+	}
+	if p.Username != "" && p.Password != "" {
+		u.User = url.UserPassword(p.Username, p.Password)
+	}
+	return u.String()
+}
+
 // ProxyConnectionIdentityFromProxy 提取代理的连接信息。
 func ProxyConnectionIdentityFromProxy(proxyIn *Proxy) ProxyConnectionIdentity {
 	return ProxyConnectionIdentity{
@@ -97,9 +101,3 @@ func ProxyConnectionIdentityFromProxy(proxyIn *Proxy) ProxyConnectionIdentity {
 		Status:   proxyIn.Status,
 	}
 }
-
-// StatusActive 和 StatusExpired 是持久化的代理状态值。
-const (
-	StatusActive  = "active"
-	StatusExpired = "expired"
-)

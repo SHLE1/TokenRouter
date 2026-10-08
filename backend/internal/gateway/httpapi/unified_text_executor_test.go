@@ -31,6 +31,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+type unifiedRecordWriter struct{ rows []*usage.UsageLog }
+
+type unifiedRecordEffects struct{}
+
+type unifiedRecordModels struct{}
+
+type unifiedSearchSource struct{}
+
 // TestTextPricingCompactModel 核对 Compact 的全局模型、提供商覆盖与最终结算型号。
 func TestTextPricingCompactModel(t *testing.T) {
 	for _, passthrough := range []bool{false, true} {
@@ -158,7 +166,7 @@ func TestUnifiedTextDispatchUsesSelectedProvider(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
-			transport := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(tt.response))}}
+			transport := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(tt.response))}}
 			target := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 42, Name: "selected", Platform: tt.platform, Type: "apikey", Concurrency: 1, Credentials: map[string]any{"api_key": "test-key"}})
 			executor := &UnifiedTextExecutor{}
 			switch tt.platform {
@@ -191,22 +199,16 @@ func TestUnifiedTextDispatchUsesSelectedProvider(t *testing.T) {
 	}
 }
 
-type unifiedRecordWriter struct{ rows []*usage.UsageLog }
-
 func (w *unifiedRecordWriter) Create(_ context.Context, row *usage.UsageLog) (bool, error) {
 	w.rows = append(w.rows, row)
 	return true, nil
 }
-
-type unifiedRecordEffects struct{}
 
 func (unifiedRecordEffects) ProviderUsed(int64) {}
 
 func (unifiedRecordEffects) InvalidateAuth(context.Context, string) {}
 
 func (unifiedRecordEffects) Settled(completion.SettlementInput, *billing.UsageBillingApplyResult) {}
-
-type unifiedRecordModels struct{}
 
 func (unifiedRecordModels) Candidates(model string, _ ...string) []string { return []string{model} }
 
@@ -247,7 +249,5 @@ func TestUnifiedNativeUsageSurvivesCaptureAndRecord(t *testing.T) {
 	require.Len(t, logs.rows, 2)
 	require.Equal(t, 58, logs.rows[1].InputTokens)
 }
-
-type unifiedSearchSource struct{}
 
 func (unifiedSearchSource) Current() searchtools.Searcher { return nil }

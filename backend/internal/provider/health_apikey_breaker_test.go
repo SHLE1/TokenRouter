@@ -18,21 +18,10 @@ type openAIAPIKeyHealthSettingRepo struct {
 	getCalls int
 }
 
-func (r *openAIAPIKeyHealthSettingRepo) GetValue(context.Context, string) (string, error) {
-	r.getCalls++
-	return r.value, nil
-}
-
 type openAIAPIKeyHealthProviderRepo struct {
 	HealthStore
 	setCalls int
 	reason   string
-}
-
-func (r *openAIAPIKeyHealthProviderRepo) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, reason string) error {
-	r.setCalls++
-	r.reason = reason
-	return nil
 }
 
 type openAIAPIKeyHealthCacheStub struct {
@@ -40,6 +29,19 @@ type openAIAPIKeyHealthCacheStub struct {
 	recordCalls int
 	setCalls    int
 	tripped     bool
+}
+
+type openAIAPIKeyHealthRuntimeBlocker struct{ calls int }
+
+func (r *openAIAPIKeyHealthSettingRepo) GetValue(context.Context, string) (string, error) {
+	r.getCalls++
+	return r.value, nil
+}
+
+func (r *openAIAPIKeyHealthProviderRepo) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, reason string) error {
+	r.setCalls++
+	r.reason = reason
+	return nil
 }
 
 func (c *openAIAPIKeyHealthCacheStub) RecordOpenAIAPIKeyHealthFailure(context.Context, int64, int, int) (int64, bool, error) {
@@ -51,8 +53,6 @@ func (c *openAIAPIKeyHealthCacheStub) SetTempUnsched(context.Context, int64, *Te
 	c.setCalls++
 	return nil
 }
-
-type openAIAPIKeyHealthRuntimeBlocker struct{ calls int }
 
 func (b *openAIAPIKeyHealthRuntimeBlocker) BlockProviderScheduling(*Record, time.Time, string) {
 	b.calls++

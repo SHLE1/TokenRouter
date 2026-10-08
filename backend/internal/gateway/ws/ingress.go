@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/tidwall/gjson"
+
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 func payloadString(body []byte, key string) string {

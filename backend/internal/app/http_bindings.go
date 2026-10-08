@@ -26,6 +26,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/web"
 )
 
+// httpRouteMount 注册已构造的 HTTP 能力，具体依赖由 app 的各装配函数提供。
+type httpRouteMount func(*gin.Engine, httpRouteSecurity, gin.HandlerFunc, func(*gin.RouterGroup))
+
 // provideRouterRuntime 为路由器绑定公开数据和 HTTP 处理函数，规则和状态由各模块管理。
 func provideRouterRuntime(public *site.PublicService, pages *sitehttp.PageHandler, backendMode *admission.BackendMode, store *settings.Store, redisClient *redis.Client, manager *lifecycle.Manager, cfg *config.Config, mount httpRouteMount, panelSettings *runtimeconfig.PanelSettings, opsService *ops.OpsService, jwtAuth identityhttp.JWTAuthMiddleware, adminAuth identityhttp.AdminAuthMiddleware, auditLog middleware.AuditLogMiddleware, stepUpAuth identityhttp.StepUpAuthMiddleware,
 ) (*server.RouterRuntime, error) {
@@ -97,9 +100,6 @@ func provideRouterRuntime(public *site.PublicService, pages *sitehttp.PageHandle
 
 	return rt, nil
 }
-
-// httpRouteMount 注册已构造的 HTTP 能力，具体依赖由 app 的各装配函数提供。
-type httpRouteMount func(*gin.Engine, httpRouteSecurity, gin.HandlerFunc, func(*gin.RouterGroup))
 
 // provideHTTPOptions 从启动配置读取监听参数，并按配置优先级选取请求体上限。
 func provideHTTPOptions(cfg *config.Config) server.Options {

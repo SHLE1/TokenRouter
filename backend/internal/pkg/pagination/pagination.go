@@ -4,11 +4,13 @@ import (
 	"strings"
 )
 
-// SortOrderAsc 表示升序排列。
-const SortOrderAsc = "asc"
+const (
+	// SortOrderAsc 表示升序排列。
+	SortOrderAsc = "asc"
 
-// SortOrderDesc 表示降序排列。
-const SortOrderDesc = "desc"
+	// SortOrderDesc 表示降序排列。
+	SortOrderDesc = "desc"
+)
 
 // PaginationParams 保存页码、每页数量和排序设置。
 type PaginationParams struct {

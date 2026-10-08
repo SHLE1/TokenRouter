@@ -12,6 +12,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 )
 
+var _ session.GatewayCache = StubGatewayCache{}
+
+// StubGatewayCache 是返回空会话和可领取状态的网关缓存替身。
+type StubGatewayCache struct{}
+
 // NewRedisGatewayCache 使用 miniredis 创建网关缓存，并注册连接清理。
 func NewRedisGatewayCache(t *testing.T) session.GatewayCache {
 	t.Helper()
@@ -22,11 +27,6 @@ func NewRedisGatewayCache(t *testing.T) session.GatewayCache {
 
 	return gatewayredis.NewGatewayCache(redisClient)
 }
-
-var _ session.GatewayCache = StubGatewayCache{}
-
-// StubGatewayCache 是返回空会话和可领取状态的网关缓存替身。
-type StubGatewayCache struct{}
 
 // GetSessionProviderID 返回空的会话提供商 ID。
 func (c StubGatewayCache) GetSessionProviderID(_ context.Context, _ int64, _ string) (int64, error) {

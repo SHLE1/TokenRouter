@@ -112,7 +112,7 @@ func (c *CodexToolCorrector) CorrectToolCallsInSSEBytes(data []byte) ([]byte, bo
 	}
 
 	choicesCount := int(gjson.GetBytes(updated, "choices.#").Int())
-	for i := 0; i < choicesCount; i++ {
+	for i := range choicesCount {
 		prefix := "choices." + strconv.Itoa(i)
 		if next, changed := c.correctToolCallsArrayAtPath(updated, prefix+".message.tool_calls"); changed {
 			collect(changed, next)
@@ -149,7 +149,7 @@ func (c *CodexToolCorrector) correctToolCallsArrayAtPath(data []byte, toolCallsP
 	}
 	updated := data
 	corrected := false
-	for i := 0; i < count; i++ {
+	for i := range count {
 		functionPath := toolCallsPath + "." + strconv.Itoa(i) + ".function"
 		if next, changed := c.correctFunctionAtPath(updated, functionPath); changed {
 			updated = next

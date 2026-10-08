@@ -9,7 +9,37 @@ import (
 	"time"
 )
 
-const antigravityProjectIDFallbackCredentialKey = "antigravity_project_id"
+const (
+	antigravityProjectIDFallbackCredentialKey = "antigravity_project_id"
+
+	antigravityTokenRefreshSkew = 3 * time.Minute
+	antigravityTokenCacheSkew   = 5 * time.Minute
+	antigravityBackfillCooldown = 5 * time.Minute
+	// antigravityRequestRefreshTimeout 请求路径上 token 刷新的最大等待时间。
+	// 超过此时间直接放弃刷新、标记提供商临时不可调度并触发 failover，
+	// 让后台 TokenRefreshService 在下个周期继续重试。
+	antigravityRequestRefreshTimeout = 8 * time.Second
+)
+
+type AntigravityTokenState struct{ backfillCooldown sync.Map }
+
+// AntigravityTokenSource 独占原 project 回填冷却，消费者共享同一实例。
+type AntigravityTokenSource struct {
+	state   AntigravityTokenState
+	Options AntigravityTokenOptions
+}
+
+type AntigravityTokenOptions struct {
+	Cache                AccessTokenCache
+	Repository           RefreshRepository
+	Policy               ProviderRefreshPolicy
+	Refresh              func(context.Context, *Record, time.Duration) (*OAuthRefreshResult, error)
+	FillProject          func(context.Context, *Record, string) (string, error)
+	Persist              func(context.Context, *Record, map[string]any) error
+	SetTempUnschedulable func(context.Context, int64, time.Time, string) error
+	TempUnschedCache     TempUnschedCache
+	Warn, Debug          func(string, ...any)
+}
 
 func ResolveAntigravityProjectID(provider *Record, missing error) (string, error) {
 	if provider == nil {
@@ -27,39 +57,9 @@ func ResolveAntigravityProjectID(provider *Record, missing error) (string, error
 	return "", missing
 }
 
-type AntigravityTokenState struct{ backfillCooldown sync.Map }
-
-// AntigravityTokenSource 独占原 project 回填冷却，消费者共享同一实例。
-type AntigravityTokenSource struct {
-	state   AntigravityTokenState
-	Options AntigravityTokenOptions
-}
-
 func (s *AntigravityTokenSource) GetAccessToken(ctx context.Context, value *Record) (string, error) {
 	return s.state.GetAccessToken(ctx, value, s.Options)
 }
-
-type AntigravityTokenOptions struct {
-	Cache                AccessTokenCache
-	Repository           RefreshRepository
-	Policy               ProviderRefreshPolicy
-	Refresh              func(context.Context, *Record, time.Duration) (*OAuthRefreshResult, error)
-	FillProject          func(context.Context, *Record, string) (string, error)
-	Persist              func(context.Context, *Record, map[string]any) error
-	SetTempUnschedulable func(context.Context, int64, time.Time, string) error
-	TempUnschedCache     TempUnschedCache
-	Warn, Debug          func(string, ...any)
-}
-
-const (
-	antigravityTokenRefreshSkew = 3 * time.Minute
-	antigravityTokenCacheSkew   = 5 * time.Minute
-	antigravityBackfillCooldown = 5 * time.Minute
-	// antigravityRequestRefreshTimeout 请求路径上 token 刷新的最大等待时间。
-	// 超过此时间直接放弃刷新、标记提供商临时不可调度并触发 failover，
-	// 让后台 TokenRefreshService 在下个周期继续重试。
-	antigravityRequestRefreshTimeout = 8 * time.Second
-)
 
 // GetAccessToken returns a valid access_token.
 // @project-doc docs/interfaces/antigravity_upstream.md#antigravity_account_contract

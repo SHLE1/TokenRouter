@@ -17,6 +17,20 @@ import (
 
 const defaultFetchAvailableModelsBodyLimit int64 = 8 << 20
 
+// timeoutError 实现 net.Error 接口用于测试
+type timeoutError struct{}
+
+// ===========================================================================
+// 测试调用 Client 方法，通过 RoundTripper 拦截 HTTP 请求
+// ===========================================================================
+
+// redirectRoundTripper 将请求中特定前缀的 URL 重定向到 httptest server
+type redirectRoundTripper struct {
+	// 原始 URL 前缀 -> 替换目标 URL 的映射
+	redirects map[string]string
+	transport http.RoundTripper
+}
+
 // ---------------------------------------------------------------------------
 // NewAPIRequestWithURL
 // ---------------------------------------------------------------------------
@@ -365,9 +379,6 @@ func TestIsConnectionError_超时错误(t *testing.T) {
 		t.Error("超时错误应判定为连接错误")
 	}
 }
-
-// timeoutError 实现 net.Error 接口用于测试
-type timeoutError struct{}
 
 func (e *timeoutError) Error() string   { return "timeout" }
 func (e *timeoutError) Timeout() bool   { return true }
@@ -810,17 +821,6 @@ func TestLoadCodeAssistResponse_完整JSON(t *testing.T) {
 	if resp.IneligibleTiers[0].ReasonCode != "INELIGIBLE_ACCOUNT" {
 		t.Errorf("ReasonCode 不匹配: got %s", resp.IneligibleTiers[0].ReasonCode)
 	}
-}
-
-// ===========================================================================
-// 测试调用 Client 方法，通过 RoundTripper 拦截 HTTP 请求
-// ===========================================================================
-
-// redirectRoundTripper 将请求中特定前缀的 URL 重定向到 httptest server
-type redirectRoundTripper struct {
-	// 原始 URL 前缀 -> 替换目标 URL 的映射
-	redirects map[string]string
-	transport http.RoundTripper
 }
 
 func (rt *redirectRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {

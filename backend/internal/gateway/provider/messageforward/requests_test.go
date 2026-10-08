@@ -31,6 +31,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
+// stubIdentityCache 提供网关构造 Header 时读取的指纹数据。
+type stubIdentityCache struct {
+	fingerprint *anthropic.Fingerprint
+	setCalls    int
+	lastSet     *anthropic.Fingerprint
+}
+
 func newVertexBetaTestContext(t *testing.T, anthropicBeta string) *requestBoundaryFixture {
 	t.Helper()
 
@@ -935,13 +942,6 @@ func fastModeTestResolver() *billing.PriceResolver {
 	}})
 	billing := billingtestkit.Calculator(pricing, nil)
 	return billingtestkit.PriceResolver(nil, billing)
-}
-
-// stubIdentityCache 提供网关构造 Header 时读取的指纹数据。
-type stubIdentityCache struct {
-	fingerprint *anthropic.Fingerprint
-	setCalls    int
-	lastSet     *anthropic.Fingerprint
 }
 
 func (s *stubIdentityCache) GetFingerprint(_ context.Context, _ int64) (*anthropic.Fingerprint, error) {

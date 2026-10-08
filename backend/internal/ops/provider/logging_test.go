@@ -11,6 +11,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+const SettingKeyOpsRuntimeLogConfig = ops.SettingKeyOpsRuntimeLogConfig
+
+var ErrSettingNotFound = settings.ErrSettingNotFound
+
 type runtimeSettingRepoStub struct {
 	values           map[string]string
 	deleted          map[string]bool
@@ -20,6 +24,17 @@ type runtimeSettingRepoStub struct {
 	getValueFn       func(key string) (string, error)
 	setFn            func(key, value string) error
 	deleteFn         func(key string) error
+}
+
+type (
+	OpsService          = ops.OpsService
+	OpsRuntimeLogConfig = ops.OpsRuntimeLogConfig
+	Setting             = settings.Setting
+)
+
+type testServiceInputs struct {
+	settingRepo ops.Settings
+	cfg         *ops.Options
 }
 
 func newRuntimeSettingRepoStub() *runtimeSettingRepoStub {
@@ -506,21 +521,6 @@ func TestApplyRuntimeLogConfigHelpers(t *testing.T) {
 
 	var nilSvc *OpsService
 	nilSvc.ApplyRuntimeLogConfigOnStartup(context.Background())
-}
-
-type (
-	OpsService          = ops.OpsService
-	OpsRuntimeLogConfig = ops.OpsRuntimeLogConfig
-	Setting             = settings.Setting
-)
-
-var ErrSettingNotFound = settings.ErrSettingNotFound
-
-const SettingKeyOpsRuntimeLogConfig = ops.SettingKeyOpsRuntimeLogConfig
-
-type testServiceInputs struct {
-	settingRepo ops.Settings
-	cfg         *ops.Options
 }
 
 func newTestService(v testServiceInputs) *OpsService {

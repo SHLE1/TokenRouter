@@ -21,6 +21,16 @@ type InputTokensOptions struct {
 	WriteError     func(int, string, string)
 }
 
+// NativeInputTokensOptions 配置原生 token 查询的请求、响应读取和错误处理。
+type NativeInputTokensOptions struct {
+	Enter          func() (func(), error)
+	Do             func(*http.Request) (*http.Response, error)
+	TransportError func(error) error
+	ReadBody       func(*http.Response) ([]byte, error)
+	HTTPError      func(*http.Response, []byte) error
+	WriteError     func(int, string, string)
+}
+
 // CountInputTokens 查询输入 token 数并输出响应，查询结束时关闭响应体。
 func CountInputTokens(request *http.Request, options InputTokensOptions, sink upstream.OutputSink) error {
 	if options.Enter != nil {
@@ -90,16 +100,6 @@ func BuildInputTokensRequest(ctx context.Context, body []byte, options Responses
 	options.OverrideHeaders(req.Header)
 
 	return req, nil
-}
-
-// NativeInputTokensOptions 配置原生 token 查询的请求、响应读取和错误处理。
-type NativeInputTokensOptions struct {
-	Enter          func() (func(), error)
-	Do             func(*http.Request) (*http.Response, error)
-	TransportError func(error) error
-	ReadBody       func(*http.Response) ([]byte, error)
-	HTTPError      func(*http.Response, []byte) error
-	WriteError     func(int, string, string)
 }
 
 // CountNativeInputTokens 保持数值类型验证，并原样输出供应商完整 JSON。

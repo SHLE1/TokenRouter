@@ -14,6 +14,55 @@ type HealthStoreBase struct {
 	gatewayadapter.ExecutionProviderStore
 }
 
+// ErrorPolicyStore 记录错误策略触发的存储写入。
+type ErrorPolicyStore struct {
+	HealthStoreBase
+	TempCalls           int
+	SetErrCalls         int
+	LastErrorMsg        string
+	ModelRateLimitCalls []ModelLimitCall
+}
+
+// HealthStoreRecorder 记录健康字段写入次数和最新参数，支持注入写入错误。
+type HealthStoreRecorder struct {
+	HealthStoreBase
+	SetErrorCalls          int
+	TempCalls              int
+	UpdateCredentialsCalls int
+	UpdateExtraCalls       int
+	LastCredentials        map[string]any
+	LastExtraUpdates       map[string]any
+	LastErrorMsg           string
+	LastTempUntil          time.Time
+	LastTempReason         string
+	LastErrorID            int64
+	LastTempID             int64
+	TempErr                error
+}
+
+// ForbiddenCounter 返回预设计数序列并记录重置操作。
+type ForbiddenCounter struct {
+	Counts     []int64
+	ResetCalls []int64
+	Err        error
+}
+
+// RuntimeBlockRecorder 记录运行时阻断和清理操作。
+type RuntimeBlockRecorder struct {
+	Providers  []*gatewayadapter.ExecutionProvider
+	Until      []time.Time
+	Reasons    []string
+	ClearedIDs []int64
+}
+
+// ModelLimitCall 记录模型窗口写入参数。
+type ModelLimitCall struct {
+	ProviderID int64
+	Scope      string
+	ResetAt    time.Time
+	Reason     string
+}
+
 func (*HealthStoreBase) GetByID(context.Context, int64) (*gatewayadapter.ExecutionProvider, error) {
 	return nil, errors.New("provider not found")
 }
@@ -41,15 +90,6 @@ func (*HealthStoreBase) UpdateSessionWindow(context.Context, int64, *time.Time, 
 	return nil
 }
 
-// ErrorPolicyStore 记录错误策略触发的存储写入。
-type ErrorPolicyStore struct {
-	HealthStoreBase
-	TempCalls           int
-	SetErrCalls         int
-	LastErrorMsg        string
-	ModelRateLimitCalls []ModelLimitCall
-}
-
 func (r *ErrorPolicyStore) SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error {
 	r.TempCalls++
 	return nil
@@ -68,23 +108,6 @@ func (r *ErrorPolicyStore) SetModelRateLimit(_ context.Context, id int64, scope 
 	}
 	r.ModelRateLimitCalls = append(r.ModelRateLimitCalls, call)
 	return nil
-}
-
-// HealthStoreRecorder 记录健康字段写入次数和最新参数，支持注入写入错误。
-type HealthStoreRecorder struct {
-	HealthStoreBase
-	SetErrorCalls          int
-	TempCalls              int
-	UpdateCredentialsCalls int
-	UpdateExtraCalls       int
-	LastCredentials        map[string]any
-	LastExtraUpdates       map[string]any
-	LastErrorMsg           string
-	LastTempUntil          time.Time
-	LastTempReason         string
-	LastErrorID            int64
-	LastTempID             int64
-	TempErr                error
 }
 
 func (r *HealthStoreRecorder) SetError(ctx context.Context, id int64, errorMsg string) error {
@@ -114,13 +137,6 @@ func (r *HealthStoreRecorder) UpdateExtra(ctx context.Context, id int64, updates
 	return nil
 }
 
-// ForbiddenCounter 返回预设计数序列并记录重置操作。
-type ForbiddenCounter struct {
-	Counts     []int64
-	ResetCalls []int64
-	Err        error
-}
-
 func (s *ForbiddenCounter) IncrementOpenAI403Count(_ context.Context, _ int64, _ int) (int64, error) {
 	if s.Err != nil {
 		return 0, s.Err
@@ -138,14 +154,6 @@ func (s *ForbiddenCounter) ResetOpenAI403Count(_ context.Context, providerID int
 	return nil
 }
 
-// RuntimeBlockRecorder 记录运行时阻断和清理操作。
-type RuntimeBlockRecorder struct {
-	Providers  []*gatewayadapter.ExecutionProvider
-	Until      []time.Time
-	Reasons    []string
-	ClearedIDs []int64
-}
-
 func (r *RuntimeBlockRecorder) BlockProviderScheduling(provider *gatewayadapter.ExecutionProvider, until time.Time, reason string) {
 	r.Providers = append(r.Providers, provider)
 	r.Until = append(r.Until, until)
@@ -154,12 +162,4 @@ func (r *RuntimeBlockRecorder) BlockProviderScheduling(provider *gatewayadapter.
 
 func (r *RuntimeBlockRecorder) ClearProviderSchedulingBlock(providerID int64) {
 	r.ClearedIDs = append(r.ClearedIDs, providerID)
-}
-
-// ModelLimitCall 记录模型窗口写入参数。
-type ModelLimitCall struct {
-	ProviderID int64
-	Scope      string
-	ResetAt    time.Time
-	Reason     string
 }

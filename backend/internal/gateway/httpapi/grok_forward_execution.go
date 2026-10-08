@@ -24,17 +24,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// WriteGrokForwardInvalidRequest 按 OpenAI 格式写出端点或工具参数错误。
-func WriteGrokForwardInvalidRequest(c *gin.Context, message, param string) {
-	c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request_error", "message": message, "param": param}})
-}
-
 // grokForwardAdapter 保存本次请求的凭据和执行接口引用。
 type grokForwardAdapter struct {
 	s               *GrokExecutor
 	c               *gin.Context
 	provider        *gatewayprovider.ExecutionProvider
 	token, proxyURL string
+}
+
+// WriteGrokForwardInvalidRequest 按 OpenAI 格式写出端点或工具参数错误。
+func WriteGrokForwardInvalidRequest(c *gin.Context, message, param string) {
+	c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"type": "invalid_request_error", "message": message, "param": param}})
 }
 
 func (a *grokForwardAdapter) options() grokforward.Options {

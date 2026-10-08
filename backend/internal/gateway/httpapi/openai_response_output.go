@@ -16,6 +16,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const OpenAIResponseDefaultMaxLineSize = 500 * 1024 * 1024
+
 // OpenAIResponseOptions 接收应用的静态配置，TTFT 设置在请求时读取。
 type OpenAIResponseOptions struct {
 	ImageStreamDataIntervalTimeout, ImageStreamKeepaliveInterval               int
@@ -60,8 +62,6 @@ func (p *OpenAIResponseOutput) redact(ctx context.Context, target *gatewayadapte
 	}
 	return p.Redact(ctx, target, body)
 }
-
-const OpenAIResponseDefaultMaxLineSize = 500 * 1024 * 1024
 
 // ExecutionErrorProvider 返回当前尝试的提供商诊断字段。
 func ExecutionErrorProvider(value *gatewayadapter.ExecutionProvider) *UpstreamErrorProvider {

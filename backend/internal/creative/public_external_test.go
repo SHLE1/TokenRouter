@@ -26,6 +26,15 @@ import (
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
+type creativeCatalogTestProviders struct{ values []creative.CatalogProvider }
+
+// creativePricingConfigFixture 提供测试价格配置。
+type creativePricingConfigFixture struct {
+	routing.PricingConfigRepository
+	cards    []routing.ModelPricingEntry
+	platform string
+}
+
 // TestCreativeOperationsForPlatform 平台能力矩阵。
 func TestCreativeOperationsForPlatform(t *testing.T) {
 	require.Equal(t, []string{"generate", "edit"}, creative.CreativeOperationsForPlatform(capability.PlatformGemini))
@@ -1044,8 +1053,6 @@ func TestCreativeRejectsClientOnlyGroupBeforeFunding(t *testing.T) {
 	require.Zero(t, testassert.MustType[*creativeFakeBillingRepo](creativeFixtureBilling(svc)).reserveN)
 }
 
-type creativeCatalogTestProviders struct{ values []creative.CatalogProvider }
-
 func (a creativeCatalogTestProviders) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]creative.CatalogProvider, error) {
 	return a.values, nil
 }
@@ -1126,13 +1133,6 @@ func configureGrok2CreativeTestService(svc *creative.Public) {
 		GroupID: group.ID, Model: "grok-imagine-image-2.0",
 		Operations: []string{creative.CreativeOperationGenerate, creative.CreativeOperationEdit},
 	}}
-}
-
-// creativePricingConfigFixture 提供测试价格配置。
-type creativePricingConfigFixture struct {
-	routing.PricingConfigRepository
-	cards    []routing.ModelPricingEntry
-	platform string
 }
 
 func (r *creativePricingConfigFixture) ListAll(context.Context) ([]routing.PricingConfig, error) {

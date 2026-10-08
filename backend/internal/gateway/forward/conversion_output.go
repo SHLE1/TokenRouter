@@ -481,15 +481,15 @@ func ChatStreaming(in Response, out Output, originalModel, mappedModel string, r
 	for _, resEvt := range finalResEvents {
 		ccChunks := bridge.ResponsesEventToChatChunks(&resEvt, ccState)
 		for _, chunk := range ccChunks {
-			writeChunk(chunk) //nolint:errcheck
+			writeChunk(chunk)
 		}
 	}
 	finalCCChunks := bridge.FinalizeResponsesChatStream(ccState)
 	for _, chunk := range finalCCChunks {
-		writeChunk(chunk) //nolint:errcheck
+		writeChunk(chunk)
 	}
 
-	out.Event("", []byte("[DONE]")) //nolint:errcheck
+	out.Event("", []byte("[DONE]")) //nolint:errcheck // 流已经结束，[DONE] 写失败时没有后续处理。
 	out.Flush()
 
 	return resultWithUsage(), scanner.Err()

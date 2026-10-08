@@ -15,6 +15,21 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+const (
+	pricingConfigCacheTTL       = 10 * time.Minute
+	pricingConfigErrorTTL       = 5 * time.Second // DB 错误时的短缓存
+	pricingConfigCacheDBTimeout = 10 * time.Second
+)
+
+var (
+	ErrPricingConfigNotFound       = infraerrors.NotFound("PRICING_CONFIG_NOT_FOUND", "price configuration not found")
+	ErrPricingConfigExists         = infraerrors.Conflict("PRICING_CONFIG_EXISTS", "price configuration name already exists")
+	ErrGroupAlreadyInPricingConfig = infraerrors.Conflict(
+		"GROUP_ALREADY_IN_PRICING_CONFIG",
+		"one or more groups already belong to another price configuration",
+	)
+)
+
 // GroupAuthInvalidator 在分组提交后失效认证缓存。
 type (
 	GroupAuthInvalidator interface{ InvalidateAuthCacheByGroupID(context.Context, int64) }
@@ -31,15 +46,6 @@ type (
 type PricingConfigValidation struct {
 	LoadLocation func(string) (*time.Location, error)
 }
-
-var (
-	ErrPricingConfigNotFound       = infraerrors.NotFound("PRICING_CONFIG_NOT_FOUND", "price configuration not found")
-	ErrPricingConfigExists         = infraerrors.Conflict("PRICING_CONFIG_EXISTS", "price configuration name already exists")
-	ErrGroupAlreadyInPricingConfig = infraerrors.Conflict(
-		"GROUP_ALREADY_IN_PRICING_CONFIG",
-		"one or more groups already belong to another price configuration",
-	)
-)
 
 // PricingConfigRepository 价格配置数据访问接口
 type PricingConfigRepository interface {
@@ -70,11 +76,6 @@ type PricingConfigRepository interface {
 type pricingModelKey struct {
 	groupID int64
 	model   string // lowercase
-}
-
-// normalizePriceModelName 委托纯价卡匹配规则。
-func normalizePriceModelName(model string) string {
-	return pricing.NormalizePriceModelName(model)
 }
 
 // wildcardPricingEntry 通配符定价条目
@@ -109,6 +110,62 @@ type GroupMappingResult struct {
 	APIKeyRedirected bool
 }
 
+// PricingConfigService 价格配置管理服务
+type PricingConfigService struct {
+	options              PricingConfigOptions
+	validation           PricingConfigValidation
+	repo                 PricingConfigRepository
+	authCacheInvalidator GroupAuthInvalidator
+
+	cache   atomic.Value // *pricingConfigCache
+	cacheSF singleflight.Group
+}
+
+// pricingConfigLookup 热路径公共查找结果
+type pricingConfigLookup struct {
+	cache         *pricingConfigCache
+	pricingConfig *PricingConfig
+}
+
+// modelEntry 表示一个模型模式条目（用于冲突检测）
+type modelEntry struct {
+	pattern  string // 原始模式（如 "claude-*" 或 "claude-opus-4"）
+	prefix   string // lowercase 前缀（通配符去掉 *，精确名保持原样）
+	wildcard bool
+}
+
+// CreatePricingConfigInput 创建价格配置输入
+type CreatePricingConfigInput struct {
+	BillingSettingsPatch
+	Name         string
+	Description  string
+	GroupIDs     []int64
+	ModelPricing []ModelPricingEntry
+
+	BillingModelSource string
+
+	ProviderStatsPricingRules []ProviderStatsPricingRule
+}
+
+// UpdatePricingConfigInput 更新价格配置输入
+type UpdatePricingConfigInput struct {
+	BillingSettingsPatch
+	Name         string
+	Description  *string
+	Status       string
+	GroupIDs     *[]int64
+	ModelPricing *[]ModelPricingEntry
+
+	BillingModelSource string
+
+	ProviderStatsPricingRules *[]ProviderStatsPricingRule
+}
+
+// normalizePriceModelName 委托纯价卡匹配规则。
+func normalizePriceModelName(model string) string {
+	return pricing.NormalizePriceModelName(model)
+}
+
 // BuildModelMappingChain 根据映射结果和上游实际模型构建映射链描述。
 // reqModel: API Key 重定向后的请求模型名。
 // upstreamModel: 上游实际使用的模型名（ForwardResult.UpstreamModel）。
@@ -139,23 +196,6 @@ func (r GroupMappingResult) ToUsageFields(reqModel, upstreamModel string) Pricin
 		BillingModelSource: r.BillingModelSource,
 		ModelMappingChain:  r.BuildModelMappingChain(reqModel, upstreamModel),
 	}
-}
-
-const (
-	pricingConfigCacheTTL       = 10 * time.Minute
-	pricingConfigErrorTTL       = 5 * time.Second // DB 错误时的短缓存
-	pricingConfigCacheDBTimeout = 10 * time.Second
-)
-
-// PricingConfigService 价格配置管理服务
-type PricingConfigService struct {
-	options              PricingConfigOptions
-	validation           PricingConfigValidation
-	repo                 PricingConfigRepository
-	authCacheInvalidator GroupAuthInvalidator
-
-	cache   atomic.Value // *pricingConfigCache
-	cacheSF singleflight.Group
 }
 
 // NewPricingConfigService 创建价格配置服务实例
@@ -325,12 +365,6 @@ func (s *PricingConfigService) GetPricingConfigForGroup(ctx context.Context, gro
 	}
 
 	return ch.Clone(), nil
-}
-
-// pricingConfigLookup 热路径公共查找结果
-type pricingConfigLookup struct {
-	cache         *pricingConfigCache
-	pricingConfig *PricingConfig
 }
 
 // lookupGroupPricingConfig 加载缓存并查找分组对应的价格配置信息（公共热路径前置逻辑）。
@@ -823,13 +857,6 @@ func (s *PricingConfigService) List(ctx context.Context, params pagination.Pagin
 	return s.repo.List(ctx, params, status, search)
 }
 
-// modelEntry 表示一个模型模式条目（用于冲突检测）
-type modelEntry struct {
-	pattern  string // 原始模式（如 "claude-*" 或 "claude-opus-4"）
-	prefix   string // lowercase 前缀（通配符去掉 *，精确名保持原样）
-	wildcard bool
-}
-
 // conflictsBetween 检查两个模型模式是否冲突
 func conflictsBetween(a, b modelEntry) bool {
 	switch {
@@ -909,7 +936,7 @@ func validatePricingIntervals(pricingList []ModelPricingEntry) error {
 
 // detectConflicts 在一组 modelEntry 中检测冲突，返回带有 errCode 和 label 的错误
 func detectConflicts(entries []modelEntry, errCode, label string) error {
-	for i := 0; i < len(entries); i++ {
+	for i := range entries {
 		for j := i + 1; j < len(entries); j++ {
 			if conflictsBetween(entries[i], entries[j]) {
 				return infraerrors.BadRequest(errCode,
@@ -920,33 +947,6 @@ func detectConflicts(entries []modelEntry, errCode, label string) error {
 		}
 	}
 	return nil
-}
-
-// CreatePricingConfigInput 创建价格配置输入
-type CreatePricingConfigInput struct {
-	BillingSettingsPatch
-	Name         string
-	Description  string
-	GroupIDs     []int64
-	ModelPricing []ModelPricingEntry
-
-	BillingModelSource string
-
-	ProviderStatsPricingRules []ProviderStatsPricingRule
-}
-
-// UpdatePricingConfigInput 更新价格配置输入
-type UpdatePricingConfigInput struct {
-	BillingSettingsPatch
-	Name         string
-	Description  *string
-	Status       string
-	GroupIDs     *[]int64
-	ModelPricing *[]ModelPricingEntry
-
-	BillingModelSource string
-
-	ProviderStatsPricingRules *[]ProviderStatsPricingRule
 }
 
 // BuildModelMappingChain 按首次出现顺序生成去重后的模型映射链。

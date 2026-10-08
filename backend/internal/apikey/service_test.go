@@ -16,6 +16,67 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
+type authRepoStub struct {
+	getByKeyForAuth   func(ctx context.Context, key string) (*APIKey, error)
+	listKeysByUserID  func(ctx context.Context, userID int64) ([]string, error)
+	listKeysByGroupID func(ctx context.Context, groupID int64) ([]string, error)
+}
+
+type authCacheStub struct {
+	getAuthCache   func(ctx context.Context, key string) (*APIKeyAuthCacheEntry, error)
+	setAuthKeys    []string
+	deleteAuthKeys []string
+}
+
+// apiKeyRepoStub 是 APIKeyRepository 接口的测试桩实现。
+// APIKeyService.Delete 的测试通过它设置仓储返回值并记录删除操作。
+//
+// 设计说明：
+//   - apiKey/getByIDErr: 模拟 GetKeyAndOwnerID 返回的记录与错误
+//   - deleteErr: 模拟 Delete 返回的错误
+//   - deletedIDs: 记录被调用删除的 API Key ID，用于断言验证
+type apiKeyRepoStub struct {
+	apiKey              *APIKey // 轻量查询返回的记录
+	getByIDErr          error   // 轻量查询的错误返回值
+	deleteErr           error   // 删除操作的错误返回值
+	updateErr           error   // 更新操作的错误返回值
+	deletedIDs          []int64 // 记录已删除的密钥编号列表
+	updatedKeys         []APIKey
+	allowListByUserID   bool
+	listByUserIDKeys    []APIKey
+	listByUserIDErr     error
+	listByUserIDCalls   []int64
+	listByUserIDParams  []pagination.PaginationParams
+	listByUserIDFilters []APIKeyListFilters
+	updateLastUsed      func(ctx context.Context, id int64, usedAt time.Time) error
+	touchedIDs          []int64
+	touchedUsedAts      []time.Time
+}
+
+// apiKeyCacheStub 是 APIKeyCache 接口的测试桩实现。
+// 用于验证删除操作时缓存清理逻辑是否被正确调用。
+//
+// 设计说明：
+//   - invalidated: 记录被清除缓存的用户 ID 列表
+type apiKeyCacheStub struct {
+	invalidated    []int64  // 记录调用 DeleteCreateAttemptCount 时传入的用户 ID
+	deleteAuthKeys []string // 记录调用 DeleteAuthCache 时传入的缓存 key
+}
+
+type touchSingleflightRepo struct {
+	*apiKeyRepoStub
+	mu      sync.Mutex
+	calls   int
+	blockCh chan struct{}
+}
+
+// dailyUsageCalendarCache 记录日期计算用到的计数和 TTL。
+type dailyUsageCalendarCache struct {
+	APIKeyCache
+	key string
+	ttl time.Duration
+}
+
 func TestAPIKeyService_GetByKey_UsesL1Cache(t *testing.T) {
 	var calls int32
 	cache := &authCacheStub{}
@@ -215,7 +276,7 @@ func TestAPIKeyService_TouchLastUsed_ConcurrentFirstTouchDeduplicated(t *testing
 	errCh := make(chan error, workers)
 	var wg sync.WaitGroup
 
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -258,12 +319,6 @@ func TestDailyUsageCacheUsesInjectedCalendar(t *testing.T) {
 			require.Equal(t, 24*time.Hour, cache.ttl)
 		})
 	}
-}
-
-type authRepoStub struct {
-	getByKeyForAuth   func(ctx context.Context, key string) (*APIKey, error)
-	listKeysByUserID  func(ctx context.Context, userID int64) ([]string, error)
-	listKeysByGroupID func(ctx context.Context, groupID int64) ([]string, error)
 }
 
 func (s *authRepoStub) Create(ctx context.Context, key *APIKey) error {
@@ -375,12 +430,6 @@ func (s *authRepoStub) GetRateLimitData(ctx context.Context, id int64) (*APIKeyR
 	panic("unexpected GetRateLimitData call")
 }
 
-type authCacheStub struct {
-	getAuthCache   func(ctx context.Context, key string) (*APIKeyAuthCacheEntry, error)
-	setAuthKeys    []string
-	deleteAuthKeys []string
-}
-
 func (s *authCacheStub) GetCreateAttemptCount(ctx context.Context, userID int64) (int, error) {
 	return 0, nil
 }
@@ -424,31 +473,6 @@ func (s *authCacheStub) PublishAuthCacheInvalidation(ctx context.Context, cacheK
 
 func (s *authCacheStub) SubscribeAuthCacheInvalidation(ctx context.Context, handler func(cacheKey string)) error {
 	return nil
-}
-
-// apiKeyRepoStub 是 APIKeyRepository 接口的测试桩实现。
-// APIKeyService.Delete 的测试通过它设置仓储返回值并记录删除操作。
-//
-// 设计说明：
-//   - apiKey/getByIDErr: 模拟 GetKeyAndOwnerID 返回的记录与错误
-//   - deleteErr: 模拟 Delete 返回的错误
-//   - deletedIDs: 记录被调用删除的 API Key ID，用于断言验证
-type apiKeyRepoStub struct {
-	apiKey              *APIKey // 轻量查询返回的记录
-	getByIDErr          error   // 轻量查询的错误返回值
-	deleteErr           error   // 删除操作的错误返回值
-	updateErr           error   // 更新操作的错误返回值
-	deletedIDs          []int64 // 记录已删除的密钥编号列表
-	updatedKeys         []APIKey
-	allowListByUserID   bool
-	listByUserIDKeys    []APIKey
-	listByUserIDErr     error
-	listByUserIDCalls   []int64
-	listByUserIDParams  []pagination.PaginationParams
-	listByUserIDFilters []APIKeyListFilters
-	updateLastUsed      func(ctx context.Context, id int64, usedAt time.Time) error
-	touchedIDs          []int64
-	touchedUsedAts      []time.Time
 }
 
 func (s *apiKeyRepoStub) Create(ctx context.Context, key *APIKey) error {
@@ -592,16 +616,6 @@ func (s *apiKeyRepoStub) GetRateLimitData(ctx context.Context, id int64) (*APIKe
 	panic("unexpected GetRateLimitData call")
 }
 
-// apiKeyCacheStub 是 APIKeyCache 接口的测试桩实现。
-// 用于验证删除操作时缓存清理逻辑是否被正确调用。
-//
-// 设计说明：
-//   - invalidated: 记录被清除缓存的用户 ID 列表
-type apiKeyCacheStub struct {
-	invalidated    []int64  // 记录调用 DeleteCreateAttemptCount 时传入的用户 ID
-	deleteAuthKeys []string // 记录调用 DeleteAuthCache 时传入的缓存 key
-}
-
 // GetCreateAttemptCount 返回 0，表示用户未超过创建次数限制
 func (s *apiKeyCacheStub) GetCreateAttemptCount(ctx context.Context, userID int64) (int, error) {
 	return 0, nil
@@ -650,26 +664,12 @@ func (s *apiKeyCacheStub) SubscribeAuthCacheInvalidation(ctx context.Context, ha
 	return nil
 }
 
-type touchSingleflightRepo struct {
-	*apiKeyRepoStub
-	mu      sync.Mutex
-	calls   int
-	blockCh chan struct{}
-}
-
 func (r *touchSingleflightRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt time.Time) error {
 	r.mu.Lock()
 	r.calls++
 	r.mu.Unlock()
 	<-r.blockCh
 	return nil
-}
-
-// dailyUsageCalendarCache 记录日期计算用到的计数和 TTL。
-type dailyUsageCalendarCache struct {
-	APIKeyCache
-	key string
-	ttl time.Duration
 }
 
 func (c *dailyUsageCalendarCache) IncrementDailyUsage(_ context.Context, key string) error {

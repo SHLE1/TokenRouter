@@ -18,15 +18,15 @@ type qoderRateLimitRepoStub struct {
 	resetAt       time.Time
 }
 
+type qoderPolicyContextRepoStub struct {
+	qoderRateLimitRepoStub
+	rateLimitCtxErr error
+}
+
 func (r *qoderRateLimitRepoStub) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {
 	r.rateLimitedID = id
 	r.resetAt = resetAt
 	return nil
-}
-
-type qoderPolicyContextRepoStub struct {
-	qoderRateLimitRepoStub
-	rateLimitCtxErr error
 }
 
 func (r *qoderPolicyContextRepoStub) SetRateLimited(ctx context.Context, id int64, resetAt time.Time) error {

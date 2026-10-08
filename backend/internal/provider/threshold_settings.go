@@ -12,6 +12,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	AnthropicFableRateLimitKey = "claude-fable-5"
+
+	// 阈值键不包含消费累计，普通更新不会写入提供商资金快照。
+	SettingKeyProviderSchedulingThresholds = "provider_scheduling_thresholds"
+
+	providerSchedulingThresholdsCacheTTL  = 60 * time.Second
+	providerSchedulingThresholdsErrorTTL  = 5 * time.Second
+	providerSchedulingThresholdsDBTimeout = 5 * time.Second
+)
+
 // AllowedSchedulingThresholdPlatforms 是允许设置提供商自动停调阈值的平台列表。
 // openai/anthropic/grok 有原生用量窗口；kimi/zhipu 的 Coding Plan 同样暴露 5h/weekly
 // 滚动窗口，纳入阈值评估。DeepSeek 使用余额检测。
@@ -23,22 +34,11 @@ var AllowedSchedulingThresholdPlatforms = []string{
 	PlatformZhipu,
 }
 
-const AnthropicFableRateLimitKey = "claude-fable-5"
-
-// 阈值键不包含消费累计，普通更新不会写入提供商资金快照。
-const SettingKeyProviderSchedulingThresholds = "provider_scheduling_thresholds"
-
 // cachedProviderSchedulingThresholds 缓存各平台自动停调阈值。
 type cachedProviderSchedulingThresholds struct {
 	thresholds map[string]int
 	expiresAt  int64 // Unix 纳秒时间戳
 }
-
-const (
-	providerSchedulingThresholdsCacheTTL  = 60 * time.Second
-	providerSchedulingThresholdsErrorTTL  = 5 * time.Second
-	providerSchedulingThresholdsDBTimeout = 5 * time.Second
-)
 
 func DefaultProviderSchedulingThresholds() map[string]int {
 	return map[string]int{

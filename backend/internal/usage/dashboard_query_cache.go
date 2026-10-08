@@ -48,6 +48,15 @@ type dashboardEntityTrendCacheKey struct {
 	Limit       int    `json:"limit"`
 }
 
+type dashboardQueryCaches struct {
+	dashboardTrendCache            *querycache.Cache
+	dashboardModelStatsCache       *querycache.Cache
+	dashboardGroupStatsCache       *querycache.Cache
+	dashboardUsersTrendCache       *querycache.Cache
+	dashboardAPIKeysTrendCache     *querycache.Cache
+	ranking, batchUsers, batchKeys *querycache.Cache
+}
+
 func mustMarshalDashboardCacheKey(value any) string {
 	raw, err := json.Marshal(value)
 	if err != nil {
@@ -214,15 +223,6 @@ func (h *DashboardService) GetUserUsageTrendCached(ctx context.Context, startTim
 	}
 	trend, err := snapshotPayloadAs[[]UserUsageTrendPoint](entry.Payload)
 	return trend, hit, err
-}
-
-type dashboardQueryCaches struct {
-	dashboardTrendCache            *querycache.Cache
-	dashboardModelStatsCache       *querycache.Cache
-	dashboardGroupStatsCache       *querycache.Cache
-	dashboardUsersTrendCache       *querycache.Cache
-	dashboardAPIKeysTrendCache     *querycache.Cache
-	ranking, batchUsers, batchKeys *querycache.Cache
 }
 
 func newDashboardQueryCaches() *dashboardQueryCaches {

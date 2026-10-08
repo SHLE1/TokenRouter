@@ -8,9 +8,6 @@ import (
 	"time"
 )
 
-// BillingMode 计费模式
-type BillingMode string
-
 const (
 	BillingModeToken      BillingMode = "token"       // 按 token 区间计费
 	BillingModePerRequest BillingMode = "per_request" // 按次计费（支持上下文窗口分层）
@@ -18,23 +15,8 @@ const (
 	BillingModeVideo      BillingMode = "video"       // 视频生成计费（按输出秒数）
 )
 
-// IsValid 检查 BillingMode 是否为合法值
-func (m BillingMode) IsValid() bool {
-	switch m {
-	case BillingModeToken, BillingModePerRequest, BillingModeImage, BillingModeVideo, "":
-		return true
-	}
-	return false
-}
-
-// IsValidUsageFilter 检查 BillingMode 是否可用于使用记录筛选。
-func (m BillingMode) IsValidUsageFilter() bool {
-	switch m {
-	case BillingModeToken, BillingModePerRequest, BillingModeImage, BillingModeVideo, "":
-		return true
-	}
-	return false
-}
+// BillingMode 计费模式
+type BillingMode string
 
 // ProviderStatsPricingRule 提供商统计定价规则
 // 每条规则包含匹配条件（分组/提供商）和独立的模型定价。
@@ -115,6 +97,24 @@ type PricingInterval struct {
 	SortOrder            int       `json:"sort_order"`
 	CreatedAt            time.Time `json:"created_at,omitempty"`
 	UpdatedAt            time.Time `json:"updated_at,omitempty"`
+}
+
+// IsValid 检查 BillingMode 是否为合法值
+func (m BillingMode) IsValid() bool {
+	switch m {
+	case BillingModeToken, BillingModePerRequest, BillingModeImage, BillingModeVideo, "":
+		return true
+	}
+	return false
+}
+
+// IsValidUsageFilter 检查 BillingMode 是否可用于使用记录筛选。
+func (m BillingMode) IsValidUsageFilter() bool {
+	switch m {
+	case BillingModeToken, BillingModePerRequest, BillingModeImage, BillingModeVideo, "":
+		return true
+	}
+	return false
 }
 
 // FindMatchingInterval 在区间列表中查找匹配 totalTokens 的区间。

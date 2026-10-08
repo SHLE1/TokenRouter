@@ -122,7 +122,6 @@ func TestBackendModeUserGuard(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			r := gin.New()
 			if tc.role != nil {
@@ -395,7 +394,6 @@ func TestBackendModeAuthGuard(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			r := gin.New()
 

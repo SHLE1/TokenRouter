@@ -17,19 +17,28 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/image/webp"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"golang.org/x/image/webp"
 )
 
 const (
 	PlatformOpenAI = "openai"
 	PlatformGemini = "gemini"
 	PlatformGrok   = "grok"
+
+	DefaultCreativeResponseMime = "image/png"
+
+	MaxCreativeMaskBytes         = 4 << 20
+	MaxCreativeGeminiInlineBytes = 20 << 20
 )
+
+// ErrCreativeContentBlocked 是内容审核命中后的拒绝错误。
+var ErrCreativeContentBlocked = infraerrors.New(infraerrors.CategoryForbidden, "CREATIVE_CONTENT_BLOCKED", "creative content failed moderation")
 
 type (
 	UserAccess interface{ CanBindGroup(int64, bool) bool }
@@ -117,6 +126,68 @@ type Public struct {
 	Observe                func(string, ...any)
 }
 
+// CreativeModelCapabilities 描述单个上游模型可稳定暴露给创作台的参数集合。
+type CreativeModelCapabilities struct {
+	AspectRatios       []string
+	Qualities          []string
+	OutputFormats      []string
+	OutputCompression  *CreativeNumericRange
+	BackgroundOptions  []string
+	ThinkingLevels     []string
+	MaxOutputCount     int
+	MaxReferenceImages int
+}
+
+type creativeModelRoute struct {
+	Platform, Model string
+	Operations      []string
+}
+
+// ValidatedCreativeParams 是校验通过的创建参数。
+type ValidatedCreativeParams struct {
+	Platform      string
+	Group         *GroupView
+	Model         string
+	FinalModel    string
+	Operation     string
+	Prompt        string
+	PromptHash    string
+	ImageSize     string
+	AspectRatio   string
+	Quality       string
+	Background    string
+	ThinkingLevel string
+	OutputCount   int
+	Sources       []CreativeInputImage
+	Mask          *CreativeInputImage
+	Fingerprint   string
+}
+
+// CreativeFingerprintPayload 是请求指纹的 canonical JSON 载体（字段顺序固定）。
+type CreativeFingerprintPayload struct {
+	GroupID       int64    `json:"group_id"`
+	Model         string   `json:"model"`
+	Operation     string   `json:"operation"`
+	PromptSHA256  string   `json:"prompt_sha256"`
+	ImageSHA256   []string `json:"image_sha256"`
+	MaskSHA256    string   `json:"mask_sha256,omitempty"`
+	ImageSize     string   `json:"image_size"`
+	AspectRatio   string   `json:"aspect_ratio"`
+	Quality       string   `json:"quality,omitempty"`
+	Background    string   `json:"background,omitempty"`
+	ThinkingLevel string   `json:"thinking_level,omitempty"`
+	OutputCount   int      `json:"output_count"`
+}
+
+// CreativePricingSnapshot 是任务创建时的定价快照。
+type CreativePricingSnapshot struct {
+	BaseUnitPrice              float64
+	SubscriptionRateMultiplier float64
+	BalanceRateMultiplier      float64
+	PlanGroupRateEnabled       bool
+	EstimatedCost              float64
+}
+
 func (s *Public) warn(event string, values ...any) {
 	if s.Observe != nil {
 		s.Observe(event, values...)
@@ -165,16 +236,6 @@ func mappedCatalogModel(a CatalogProvider, m string) string {
 	}
 	return strings.TrimSpace(value)
 }
-
-const (
-	DefaultCreativeResponseMime = "image/png"
-
-	MaxCreativeMaskBytes         = 4 << 20
-	MaxCreativeGeminiInlineBytes = 20 << 20
-)
-
-// ErrCreativeContentBlocked 是内容审核命中后的拒绝错误。
-var ErrCreativeContentBlocked = infraerrors.New(infraerrors.CategoryForbidden, "CREATIVE_CONTENT_BLOCKED", "creative content failed moderation")
 
 // GetCapabilities 返回前端与 multipart 解析共用的输入限制。
 func (s *Public) GetCapabilities(ctx context.Context) *CreativeCapabilitiesResponse {
@@ -362,18 +423,6 @@ func CreativeDefaultImageSizesForPlatform(platform string) []string {
 	default:
 		return nil
 	}
-}
-
-// CreativeModelCapabilities 描述单个上游模型可稳定暴露给创作台的参数集合。
-type CreativeModelCapabilities struct {
-	AspectRatios       []string
-	Qualities          []string
-	OutputFormats      []string
-	OutputCompression  *CreativeNumericRange
-	BackgroundOptions  []string
-	ThinkingLevels     []string
-	MaxOutputCount     int
-	MaxReferenceImages int
 }
 
 // CreativeCapabilitiesForModel 按平台与具体模型生成前端能力，未知能力始终返回空集合。
@@ -572,11 +621,6 @@ func (s *Public) CreativeModelsForGroup(ctx context.Context, group *GroupView) (
 	return creativeModelsFromRoutes(routes), err
 }
 
-type creativeModelRoute struct {
-	Platform, Model string
-	Operations      []string
-}
-
 func creativeModelsFromRoutes(routes map[string]creativeModelRoute) map[string]string {
 	models := make(map[string]string, len(routes))
 	for name, route := range routes {
@@ -658,26 +702,6 @@ func IsCreativeGeminiImageModel(model string) bool {
 	model = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(model)), "models/")
 	return (strings.HasPrefix(model, "gemini-") && strings.Contains(model, "image")) ||
 		strings.HasPrefix(model, "nano-banana-")
-}
-
-// ValidatedCreativeParams 是校验通过的创建参数。
-type ValidatedCreativeParams struct {
-	Platform      string
-	Group         *GroupView
-	Model         string
-	FinalModel    string
-	Operation     string
-	Prompt        string
-	PromptHash    string
-	ImageSize     string
-	AspectRatio   string
-	Quality       string
-	Background    string
-	ThinkingLevel string
-	OutputCount   int
-	Sources       []CreativeInputImage
-	Mask          *CreativeInputImage
-	Fingerprint   string
 }
 
 // CreateRun 创建创作台任务：校验 → 审核 → 幂等 → 估价 → 供应隐藏 Key → 建行 → 预占 → 暂存 → 入队。
@@ -1145,22 +1169,6 @@ func CreativeImageDimensions(data []byte, mime string) (int, int, error) {
 	}
 }
 
-// CreativeFingerprintPayload 是请求指纹的 canonical JSON 载体（字段顺序固定）。
-type CreativeFingerprintPayload struct {
-	GroupID       int64    `json:"group_id"`
-	Model         string   `json:"model"`
-	Operation     string   `json:"operation"`
-	PromptSHA256  string   `json:"prompt_sha256"`
-	ImageSHA256   []string `json:"image_sha256"`
-	MaskSHA256    string   `json:"mask_sha256,omitempty"`
-	ImageSize     string   `json:"image_size"`
-	AspectRatio   string   `json:"aspect_ratio"`
-	Quality       string   `json:"quality,omitempty"`
-	Background    string   `json:"background,omitempty"`
-	ThinkingLevel string   `json:"thinking_level,omitempty"`
-	OutputCount   int      `json:"output_count"`
-}
-
 // BuildCreativeRequestFingerprint 计算幂等指纹：canonical JSON 的 sha256。
 func BuildCreativeRequestFingerprint(payload CreativeFingerprintPayload) string {
 	body, err := json.Marshal(payload)
@@ -1247,15 +1255,6 @@ func (s *Public) ModerateCreativeRequest(ctx context.Context, userID int64, vali
 		return ErrCreativeContentBlocked
 	}
 	return nil
-}
-
-// CreativePricingSnapshot 是任务创建时的定价快照。
-type CreativePricingSnapshot struct {
-	BaseUnitPrice              float64
-	SubscriptionRateMultiplier float64
-	BalanceRateMultiplier      float64
-	PlanGroupRateEnabled       bool
-	EstimatedCost              float64
 }
 
 // ResolveCreativePricing 计算基础单价与有效倍率（订阅倍率 + 用户倍率），与批量图片同口径。

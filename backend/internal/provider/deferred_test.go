@@ -21,6 +21,9 @@ type deferredDrainRepository struct {
 	err              error
 }
 
+// 不响应取消的写入模拟底层连接阻塞；停止必须有界返回并保留未排空的队列。
+type deferredBlockedRepository struct{ entered, release chan struct{} }
+
 func (r *deferredDrainRepository) BatchUpdateLastUsed(ctx context.Context, updates map[int64]time.Time) error {
 	r.mu.Lock()
 	r.calls++
@@ -82,9 +85,6 @@ func TestDeferredFinalFlushReportsFailure(t *testing.T) {
 
 // NewTimingWheelService 为测试构造时间轮，由测试调用 Start 启动。
 func NewTimingWheelService() (*timingwheel.Wheel, error) { return timingwheel.New(), nil }
-
-// 不响应取消的写入模拟底层连接阻塞；停止必须有界返回并保留未排空的队列。
-type deferredBlockedRepository struct{ entered, release chan struct{} }
 
 func (r *deferredBlockedRepository) BatchUpdateLastUsed(context.Context, map[int64]time.Time) error {
 	close(r.entered)

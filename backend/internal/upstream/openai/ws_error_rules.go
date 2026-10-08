@@ -17,11 +17,11 @@ func ClassifyWSAcquireError(err error) string {
 	var dialErr *WSDialError
 	if errors.As(err, &dialErr) {
 		switch dialErr.StatusCode {
-		case 426:
+		case http.StatusUpgradeRequired:
 			return "upgrade_required"
-		case 401, 403:
+		case http.StatusUnauthorized, http.StatusForbidden:
 			return "auth_failed"
-		case 429:
+		case http.StatusTooManyRequests:
 			return "upstream_rate_limited"
 		}
 		if dialErr.StatusCode >= 500 {

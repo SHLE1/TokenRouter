@@ -13,10 +13,52 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const deprecatedLongContextBillingExtraKey = "openai_long_context_billing_enabled"
+
 type grokImportAdminService struct {
 	*managementMutationFixture
 	mu     sync.Mutex
 	nextID int64
+}
+
+// 创建测试记录提交给用例的输入，其他接口留空。
+type managementCreateFixture struct {
+	ProviderManagement
+	mu                sync.Mutex
+	createdProviders  []*providercore.CreateProviderInput
+	createProviderErr error
+}
+
+// managementListFixture 提供列表与评分候选，记录分页参数和调用次数。
+type managementListFixture struct {
+	ProviderManagement
+	providers                                                               []providercore.Record
+	providerSchedulerScoreFilterProviders                                   []providercore.Record
+	openAISchedulerScorePoolProviders                                       []providercore.Record
+	schedulerScoreFilterCalls, openAISchedulerScorePoolCalls, getGroupCalls int
+	openAISchedulerScorePoolGroupIDs                                        []int64
+	lastListProviders                                                       struct {
+		platform, providerType, status, search, privacyMode, sortBy, sortOrder string
+		groupID                                                                int64
+		calls                                                                  int
+	}
+}
+
+type availableModelsAdminService struct {
+	*managementMutationFixture
+	provider providercore.Record
+}
+
+// managementMutationFixture 记录配置、凭据和失效输入，存储替身保持独立状态。
+type managementMutationFixture struct {
+	managementCreateFixture
+	providers                   []providercore.Record
+	updateProviderInput         *providercore.UpdateProviderInput
+	updateProviderErr           error
+	updateExtraCalls            []map[string]any
+	clearProviderErrorIDs       []int64
+	lastBulkUpdateProviderInput *providercore.BulkUpdateProvidersInput
+	bulkUpdateProviderErr       error
 }
 
 func newGrokImportAdminService() *grokImportAdminService {
@@ -65,14 +107,6 @@ func newManagedRefreshFixture(source interface {
 	})
 }
 
-// 创建测试记录提交给用例的输入，其他接口留空。
-type managementCreateFixture struct {
-	ProviderManagement
-	mu                sync.Mutex
-	createdProviders  []*providercore.CreateProviderInput
-	createProviderErr error
-}
-
 func (s *managementCreateFixture) CreateProvider(_ context.Context, input *providercore.CreateProviderInput) (*providercore.Record, error) {
 	s.mu.Lock()
 	s.createdProviders = append(s.createdProviders, input)
@@ -97,8 +131,6 @@ func newManagementCreateFixtureHandler(source *managementCreateFixture) *Managem
 	batch := providercore.NewManagementBatch(source, nil, providercore.ManagementCreationOptions{Privacy: source})
 	return NewManagementHandler(source, ManagementOptions{Presenter: presenter, Privacy: source, Batch: batch})
 }
-
-const deprecatedLongContextBillingExtraKey = "openai_long_context_billing_enabled"
 
 func (s *managementListFixture) ListProviders(ctx context.Context, page, pageSize int, platform, providerType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]providercore.Record, int64, error) {
 	s.lastListProviders.platform = platform
@@ -167,21 +199,6 @@ func (s *managementListFixture) ListSchedulableProvidersForAdvancedSchedulerScor
 	return out, nil
 }
 
-// managementListFixture 提供列表与评分候选，记录分页参数和调用次数。
-type managementListFixture struct {
-	ProviderManagement
-	providers                                                               []providercore.Record
-	providerSchedulerScoreFilterProviders                                   []providercore.Record
-	openAISchedulerScorePoolProviders                                       []providercore.Record
-	schedulerScoreFilterCalls, openAISchedulerScorePoolCalls, getGroupCalls int
-	openAISchedulerScorePoolGroupIDs                                        []int64
-	lastListProviders                                                       struct {
-		platform, providerType, status, search, privacyMode, sortBy, sortOrder string
-		groupID                                                                int64
-		calls                                                                  int
-	}
-}
-
 func newManagementListFixture() *managementListFixture {
 	now := time.Now().UTC()
 	return &managementListFixture{providers: []providercore.Record{{ID: 3, Name: "provider", Platform: providercore.PlatformAnthropic, Type: providercore.ProviderTypeOAuth, Status: providercore.StatusActive, CreatedAt: now, UpdatedAt: now}}}
@@ -194,11 +211,6 @@ func setupProviderMutationContractRouter(adminSvc *managementMutationFixture) *g
 	router.PUT("/api/v1/admin/providers/:id", providerHandler.Update)
 	router.POST("/api/v1/admin/providers/bulk-update", providerHandler.BulkUpdate)
 	return router
-}
-
-type availableModelsAdminService struct {
-	*managementMutationFixture
-	provider providercore.Record
 }
 
 func (s *availableModelsAdminService) GetProvider(_ context.Context, id int64) (*providercore.Record, error) {
@@ -297,18 +309,6 @@ func (s *managementMutationFixture) EnsureOpenAIPrivacy(ctx context.Context, pro
 
 func (s *managementMutationFixture) EnsureAntigravityPrivacy(ctx context.Context, provider *providercore.Record) string {
 	return ""
-}
-
-// managementMutationFixture 记录配置、凭据和失效输入，存储替身保持独立状态。
-type managementMutationFixture struct {
-	managementCreateFixture
-	providers                   []providercore.Record
-	updateProviderInput         *providercore.UpdateProviderInput
-	updateProviderErr           error
-	updateExtraCalls            []map[string]any
-	clearProviderErrorIDs       []int64
-	lastBulkUpdateProviderInput *providercore.BulkUpdateProvidersInput
-	bulkUpdateProviderErr       error
 }
 
 func newManagementMutationFixture() *managementMutationFixture { return &managementMutationFixture{} }

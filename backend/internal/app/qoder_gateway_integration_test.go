@@ -51,6 +51,13 @@ import (
 // balanceReader 从数据库读取余额并返回给 billing。
 type balanceReader struct{ db *sql.DB }
 
+// storageQoderRuntime 提供供应商与依赖的测试实现，执行、租约、资金和分析记录使用生产模块。
+type storageQoderRuntime struct {
+	prepare        func(context.Context, gateway.Request) (gateway.Request, error)
+	check          func(context.Context) error
+	selectProvider func(context.Context, gateway.Request, map[int64]struct{}) (*gateway.Selection, error)
+}
+
 func (r balanceReader) GetByID(ctx context.Context, id int64) (*billing.UserSummary, error) {
 	u := &billing.UserSummary{ID: id}
 	err := r.db.QueryRowContext(ctx, "SELECT balance FROM users WHERE id=$1", id).Scan(&u.Balance)
@@ -374,13 +381,6 @@ func TestQoderHTTPStorageChain(t *testing.T) {
 			require.Zero(t, slots)
 		})
 	}
-}
-
-// storageQoderRuntime 提供供应商与依赖的测试实现，执行、租约、资金和分析记录使用生产模块。
-type storageQoderRuntime struct {
-	prepare        func(context.Context, gateway.Request) (gateway.Request, error)
-	check          func(context.Context) error
-	selectProvider func(context.Context, gateway.Request, map[int64]struct{}) (*gateway.Selection, error)
 }
 
 func (r *storageQoderRuntime) Prepare(ctx context.Context, v gateway.Request) (gateway.Request, error) {

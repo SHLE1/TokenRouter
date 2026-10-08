@@ -16,6 +16,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/modelmap"
 )
 
+// APIKeyModelRedirectTrace 保存一次请求中的客户端模型与内部模型阶段。
+type APIKeyModelRedirectTrace struct {
+	ClientModel string
+	SourceModel string
+	TargetModel string
+
+	mu             sync.RWMutex
+	responseModels map[string]struct{}
+}
+
+// ContextKey 标识 context 中的 Trace，支持参数传递的调用方可直接传入 Trace。
+type ContextKey struct{}
+
 // WithGroupRedirect 组合 Key 和分组的模型映射，记录本次请求恢复响应模型时所需的名称。
 func WithGroupRedirect(result routing.GroupMappingResult, ctx context.Context, requestedModel string) routing.GroupMappingResult {
 	trace, ok := FromContext(ctx)
@@ -55,16 +68,6 @@ func RewriteAPIKeyAdditionalModels(body []byte, mapping map[string]string) ([]by
 		}
 	}
 	return rewritten, nil
-}
-
-// APIKeyModelRedirectTrace 保存一次请求中的客户端模型与内部模型阶段。
-type APIKeyModelRedirectTrace struct {
-	ClientModel string
-	SourceModel string
-	TargetModel string
-
-	mu             sync.RWMutex
-	responseModels map[string]struct{}
 }
 
 // NewAPIKeyModelRedirectTrace 创建模型重定向追踪，并登记首个内部目标模型。
@@ -196,9 +199,6 @@ func responseMetadataModels(data []byte) []string {
 	}
 	return models
 }
-
-// ContextKey 标识 context 中的 Trace，支持参数传递的调用方可直接传入 Trace。
-type ContextKey struct{}
 
 func WithContext(ctx context.Context, trace *APIKeyModelRedirectTrace) context.Context {
 	if trace == nil {

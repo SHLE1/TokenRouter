@@ -18,6 +18,8 @@ const (
 	clientRequestIDHeader         = "X-Client-Request-ID"
 	internalRequestIDHeader       = "X-TokenRouter-Request-ID"
 	legacyInternalRequestIDHeader = "X-Sub2API-Request-ID"
+
+	maxPersistentRequestIDBytes = 64
 )
 
 // ClientRequestID 为请求生成内部关联 ID，并把调用方 ID 单独保存为 parent_client_request_id。
@@ -76,10 +78,6 @@ func normalizeCorrelationIDFromContext(ctx context.Context, key telemetry.Contex
 	v, _ := ctx.Value(key).(string)
 	return normalizeCorrelationID(v)
 }
-
-const (
-	maxPersistentRequestIDBytes = 64
-)
 
 // normalizeCorrelationID 清洗关联 ID 并检查长度和 ASCII 字符范围。
 func normalizeCorrelationID(value string) (string, bool) {

@@ -25,6 +25,12 @@ type imagesContractSink struct {
 	onPartial func()
 }
 
+// imagesCloseRecorder 记录本次执行关闭网络响应体的次数。
+type imagesCloseRecorder struct {
+	io.ReadCloser
+	closed *atomic.Int32
+}
+
 func (s *imagesContractSink) Begin(head upstream.OutputHead) error { s.head = head; return nil }
 func (s *imagesContractSink) Emit(event upstream.OutputEvent) error {
 	if len(event.Data) > 0 {
@@ -38,12 +44,6 @@ func (s *imagesContractSink) Emit(event upstream.OutputEvent) error {
 		s.onPartial = nil
 	}
 	return nil
-}
-
-// imagesCloseRecorder 记录本次执行关闭网络响应体的次数。
-type imagesCloseRecorder struct {
-	io.ReadCloser
-	closed *atomic.Int32
 }
 
 func (b *imagesCloseRecorder) Close() error { b.closed.Add(1); return b.ReadCloser.Close() }

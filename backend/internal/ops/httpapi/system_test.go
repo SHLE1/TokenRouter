@@ -20,6 +20,52 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops/maintenance"
 )
 
+type systemHandlerUpdateServiceStub struct {
+	performErr            error
+	updateInfo            *ops.UpdateInfo
+	checkErr              error
+	checkForces           []bool
+	performCall           int
+	performCtxErr         error
+	performHasDeadline    bool
+	rollbackCall          int
+	rollbackToCall        int
+	rollbackToCtxErr      error
+	rollbackToHasDeadline bool
+	rollbackToVersions    []string
+	rollbackToErr         error
+	rollbackVersions      []ops.RollbackVersion
+	rollbackVersionsErr   error
+	rollbackVersionsCall  int
+}
+
+type systemUpdateResponseEnvelope struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    struct {
+		Message         string `json:"message"`
+		AlreadyUpToDate bool   `json:"already_up_to_date"`
+		CurrentVersion  string `json:"current_version"`
+		LatestVersion   string `json:"latest_version"`
+		OperationID     string `json:"operation_id"`
+	} `json:"data"`
+}
+
+type systemUpdateErrorEnvelope struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+// restartRecorder 记录重启请求次数。
+type restartRecorder struct{ calls int }
+
+// systemOperationFixture 模拟维护 HTTP 操作使用的带所有者租约。
+type systemOperationFixture struct {
+	mu     sync.Mutex
+	nextID int64
+	data   map[string]*idempotency.IdempotencyRecord
+}
+
 func TestSystemHandlerPerformUpdateAlreadyUpToDateReturnsOK(t *testing.T) {
 	updateSvc := &systemHandlerUpdateServiceStub{
 		performErr: maintenance.ErrNoUpdateAvailable,
@@ -259,25 +305,6 @@ func TestSystemHandlerRestartPreservesResponse(t *testing.T) {
 	requireSystemLockStatus(t, repo, idempotency.IdempotencyStatusSucceeded)
 }
 
-type systemHandlerUpdateServiceStub struct {
-	performErr            error
-	updateInfo            *ops.UpdateInfo
-	checkErr              error
-	checkForces           []bool
-	performCall           int
-	performCtxErr         error
-	performHasDeadline    bool
-	rollbackCall          int
-	rollbackToCall        int
-	rollbackToCtxErr      error
-	rollbackToHasDeadline bool
-	rollbackToVersions    []string
-	rollbackToErr         error
-	rollbackVersions      []ops.RollbackVersion
-	rollbackVersionsErr   error
-	rollbackVersionsCall  int
-}
-
 func (s *systemHandlerUpdateServiceStub) CheckUpdate(_ context.Context, force bool) (*ops.UpdateInfo, error) {
 	s.checkForces = append(s.checkForces, force)
 	return s.updateInfo, s.checkErr
@@ -306,23 +333,6 @@ func (s *systemHandlerUpdateServiceStub) RollbackToVersion(ctx context.Context, 
 	_, s.rollbackToHasDeadline = ctx.Deadline()
 	s.rollbackToVersions = append(s.rollbackToVersions, version)
 	return s.rollbackToErr
-}
-
-type systemUpdateResponseEnvelope struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    struct {
-		Message         string `json:"message"`
-		AlreadyUpToDate bool   `json:"already_up_to_date"`
-		CurrentVersion  string `json:"current_version"`
-		LatestVersion   string `json:"latest_version"`
-		OperationID     string `json:"operation_id"`
-	} `json:"data"`
-}
-
-type systemUpdateErrorEnvelope struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
 }
 
 func newSystemHandlerTestRouter(t *testing.T, updateSvc *systemHandlerUpdateServiceStub, repo *systemOperationFixture) *gin.Engine {
@@ -354,9 +364,6 @@ func requireSystemLockStatus(t *testing.T, repo *systemOperationFixture, wantSta
 	}
 	t.Fatalf("system lock status %q not found in records: %#v", wantStatus, repo.data)
 }
-
-// restartRecorder 记录重启请求次数。
-type restartRecorder struct{ calls int }
 
 func (r *restartRecorder) RequestRestart() error { r.calls++; return nil }
 
@@ -410,13 +417,6 @@ func (r *systemOperationFixture) FinishOperation(ctx context.Context, id int64, 
 		}
 	}
 	return false, nil
-}
-
-// systemOperationFixture 模拟维护 HTTP 操作使用的带所有者租约。
-type systemOperationFixture struct {
-	mu     sync.Mutex
-	nextID int64
-	data   map[string]*idempotency.IdempotencyRecord
 }
 
 func newSystemOperationFixture() *systemOperationFixture {

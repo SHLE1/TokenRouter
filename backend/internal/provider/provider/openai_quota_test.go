@@ -35,6 +35,59 @@ import (
 	openaiupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// sparkShadowUsageTestRepo 是 spark 影子用量测试的最小 provider.OAuthUsageReader stub。
+// GetByID 从 map 返回影子/母提供商，UpdateExtra 记录持久化内容用于断言。
+type sparkShadowUsageTestRepo struct {
+	providercore.OAuthUsageReader
+	providers     map[int64]*providercore.Record
+	updateExtraCh chan map[string]any
+}
+
+type quotaReadFixture interface {
+	GetProvider(context.Context, int64) (*providercore.Record, error)
+}
+
+// 夹具组合额度用例和平台构造函数，查询、恢复与缓存使用生产实现。
+type quotaFixture struct {
+	*providercore.OpenAIQuotaService
+	factory *OpenAIQuotaFactory
+}
+
+type agentIdentityWSInvalidationRecorder struct{ providerIDs []int64 }
+
+// stubQuotaProviderRepo 是多提供商 ProviderRepository stub，实现配额测试需要的读取和 extra 写入。
+type stubQuotaProviderRepo struct {
+	providers        map[int64]*providercore.Record
+	extraUpdates     map[int64]map[string]any
+	extraUpdateCalls int
+	extraUpdateErr   error
+}
+
+type quotaProviderGetter interface {
+	GetByID(context.Context, int64) (*providercore.Record, error)
+}
+
+type stubQuotaAdminService struct {
+	repo quotaProviderGetter
+}
+
+// stubQuotaTokenCache 实现 providercore.AccessTokenCache，返回预设静态 token。
+type stubQuotaTokenCache struct {
+	tokens map[string]string
+}
+
+type stubQuotaHTTPUpstream struct {
+	capturedProviderID string
+	responseBody       string
+	responses          map[string]stubQuotaHTTPResponse
+	redirectTarget     *url.URL
+}
+
+type stubQuotaHTTPResponse struct {
+	status int
+	body   string
+}
+
 // TestGetOpenAIUsage_SparkShadow_WritesExtraAndReturnsNonEmptyWindows 覆盖:
 // A) spark 影子提供商会持久化自身 codex_5h_used_percent，且上游请求携带母提供商 chatgpt-account-id。
 // B) 同一次调用返回的 UsageInfo 包含从 Extra 重建的 5h 和 7d 窗口。
@@ -931,14 +984,6 @@ func TestQueryUsageShadowResolve_EndToEnd(t *testing.T) {
 		"upstream should receive parent's chatgpt-account-id; got: %s", upstream.capturedProviderID)
 }
 
-// sparkShadowUsageTestRepo 是 spark 影子用量测试的最小 provider.OAuthUsageReader stub。
-// GetByID 从 map 返回影子/母提供商，UpdateExtra 记录持久化内容用于断言。
-type sparkShadowUsageTestRepo struct {
-	providercore.OAuthUsageReader
-	providers     map[int64]*providercore.Record
-	updateExtraCh chan map[string]any
-}
-
 func (r *sparkShadowUsageTestRepo) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
 	if acc, ok := r.providers[id]; ok {
 		return acc, nil
@@ -964,16 +1009,6 @@ func (r *sparkShadowUsageTestRepo) UpdateUsageExtraIfUnchanged(ctx context.Conte
 		return false, nil
 	}
 	return true, r.UpdateExtra(ctx, version.ID, updates)
-}
-
-type quotaReadFixture interface {
-	GetProvider(context.Context, int64) (*providercore.Record, error)
-}
-
-// 夹具组合额度用例和平台构造函数，查询、恢复与缓存使用生产实现。
-type quotaFixture struct {
-	*providercore.OpenAIQuotaService
-	factory *OpenAIQuotaFactory
 }
 
 func newQuotaForTest(reader quotaReadFixture, transport QoderTransport, token *providercore.OpenAITokenSource, profiles *egressprovider.TLSProfiles, routers OpenAITokenRouterReader) *quotaFixture {
@@ -1022,18 +1057,8 @@ func decodeAgentAssertionTask(t *testing.T, header string) string {
 	return envelope.TaskID
 }
 
-type agentIdentityWSInvalidationRecorder struct{ providerIDs []int64 }
-
 func (r *agentIdentityWSInvalidationRecorder) InvalidateAgentIdentityWSConnections(id int64) {
 	r.providerIDs = append(r.providerIDs, id)
-}
-
-// stubQuotaProviderRepo 是多提供商 ProviderRepository stub，实现配额测试需要的读取和 extra 写入。
-type stubQuotaProviderRepo struct {
-	providers        map[int64]*providercore.Record
-	extraUpdates     map[int64]map[string]any
-	extraUpdateCalls int
-	extraUpdateErr   error
 }
 
 func (r *stubQuotaProviderRepo) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
@@ -1042,14 +1067,6 @@ func (r *stubQuotaProviderRepo) GetByID(_ context.Context, id int64) (*providerc
 		return nil, fmt.Errorf("provider %d not found", id)
 	}
 	return acc, nil
-}
-
-type quotaProviderGetter interface {
-	GetByID(context.Context, int64) (*providercore.Record, error)
-}
-
-type stubQuotaAdminService struct {
-	repo quotaProviderGetter
 }
 
 func (s stubQuotaAdminService) GetProvider(ctx context.Context, id int64) (*providercore.Record, error) {
@@ -1077,11 +1094,6 @@ func (r *stubQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates
 	return nil
 }
 
-// stubQuotaTokenCache 实现 providercore.AccessTokenCache，返回预设静态 token。
-type stubQuotaTokenCache struct {
-	tokens map[string]string
-}
-
 func (c *stubQuotaTokenCache) GetAccessToken(_ context.Context, key string) (string, error) {
 	if t, ok := c.tokens[key]; ok {
 		return t, nil
@@ -1100,13 +1112,6 @@ func (c *stubQuotaTokenCache) AcquireRefreshLock(_ context.Context, _ string, _ 
 }
 
 func (c *stubQuotaTokenCache) ReleaseRefreshLock(_ context.Context, _ string) error { return nil }
-
-type stubQuotaHTTPUpstream struct {
-	capturedProviderID string
-	responseBody       string
-	responses          map[string]stubQuotaHTTPResponse
-	redirectTarget     *url.URL
-}
 
 func (s *stubQuotaHTTPUpstream) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
 	return s.DoWithTLS(req, proxyURL, providerID, providerConcurrency, nil)
@@ -1145,11 +1150,6 @@ func (s *stubQuotaHTTPUpstream) DoWithTLS(req *http.Request, _ string, _ int64, 
 		Header:     http.Header{"content-type": []string{"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(body)),
 	}, nil
-}
-
-type stubQuotaHTTPResponse struct {
-	status int
-	body   string
 }
 
 // newQuotaRedirectingUpstream 将配额请求发到本地测试服务，路径与请求头保持请求值。

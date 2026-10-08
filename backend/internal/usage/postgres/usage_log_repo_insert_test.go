@@ -19,6 +19,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+const (
+	usageLogBestEffortBatchSQL  = `(?s)^\s*WITH input .*INSERT INTO usage_logs`
+	usageLogBestEffortSingleSQL = `(?s)^\s*INSERT INTO usage_logs`
+)
+
+var (
+	usageLogStaticInsertShapeRe = regexp.MustCompile(`(?s)INSERT INTO usage_logs \((.*?)\) VALUES \((.*?)\)`)
+	usageLogPlaceholderRe       = regexp.MustCompile(`\$(\d+)`)
+)
+
 func TestFlushBestEffortBatch_RetriesDeadlockBeforeFallback(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -554,11 +564,6 @@ func TestPrepareUsageLogInsert_RequestedReasoningEffortArgWiring(t *testing.T) {
 	require.Equal(t, requested, value.String)
 }
 
-const (
-	usageLogBestEffortBatchSQL  = `(?s)^\s*WITH input .*INSERT INTO usage_logs`
-	usageLogBestEffortSingleSQL = `(?s)^\s*INSERT INTO usage_logs`
-)
-
 func newUsageLogBestEffortRequestForTest() usageLogBestEffortRequest {
 	log := &usage.UsageLog{
 		UserID:        1,
@@ -579,11 +584,6 @@ func newUsageLogBestEffortRequestForTest() usageLogBestEffortRequest {
 		resultCh: make(chan error, 1),
 	}
 }
-
-var (
-	usageLogStaticInsertShapeRe = regexp.MustCompile(`(?s)INSERT INTO usage_logs \((.*?)\) VALUES \((.*?)\)`)
-	usageLogPlaceholderRe       = regexp.MustCompile(`\$(\d+)`)
-)
 
 // newSQLCapturingMock 把执行的 SQL 记录到 captured，并接受所有语句。
 // WithArgs 校验查询参数。

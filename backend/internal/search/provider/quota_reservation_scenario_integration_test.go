@@ -59,7 +59,7 @@ func TestSearchRedisReservations(t *testing.T) {
 					<-release
 				}
 				if kind == "failure" {
-					w.WriteHeader(500)
+					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 				_, _ = w.Write([]byte(`{"web":{"results":[{"url":"https://fixture.invalid","title":"fixture","description":"fixture"}]}}`))

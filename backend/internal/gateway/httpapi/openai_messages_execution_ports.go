@@ -31,6 +31,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const OpenAICompatMessagesBridgeContextKey = "openai_compat_messages_bridge"
+
+type openAIMessagesExecutionAdapter struct {
+	proxyURL string
+	s        *OpenAITextExecutor
+	c        *gin.Context
+	provider *gatewayprovider.ExecutionProvider
+	tls      []egress.TLSFingerprintRouterMatchResult
+}
+
 func compatResponseKey(c *gin.Context, provider *gatewayprovider.ExecutionProvider, promptCacheKey string) string {
 	key := strings.TrimSpace(promptCacheKey)
 	if provider == nil || key == "" {
@@ -42,8 +52,6 @@ func compatResponseKey(c *gin.Context, provider *gatewayprovider.ExecutionProvid
 	}
 	return session.CompatResponseKey(provider.Record.ID, apiKeyID, key)
 }
-
-const OpenAICompatMessagesBridgeContextKey = "openai_compat_messages_bridge"
 
 func SetOpenAICompatMessagesBridgeContext(c *gin.Context, enabled bool) {
 	if c == nil || !enabled {
@@ -62,14 +70,6 @@ func IsOpenAICompatMessagesBridgeContext(c *gin.Context) bool {
 	}
 	enabled, ok := value.(bool)
 	return ok && enabled
-}
-
-type openAIMessagesExecutionAdapter struct {
-	proxyURL string
-	s        *OpenAITextExecutor
-	c        *gin.Context
-	provider *gatewayprovider.ExecutionProvider
-	tls      []egress.TLSFingerprintRouterMatchResult
 }
 
 func (p *openAIMessagesExecutionAdapter) Prepare(ctx context.Context) (openaiexecution.MessagesProfile, openaiexecution.Dispatch, error) {

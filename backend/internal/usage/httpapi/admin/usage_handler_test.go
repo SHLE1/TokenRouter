@@ -25,6 +25,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage/httpapi/ports"
 )
 
+var _ usage.UsageCleanupRepository = (*cleanupRepoStub)(nil)
+
 type cleanupRepoStub struct {
 	mu         sync.Mutex
 	created    []*usage.UsageCleanupTask
@@ -32,6 +34,24 @@ type cleanupRepoStub struct {
 	listResult *pagination.PaginationResult
 	listErr    error
 	statusByID map[int64]string
+}
+
+type adminUsageRepoCapture struct {
+	usage.UsageLogRepository
+	listParams   pagination.PaginationParams
+	listFilters  usage.UsageLogFilters
+	statsFilters usage.UsageLogFilters
+	logs         []usage.UsageLog
+}
+
+type adminUsageTimingOpsRepo struct {
+	ops.OpsRepository
+	timings map[string]*ops.OpsRequestTiming
+}
+
+// searchUsersAdminStub 记录查询参数，并返回包含已删除用户的结果。
+type searchUsersAdminStub struct {
+	gotFilters ports.UserListFilters
 }
 
 func (s *cleanupRepoStub) CreateTask(ctx context.Context, task *usage.UsageCleanupTask) error {
@@ -104,8 +124,6 @@ func (s *cleanupRepoStub) MarkTaskFailed(ctx context.Context, taskID int64, dele
 func (s *cleanupRepoStub) DeleteUsageLogsBatch(ctx context.Context, filters usage.UsageCleanupFilters, limit int) (int64, error) {
 	return 0, nil
 }
-
-var _ usage.UsageCleanupRepository = (*cleanupRepoStub)(nil)
 
 func setupCleanupRouter(cleanupService *usage.UsageCleanupService, userID int64) *gin.Engine {
 	router := gin.New()
@@ -464,14 +482,6 @@ func TestUsageHandlerCancelCleanupTaskSuccess(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
-type adminUsageRepoCapture struct {
-	usage.UsageLogRepository
-	listParams   pagination.PaginationParams
-	listFilters  usage.UsageLogFilters
-	statsFilters usage.UsageLogFilters
-	logs         []usage.UsageLog
-}
-
 func (s *adminUsageRepoCapture) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters usage.UsageLogFilters) ([]usage.UsageLog, *pagination.PaginationResult, error) {
 	s.listParams = params
 	s.listFilters = filters
@@ -481,11 +491,6 @@ func (s *adminUsageRepoCapture) ListWithFilters(ctx context.Context, params pagi
 		PageSize: params.PageSize,
 		Pages:    0,
 	}, nil
-}
-
-type adminUsageTimingOpsRepo struct {
-	ops.OpsRepository
-	timings map[string]*ops.OpsRequestTiming
 }
 
 func (r *adminUsageTimingOpsRepo) ListRequestTimings(_ context.Context, ids []string) (map[string]*ops.OpsRequestTiming, error) {
@@ -718,11 +723,6 @@ func TestAdminUsageEndpointSource(t *testing.T) {
 		}
 		require.Equal(t, source, repo.statsFilters.EndpointSource)
 	}
-}
-
-// searchUsersAdminStub 记录查询参数，并返回包含已删除用户的结果。
-type searchUsersAdminStub struct {
-	gotFilters ports.UserListFilters
 }
 
 func (s *searchUsersAdminStub) ListUsers(ctx context.Context, page, pageSize int, filters ports.UserListFilters, sortBy, sortOrder string) ([]ports.UserReference, int64, error) {

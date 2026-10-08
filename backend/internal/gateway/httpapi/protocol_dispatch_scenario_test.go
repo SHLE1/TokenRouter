@@ -41,6 +41,19 @@ type cnProtocolIngressCase struct {
 	forward func(*OpenAIResponsesExecutor, *gin.Context, *gatewayprovider.ExecutionProvider, []byte) error
 }
 
+// tokenExecutionContract 为 HTTP、模型映射和尝试循环测试提供选择与网络交换替身。
+type tokenExecutionContract struct {
+	OpenAITokenExecution
+	t          *testing.T
+	events     []string
+	selections int
+}
+
+type tokenContractTarget struct {
+	f  *tokenExecutionContract
+	id int64
+}
+
 func cnProtocolIngressCases() []cnProtocolIngressCase {
 	return []cnProtocolIngressCase{
 		{
@@ -119,7 +132,7 @@ func TestGatewayErrorsUseEnglish(t *testing.T) {
 		for _, stream := range []bool{false, true} {
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
-			c.Request = httptest.NewRequest("POST", "/v1/messages", nil).WithContext(locale.WithLanguage(context.Background(), language))
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil).WithContext(locale.WithLanguage(context.Background(), language))
 			c.Request.Header.Set("Accept-Language", language)
 			WriteAnthropicFailover(c, &forwardcore.UpstreamFailoverError{StatusCode: 529}, "anthropic", stream, nil, func([]byte) bool { return false }, "")
 			require.Contains(t, recorder.Body.String(), `"type":"overloaded_error"`)
@@ -417,14 +430,6 @@ func TestRemovedGPT56AliasAcrossGatewayProtocols(t *testing.T) {
 	}
 }
 
-// tokenExecutionContract 为 HTTP、模型映射和尝试循环测试提供选择与网络交换替身。
-type tokenExecutionContract struct {
-	OpenAITokenExecution
-	t          *testing.T
-	events     []string
-	selections int
-}
-
 func (f *tokenExecutionContract) PlanTokenRoute(_ context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 	f.events = append(f.events, "plan")
 	return routing.Plan(routing.PlanInput{GroupID: key.GroupID, RequestedModel: model, GroupMapping: routing.GroupMappingResult{Mapped: true, MappedModel: "group-model"}})
@@ -469,11 +474,6 @@ func (f *tokenExecutionContract) SelectInputTokens(_ context.Context, _ *int64, 
 		Target:  tokenContractTarget{f: f, id: int64(f.selections)},
 		Release: func() { f.events = append(f.events, "release") },
 	}, nil
-}
-
-type tokenContractTarget struct {
-	f  *tokenExecutionContract
-	id int64
 }
 
 func (t tokenContractTarget) Snapshot() providercore.ProviderSnapshot {
@@ -624,7 +624,7 @@ func TestProtocolForwardConvertedResponsesRetainsWireContract(t *testing.T) {
 			if tc.stream {
 				contentType = "text/event-stream"
 			}
-			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{contentType}}, Body: io.NopCloser(strings.NewReader(tc.response))}}
+			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{contentType}}, Body: io.NopCloser(strings.NewReader(tc.response))}}
 			svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 			result, err := svc.Forward(ctx, c, provider, []byte(tc.body))
 			require.NoError(t, err)

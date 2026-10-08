@@ -13,16 +13,16 @@ type RedeemHandler struct {
 	redeemService *billing.RedeemService
 }
 
+// RedeemRequest represents the redeem code request payload
+type RedeemRequest struct {
+	Code string `json:"code" binding:"required"`
+}
+
 // NewRedeemHandler creates a new RedeemHandler
 func NewRedeemHandler(redeemService *billing.RedeemService) *RedeemHandler {
 	return &RedeemHandler{
 		redeemService: redeemService,
 	}
-}
-
-// RedeemRequest represents the redeem code request payload
-type RedeemRequest struct {
-	Code string `json:"code" binding:"required"`
 }
 
 // Redeem handles redeeming a code

@@ -11,6 +11,37 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+var (
+	ErrInvalidCredentials = infraerrors.Unauthorized("INVALID_CREDENTIALS", "invalid email or password")
+	ErrUserNotActive      = infraerrors.Forbidden("USER_NOT_ACTIVE", "user is not active")
+	ErrEmailExists        = infraerrors.Conflict("EMAIL_EXISTS", "email already exists")
+	ErrEmailReserved      = infraerrors.BadRequest("EMAIL_RESERVED", "email is reserved")
+	ErrInvalidToken       = infraerrors.Unauthorized("INVALID_TOKEN", "invalid token")
+	ErrTokenExpired       = infraerrors.Unauthorized("TOKEN_EXPIRED", "token has expired")
+
+	ErrTokenTooLarge       = infraerrors.BadRequest("TOKEN_TOO_LARGE", "token too large")
+	ErrTokenRevoked        = infraerrors.Unauthorized("TOKEN_REVOKED", "token has been revoked")
+	ErrRefreshTokenInvalid = infraerrors.Unauthorized("REFRESH_TOKEN_INVALID", "invalid refresh token")
+	ErrRefreshTokenExpired = infraerrors.Unauthorized("REFRESH_TOKEN_EXPIRED", "refresh token has expired")
+
+	ErrEmailVerifyRequired          = infraerrors.BadRequest("EMAIL_VERIFY_REQUIRED", "email verification is required")
+	ErrEmailSuffixNotAllowed        = infraerrors.BadRequest("EMAIL_SUFFIX_NOT_ALLOWED", "email suffix is not allowed")
+	ErrEmailDomainRegistrationLimit = infraerrors.BadRequest(
+		"EMAIL_DOMAIN_REGISTRATION_LIMIT",
+		"this email domain cannot register another account; use a mainstream email or contact support to add the enterprise domain",
+	)
+	ErrEmailChangeDisabled     = infraerrors.Forbidden("EMAIL_CHANGE_DISABLED", "email changes are disabled")
+	ErrRegDisabled             = infraerrors.Forbidden("REGISTRATION_DISABLED", "registration is currently disabled")
+	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "service temporarily unavailable")
+	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "invitation code is required")
+	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "invalid or used invitation code")
+	ErrOAuthInvitationRequired = infraerrors.Forbidden("OAUTH_INVITATION_REQUIRED", "invitation code required to complete oauth registration")
+	ErrCaptchaProviderConflict = infraerrors.ServiceUnavailable("CAPTCHA_PROVIDER_CONFLICT", "multiple captcha providers are enabled")
+
+	// ErrPasswordIncorrect 表示当前密码校验失败。
+	ErrPasswordIncorrect = infraerrors.BadRequest("PASSWORD_INCORRECT", "current password is incorrect")
+)
+
 type CaptchaProof struct {
 	// TurnstileToken 承载 Cloudflare Turnstile token；阿里云验证码复用该字段承载 captchaVerifyParam
 	TurnstileToken string
@@ -26,6 +57,17 @@ type AuthSignupGrantPlan struct {
 	Balance       float64
 	Concurrency   int
 	Subscriptions []DefaultSubscriptionSetting
+}
+
+// SendVerifyCodeResult 发送验证码返回结果
+type SendVerifyCodeResult struct {
+	Countdown int `json:"countdown"` // 倒计时秒数
+}
+
+type AuthRegistrationArtifacts struct {
+	InvitationRedeemCode *RedeemCode
+	// EnforceEmailDomainQuota 仅为普通注册和 OAuth 邮箱补全开启非白名单域名额度。
+	EnforceEmailDomainQuota bool
 }
 
 // RegisterWithVerification 用户注册（支持邮件验证、优惠码、邀请码和邀请返利码），返回token和用户。
@@ -136,11 +178,6 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	}
 
 	return token, user, nil
-}
-
-// SendVerifyCodeResult 发送验证码返回结果
-type SendVerifyCodeResult struct {
-	Countdown int `json:"countdown"` // 倒计时秒数
 }
 
 // SendVerifyCode 发送邮箱验证码（同步方式）
@@ -574,12 +611,6 @@ func (s *AuthService) AuthAssignSubscriptions(ctx context.Context, userID int64,
 	}
 }
 
-type AuthRegistrationArtifacts struct {
-	InvitationRedeemCode *RedeemCode
-	// EnforceEmailDomainQuota 仅为普通注册和 OAuth 邮箱补全开启非白名单域名额度。
-	EnforceEmailDomainQuota bool
-}
-
 func (s *AuthService) AuthResolveRegistrationArtifacts(ctx context.Context, invitationCode string, missingInvitationErr error) (*AuthRegistrationArtifacts, error) {
 	artifacts := &AuthRegistrationArtifacts{}
 
@@ -957,34 +988,3 @@ func (s *AuthService) ResetPassword(ctx context.Context, email, token, newPasswo
 	s.Observer.Printf("service.auth", "[Auth] Password reset successful for user: %s", email)
 	return nil
 }
-
-var (
-	ErrInvalidCredentials = infraerrors.Unauthorized("INVALID_CREDENTIALS", "invalid email or password")
-	ErrUserNotActive      = infraerrors.Forbidden("USER_NOT_ACTIVE", "user is not active")
-	ErrEmailExists        = infraerrors.Conflict("EMAIL_EXISTS", "email already exists")
-	ErrEmailReserved      = infraerrors.BadRequest("EMAIL_RESERVED", "email is reserved")
-	ErrInvalidToken       = infraerrors.Unauthorized("INVALID_TOKEN", "invalid token")
-	ErrTokenExpired       = infraerrors.Unauthorized("TOKEN_EXPIRED", "token has expired")
-
-	ErrTokenTooLarge       = infraerrors.BadRequest("TOKEN_TOO_LARGE", "token too large")
-	ErrTokenRevoked        = infraerrors.Unauthorized("TOKEN_REVOKED", "token has been revoked")
-	ErrRefreshTokenInvalid = infraerrors.Unauthorized("REFRESH_TOKEN_INVALID", "invalid refresh token")
-	ErrRefreshTokenExpired = infraerrors.Unauthorized("REFRESH_TOKEN_EXPIRED", "refresh token has expired")
-
-	ErrEmailVerifyRequired          = infraerrors.BadRequest("EMAIL_VERIFY_REQUIRED", "email verification is required")
-	ErrEmailSuffixNotAllowed        = infraerrors.BadRequest("EMAIL_SUFFIX_NOT_ALLOWED", "email suffix is not allowed")
-	ErrEmailDomainRegistrationLimit = infraerrors.BadRequest(
-		"EMAIL_DOMAIN_REGISTRATION_LIMIT",
-		"this email domain cannot register another account; use a mainstream email or contact support to add the enterprise domain",
-	)
-	ErrEmailChangeDisabled     = infraerrors.Forbidden("EMAIL_CHANGE_DISABLED", "email changes are disabled")
-	ErrRegDisabled             = infraerrors.Forbidden("REGISTRATION_DISABLED", "registration is currently disabled")
-	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "service temporarily unavailable")
-	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "invitation code is required")
-	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "invalid or used invitation code")
-	ErrOAuthInvitationRequired = infraerrors.Forbidden("OAUTH_INVITATION_REQUIRED", "invitation code required to complete oauth registration")
-	ErrCaptchaProviderConflict = infraerrors.ServiceUnavailable("CAPTCHA_PROVIDER_CONFLICT", "multiple captcha providers are enabled")
-)
-
-// ErrPasswordIncorrect 表示当前密码校验失败。
-var ErrPasswordIncorrect = infraerrors.BadRequest("PASSWORD_INCORRECT", "current password is incorrect")

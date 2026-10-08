@@ -8,6 +8,18 @@ import (
 	"github.com/tidwall/sjson"
 )
 
+const (
+	OpenAIPreviousResponseIDKindEmpty      = "empty"
+	OpenAIPreviousResponseIDKindResponseID = "response_id"
+	OpenAIPreviousResponseIDKindMessageID  = "message_id"
+	OpenAIPreviousResponseIDKindUnknown    = "unknown"
+)
+
+var (
+	openAIResponseIDPattern = regexp.MustCompile(`^resp_[A-Za-z0-9_-]{1,256}$`)
+	openAIMessageIDPattern  = regexp.MustCompile(`^(msg|message|item|chatcmpl)_[A-Za-z0-9_-]{1,256}$`)
+)
+
 // RemovePreviousResponseIDFromBody 删除请求体中的 previous_response_id，用于会话失配时改用完整 input 重建上下文。
 func RemovePreviousResponseIDFromBody(body []byte) []byte {
 	if len(body) == 0 {
@@ -22,18 +34,6 @@ func RemovePreviousResponseIDFromBody(body []byte) []byte {
 	}
 	return newBody
 }
-
-const (
-	OpenAIPreviousResponseIDKindEmpty      = "empty"
-	OpenAIPreviousResponseIDKindResponseID = "response_id"
-	OpenAIPreviousResponseIDKindMessageID  = "message_id"
-	OpenAIPreviousResponseIDKindUnknown    = "unknown"
-)
-
-var (
-	openAIResponseIDPattern = regexp.MustCompile(`^resp_[A-Za-z0-9_-]{1,256}$`)
-	openAIMessageIDPattern  = regexp.MustCompile(`^(msg|message|item|chatcmpl)_[A-Za-z0-9_-]{1,256}$`)
-)
 
 // ClassifyOpenAIPreviousResponseIDKind 按前缀与字符格式区分响应、消息、空值和未知标识。
 func ClassifyOpenAIPreviousResponseIDKind(id string) string {

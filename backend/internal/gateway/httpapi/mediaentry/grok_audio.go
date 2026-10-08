@@ -27,6 +27,25 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+// grokRealtimeAdapter 将已选提供商转换为 Realtime 连接。
+type grokRealtimeAdapter struct {
+	h         *Runtime
+	c         *gin.Context
+	apiKey    *apikey.APIKey
+	reqLog    *zap.Logger
+	selection *gatewaycapture.SelectionResult
+}
+
+// grokVoiceAdapter 连接单次提供商选择、HTTP 执行和完成数据捕获。
+type grokVoiceAdapter struct {
+	h            *Runtime
+	c            *gin.Context
+	apiKey       *apikey.APIKey
+	subscription *billing.UserSubscription
+	reqLog       *zap.Logger
+	selection    *gatewaycapture.SelectionResult
+}
+
 func grokRealtimeBillingResult(model string, elapsed time.Duration, audioObserved bool) *forwardcore.OpenAIResult {
 	usage := gatewaymedia.RealtimeAudioUsage(elapsed, audioObserved)
 	if usage == nil {
@@ -105,15 +124,6 @@ func (h *Runtime) recordGrokVoiceUsage(
 	})
 }
 
-// grokRealtimeAdapter 将已选提供商转换为 Realtime 连接。
-type grokRealtimeAdapter struct {
-	h         *Runtime
-	c         *gin.Context
-	apiKey    *apikey.APIKey
-	reqLog    *zap.Logger
-	selection *gatewaycapture.SelectionResult
-}
-
 func (p *grokRealtimeAdapter) SelectRealtime(ctx context.Context, excluded map[int64]struct{}) (providercore.ProviderSnapshot, bool, error) {
 	selected, _, err := p.h.bindings.Common.Selection.SelectProviderWithSchedulerForCapability(ctx, p.apiKey.GroupID, "", "", "", excluded, egress.OpenAIUpstreamTransportHTTPSSE, providercore.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformGrok)
 	p.selection = selected
@@ -149,16 +159,6 @@ func (p *grokRealtimeAdapter) RealtimeOpenFailed(ctx context.Context, selected p
 		status = dialErr.StatusCode
 	}
 	p.h.bindings.Platform.RealtimeError(ctx, p.selection.Provider, status, []byte(err.Error()))
-}
-
-// grokVoiceAdapter 连接单次提供商选择、HTTP 执行和完成数据捕获。
-type grokVoiceAdapter struct {
-	h            *Runtime
-	c            *gin.Context
-	apiKey       *apikey.APIKey
-	subscription *billing.UserSubscription
-	reqLog       *zap.Logger
-	selection    *gatewaycapture.SelectionResult
 }
 
 func (p *grokVoiceAdapter) SelectVoice(ctx context.Context, excluded map[int64]struct{}) (providercore.ProviderSnapshot, bool, error) {

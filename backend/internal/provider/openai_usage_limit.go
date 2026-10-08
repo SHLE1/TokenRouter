@@ -9,6 +9,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// OpenAIPlanWriter 按字段更新本次观测的套餐信息，其余字段保持当前值。
+type OpenAIPlanWriter interface {
+	BulkUpdate(context.Context, []int64, ProviderBulkUpdate) (int64, error)
+}
+
 // OpenAI429ResetTime 从观测到的窗口选择原提供商恢复时间。
 // 返回 nil 表示无法从响应头中确定重置时间
 func OpenAI429ResetTime(snapshot *openai.OpenAICodexUsageSnapshot, clock func() time.Time, info func(string, ...any)) *time.Time {
@@ -88,9 +93,4 @@ func PersistOpenAIObservedPlan(ctx context.Context, repo OpenAIPlanWriter, provi
 	}
 	provider.Credentials["plan_type"] = planType
 	info("openai_429_plan_type_synced", "provider_id", provider.ID, "previous_plan_type", current, "plan_type", planType)
-}
-
-// OpenAIPlanWriter 按字段更新本次观测的套餐信息，其余字段保持当前值。
-type OpenAIPlanWriter interface {
-	BulkUpdate(context.Context, []int64, ProviderBulkUpdate) (int64, error)
 }

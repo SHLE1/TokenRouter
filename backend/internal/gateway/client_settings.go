@@ -9,6 +9,28 @@ import (
 	"time"
 )
 
+const (
+	antigravityUserAgentVersionCacheTTL = 60 * time.Second
+
+	antigravityUserAgentVersionErrorTTL = 5 * time.Second
+
+	antigravityUserAgentVersionDBTimeout = 5 * time.Second
+
+	openAICodexUserAgentCacheTTL = 60 * time.Second
+
+	openAICodexUserAgentErrorTTL = 5 * time.Second
+
+	openAICodexUserAgentDBTimeout = 5 * time.Second
+
+	DefaultOpenAICodexUserAgent = "codex-tui/0.144.1 (Ubuntu 22.4.0; x86_64) xterm-256color (codex-tui; 0.144.1)"
+
+	openAIAllowCodexPluginCacheTTL = 60 * time.Second
+
+	openAIAllowCodexPluginErrorTTL = 5 * time.Second
+
+	openAIAllowCodexPluginDBTimeout = 5 * time.Second
+)
+
 // ClientSettingsOptions 提供平台参数校验和动态默认值读取函数。
 type ClientSettingsOptions struct {
 	NormalizeUserAgentVersion func(string) string
@@ -24,26 +46,6 @@ type cachedOpenAICodexUserAgent struct {
 	value     string
 	expiresAt int64 // unix nano
 }
-
-const antigravityUserAgentVersionCacheTTL = 60 * time.Second
-
-const antigravityUserAgentVersionErrorTTL = 5 * time.Second
-
-const antigravityUserAgentVersionDBTimeout = 5 * time.Second
-
-const openAICodexUserAgentCacheTTL = 60 * time.Second
-
-const openAICodexUserAgentErrorTTL = 5 * time.Second
-
-const openAICodexUserAgentDBTimeout = 5 * time.Second
-
-const DefaultOpenAICodexUserAgent = "codex-tui/0.144.1 (Ubuntu 22.4.0; x86_64) xterm-256color (codex-tui; 0.144.1)"
-
-const openAIAllowCodexPluginCacheTTL = 60 * time.Second
-
-const openAIAllowCodexPluginErrorTTL = 5 * time.Second
-
-const openAIAllowCodexPluginDBTimeout = 5 * time.Second
 
 type cachedOpenAIAllowCodexPlugin struct {
 	value     bool

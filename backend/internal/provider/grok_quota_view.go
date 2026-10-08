@@ -11,6 +11,14 @@ import (
 	upstreamusageview "github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )
 
+type GrokQuotaView struct {
+	FreeTokenLimit      int64
+	NeedsReauth         func(*Record) bool
+	JWTSubscriptionTier func(string) string
+	CanonicalPlan       func(*float64, string, *upstreamusageview.QuotaSnapshot) string
+	ParseTime           func(string) (time.Time, error)
+}
+
 // CloneGrokQuotaProbeResult 深拷贝探测结果中嵌套的展示数据。
 func CloneGrokQuotaProbeResult(value *GrokQuotaProbeResult) *GrokQuotaProbeResult {
 	if value == nil {
@@ -38,14 +46,6 @@ func cloneGrokProbePointer[T any](value *T) *T {
 	}
 	out := *value
 	return &out
-}
-
-type GrokQuotaView struct {
-	FreeTokenLimit      int64
-	NeedsReauth         func(*Record) bool
-	JWTSubscriptionTier func(string) string
-	CanonicalPlan       func(*float64, string, *upstreamusageview.QuotaSnapshot) string
-	ParseTime           func(string) (time.Time, error)
 }
 
 func (f GrokQuotaView) BuildUsageInfo(provider *Record) *UsageInfo {

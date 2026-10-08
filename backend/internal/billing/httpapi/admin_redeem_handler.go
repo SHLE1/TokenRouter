@@ -37,14 +37,6 @@ type AdminRedeemHandler struct {
 	redeemService *billing.RedeemService
 }
 
-// NewAdminRedeemHandler 创建管理员兑换码处理器。
-func NewAdminRedeemHandler(adminService RedeemAdministrator, redeemService *billing.RedeemService) *AdminRedeemHandler {
-	return &AdminRedeemHandler{
-		adminService:  adminService,
-		redeemService: redeemService,
-	}
-}
-
 // GenerateRedeemCodesRequest represents generate redeem codes request
 type GenerateRedeemCodesRequest struct {
 	RequiresPayment bool    `json:"requires_payment"` // 默认允许所有用户领取
@@ -78,6 +70,14 @@ type CreateAndRedeemCodeRequest struct {
 	Notes         string  `json:"notes"`
 	ExpiresAt     *int64  `json:"expires_at" binding:"omitempty,min=0"`
 	ExpiresInDays *int    `json:"expires_in_days" binding:"omitempty,min=1,max=3650"`
+}
+
+// NewAdminRedeemHandler 创建管理员兑换码处理器。
+func NewAdminRedeemHandler(adminService RedeemAdministrator, redeemService *billing.RedeemService) *AdminRedeemHandler {
+	return &AdminRedeemHandler{
+		adminService:  adminService,
+		redeemService: redeemService,
+	}
 }
 
 // ResolveRedeemCodeExpiresAt 兼容绝对过期时间和相对天数，统一返回 UTC 过期时间。

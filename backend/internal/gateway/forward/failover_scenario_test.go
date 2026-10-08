@@ -16,6 +16,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// mockTempUnscheduler 记录 TempUnscheduleRetryableError 的调用信息。
+type mockTempUnscheduler struct {
+	calls []tempUnscheduleCall
+}
+
+type tempUnscheduleCall struct {
+	providerID  int64
+	failoverErr *UpstreamFailoverError
+}
+
 // TestSameProviderRetryDelayFor 检查容量型瞬时错误的指数退避和其他错误的固定等待。
 func TestSameProviderRetryDelayFor(t *testing.T) {
 	capacityErr := &UpstreamFailoverError{RequestScopedTransient: true}
@@ -355,8 +365,7 @@ func TestHandleFailoverError_CacheBilling(t *testing.T) {
 			fs := failover.NewFailoverState[*UpstreamFailoverError](3, true, gatewaytelemetry.Failover)
 			err := newTestFailoverErr(400, true, false)
 
-			for i := 0; i <
-				failover.MaxSameProviderRetries; i++ {
+			for range failover.MaxSameProviderRetries {
 				fs.HandleFailoverError(context.Background(), mock, 100, "openai", failover.MaxSameProviderRetries, err)
 				require.False(t, fs.ForceCacheBilling)
 			}
@@ -467,8 +476,7 @@ func TestHandleFailoverError_SameProviderRetry(t *testing.T) {
 			fs := failover.NewFailoverState[*UpstreamFailoverError](3, false, gatewaytelemetry.Failover)
 			err := newTestFailoverErr(400, true, false)
 
-			for i := 0; i <
-				failover.MaxSameProviderRetries; i++ {
+			for range failover.MaxSameProviderRetries {
 				fs.HandleFailoverError(context.Background(), mock, 100, "openai", failover.MaxSameProviderRetries, err)
 			}
 			require.Equal(t, failover.MaxSameProviderRetries, fs.SameProviderRetryCount[100])
@@ -512,8 +520,7 @@ func TestHandleFailoverError_SameProviderRetry(t *testing.T) {
 			err := newTestFailoverErr(400, true, false)
 
 			// 耗尽提供商 100 的重试
-			for i := 0; i <
-				failover.MaxSameProviderRetries; i++ {
+			for range failover.MaxSameProviderRetries {
 				fs.HandleFailoverError(context.Background(), mock, 100, "openai", failover.MaxSameProviderRetries, err)
 			}
 			// 第 failover.MaxSameProviderRetries+1 次: 重试耗尽 → 切换
@@ -588,8 +595,7 @@ func TestHandleFailoverError_TempUnschedule(t *testing.T) {
 			fs := failover.NewFailoverState[*UpstreamFailoverError](3, false, gatewaytelemetry.Failover)
 			err := newTestFailoverErr(502, true, false)
 
-			for i := 0; i <
-				failover.MaxSameProviderRetries; i++ {
+			for range failover.MaxSameProviderRetries {
 				fs.HandleFailoverError(context.Background(), mock, 42, "openai", failover.MaxSameProviderRetries, err)
 			}
 			// 再次触发时才会执行 TempUnschedule + 切换
@@ -764,8 +770,7 @@ func TestHandleFailoverError_IntegrationScenario(t *testing.T) {
 
 			// 1. 提供商 100 遇到可重试错误，同提供商重试 failover.MaxSameProviderRetries 次
 			retryErr := newTestFailoverErr(400, true, false)
-			for i := 0; i <
-				failover.MaxSameProviderRetries; i++ {
+			for range failover.MaxSameProviderRetries {
 				action := fs.HandleFailoverError(context.Background(), mock, 100, "openai", failover.MaxSameProviderRetries, retryErr)
 				require.Equal(t, failover.FailoverContinue, action)
 				require.False(t, fs.ForceCacheBilling, "同提供商重试期间不应仅因绑定会话强制缓存计费")
@@ -1018,16 +1023,6 @@ func TestHandleSelectionExhausted(t *testing.T) {
 			require.Equal(t, failover.FailoverContinue, action)
 		})
 	})
-}
-
-// mockTempUnscheduler 记录 TempUnscheduleRetryableError 的调用信息。
-type mockTempUnscheduler struct {
-	calls []tempUnscheduleCall
-}
-
-type tempUnscheduleCall struct {
-	providerID  int64
-	failoverErr *UpstreamFailoverError
 }
 
 func (m *mockTempUnscheduler) TempUnscheduleRetryableError(_ context.Context, providerID int64, failoverErr *UpstreamFailoverError) {

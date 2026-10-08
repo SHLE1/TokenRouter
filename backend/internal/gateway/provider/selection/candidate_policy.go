@@ -20,6 +20,14 @@ type (
 	}
 )
 
+type (
+	selectionRequestKey struct{}
+	selectionRequest    struct {
+		groupID *int64
+		model   string
+	}
+)
+
 // withCandidatePolicy 固定本次分组和粘性提供商，供窗口费用、RPM 与重检共用。
 func (s *Compatible) withCandidatePolicy(ctx context.Context, groupID *int64, session string) context.Context {
 	state := candidatePolicy{groupID: groupID}
@@ -69,14 +77,6 @@ func (s *Compatible) candidateEligibilityReason(ctx context.Context, value *gate
 	}
 	return ""
 }
-
-type (
-	selectionRequestKey struct{}
-	selectionRequest    struct {
-		groupID *int64
-		model   string
-	}
-)
 
 // withSelectionRequest 固定模型和分组，补全凭据时可用最新提供商再次核对资格。
 func withSelectionRequest(ctx context.Context, groupID *int64, model string) context.Context {

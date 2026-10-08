@@ -21,6 +21,12 @@ import (
 	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
 )
 
+const (
+	SmartRetryActionContinue      SmartRetryAction = iota // 继续默认重试逻辑
+	SmartRetryActionBreakWithResp                         // 结束循环并返回 resp
+	SmartRetryActionContinueURL                           // 继续 URL fallback 循环
+)
+
 type RetryInput struct {
 	Ctx                                     context.Context
 	Prefix                                  string
@@ -34,10 +40,6 @@ type RetryInput struct {
 	CreditsExhausted                        func() bool
 	ModelLimited                            func(context.Context, string) bool
 	ModelRemaining                          func(context.Context, string) time.Duration
-}
-
-func (p RetryInput) String() string {
-	return fmt.Sprintf("antigravity retry provider=%d", p.ProviderID)
 }
 
 type RetryObservation struct {
@@ -77,6 +79,28 @@ type AntigravityRetryLoopResult struct {
 	Resp *http.Response
 }
 
+// SmartRetryAction 智能重试的处理结果
+type SmartRetryAction int
+
+// SmartRetryResult 智能重试的结果
+type SmartRetryResult struct {
+	Action      SmartRetryAction
+	Resp        *http.Response
+	Err         error
+	SwitchError *AntigravityProviderSwitchError // 模型限流时返回提供商切换信号
+}
+
+// AntigravitySmartRetryInfo 智能重试所需的信息
+type AntigravitySmartRetryInfo struct {
+	RetryDelay               time.Duration // 重试延迟时间
+	ModelName                string        // 限流的模型名称（如 "claude-sonnet-4-5"）
+	IsModelCapacityExhausted bool          // 是否为模型容量不足（MODEL_CAPACITY_EXHAUSTED）
+}
+
+func (p RetryInput) String() string {
+	return fmt.Sprintf("antigravity retry provider=%d", p.ProviderID)
+}
+
 // ResolveAntigravityForwardBaseURL 解析转发用 base URL。
 //
 // 显式环境变量优先。未配置时，LoadCodeAssist 返回 paidTier 的付费提供商使用
@@ -99,23 +123,6 @@ func ResolveAntigravityForwardBaseURL(mode string, paid bool) string {
 		return baseURLs[1]
 	}
 	return baseURLs[0]
-}
-
-// SmartRetryAction 智能重试的处理结果
-type SmartRetryAction int
-
-const (
-	SmartRetryActionContinue      SmartRetryAction = iota // 继续默认重试逻辑
-	SmartRetryActionBreakWithResp                         // 结束循环并返回 resp
-	SmartRetryActionContinueURL                           // 继续 URL fallback 循环
-)
-
-// SmartRetryResult 智能重试的结果
-type SmartRetryResult struct {
-	Action      SmartRetryAction
-	Resp        *http.Response
-	Err         error
-	SwitchError *AntigravityProviderSwitchError // 模型限流时返回提供商切换信号
 }
 
 // HandleSmartRetry 处理 OAuth 提供商的智能重试逻辑
@@ -799,13 +806,6 @@ func SleepAntigravityBackoffWithContext(ctx context.Context, attempt int) bool {
 	case <-timer.C:
 		return true
 	}
-}
-
-// AntigravitySmartRetryInfo 智能重试所需的信息
-type AntigravitySmartRetryInfo struct {
-	RetryDelay               time.Duration // 重试延迟时间
-	ModelName                string        // 限流的模型名称（如 "claude-sonnet-4-5"）
-	IsModelCapacityExhausted bool          // 是否为模型容量不足（MODEL_CAPACITY_EXHAUSTED）
 }
 
 // ParseAntigravitySmartRetryInfo 解析 Google RPC RetryInfo 和 ErrorInfo 信息

@@ -1,8 +1,9 @@
 package authctx
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
 const (

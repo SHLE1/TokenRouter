@@ -62,10 +62,6 @@ type Admin struct {
 	options      AdminOptions
 }
 
-func NewAdmin(store AdminStore, options AdminOptions) *Admin {
-	return &Admin{providerRepo: store, options: options}
-}
-
 type GroupReference struct {
 	RequireOAuthOnly bool
 	ID               int64
@@ -95,4 +91,8 @@ type DuplicateStore interface {
 type ShadowProxyStore interface {
 	ListShadowsByParent(context.Context, int64) ([]*Record, error)
 	Update(context.Context, *Record) error
+}
+
+func NewAdmin(store AdminStore, options AdminOptions) *Admin {
+	return &Admin{providerRepo: store, options: options}
 }

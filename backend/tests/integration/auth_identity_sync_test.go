@@ -25,6 +25,15 @@ type authIdentityDefaultSubAssignerStub struct {
 	calls []*billing.AssignSubscriptionInput
 }
 
+type flakyAuthIdentityDefaultSubAssignerStub struct {
+	failuresRemaining int
+	calls             []*billing.AssignSubscriptionInput
+}
+
+type authIdentitySettingRepoStub struct {
+	values map[string]string
+}
+
 func (s *authIdentityDefaultSubAssignerStub) AssignOrExtendSubscription(
 	_ context.Context,
 	input *billing.AssignSubscriptionInput,
@@ -32,11 +41,6 @@ func (s *authIdentityDefaultSubAssignerStub) AssignOrExtendSubscription(
 	cloned := *input
 	s.calls = append(s.calls, &cloned)
 	return &billing.UserSubscription{UserID: input.UserID, PlanID: input.PlanID}, true, nil
-}
-
-type flakyAuthIdentityDefaultSubAssignerStub struct {
-	failuresRemaining int
-	calls             []*billing.AssignSubscriptionInput
 }
 
 func (s *flakyAuthIdentityDefaultSubAssignerStub) AssignOrExtendSubscription(
@@ -50,10 +54,6 @@ func (s *flakyAuthIdentityDefaultSubAssignerStub) AssignOrExtendSubscription(
 		return nil, false, errors.New("temporary assign failure")
 	}
 	return &billing.UserSubscription{UserID: input.UserID, PlanID: input.PlanID}, true, nil
-}
-
-type authIdentitySettingRepoStub struct {
-	values map[string]string
 }
 
 func (s *authIdentitySettingRepoStub) Get(context.Context, string) (*settingscore.Setting, error) {

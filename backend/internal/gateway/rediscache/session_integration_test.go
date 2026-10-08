@@ -153,7 +153,6 @@ func (s *GatewayCacheSuite) TestSessionOwnerGroupID_ConcurrentFirstBindAllowsSin
 	var winner int64
 	errCh := make(chan error, 8)
 	for groupID := int64(1); groupID <= 8; groupID++ {
-		groupID := groupID
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

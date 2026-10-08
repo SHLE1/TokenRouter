@@ -9,6 +9,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/google"
 )
 
+const (
+	ForbiddenTypeValidation = "validation"
+	ForbiddenTypeViolation  = "violation"
+	ForbiddenTypeForbidden  = "forbidden"
+
+	// 机器可读的错误码
+	ErrorCodeForbidden       = "forbidden"
+	ErrorCodeUnauthenticated = "unauthenticated"
+	ErrorCodeRateLimited     = "rate_limited"
+	ErrorCodeNetworkError    = "network_error"
+)
+
 type AntigravityQuotaClient interface {
 	FetchAvailableModels(context.Context, string, string, int64) (*google.AntigravityFetchAvailableModelsResponse, map[string]any, error)
 	LoadCodeAssist(context.Context, string) (*google.AntigravityLoadCodeAssistResponse, map[string]any, error)
@@ -22,18 +34,6 @@ type AntigravityQuotaOptions struct {
 	Warn                             func(string, ...any)
 }
 type AntigravityQuota struct{ Options AntigravityQuotaOptions }
-
-const (
-	ForbiddenTypeValidation = "validation"
-	ForbiddenTypeViolation  = "violation"
-	ForbiddenTypeForbidden  = "forbidden"
-
-	// 机器可读的错误码
-	ErrorCodeForbidden       = "forbidden"
-	ErrorCodeUnauthenticated = "unauthenticated"
-	ErrorCodeRateLimited     = "rate_limited"
-	ErrorCodeNetworkError    = "network_error"
-)
 
 // CanFetch 检查是否可以获取此提供商的额度
 func (f *AntigravityQuota) CanFetch(provider *Record) bool {

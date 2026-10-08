@@ -13,6 +13,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// benchmarkStringSink 保存会话散列和缓存内容基准的结果。
+var benchmarkStringSink string
+
+// hashTestAdapter 调用 GenerateSessionHash，并关闭测试中的观测输出。
+type hashTestAdapter struct{}
+
+type (
+	SessionContext = requeststate.SessionContext
+	ParsedRequest  = requeststate.ParsedRequest
+)
+
 func TestGenerateSessionHash_NilParsedRequest(t *testing.T) {
 	svc := &hashTestAdapter{}
 	require.Empty(t, svc.GenerateSessionHash(nil))
@@ -326,7 +337,7 @@ func TestGenerateSessionHash_MultipleUsersSameFirstMessage(t *testing.T) {
 	svc := &hashTestAdapter{}
 	hashes := make(map[string]bool)
 	body := anthropicSessionBody(nil, []any{msg("user", "hello")}, "")
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		parsed := mustParseSessionHashRequest(t, body, &SessionContext{ClientIP: "192.168.1." + string(rune('1'+i)), UserAgent: "client-" + string(rune('A'+i)), APIKeyID: int64(i + 1)})
 		h := svc.GenerateSessionHash(parsed)
 		require.NotEmpty(t, h)
@@ -444,7 +455,7 @@ func TestGenerateSessionHash_LongConversation(t *testing.T) {
 	svc := &hashTestAdapter{}
 	ctx := &SessionContext{ClientIP: "1.2.3.4", UserAgent: "test", APIKeyID: 1}
 	messages := make([]any, 0, 40)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		messages = append(messages, msg("user", "user message "+string(rune('A'+i))))
 		messages = append(messages, msg("assistant", "assistant reply "+string(rune('A'+i))))
 	}
@@ -650,17 +661,9 @@ func geminiMsg(role string, texts ...string) map[string]any {
 	return map[string]any{"role": role, "parts": parts}
 }
 
-// hashTestAdapter 调用 GenerateSessionHash，并关闭测试中的观测输出。
-type hashTestAdapter struct{}
-
 func (*hashTestAdapter) GenerateSessionHash(p *ParsedRequest) string {
 	return GenerateSessionHash(p, nil)
 }
-
-type (
-	SessionContext = requeststate.SessionContext
-	ParsedRequest  = requeststate.ParsedRequest
-)
 
 func ParseGatewayRequest(body *requeststate.RequestBodyRef, protocol string) (*ParsedRequest, error) {
 	return requeststate.ParseGatewayRequest(body, protocol)
@@ -675,7 +678,7 @@ func BenchmarkGenerateSessionHash_Metadata(b *testing.B) {
 	body := []byte(`{"metadata":{"user_id":"session_123e4567-e89b-12d3-a456-426614174000"},"messages":[{"content":"hello"}]}`)
 
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef(body), "")
 		if err != nil {
 			b.Fatalf("解析请求失败: %v", err)
@@ -696,7 +699,7 @@ func BenchmarkGenerateSessionHash_LargeAnthropicMessages(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				benchmarkStringSink = GenerateSessionHash(parsed, slog.Info)
 			}
 		})
@@ -708,7 +711,7 @@ func BenchmarkExtractCacheableContent_System(b *testing.B) {
 	req := buildSystemCacheableRequest(12)
 
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkStringSink = ExtractCacheableContent(req)
 	}
 }
@@ -755,7 +758,7 @@ func buildLargeAnthropicMessagesBody(targetBytes int, includeCacheControl bool) 
 func buildSystemCacheableRequest(parts int) *requeststate.ParsedRequest {
 	var builder strings.Builder
 	_, _ = builder.WriteString(`{"system":[`)
-	for i := 0; i < parts; i++ {
+	for i := range parts {
 		if i > 0 {
 			_ = builder.WriteByte(',')
 		}
@@ -770,6 +773,3 @@ func buildSystemCacheableRequest(parts int) *requeststate.ParsedRequest {
 	}
 	return parsed
 }
-
-// benchmarkStringSink 保存会话散列和缓存内容基准的结果。
-var benchmarkStringSink string

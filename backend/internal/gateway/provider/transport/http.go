@@ -19,9 +19,9 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// 默认配置常量
-// 这些值在配置文件未指定时作为回退默认值使用
 const (
+	// 默认配置常量
+	// 这些值在配置文件未指定时作为回退默认值使用
 	// defaultMaxIdleConns: 默认最大空闲连接总数
 	// HTTP/2 场景下，单连接可多路复用，240 足以支撑高并发
 	defaultMaxIdleConns = 240
@@ -52,9 +52,6 @@ const (
 	grokOfficialAPIHost = "api.x.ai"
 	// preferred pin (not the minimum floor)
 
-)
-
-const (
 	upstreamProtocolModeDefault          = "default"
 	upstreamProtocolModeOpenAIH1         = "openai_h1"
 	upstreamProtocolModeOpenAIH2         = "openai_h2"
@@ -67,6 +64,19 @@ type openAIHTTP2Settings struct {
 	fallbackErrorThreshold    int
 	fallbackWindow            time.Duration
 	fallbackTTL               time.Duration
+}
+
+// poolSettings 是连接池参数类型，app 提供配置值。
+type poolSettings = httpclient.UpstreamSettings
+
+// upstreamPool 定义平台调用连接池的接口，测试可替换其传输实现。
+type upstreamPool interface {
+	Do(*http.Request, httpclient.UpstreamRequestOptions) (*http.Response, error)
+}
+type Client struct {
+	source          func() *Options
+	pool            upstreamPool
+	transportPolicy egress.TransportPolicy
 }
 
 // httpClientForEgressPolicy 根据请求的出口策略派生客户端并设置重定向检查。
@@ -379,19 +389,6 @@ func defaultPoolSettings(cfg *Options) poolSettings {
 		IdleConnTimeout:       idleConnTimeout,
 		ResponseHeaderTimeout: responseHeaderTimeout,
 	}
-}
-
-// poolSettings 是连接池参数类型，app 提供配置值。
-type poolSettings = httpclient.UpstreamSettings
-
-// upstreamPool 定义平台调用连接池的接口，测试可替换其传输实现。
-type upstreamPool interface {
-	Do(*http.Request, httpclient.UpstreamRequestOptions) (*http.Response, error)
-}
-type Client struct {
-	source          func() *Options
-	pool            upstreamPool
-	transportPolicy egress.TransportPolicy
 }
 
 // New 创建唯一传输适配器，参数读取和底层连接池各自保持原作用域。

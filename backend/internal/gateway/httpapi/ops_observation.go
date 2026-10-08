@@ -12,9 +12,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 )
 
-// Gin context keys used by Ops error logger for capturing upstream error details.
-// These keys are set by gateway services and consumed by handler/ops_error_logger.go.
 const (
+	// Gin context keys used by Ops error logger for capturing upstream error details.
+	// These keys are set by gateway services and consumed by handler/ops_error_logger.go.
 	OpsUpstreamStatusCodeKey   = "ops_upstream_status_code"
 	OpsUpstreamErrorMessageKey = "ops_upstream_error_message"
 	OpsUpstreamErrorDetailKey  = "ops_upstream_error_detail"
@@ -57,7 +57,40 @@ const (
 	OpsClientBusinessLimitedReasonLocalFeatureGate        = "local_feature_gate"
 	OpsClientBusinessLimitedReasonLocalPolicyDenied       = "local_policy_denied"
 	OpsClientBusinessLimitedReasonLocalModelConfiguration = "local_model_configuration"
+
+	maxOpsStreamErrorsPerRequest = 64
 )
+
+// OpsStreamError 描述网关在「响应状态已固化为 200」之后（keepalive ping 或部分数据
+// 已 flush）就地以 SSE error 帧形式返回的错误。由于 HTTP 状态码停留在 200，
+// 而 ops_error_logger 以 status>=400 为采集触发条件，这类流内失败
+// （并发限流回退、Wait 后二次计费校验失败、流开始后才无可用提供商等）本会在错误看板里
+// 完全隐形。handler.handleStreamingAwareError 负责标记，ops_error_logger 中间件在
+// status<400 分支消费它并补记一条错误日志。
+type OpsStreamError struct {
+	// ErrType 是写入 SSE 帧的对客错误类型（如 rate_limit_error / upstream_error / api_error）。
+	ErrType string
+	// Code 是可选的稳定错误分类；用于既保留通用 OpenAI error.type，又向客户端和 Ops
+	// 暴露可编程判断的细分类（如 upstream_http2_stream_error）。
+	Code string
+	// Message 是写入 SSE 帧的对客错误消息。
+	Message string
+	// IntendedStatus 是流若未固化本应返回的 HTTP 状态码（如并发限流的 429）。
+	// 默认仅用于错误分级；CountTowardsSLA=true 时也作为 Ops 的逻辑状态码。
+	IntendedStatus int
+	// CountTowardsSLA 表示 HTTP 状态已提交为 200 后发生请求失败，Ops 按 IntendedStatus 统计错误率和 SLA。
+	CountTowardsSLA bool
+	// Turn identifies a WebSocket turn. HTTP/SSE requests leave it at zero.
+	Turn int
+	// SkipMonitoring snapshots the rule decision for this visible failure.
+	SkipMonitoring  bool
+	ProviderID      int64
+	UpstreamModel   string
+	UpstreamStatus  int
+	UpstreamMessage string
+	UpstreamDetail  string
+	UpstreamErrors  []*ops.OpsUpstreamErrorEvent
+}
 
 func MarkResponseCommitted(c *gin.Context) { c.Set(ResponseCommittedKey, true) }
 
@@ -149,39 +182,6 @@ func OpsClientBusinessLimitedReason(c *gin.Context) string {
 	reason, _ := v.(string)
 	return strings.TrimSpace(reason)
 }
-
-// OpsStreamError 描述网关在「响应状态已固化为 200」之后（keepalive ping 或部分数据
-// 已 flush）就地以 SSE error 帧形式返回的错误。由于 HTTP 状态码停留在 200，
-// 而 ops_error_logger 以 status>=400 为采集触发条件，这类流内失败
-// （并发限流回退、Wait 后二次计费校验失败、流开始后才无可用提供商等）本会在错误看板里
-// 完全隐形。handler.handleStreamingAwareError 负责标记，ops_error_logger 中间件在
-// status<400 分支消费它并补记一条错误日志。
-type OpsStreamError struct {
-	// ErrType 是写入 SSE 帧的对客错误类型（如 rate_limit_error / upstream_error / api_error）。
-	ErrType string
-	// Code 是可选的稳定错误分类；用于既保留通用 OpenAI error.type，又向客户端和 Ops
-	// 暴露可编程判断的细分类（如 upstream_http2_stream_error）。
-	Code string
-	// Message 是写入 SSE 帧的对客错误消息。
-	Message string
-	// IntendedStatus 是流若未固化本应返回的 HTTP 状态码（如并发限流的 429）。
-	// 默认仅用于错误分级；CountTowardsSLA=true 时也作为 Ops 的逻辑状态码。
-	IntendedStatus int
-	// CountTowardsSLA 表示 HTTP 状态已提交为 200 后发生请求失败，Ops 按 IntendedStatus 统计错误率和 SLA。
-	CountTowardsSLA bool
-	// Turn identifies a WebSocket turn. HTTP/SSE requests leave it at zero.
-	Turn int
-	// SkipMonitoring snapshots the rule decision for this visible failure.
-	SkipMonitoring  bool
-	ProviderID      int64
-	UpstreamModel   string
-	UpstreamStatus  int
-	UpstreamMessage string
-	UpstreamDetail  string
-	UpstreamErrors  []*ops.OpsUpstreamErrorEvent
-}
-
-const maxOpsStreamErrorsPerRequest = 64
 
 // BeginOpsStreamTurn scopes first-wins deduplication to one WebSocket turn.
 func BeginOpsStreamTurn(c *gin.Context, turn int) {

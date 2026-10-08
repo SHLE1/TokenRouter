@@ -33,6 +33,15 @@ type ImagePointerInfo struct {
 	Prompt      string
 }
 
+type ImageStatusError struct {
+	StatusCode      int
+	Message         string
+	ResponseBody    []byte
+	ResponseHeaders http.Header
+	RequestID       string
+	URL             string
+}
+
 func CollectOpenAIImagePointers(body []byte) []ImagePointerInfo {
 	if len(body) == 0 {
 		return nil
@@ -301,7 +310,7 @@ func FetchOpenAIImageDownloadURL(
 	}
 
 	var lastErr error
-	for attempt := 0; attempt < 8; attempt++ {
+	for attempt := range 8 {
 		var result struct {
 			DownloadURL string `json:"download_url"`
 		}
@@ -371,15 +380,6 @@ func DownloadOpenAIImageBytes(ctx context.Context, client *req.Client, headers h
 		return nil, NewOpenAIImageStatusError(resp, "download image bytes failed", errorBodyReadLimit)
 	}
 	return io.ReadAll(io.LimitReader(resp.Body, OpenAIImageMaxDownloadBytes))
-}
-
-type ImageStatusError struct {
-	StatusCode      int
-	Message         string
-	ResponseBody    []byte
-	ResponseHeaders http.Header
-	RequestID       string
-	URL             string
 }
 
 func (e *ImageStatusError) Error() string {

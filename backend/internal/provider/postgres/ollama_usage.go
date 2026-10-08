@@ -13,6 +13,26 @@ import (
 	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
+const (
+	OllamaCloudBaseURLRegexSQL       = `^[hH][tT][tT][pP][sS]://([wW][wW][wW]\.)?[oO][lL][lL][aA][mM][aA]\.[cC][oO][mM](:443)?(/v1)?$`
+	OllamaCloudBaseURLMatchSQLPrefix = "btrim("
+	OllamaCloudBaseURLMatchSQLSuffix = ") ~ '" + OllamaCloudBaseURLRegexSQL + "'"
+	OllamaCloudUsageEligibleSQL      = `
+	platform IN ('openai', 'anthropic')
+	AND type = 'apikey'
+	AND ` + OllamaCloudBaseURLMatchSQLPrefix + `credentials ->> 'base_url'` + OllamaCloudBaseURLMatchSQLSuffix + `
+	AND jsonb_typeof(credentials -> 'api_key') = 'string'
+`
+)
+
+type lockedOllamaCloudUsageMember struct {
+	id            int64
+	anchorMatches bool
+	sessionJSON   string
+	autoJSON      string
+	snapshotJSON  string
+}
+
 // ListOllamaCloudUsageGroupProviders 通过一次 ID 查询和一次批量装载解析所有给定身份的同组提供商。
 // API Key 用于本次查询参数。
 func (r *ProviderStore) ListOllamaCloudUsageGroupProviders(ctx context.Context, providers []*acctcore.Record) ([]acctcore.Record, error) {
@@ -141,14 +161,6 @@ func ollamaCloudUsageProviderHasSession(provider *acctcore.Record) bool {
 	}
 	value, ok := provider.Extra[acctcore.OllamaCloudUsageSessionExtraKey].(string)
 	return ok && value != ""
-}
-
-type lockedOllamaCloudUsageMember struct {
-	id            int64
-	anchorMatches bool
-	sessionJSON   string
-	autoJSON      string
-	snapshotJSON  string
 }
 
 func (r *ProviderStore) updateOllamaCloudUsageGroup(
@@ -573,18 +585,6 @@ func lockAndMatchProviderProxyIdentity(ctx context.Context, client *dbent.Client
 	}
 	return current == egress.ProxyConnectionIdentityFromProxy(provider.Proxy), rows.Err()
 }
-
-const (
-	OllamaCloudBaseURLRegexSQL       = `^[hH][tT][tT][pP][sS]://([wW][wW][wW]\.)?[oO][lL][lL][aA][mM][aA]\.[cC][oO][mM](:443)?(/v1)?$`
-	OllamaCloudBaseURLMatchSQLPrefix = "btrim("
-	OllamaCloudBaseURLMatchSQLSuffix = ") ~ '" + OllamaCloudBaseURLRegexSQL + "'"
-	OllamaCloudUsageEligibleSQL      = `
-	platform IN ('openai', 'anthropic')
-	AND type = 'apikey'
-	AND ` + OllamaCloudBaseURLMatchSQLPrefix + `credentials ->> 'base_url'` + OllamaCloudBaseURLMatchSQLSuffix + `
-	AND jsonb_typeof(credentials -> 'api_key') = 'string'
-`
-)
 
 // OllamaCloudBaseURLMatchesSQL 生成匹配 Ollama Cloud 地址的 SQL 条件。
 func OllamaCloudBaseURLMatchesSQL(expression string) string {

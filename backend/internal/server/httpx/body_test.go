@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const samplePayload = `{"model":"gpt-5.5","input":"hi","stream":false}`
+
+// zeroReader 按需生成全零数据，供压缩测试使用。
+type zeroReader struct{}
+
 func TestReadRequestBodyWithPrealloc_PassesThroughIdentity(t *testing.T) {
 	req := newRequestWithBody(t, []byte(samplePayload), "")
 	got, err := ReadRequestBodyWithPrealloc(req)
@@ -195,7 +200,7 @@ func TestBindJSONStrictIsLocalAndValidatesStructure(t *testing.T) {
 	}
 	contextFor := func(body string) *gin.Context {
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Request = httptest.NewRequest("POST", "/", strings.NewReader(body))
+		c.Request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 		return c
 	}
@@ -207,8 +212,6 @@ func TestBindJSONStrictIsLocalAndValidatesStructure(t *testing.T) {
 	}
 	require.NoError(t, contextFor(`{"name":"ok","unrelated_unknown":true}`).ShouldBindJSON(&input{}))
 }
-
-const samplePayload = `{"model":"gpt-5.5","input":"hi","stream":false}`
 
 func newRequestWithBody(t *testing.T, body []byte, encoding string) *http.Request {
 	t.Helper()
@@ -222,9 +225,6 @@ func newRequestWithBody(t *testing.T, body []byte, encoding string) *http.Reques
 	req.ContentLength = int64(len(body))
 	return req
 }
-
-// zeroReader 按需生成全零数据，供压缩测试使用。
-type zeroReader struct{}
 
 func (zeroReader) Read(p []byte) (int, error) {
 	clear(p)

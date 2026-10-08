@@ -14,6 +14,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	upstreamUsageTimeout     = 60 * time.Second
+	upstreamUsageBatchLimit  = 100
+	upstreamUsageConcurrency = 4
+)
+
+var ErrUpstreamUsageStopped = errors.New("upstream usage queries are stopped")
+
 // UpstreamUsageReader 读取当前提供商身份。
 type UpstreamUsageReader interface {
 	GetByID(context.Context, int64) (*Record, error)
@@ -40,14 +48,6 @@ type UpstreamUsageService struct {
 	metrics      map[string]int64
 	activity     operationActivity
 }
-
-const (
-	upstreamUsageTimeout     = 60 * time.Second
-	upstreamUsageBatchLimit  = 100
-	upstreamUsageConcurrency = 4
-)
-
-var ErrUpstreamUsageStopped = errors.New("upstream usage queries are stopped")
 
 func NewUpstreamUsageService(reader UpstreamUsageReader, execution UpstreamUsageExecution, options UpstreamUsageOptions) *UpstreamUsageService {
 	return &UpstreamUsageService{providerRepo: reader, execution: execution, now: options.Now, querySlots: make(chan struct{}, upstreamUsageConcurrency), metrics: make(map[string]int64)}
@@ -200,7 +200,6 @@ func (s *UpstreamUsageService) QueryBatch(ctx context.Context, providerIDs []int
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.SetLimit(upstreamUsageConcurrency)
 	for _, id := range unique {
-		id := id
 		group.Go(func() error {
 			result, err := s.QueryProvider(groupCtx, id)
 			mu.Lock()

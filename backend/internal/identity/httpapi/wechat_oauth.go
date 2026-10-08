@@ -15,6 +15,24 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+const (
+	WechatOAuthCookiePath         = "/api/v1/auth/oauth/wechat"
+	WechatOAuthCookieMaxAgeSec    = 10 * 60
+	WechatOAuthStateCookieName    = "wechat_oauth_state"
+	WechatOAuthRedirectCookieName = "wechat_oauth_redirect"
+	WechatOAuthIntentCookieName   = "wechat_oauth_intent"
+	WechatOAuthModeCookieName     = "wechat_oauth_mode"
+	WechatOAuthBindUserCookieName = "wechat_oauth_bind_user"
+	WechatOAuthDefaultRedirectTo  = "/dashboard"
+	WechatOAuthDefaultFrontendCB  = "/auth/wechat/callback"
+	WechatOAuthProviderKey        = "wechat-main"
+	WechatOAuthLegacyProviderKey  = "wechat"
+
+	WechatOAuthIntentLogin      = "login"
+	WechatOAuthIntentBind       = "bind_current_user"
+	WechatOAuthIntentAdoptEmail = "adopt_existing_user_by_email"
+)
+
 type WeChatHTTPOptions struct {
 	LoadConfig       func(context.Context, string) (identity.WeChatOAuthOptions, error)
 	FrontendCallback func(context.Context) string
@@ -24,6 +42,13 @@ type WeChatHandler struct {
 	binding       *OAuthBindHandler
 	client        identity.WeChatOAuthClient
 	wechatOptions WeChatHTTPOptions
+}
+
+type CompleteWeChatOAuthRequest struct {
+	InvitationCode   string `json:"invitation_code" binding:"required"`
+	AffCode          string `json:"aff_code,omitempty"` // 邀请返利码，仅注册新用户时绑定邀请关系。
+	AdoptDisplayName *bool  `json:"adopt_display_name,omitempty"`
+	AdoptAvatar      *bool  `json:"adopt_avatar,omitempty"`
 }
 
 func NewWeChatHandler(p *PendingHandler, b *OAuthBindHandler, client identity.WeChatOAuthClient, options WeChatHTTPOptions) *WeChatHandler {
@@ -68,24 +93,6 @@ func (h *WeChatHandler) GetConfig(ctx context.Context, raw string, c *gin.Contex
 	}
 	return cfg, nil
 }
-
-const (
-	WechatOAuthCookiePath         = "/api/v1/auth/oauth/wechat"
-	WechatOAuthCookieMaxAgeSec    = 10 * 60
-	WechatOAuthStateCookieName    = "wechat_oauth_state"
-	WechatOAuthRedirectCookieName = "wechat_oauth_redirect"
-	WechatOAuthIntentCookieName   = "wechat_oauth_intent"
-	WechatOAuthModeCookieName     = "wechat_oauth_mode"
-	WechatOAuthBindUserCookieName = "wechat_oauth_bind_user"
-	WechatOAuthDefaultRedirectTo  = "/dashboard"
-	WechatOAuthDefaultFrontendCB  = "/auth/wechat/callback"
-	WechatOAuthProviderKey        = "wechat-main"
-	WechatOAuthLegacyProviderKey  = "wechat"
-
-	WechatOAuthIntentLogin      = "login"
-	WechatOAuthIntentBind       = "bind_current_user"
-	WechatOAuthIntentAdoptEmail = "adopt_existing_user_by_email"
-)
 
 // WeChatOAuthStart 建立授权状态与统一 pending 流程所需的短期浏览器 cookie。
 func (h *WeChatHandler) WeChatOAuthStart(c *gin.Context) {
@@ -417,13 +424,6 @@ func (h *WeChatHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
 		"expires_in":    tokenPair.ExpiresIn,
 		"token_type":    "Bearer",
 	})
-}
-
-type CompleteWeChatOAuthRequest struct {
-	InvitationCode   string `json:"invitation_code" binding:"required"`
-	AffCode          string `json:"aff_code,omitempty"` // 邀请返利码，仅注册新用户时绑定邀请关系。
-	AdoptDisplayName *bool  `json:"adopt_display_name,omitempty"`
-	AdoptAvatar      *bool  `json:"adopt_avatar,omitempty"`
 }
 
 func (h *WeChatHandler) CreateWeChatBindSession(

@@ -9,9 +9,21 @@ import (
 	"log/slog"
 	"time"
 
-	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
+
+	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+)
+
+const (
+	totpSetupTTL = 5 * time.Minute
+	totpLoginTTL = 5 * time.Minute
+
+	maxTotpAttempts = 5
+	totpIssuer      = "TokenRouter"
+
+	// StepUpGrantTTL 敏感操作 step-up 验证的有效窗口（sudo 模式）。
+	StepUpGrantTTL = 15 * time.Minute
 )
 
 var (
@@ -88,14 +100,6 @@ type TotpSetupResponse struct {
 	Countdown  int    `json:"countdown"` // seconds until setup expires
 }
 
-const (
-	totpSetupTTL = 5 * time.Minute
-	totpLoginTTL = 5 * time.Minute
-
-	maxTotpAttempts = 5
-	totpIssuer      = "TokenRouter"
-)
-
 // TotpService handles TOTP operations
 type TotpService struct {
 	operationClock
@@ -105,6 +109,30 @@ type TotpService struct {
 	settingService    TotpSettings
 	emailService      VerificationEmail
 	emailQueueService VerificationQueue
+}
+
+// VerificationMethod 表示 TOTP 操作要求的身份校验方式。
+type VerificationMethod struct {
+	Method string `json:"method"` // email 或 password
+}
+
+// TotpUserStore 只暴露强认证需要的身份查询和安全字段修改。
+type TotpUserStore interface {
+	SessionUserReader
+	UpdateTotpSecret(context.Context, int64, *string) error
+	EnableTotp(context.Context, int64) error
+	DisableTotp(context.Context, int64) error
+}
+type TotpSettings interface {
+	IsTotpEnabled(context.Context) bool
+	IsEmailVerifyEnabled(context.Context) bool
+	GetSiteName(context.Context) string
+}
+type VerificationEmail interface {
+	VerifyCode(context.Context, string, string) error
+}
+type VerificationQueue interface {
+	EnqueueVerifyCode(string, string, ...string) error
 }
 
 // NewTotpService creates a new TOTP service
@@ -406,9 +434,6 @@ func (s *TotpService) VerifyCode(ctx context.Context, userID int64, code string)
 	return nil
 }
 
-// StepUpGrantTTL 敏感操作 step-up 验证的有效窗口（sudo 模式）。
-const StepUpGrantTTL = 15 * time.Minute
-
 // VerifyStepUp 校验 TOTP 码并授予当前会话一段时间的 step-up 权限。
 // 返回授权有效期，供前端展示/设置提醒。
 func (s *TotpService) VerifyStepUp(ctx context.Context, userID int64, sessionKey, code string) (time.Duration, error) {
@@ -519,11 +544,6 @@ func GenerateRandomToken(byteLength int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// VerificationMethod 表示 TOTP 操作要求的身份校验方式。
-type VerificationMethod struct {
-	Method string `json:"method"` // email 或 password
-}
-
 // GetVerificationMethod 返回当前用户执行 TOTP 操作时所需的身份校验方式。
 // 与 verifyIdentity 保持同一判定：管理员一律返回 password。
 func (s *TotpService) GetVerificationMethod(ctx context.Context, userID int64) (*VerificationMethod, error) {
@@ -558,25 +578,6 @@ func (s *TotpService) SendVerifyCode(ctx context.Context, userID int64, locale .
 
 	// Send verification code via queue
 	return s.emailQueueService.EnqueueVerifyCode(user.Email, siteName, locale...)
-}
-
-// TotpUserStore 只暴露强认证需要的身份查询和安全字段修改。
-type TotpUserStore interface {
-	SessionUserReader
-	UpdateTotpSecret(context.Context, int64, *string) error
-	EnableTotp(context.Context, int64) error
-	DisableTotp(context.Context, int64) error
-}
-type TotpSettings interface {
-	IsTotpEnabled(context.Context) bool
-	IsEmailVerifyEnabled(context.Context) bool
-	GetSiteName(context.Context) string
-}
-type VerificationEmail interface {
-	VerifyCode(context.Context, string, string) error
-}
-type VerificationQueue interface {
-	EnqueueVerifyCode(string, string, ...string) error
 }
 
 // validateCode 沿用 pquerna/otp.Validate 的 30 秒、前后一步、6 位及 SHA1 参数。

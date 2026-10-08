@@ -18,6 +18,21 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+type batchUpdateRedeemRepoStub struct {
+	ids    []int64
+	fields billing.RedeemCodeBatchUpdateFields
+}
+
+// redeemAdminFixture 提供兑换管理测试数据并记录请求参数。
+type redeemAdminFixture struct {
+	redeems             []billing.RedeemCode
+	lastListRedeemCodes struct {
+		codeType, status, search, sortBy, sortOrder string
+		calls                                       int
+	}
+	lastGenerateRedeemCodes *billing.GenerateRedeemCodesInput
+}
+
 func TestCreateAndRedeem_TypeDefaultsToBalance(t *testing.T) {
 	// 缺少 type 时按 balance 校验。空服务在校验通过后 panic，辅助函数返回 0。
 	h := newCreateAndRedeemHandler()
@@ -366,11 +381,6 @@ func postCreateAndRedeemValidation(t *testing.T, handler *AdminRedeemHandler, bo
 	return w.Code
 }
 
-type batchUpdateRedeemRepoStub struct {
-	ids    []int64
-	fields billing.RedeemCodeBatchUpdateFields
-}
-
 func (s *batchUpdateRedeemRepoStub) BatchUpdate(ctx context.Context, ids []int64, fields billing.RedeemCodeBatchUpdateFields) (int64, error) {
 	s.ids = append([]int64(nil), ids...)
 	s.fields = fields
@@ -445,16 +455,6 @@ func setupRedeemExportRouter() (*gin.Engine, *redeemAdminFixture) {
 	h := NewAdminRedeemHandler(adminSvc, nil)
 	router.GET("/api/v1/admin/redeem-codes/export", h.Export)
 	return router, adminSvc
-}
-
-// redeemAdminFixture 提供兑换管理测试数据并记录请求参数。
-type redeemAdminFixture struct {
-	redeems             []billing.RedeemCode
-	lastListRedeemCodes struct {
-		codeType, status, search, sortBy, sortOrder string
-		calls                                       int
-	}
-	lastGenerateRedeemCodes *billing.GenerateRedeemCodesInput
 }
 
 func newRedeemAdminFixture() *redeemAdminFixture {

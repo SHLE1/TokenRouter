@@ -9,6 +9,9 @@ import (
 	servertiming "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
 )
 
+// TimingHook 为启用 Server-Timing 的请求记录 Redis 命令耗时。
+type TimingHook struct{}
+
 // NewClient 按给定选项创建 Redis 客户端，启用计时时添加 TimingHook。
 func NewClient(options *redis.Options, enableTiming bool) *redis.Client {
 	client := redis.NewClient(options)
@@ -17,9 +20,6 @@ func NewClient(options *redis.Options, enableTiming bool) *redis.Client {
 	}
 	return client
 }
-
-// TimingHook 为启用 Server-Timing 的请求记录 Redis 命令耗时。
-type TimingHook struct{}
 
 // DialHook 返回客户端的连接钩子。
 func (TimingHook) DialHook(next redis.DialHook) redis.DialHook {

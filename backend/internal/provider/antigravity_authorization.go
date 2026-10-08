@@ -37,6 +37,42 @@ type AntigravityAuthorization struct {
 	activity operationActivity
 }
 
+// AntigravityAuthURLResult is the result of generating an authorization URL
+type AntigravityAuthURLResult struct {
+	AuthURL   string `json:"auth_url"`
+	SessionID string `json:"session_id"`
+	State     string `json:"state"`
+}
+
+// AntigravityExchangeCodeInput 交换 code 的输入
+type AntigravityExchangeCodeInput struct {
+	SessionID string
+	State     string
+	Code      string
+	ProxyID   *int64
+}
+
+// AntigravityTokenInfo token 信息
+type AntigravityTokenInfo struct {
+	AccessToken      string `json:"access_token"`
+	RefreshToken     string `json:"refresh_token"`
+	ExpiresIn        int64  `json:"expires_in"`
+	ExpiresAt        int64  `json:"expires_at"`
+	TokenType        string `json:"token_type"`
+	Email            string `json:"email,omitempty"`
+	ProjectID        string `json:"project_id,omitempty"`
+	ProjectIDMissing bool   `json:"-"`
+	PlanType         string `json:"-"`
+	PrivacyMode      string `json:"-"`
+}
+
+// loadCodeAssistResult 封装 loadProjectIDWithRetry 的返回结果，
+// 同时携带从 LoadCodeAssist 响应中提取的 plan_type 信息。
+type loadCodeAssistResult struct {
+	ProjectID    string
+	Subscription *AntigravitySubscriptionResult
+}
+
 func NewAntigravityAuthorization(options AntigravityAuthorizationOptions) *AntigravityAuthorization {
 	return &AntigravityAuthorization{Store: NewAntigravityAuthorizationSessions(), Options: options}
 }
@@ -44,13 +80,6 @@ func (s *AntigravityAuthorization) Start() { s.Store.Start() }
 func (s *AntigravityAuthorization) StopContext(ctx context.Context) error {
 	s.Store.Stop()
 	return s.activity.stop(ctx, "antigravity authorization")
-}
-
-// AntigravityAuthURLResult is the result of generating an authorization URL
-type AntigravityAuthURLResult struct {
-	AuthURL   string `json:"auth_url"`
-	SessionID string `json:"session_id"`
-	State     string `json:"state"`
 }
 
 // generateAuthURL 生成 Google OAuth 授权链接
@@ -93,28 +122,6 @@ func (s *AntigravityAuthorization) generateAuthURL(ctx context.Context, proxyID 
 		SessionID: sessionID,
 		State:     state,
 	}, nil
-}
-
-// AntigravityExchangeCodeInput 交换 code 的输入
-type AntigravityExchangeCodeInput struct {
-	SessionID string
-	State     string
-	Code      string
-	ProxyID   *int64
-}
-
-// AntigravityTokenInfo token 信息
-type AntigravityTokenInfo struct {
-	AccessToken      string `json:"access_token"`
-	RefreshToken     string `json:"refresh_token"`
-	ExpiresIn        int64  `json:"expires_in"`
-	ExpiresAt        int64  `json:"expires_at"`
-	TokenType        string `json:"token_type"`
-	Email            string `json:"email,omitempty"`
-	ProjectID        string `json:"project_id,omitempty"`
-	ProjectIDMissing bool   `json:"-"`
-	PlanType         string `json:"-"`
-	PrivacyMode      string `json:"-"`
 }
 
 // exchangeCode 用 authorization code 交换 token
@@ -192,7 +199,7 @@ func (s *AntigravityAuthorization) exchangeCode(ctx context.Context, input *Anti
 func (s *AntigravityAuthorization) refreshToken(ctx context.Context, refreshToken, proxyURL string) (*AntigravityTokenInfo, error) {
 	var lastErr error
 
-	for attempt := 0; attempt <= 3; attempt++ {
+	for attempt := range 4 {
 		if attempt > 0 {
 			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
 			if backoff > 30*time.Second {
@@ -344,13 +351,6 @@ func (s *AntigravityAuthorization) refreshProviderToken(ctx context.Context, pro
 	}
 
 	return tokenInfo, nil
-}
-
-// loadCodeAssistResult 封装 loadProjectIDWithRetry 的返回结果，
-// 同时携带从 LoadCodeAssist 响应中提取的 plan_type 信息。
-type loadCodeAssistResult struct {
-	ProjectID    string
-	Subscription *AntigravitySubscriptionResult
 }
 
 // loadProjectIDWithRetry 带重试机制获取 project_id，同时从响应中提取 plan_type。

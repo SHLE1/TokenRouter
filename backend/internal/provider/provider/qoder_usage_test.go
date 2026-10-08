@@ -19,6 +19,20 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type qoderUsageHTTPUpstreamStub struct {
+	req         *http.Request
+	statusCode  int
+	statusCodes []int
+	body        string
+	bodies      []string
+	calls       int32
+}
+
+type qoderObservationIdentityUpstream struct {
+	qoderUsageHTTPUpstreamStub
+	beforeReturn func()
+}
+
 func TestProviderUsageService_QoderUsageFetchesQuotaAndPersistsSnapshot(t *testing.T) {
 	t.Parallel()
 
@@ -993,15 +1007,6 @@ func TestQoderQuotaProgressFromJSONInfersOnlyMissingRemaining(t *testing.T) {
 	}
 }
 
-type qoderUsageHTTPUpstreamStub struct {
-	req         *http.Request
-	statusCode  int
-	statusCodes []int
-	body        string
-	bodies      []string
-	calls       int32
-}
-
 func qoderUsageCredentials(token string) map[string]any {
 	return map[string]any{
 		"security_oauth_token": token,
@@ -1035,11 +1040,6 @@ func (s *qoderUsageHTTPUpstreamStub) DoWithTLS(req *http.Request, _ string, _ in
 		StatusCode: status,
 		Body:       io.NopCloser(strings.NewReader(body)),
 	}, nil
-}
-
-type qoderObservationIdentityUpstream struct {
-	qoderUsageHTTPUpstreamStub
-	beforeReturn func()
 }
 
 func (u *qoderObservationIdentityUpstream) DoWithTLS(req *http.Request, proxy string, id int64, n int, p *tlsfingerprint.Profile) (*http.Response, error) {

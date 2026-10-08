@@ -6,6 +6,58 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
+const (
+	ProtocolAnthropicMessages = protocol.ProtocolAnthropicMessages
+
+	ProtocolOpenAIResponses = protocol.ProtocolOpenAIResponses
+
+	ProtocolOpenAIChatCompletions = protocol.ProtocolOpenAIChatCompletions
+
+	ProtocolGeminiGenerateContent = protocol.ProtocolGeminiGenerateContent
+
+	ProtocolEmbeddings = protocol.ProtocolEmbeddings
+
+	ProtocolImagesGenerations = protocol.ProtocolImagesGenerations
+
+	ProtocolImagesEdits = protocol.ProtocolImagesEdits
+
+	ProtocolImageBatches = protocol.ProtocolImageBatches
+
+	ProtocolVideosGenerations = protocol.ProtocolVideosGenerations
+
+	ProtocolVideosEdits = protocol.ProtocolVideosEdits
+
+	ProtocolVideosExtensions = protocol.ProtocolVideosExtensions
+
+	ProtocolTTS = protocol.ProtocolTTS
+
+	ProtocolSTT = protocol.ProtocolSTT
+
+	ProtocolCustomVoices = protocol.ProtocolCustomVoices
+
+	ProtocolVoiceRealtime = protocol.ProtocolVoiceRealtime
+
+	ProtocolResponsesWebSocket = protocol.ProtocolResponsesWebSocket
+
+	ProtocolLive = protocol.ProtocolLive
+
+	ProtocolResponsesCompact = protocol.ProtocolResponsesCompact
+
+	ProtocolAlphaSearch = protocol.ProtocolAlphaSearch
+
+	ProtocolWebSearch = protocol.ProtocolWebSearch
+
+	ProtocolXSearch = protocol.ProtocolXSearch
+
+	ProtocolQoderChat = protocol.ProtocolQoderChat
+
+	ProtocolGeminiBatch = protocol.ProtocolGeminiBatch
+
+	ProtocolVertexBatch = protocol.ProtocolVertexBatch
+)
+
+var protocolCatalog = buildProtocolCatalog()
+
 // Protocol 描述协议标识、名称、适用平台及是否专供上游使用。
 // @project-doc docs/interfaces/protocol_capabilities.md#protocol_catalog
 type Protocol struct {
@@ -15,7 +67,8 @@ type Protocol struct {
 	Platforms    []string   `json:"platforms"`
 }
 
-var protocolCatalog = buildProtocolCatalog()
+// ProtocolID 引用 protocol 包的协议标识类型。
+type ProtocolID = protocol.ProtocolID
 
 func buildProtocolCatalog() []Protocol {
 	all := []string{PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformGrok, PlatformQoder, PlatformKimi, PlatformZhipu, PlatformDeepseek}
@@ -196,54 +249,3 @@ func AutomaticProtocolFallbackTargets(source ProtocolID) []ProtocolID {
 	}
 	return targets
 }
-
-// ProtocolID 引用 protocol 包的协议标识类型。
-type ProtocolID = protocol.ProtocolID
-
-const ProtocolAnthropicMessages = protocol.ProtocolAnthropicMessages
-
-const ProtocolOpenAIResponses = protocol.ProtocolOpenAIResponses
-
-const ProtocolOpenAIChatCompletions = protocol.ProtocolOpenAIChatCompletions
-
-const ProtocolGeminiGenerateContent = protocol.ProtocolGeminiGenerateContent
-
-const ProtocolEmbeddings = protocol.ProtocolEmbeddings
-
-const ProtocolImagesGenerations = protocol.ProtocolImagesGenerations
-
-const ProtocolImagesEdits = protocol.ProtocolImagesEdits
-
-const ProtocolImageBatches = protocol.ProtocolImageBatches
-
-const ProtocolVideosGenerations = protocol.ProtocolVideosGenerations
-
-const ProtocolVideosEdits = protocol.ProtocolVideosEdits
-
-const ProtocolVideosExtensions = protocol.ProtocolVideosExtensions
-
-const ProtocolTTS = protocol.ProtocolTTS
-
-const ProtocolSTT = protocol.ProtocolSTT
-
-const ProtocolCustomVoices = protocol.ProtocolCustomVoices
-
-const ProtocolVoiceRealtime = protocol.ProtocolVoiceRealtime
-
-const ProtocolResponsesWebSocket = protocol.ProtocolResponsesWebSocket
-
-const ProtocolLive = protocol.ProtocolLive
-
-const ProtocolResponsesCompact = protocol.ProtocolResponsesCompact
-
-const ProtocolAlphaSearch = protocol.ProtocolAlphaSearch
-
-const ProtocolWebSearch = protocol.ProtocolWebSearch
-
-const ProtocolXSearch = protocol.ProtocolXSearch
-
-const ProtocolQoderChat = protocol.ProtocolQoderChat
-
-const ProtocolGeminiBatch = protocol.ProtocolGeminiBatch
-
-const ProtocolVertexBatch = protocol.ProtocolVertexBatch

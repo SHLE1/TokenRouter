@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	errors2 "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+
+	errors2 "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
 // ---------- 辅助函数 ----------

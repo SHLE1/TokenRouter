@@ -17,6 +17,18 @@ type opsMetricsProjectionRepo struct {
 	projectionCalls int
 }
 
+type opsMetricsFallbackRepo struct {
+	ProviderLoadSource
+	providers []ProviderObservation
+	listCalls int
+}
+
+type opsMetricsLoadCache struct {
+	scheduler.ConcurrencyCache
+	loads map[int64]*ProviderLoadInfo
+	got   []ProviderWithConcurrency
+}
+
 func (r *opsMetricsProjectionRepo) ListSchedulable(context.Context) ([]ProviderObservation, error) {
 	r.listCalls++
 	return r.providers, nil
@@ -27,21 +39,9 @@ func (r *opsMetricsProjectionRepo) ListSchedulableProviderLoads(context.Context)
 	return r.providerLoads, nil
 }
 
-type opsMetricsFallbackRepo struct {
-	ProviderLoadSource
-	providers []ProviderObservation
-	listCalls int
-}
-
 func (r *opsMetricsFallbackRepo) ListSchedulable(context.Context) ([]ProviderObservation, error) {
 	r.listCalls++
 	return r.providers, nil
-}
-
-type opsMetricsLoadCache struct {
-	scheduler.ConcurrencyCache
-	loads map[int64]*ProviderLoadInfo
-	got   []ProviderWithConcurrency
 }
 
 func (c *opsMetricsLoadCache) GetProvidersLoadBatch(_ context.Context, providers []ProviderWithConcurrency) (map[int64]*ProviderLoadInfo, error) {

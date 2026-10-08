@@ -12,6 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	canListenOnce sync.Once
+	canListen     bool
+	canListenErr  error
+)
+
 // TestFetchCatalogHTTP 检查 HTTP 客户端的条件请求、状态码和下载上限。
 func TestFetchCatalogHTTP(t *testing.T) {
 	for _, tc := range []struct {
@@ -88,12 +94,6 @@ func TestNewRemoteClient_InvalidProxy_NoFallback(t *testing.T) {
 func TestNewRemoteClient_InvalidProxy_WithFallback(t *testing.T) {
 	require.IsType(t, &remoteClient{}, NewRemoteClient("://bad", true))
 }
-
-var (
-	canListenOnce sync.Once
-	canListen     bool
-	canListenErr  error
-)
 
 func localListenerAvailable() bool {
 	canListenOnce.Do(func() {

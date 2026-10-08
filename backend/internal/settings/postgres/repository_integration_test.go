@@ -20,6 +20,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/testutil/postgrescontainer"
 )
 
+type SettingRepoSuite struct {
+	suite.Suite
+	client *dbent.Client
+	ctx    context.Context
+	repo   settingscore.Repository
+}
+
 // TestSettingsAtomicFailure 通过 PostgreSQL 约束故障检查整批设置回滚。
 func TestSettingsAtomicFailure(t *testing.T) {
 	integrationEntClient, integrationDB := settingsDatabase(t)
@@ -97,13 +104,6 @@ func TestLocalizedSettingsConcurrentWrite(t *testing.T) {
 	other, err := repo.GetValue(ctx, sibling)
 	require.NoError(t, err)
 	require.Equal(t, actual, other)
-}
-
-type SettingRepoSuite struct {
-	suite.Suite
-	client *dbent.Client
-	ctx    context.Context
-	repo   settingscore.Repository
 }
 
 func (s *SettingRepoSuite) SetupTest() {

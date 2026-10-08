@@ -11,6 +11,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
+type openAIFastPolicyRepoStub struct {
+	values map[string]string
+}
+
 func TestSetOpenAIFastPolicySettings_Validation(t *testing.T) {
 	repo := &openAIFastPolicyRepoStub{values: map[string]string{}}
 	svc := NewRuntimeSettings(repo, settingscore.ErrSettingNotFound, nil)
@@ -87,10 +91,6 @@ func TestGlobalForceUltrafastPersists(t *testing.T) {
 	got, err := svc.GetOpenAIFastPolicySettings(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, settings, got)
-}
-
-type openAIFastPolicyRepoStub struct {
-	values map[string]string
 }
 
 func (s *openAIFastPolicyRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {

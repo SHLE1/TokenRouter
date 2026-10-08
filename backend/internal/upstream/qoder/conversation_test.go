@@ -41,10 +41,10 @@ func TestQoderConversationStoreConcurrent(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	// 并发请求会在同一会话中交错读取、提交和回滚。
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(workerID int) {
 			defer wg.Done()
-			for j := 0; j < numOpsPerGoroutine; j++ {
+			for j := range numOpsPerGoroutine {
 				// 每次操作根据当时读取的版本构造计划。
 				store.Mu.Lock()
 				currentState := store.Items[key]

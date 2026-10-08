@@ -20,6 +20,28 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// OpenAIProviderTest 绑定提供商存储、共享传输和请求策略，TestRun 保存单次状态。
+type OpenAIProviderTest struct {
+	Store        OpenAIProviderTestStore
+	Transport    QoderTransport
+	ValidateURL  func(string) (string, error)
+	ApplyRouting func(*TestRun, *providercore.Record, *http.Request, bool)
+	ResolveTLS   func(*TestRun, *providercore.Record) *tlsfingerprint.Profile
+	EnsureTask   func(context.Context, *providercore.Record, string) error
+
+	Prepare func(*TestRun, *providercore.Record) error
+}
+
+// OpenAIProviderTestStore 只暴露测试路径原本使用的字段操作。
+type OpenAIProviderTestStore interface {
+	GetByID(context.Context, int64) (*providercore.Record, error)
+	UpdateExtra(context.Context, int64, map[string]any) error
+	SetError(context.Context, int64, string) error
+	ClearError(context.Context, int64) error
+	SetRateLimited(context.Context, int64, time.Time) error
+	providercore.OpenAIPlanWriter
+}
+
 // Execute 按提供商凭据、模式和测试类型执行 OpenAI 测试。
 func (s *OpenAIProviderTest) Execute(c *TestRun, value *providercore.Record, modelID string, prompt string, mode string, testTypes ...string) error {
 	ctx := c.Context
@@ -125,7 +147,7 @@ func (s *OpenAIProviderTest) Execute(c *TestRun, value *providercore.Record, mod
 		(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_start", Model: testModelID})
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(payloadBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, "Failed to create request")
 	}
@@ -478,7 +500,7 @@ func (s *OpenAIProviderTest) executeLegacyCompact(c *TestRun, value *providercor
 		(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_start", Model: testModelID})
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(payloadBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, "Failed to create request")
 	}
@@ -635,7 +657,7 @@ func (s *OpenAIProviderTest) ExecuteImageAPIKey(c *TestRun, ctx context.Context,
 	}
 	payloadBytes, _ := json.Marshal(payload)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(payloadBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, "Failed to create request")
 	}
@@ -830,28 +852,6 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_complete", Success: true})
 	return nil
-}
-
-// OpenAIProviderTest 绑定提供商存储、共享传输和请求策略，TestRun 保存单次状态。
-type OpenAIProviderTest struct {
-	Store        OpenAIProviderTestStore
-	Transport    QoderTransport
-	ValidateURL  func(string) (string, error)
-	ApplyRouting func(*TestRun, *providercore.Record, *http.Request, bool)
-	ResolveTLS   func(*TestRun, *providercore.Record) *tlsfingerprint.Profile
-	EnsureTask   func(context.Context, *providercore.Record, string) error
-
-	Prepare func(*TestRun, *providercore.Record) error
-}
-
-// OpenAIProviderTestStore 只暴露测试路径原本使用的字段操作。
-type OpenAIProviderTestStore interface {
-	GetByID(context.Context, int64) (*providercore.Record, error)
-	UpdateExtra(context.Context, int64, map[string]any) error
-	SetError(context.Context, int64, string) error
-	ClearError(context.Context, int64) error
-	SetRateLimited(context.Context, int64, time.Time) error
-	providercore.OpenAIPlanWriter
 }
 
 func (s *OpenAIProviderTest) read(ctx context.Context, id int64) (*providercore.Record, error) {

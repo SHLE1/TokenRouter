@@ -49,10 +49,6 @@ type SettingsRuntime struct {
 	diagnostics Diagnostics
 }
 
-func NewSettingsRuntime(diagnostics Diagnostics) *SettingsRuntime {
-	return &SettingsRuntime{diagnostics: diagnostics}
-}
-
 type cachedAdvancedSchedulerSetting struct {
 	StickyWeightedEnabled       bool
 	SubscriptionPriorityEnabled bool
@@ -70,6 +66,16 @@ type cachedAdvancedSchedulerSetting struct {
 	StickyEscapeErrorRateSet    bool
 	StickyEscape                policy.StickyEscapeConfig
 	expiresAt                   int64
+}
+
+// WeightOverrideSpec 保留管理与校验使用的稳定顺序。
+type WeightOverrideSpec struct {
+	Key  string
+	Name string
+}
+
+func NewSettingsRuntime(diagnostics Diagnostics) *SettingsRuntime {
+	return &SettingsRuntime{diagnostics: diagnostics}
 }
 
 func (s *SettingsRuntime) Load(ctx context.Context, repo RuntimeSettingSource, defaults policy.RuntimeSettings) policy.RuntimeSettings {
@@ -209,12 +215,6 @@ func (s *SettingsRuntime) Load(ctx context.Context, repo RuntimeSettingSource, d
 	// 每个请求复制一份权重映射后再应用覆盖值。
 	settings.WeightOverrides = CloneAdvancedSchedulerWeightOverrides(settings.WeightOverrides)
 	return settings
-}
-
-// WeightOverrideSpec 保留管理与校验使用的稳定顺序。
-type WeightOverrideSpec struct {
-	Key  string
-	Name string
 }
 
 func ParseAdvancedSchedulerAlphaOverride(raw string, fallback float64) (float64, bool) {

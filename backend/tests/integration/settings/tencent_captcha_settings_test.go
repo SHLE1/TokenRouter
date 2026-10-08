@@ -13,6 +13,11 @@ import (
 	settingskit "github.com/TokenFlux/TokenRouter/internal/settings/testkit"
 )
 
+type settingPublicRepoStub struct {
+	values map[string]string
+	err    error
+}
+
 func TestSettingService_ParseSettingsMasksTencentCaptchaCredentials(t *testing.T) {
 	svc := settingskit.NewComposite(&settingGetAllRepoStub{values: map[string]string{
 		identity.SettingKeyTencentCaptchaEnabled:        "true",
@@ -80,11 +85,6 @@ func TestSettingService_GetTencentCaptchaConfig(t *testing.T) {
 		// 未配置站点时使用中国站。
 		Region: identity.TencentCaptchaRegionCN,
 	}, got)
-}
-
-type settingPublicRepoStub struct {
-	values map[string]string
-	err    error
 }
 
 func (s *settingPublicRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {

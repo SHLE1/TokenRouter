@@ -9,6 +9,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+// creativeRuntimeSettingsFixture 按键读取测试设置，缺键时返回设置不存在错误。
+type creativeRuntimeSettingsFixture struct{ values map[string]string }
+
 // TestSettingService_IsCreativeEnabled 检查请求期的创作台开关：值为“false”时关闭，键缺失或读取失败时开启。
 func TestSettingService_IsCreativeEnabled(t *testing.T) {
 	repo := &creativeRuntimeSettingsFixture{values: map[string]string{SettingKeyCreativeEnabled: "false"}}
@@ -35,9 +38,6 @@ func TestSettingServiceGetCreativeModelSettings(t *testing.T) {
 	repo.values[SettingKeyCreativeModelSettings] = "not-json"
 	require.Empty(t, svc.GetCreativeModelSettings(context.Background()))
 }
-
-// creativeRuntimeSettingsFixture 按键读取测试设置，缺键时返回设置不存在错误。
-type creativeRuntimeSettingsFixture struct{ values map[string]string }
 
 func (r *creativeRuntimeSettingsFixture) GetValue(_ context.Context, key string) (string, error) {
 	if value, ok := r.values[key]; ok {

@@ -10,6 +10,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
+const (
+	WindowCostSchedulable    = billing.WindowCostSchedulable
+	WindowCostStickyOnly     = billing.WindowCostStickyOnly
+	WindowCostNotSchedulable = billing.WindowCostNotSchedulable
+)
+
+// RuntimeConfig 为规则计算提供当前配置和窗口数据。
+// 凭据不会进入这个只读配置输入。
+type RuntimeConfig struct {
+	Extra              map[string]any `json:"-"`
+	Concurrency        int
+	SessionWindowStart *time.Time
+	SessionWindowEnd   *time.Time
+}
+
+// WindowCostSchedulability 窗口费用调度状态
+type WindowCostSchedulability = billing.WindowCostSchedulability
+
 // SanitizeManagedBaseRPM 对 extra map 中的 base_rpm 值进行范围校验和归一化。
 // 负值归零，超过 10000 截断为 10000。extra 为 nil 或不含 base_rpm 时无操作。
 func SanitizeManagedBaseRPM(extra map[string]any) {
@@ -27,15 +45,6 @@ func SanitizeManagedBaseRPM(extra map[string]any) {
 		v = 10000
 	}
 	extra["base_rpm"] = v
-}
-
-// RuntimeConfig 为规则计算提供当前配置和窗口数据。
-// 凭据不会进入这个只读配置输入。
-type RuntimeConfig struct {
-	Extra              map[string]any `json:"-"`
-	Concurrency        int
-	SessionWindowStart *time.Time
-	SessionWindowEnd   *time.Time
 }
 
 // GetMaxSessions 获取最大并发会话数
@@ -203,15 +212,6 @@ func ParseExtraInt(value any) int {
 	}
 	return 0
 }
-
-// WindowCostSchedulability 窗口费用调度状态
-type WindowCostSchedulability = billing.WindowCostSchedulability
-
-const (
-	WindowCostSchedulable    = billing.WindowCostSchedulable
-	WindowCostStickyOnly     = billing.WindowCostStickyOnly
-	WindowCostNotSchedulable = billing.WindowCostNotSchedulable
-)
 
 // GetUserMsgQueueMode 获取用户消息队列模式
 // "serialize" = 串行队列, "throttle" = 软性限速, "" = 未设置（使用全局配置）

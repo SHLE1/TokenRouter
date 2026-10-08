@@ -21,6 +21,14 @@ import (
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// openAIWSTerminalPolicyDecision 保存终止事件类型和提供商策略结果。
+// 调用方在写给客户端前检查通用错误和故障转移。
+type openAIWSTerminalPolicyDecision struct {
+	TerminalEvent string
+	StatusCode    int
+	Decision      providercore.UpstreamErrorDecision
+}
+
 func normalizeOpenAIWSTerminalEvent(eventType string) string {
 	switch strings.TrimSpace(eventType) {
 	case "response.completed":
@@ -106,14 +114,6 @@ func openAIWSErrorPolicyStatus(payload []byte) int {
 		errTypeRaw = strings.TrimSpace(gjson.GetBytes(payload, "response.error.type").String())
 	}
 	return upstreamopenai.WSErrorHTTPStatusFromRaw(codeRaw, errTypeRaw)
-}
-
-// openAIWSTerminalPolicyDecision 保存终止事件类型和提供商策略结果。
-// 调用方在写给客户端前检查通用错误和故障转移。
-type openAIWSTerminalPolicyDecision struct {
-	TerminalEvent string
-	StatusCode    int
-	Decision      providercore.UpstreamErrorDecision
 }
 
 func (s *OpenAIWebSocketExecutor) handleOpenAIWSTerminalTransientFailure(ctx context.Context, provider *gatewayprovider.ExecutionProvider, canonicalModel string, headers http.Header, payload []byte) openAIWSTerminalPolicyDecision {

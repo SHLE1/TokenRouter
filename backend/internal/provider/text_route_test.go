@@ -18,7 +18,7 @@ func TestResolveUpstreamTextProtocol(t *testing.T) {
 			for _, preferred := range preferredProtocols {
 				extra := map[string]any{
 					ExtraKeyTextRouteMode:           string(mode),
-					"openai_responses_probe_status": string(status),
+					"openai_responses_probe_status": status,
 				}
 				want := preferred
 				switch mode {
@@ -26,7 +26,6 @@ func TestResolveUpstreamTextProtocol(t *testing.T) {
 					want = TextProtocolResponses
 				case TextRouteModeForceChatCompletions:
 					want = TextProtocolChatCompletions
-
 				}
 
 				if got := ResolveUpstreamTextProtocol(extra, preferred); got != want {

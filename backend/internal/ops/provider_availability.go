@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+type OpsProviderAvailability struct {
+	Group       *GroupAvailability
+	Providers   map[int64]*ProviderAvailability
+	CollectedAt *time.Time
+}
+
 // GetProviderAvailabilityStats returns current provider availability stats.
 //
 // Query-level filtering is intentionally limited to platform/group to match the dashboard scope.
@@ -160,12 +166,6 @@ func (s *OpsService) GetProviderAvailabilityStats(ctx context.Context, platformF
 	}
 
 	return platform, group, provider, &collectedAt, nil
-}
-
-type OpsProviderAvailability struct {
-	Group       *GroupAvailability
-	Providers   map[int64]*ProviderAvailability
-	CollectedAt *time.Time
 }
 
 func (s *OpsService) GetProviderAvailability(ctx context.Context, platformFilter string, groupIDFilter *int64) (*OpsProviderAvailability, error) {

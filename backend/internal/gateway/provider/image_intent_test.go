@@ -14,7 +14,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-var imageGenerationIntentBenchmarkResult bool
+var (
+	imageGenerationIntentBenchmarkResult bool
+
+	passthroughImageIntentBenchmarkSink bool
+
+	openAIResponsesImageIntentRoutingBenchmarkSink provider.OpenAIEndpointCapability
+
+	// benchmarkStringSink 保存图片计费基准的解析结果。
+	benchmarkStringSink string
+)
 
 func BenchmarkIsImageGenerationIntent(b *testing.B) {
 	largeInput := strings.Repeat("x", 1<<20)
@@ -59,7 +68,7 @@ func BenchmarkIsImageGenerationIntent(b *testing.B) {
 			b.SetBytes(int64(len(benchmark.body)))
 			b.ResetTimer()
 			var result bool
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				result = ImageIntent().IsImageGenerationIntent("/v1/responses", "gpt-5.5", benchmark.body)
 			}
 			imageGenerationIntentBenchmarkResult = result
@@ -148,15 +157,13 @@ func TestIsExplicitImageGenerationIntentMap_AfterRequestMutation(t *testing.T) {
 	assert.True(t, ImageIntent().IsExplicitImageGenerationIntentMap("/v1/responses", "gpt-5.5", explicitNamespaceChoice))
 }
 
-var passthroughImageIntentBenchmarkSink bool
-
 func BenchmarkOpenAIPassthroughImageIntentReuse_LargeBody(b *testing.B) {
 	body := buildLargeOpenAIResponsesImageToolBody(32 << 20)
 
 	b.Run("Once", func(b *testing.B) {
 		b.SetBytes(int64(len(body)))
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			passthroughImageIntentBenchmarkSink = ImageIntent().IsImageGenerationIntent(media.OpenAIResponsesEndpoint, "gpt-5.4", body)
 		}
 	})
@@ -164,7 +171,7 @@ func BenchmarkOpenAIPassthroughImageIntentReuse_LargeBody(b *testing.B) {
 	b.Run("Twice", func(b *testing.B) {
 		b.SetBytes(int64(len(body)))
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			permissionIntent := ImageIntent().IsImageGenerationIntent(media.OpenAIResponsesEndpoint, "gpt-5.4", body)
 			billingIntent := ImageIntent().IsImageGenerationIntent(media.OpenAIResponsesEndpoint, "gpt-5.4", body)
 			passthroughImageIntentBenchmarkSink = permissionIntent && billingIntent
@@ -622,7 +629,7 @@ func BenchmarkOpenAIResponses_LargeInputImageBillingRaw(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				cfg, err := ImageIntent().ResolveOpenAIResponsesImageBillingConfigDetailedFromBody(body, "gpt-5.4")
 				if err != nil {
 					b.Fatalf("解析 OpenAI 图片计费配置失败: %v", err)
@@ -649,8 +656,6 @@ func buildLargeOpenAIResponsesImageToolBody(targetBytes int) []byte {
 	_, _ = builder.WriteString(`]}`)
 	return []byte(builder.String())
 }
-
-var openAIResponsesImageIntentRoutingBenchmarkSink provider.OpenAIEndpointCapability
 
 func BenchmarkOpenAIResponsesImageIntentRouting_LargeToolsBody(b *testing.B) {
 	body := buildLargeOpenAIResponsesToolsBody(32 << 20)
@@ -694,9 +699,6 @@ func buildLargeOpenAIResponsesToolsBody(targetBytes int) []byte {
 	_, _ = builder.WriteString(`"}],"tool_choice":"auto","input":"write code"}`)
 	return []byte(builder.String())
 }
-
-// benchmarkStringSink 保存图片计费基准的解析结果。
-var benchmarkStringSink string
 
 func benchmarkBodySizes() []struct {
 	name  string

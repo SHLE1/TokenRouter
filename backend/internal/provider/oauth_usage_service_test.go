@@ -15,6 +15,50 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 批量读取替身按请求 ID 返回提供商记录。
+type usageBatchRecordFixture struct {
+	OAuthUsageReader
+	providers []Record
+}
+
+// 夹具返回空统计，主动与被动用量展示由生产组件执行。
+type usageBatchStatisticsFixture struct{}
+
+// 写入替身记录用量查询输出，窗口计算和同步规则由查询组件执行。
+type usageFableWriteFixture struct {
+	OAuthUsageReader
+	updates chan map[string]any
+}
+
+// 查询期间管理员修改身份后，条件写入会拒绝此前身份的用量结果。
+type activePassiveIdentityRepo struct {
+	sessionWindowSyncRepo
+	current Record
+}
+
+// 查询组件和 singleflight 共用一次查询，调用方取消后查询继续，停止操作会取消并等待查询结束。
+type oauthUsageLifecycleReader struct {
+	OAuthUsageReader
+	reads atomic.Int32
+}
+
+// sessionWindowSyncRepo 记录 syncActiveToPassive 触发的所有写操作。
+type sessionWindowSyncRepo struct {
+	OAuthUsageReader
+
+	mu                sync.Mutex
+	extraUpdates      []map[string]any
+	sessionWindowEnds []sessionWindowEndCall
+}
+
+type sessionWindowEndCall struct {
+	ProviderID int64
+	End        time.Time
+}
+
+// 缺失提供商和并发查询的错误写入同一结果集，写入共用同步保护。
+type usageBatchRaceRepo struct{ OAuthUsageReader }
+
 func TestProviderUsageService_GetUsageBatch_BestEffortByProvider(t *testing.T) {
 	t.Parallel()
 
@@ -77,12 +121,6 @@ func TestProviderUsageService_GetUsageBatch_BestEffortByProvider(t *testing.T) {
 	}
 }
 
-// 批量读取替身按请求 ID 返回提供商记录。
-type usageBatchRecordFixture struct {
-	OAuthUsageReader
-	providers []Record
-}
-
 func (r usageBatchRecordFixture) GetByIDs(_ context.Context, ids []int64) ([]*Record, error) {
 	result := make([]*Record, 0, len(ids))
 	for _, id := range ids {
@@ -95,9 +133,6 @@ func (r usageBatchRecordFixture) GetByIDs(_ context.Context, ids []int64) ([]*Re
 	}
 	return result, nil
 }
-
-// 夹具返回空统计，主动与被动用量展示由生产组件执行。
-type usageBatchStatisticsFixture struct{}
 
 func (usageBatchStatisticsFixture) GetProviderWindowStats(context.Context, int64, time.Time) (*WindowStats, error) {
 	return &WindowStats{}, nil
@@ -131,12 +166,6 @@ func TestSyncActiveToPassive_WritesFableExtras(t *testing.T) {
 	}
 }
 
-// 写入替身记录用量查询输出，窗口计算和同步规则由查询组件执行。
-type usageFableWriteFixture struct {
-	OAuthUsageReader
-	updates chan map[string]any
-}
-
 func (r *usageFableWriteFixture) UpdateUsageExtraIfUnchanged(_ context.Context, _ UsageObservationVersion, updates map[string]any) (bool, error) {
 	r.updates <- CloneValues(updates)
 	return true, nil
@@ -152,12 +181,6 @@ func TestAnthropicNegativeUsageCacheDoesNotCrossCredentialIdentity(t *testing.T)
 	cancel()
 	_, err := svc.GetUsageForProvider(ctx, a, false)
 	require.ErrorIs(t, err, context.Canceled)
-}
-
-// 查询期间管理员修改身份后，条件写入会拒绝此前身份的用量结果。
-type activePassiveIdentityRepo struct {
-	sessionWindowSyncRepo
-	current Record
 }
 
 func (r *activePassiveIdentityRepo) GetByID(context.Context, int64) (*Record, error) {
@@ -219,12 +242,6 @@ func TestAnthropicUsageNegativeCacheIdentityAndTTL(t *testing.T) {
 	_, err = core.GetUsageForProvider(context.Background(), fresh, false)
 	require.ErrorIs(t, err, marker)
 	require.Equal(t, 3, calls)
-}
-
-// 查询组件和 singleflight 共用一次查询，调用方取消后查询继续，停止操作会取消并等待查询结束。
-type oauthUsageLifecycleReader struct {
-	OAuthUsageReader
-	reads atomic.Int32
 }
 
 func (r *oauthUsageLifecycleReader) GetByID(context.Context, int64) (*Record, error) {
@@ -296,20 +313,6 @@ func TestOAuthUsageLifecycleReportsUnfinishedProvider(t *testing.T) {
 	require.Same(t, err, core.StopContext(context.Background()))
 }
 
-// sessionWindowSyncRepo 记录 syncActiveToPassive 触发的所有写操作。
-type sessionWindowSyncRepo struct {
-	OAuthUsageReader
-
-	mu                sync.Mutex
-	extraUpdates      []map[string]any
-	sessionWindowEnds []sessionWindowEndCall
-}
-
-type sessionWindowEndCall struct {
-	ProviderID int64
-	End        time.Time
-}
-
 func (r *sessionWindowSyncRepo) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -379,9 +382,6 @@ func (r *sessionWindowSyncRepo) UpdateUsageExtraIfUnchanged(ctx context.Context,
 func (r *sessionWindowSyncRepo) UpdateUsageSessionWindowEndIfUnchanged(ctx context.Context, v UsageObservationVersion, _ *time.Time, end time.Time) (bool, error) {
 	return true, r.UpdateSessionWindowEnd(ctx, v.ID, end)
 }
-
-// 缺失提供商和并发查询的错误写入同一结果集，写入共用同步保护。
-type usageBatchRaceRepo struct{ OAuthUsageReader }
 
 func (usageBatchRaceRepo) GetByIDs(_ context.Context, ids []int64) ([]*Record, error) {
 	out := make([]*Record, 0, len(ids)/2)

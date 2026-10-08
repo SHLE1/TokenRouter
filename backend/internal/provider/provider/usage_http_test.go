@@ -24,6 +24,69 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
+// 模拟最新身份读取后、执行健康写入前管理员替换凭据。
+type cnDecisionRepo struct {
+	*cnUsageMonitorRepo
+	changed bool
+}
+
+type cnUsageMonitorRepo struct {
+	mu               sync.Mutex
+	providers        map[int64]*acctcore.Record
+	byPlatform       map[string][]int64
+	writes           []*acctcore.CNUsageMonitorSnapshot
+	casResult        bool
+	pauseReason      string
+	pauseUntil       time.Time
+	clearCalls       int
+	updateExtraCalls int
+}
+
+type cnUsageMonitorHTTP struct {
+	mu       sync.Mutex
+	calls    int
+	requests []*http.Request
+	status   int
+	body     string
+	started  chan struct{}
+	block    bool
+}
+
+type cnUsageMonitorLeaderLock struct {
+	acquired bool
+	calls    int
+}
+
+// cnQueryFixtureOptions 提供查询目标许可和监控预算。
+type cnQueryFixtureOptions struct {
+	Policy  egress.UsageURLPolicy
+	Monitor acctcore.CNMonitorOptions
+}
+
+type upstreamUsageProviderRepoStub struct {
+	mu       sync.Mutex
+	provider *acctcore.Record
+	getEvent chan struct{}
+}
+
+type blockingUpstreamUsageHTTP struct {
+	started chan struct{}
+	release chan struct{}
+	body    string
+	once    sync.Once
+	calls   atomic.Int32
+}
+
+type upstreamUsageHTTPStub struct {
+	mu        sync.Mutex
+	requests  []*http.Request
+	responses []struct {
+		status int
+		body   string
+		err    error
+	}
+}
+
 func TestCNMonitorOldIdentityCannotPauseNewCredentials(t *testing.T) {
 	value := newCNUsageMonitorProvider(1, capability.PlatformKimi, acctcore.ProviderModePayG)
 	repo := &cnDecisionRepo{cnUsageMonitorRepo: &cnUsageMonitorRepo{providers: map[int64]*acctcore.Record{1: value}, byPlatform: map[string][]int64{capability.PlatformKimi: {1}}, casResult: true}}
@@ -822,12 +885,6 @@ func TestUpstreamUsageSingleflightResultIsolation(t *testing.T) {
 	require.Equal(t, 3.0, *second.Usage.Balance.Remaining)
 }
 
-// 模拟最新身份读取后、执行健康写入前管理员替换凭据。
-type cnDecisionRepo struct {
-	*cnUsageMonitorRepo
-	changed bool
-}
-
 func (r *cnDecisionRepo) changeIdentity(id int64) {
 	if r.changed {
 		return
@@ -851,18 +908,6 @@ func (r *cnDecisionRepo) SetCNUsageDecisionCAS(ctx context.Context, id int64, ex
 		return true, r.ClearTempUnschedulable(ctx, id)
 	}
 	return true, r.cnUsageMonitorRepo.SetTempUnschedulable(ctx, id, until, reason)
-}
-
-type cnUsageMonitorRepo struct {
-	mu               sync.Mutex
-	providers        map[int64]*acctcore.Record
-	byPlatform       map[string][]int64
-	writes           []*acctcore.CNUsageMonitorSnapshot
-	casResult        bool
-	pauseReason      string
-	pauseUntil       time.Time
-	clearCalls       int
-	updateExtraCalls int
 }
 
 func (r *cnUsageMonitorRepo) GetByID(_ context.Context, id int64) (*acctcore.Record, error) {
@@ -937,16 +982,6 @@ func (r *cnUsageMonitorRepo) UpdateExtra(_ context.Context, _ int64, _ map[strin
 	return nil
 }
 
-type cnUsageMonitorHTTP struct {
-	mu       sync.Mutex
-	calls    int
-	requests []*http.Request
-	status   int
-	body     string
-	started  chan struct{}
-	block    bool
-}
-
 func (h *cnUsageMonitorHTTP) Do(req *http.Request, proxyURL string, providerID int64, concurrency int) (*http.Response, error) {
 	return h.DoWithTLS(req, proxyURL, providerID, concurrency, nil)
 }
@@ -982,11 +1017,6 @@ func (h *cnUsageMonitorHTTP) DoWithTLS(
 	return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}, nil
 }
 
-type cnUsageMonitorLeaderLock struct {
-	acquired bool
-	calls    int
-}
-
 func (l *cnUsageMonitorLeaderLock) TryAcquireLeaderLock(context.Context, string, string, time.Duration) (bool, error) {
 	l.calls++
 	return l.acquired, nil
@@ -1014,12 +1044,6 @@ func newCNUsageMonitorProvider(id int64, platform, mode string) *acctcore.Record
 func newCNUsageMonitorForTest(repo *cnUsageMonitorRepo, upstream httpclient.UpstreamTransport, cfg *cnQueryFixtureOptions, configure ...func(*acctcore.CNMonitorOptions)) *acctcore.CNUsageMonitor {
 	usage := newCNUsageFixture(repo, upstream, cfg, nil)
 	return newCNMonitorFixture(repo, usage, cfg, configure...)
-}
-
-// cnQueryFixtureOptions 提供查询目标许可和监控预算。
-type cnQueryFixtureOptions struct {
-	Policy  egress.UsageURLPolicy
-	Monitor acctcore.CNMonitorOptions
 }
 
 func newCNQueryFixtureOptions() *cnQueryFixtureOptions {
@@ -1068,12 +1092,6 @@ func (r *cnUsageMonitorRepo) SetCNUsageDecisionCAS(ctx context.Context, id int64
 	return true, r.SetTempUnschedulable(ctx, id, until, reason)
 }
 
-type upstreamUsageProviderRepoStub struct {
-	mu       sync.Mutex
-	provider *acctcore.Record
-	getEvent chan struct{}
-}
-
 func (s *upstreamUsageProviderRepoStub) GetByID(_ context.Context, _ int64) (*acctcore.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1090,14 +1108,6 @@ func (s *upstreamUsageProviderRepoStub) GetByID(_ context.Context, _ int64) (*ac
 	return &copy, nil
 }
 
-type blockingUpstreamUsageHTTP struct {
-	started chan struct{}
-	release chan struct{}
-	body    string
-	once    sync.Once
-	calls   atomic.Int32
-}
-
 func (s *blockingUpstreamUsageHTTP) Do(req *http.Request, proxyURL string, providerID int64, concurrency int) (*http.Response, error) {
 	return s.DoWithTLS(req, proxyURL, providerID, concurrency, nil)
 }
@@ -1110,16 +1120,6 @@ func (s *blockingUpstreamUsageHTTP) DoWithTLS(req *http.Request, _ string, _ int
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(s.body))}, nil
 	case <-req.Context().Done():
 		return nil, req.Context().Err()
-	}
-}
-
-type upstreamUsageHTTPStub struct {
-	mu        sync.Mutex
-	requests  []*http.Request
-	responses []struct {
-		status int
-		body   string
-		err    error
 	}
 }
 

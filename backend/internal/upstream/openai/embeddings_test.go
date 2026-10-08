@@ -22,16 +22,16 @@ type embeddingsTestSink struct {
 	body bytes.Buffer
 }
 
+type embeddingsTestBody struct {
+	io.ReadCloser
+	closed *atomic.Int32
+}
+
 func (s *embeddingsTestSink) Begin(head upstream.OutputHead) error { s.head = head; return nil }
 
 func (s *embeddingsTestSink) Emit(event upstream.OutputEvent) error {
 	_, err := s.body.Write(event.Data)
 	return err
-}
-
-type embeddingsTestBody struct {
-	io.ReadCloser
-	closed *atomic.Int32
 }
 
 func (b *embeddingsTestBody) Close() error { b.closed.Add(1); return b.ReadCloser.Close() }

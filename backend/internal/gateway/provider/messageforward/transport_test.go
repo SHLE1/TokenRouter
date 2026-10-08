@@ -15,6 +15,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 测试使用固定的冷却时长和错误报文作为期望值。
+const gatewayTransportErrorTempUnschedDuration = 10 * time.Minute
+
+var gatewayTransportFailoverBody = []byte(`{"type":"error","error":{"type":"upstream_error","message":"Upstream request failed"}}`)
+
 type transportTempUnschedRepoStub struct {
 	gatewayprovider.ExecutionProviderStore
 
@@ -150,8 +155,3 @@ func TestHandleUpstreamTransportError_UpstreamDeadlineStillFailsOver(t *testing.
 		t.Fatalf("SetTempUnschedulable called %d times for upstream deadline, want 0", repo.calls)
 	}
 }
-
-// 测试使用固定的冷却时长和错误报文作为期望值。
-const gatewayTransportErrorTempUnschedDuration = 10 * time.Minute
-
-var gatewayTransportFailoverBody = []byte(`{"type":"error","error":{"type":"upstream_error","message":"Upstream request failed"}}`)

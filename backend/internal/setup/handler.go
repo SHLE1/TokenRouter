@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
 	"github.com/gin-gonic/gin"
+
+	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
 // installMutex prevents concurrent installation attempts (TOCTOU protection)
@@ -19,6 +19,40 @@ var installMutex sync.Mutex
 // RegisterRoutes registers setup wizard routes
 // RestartRequester 由 CLI 入口注入，setup 不依赖完整应用图。
 type RestartRequester interface{ RequestRestart() error }
+
+// SetupStatus represents the current setup state
+type SetupStatus struct {
+	NeedsSetup bool   `json:"needs_setup"`
+	Step       string `json:"step"`
+}
+
+// TestDatabaseRequest represents database test request
+type TestDatabaseRequest struct {
+	Host     string `json:"host" binding:"required"`
+	Port     int    `json:"port" binding:"required"`
+	User     string `json:"user" binding:"required"`
+	Password string `json:"password"`
+	DBName   string `json:"dbname" binding:"required"`
+	SSLMode  string `json:"sslmode"`
+}
+
+// TestRedisRequest represents Redis test request
+type TestRedisRequest struct {
+	Host      string `json:"host" binding:"required"`
+	Port      int    `json:"port" binding:"required"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	DB        int    `json:"db"`
+	EnableTLS bool   `json:"enable_tls"`
+}
+
+// InstallRequest represents installation request
+type InstallRequest struct {
+	Database DatabaseConfig `json:"database" binding:"required"`
+	Redis    RedisConfig    `json:"redis" binding:"required"`
+	Admin    AdminConfig    `json:"admin" binding:"required"`
+	Server   ServerConfig   `json:"server"`
+}
 
 func RegisterRoutes(r *gin.Engine, restarters ...RestartRequester) {
 	var restarter RestartRequester
@@ -39,12 +73,6 @@ func RegisterRoutes(r *gin.Engine, restarters ...RestartRequester) {
 			protected.POST("/install", func(c *gin.Context) { installWithRestart(c, restarter) })
 		}
 	}
-}
-
-// SetupStatus represents the current setup state
-type SetupStatus struct {
-	NeedsSetup bool   `json:"needs_setup"`
-	Step       string `json:"step"`
 }
 
 // getStatus returns the current setup status
@@ -118,16 +146,6 @@ func validateSSLMode(mode string) bool {
 	return validModes[mode]
 }
 
-// TestDatabaseRequest represents database test request
-type TestDatabaseRequest struct {
-	Host     string `json:"host" binding:"required"`
-	Port     int    `json:"port" binding:"required"`
-	User     string `json:"user" binding:"required"`
-	Password string `json:"password"`
-	DBName   string `json:"dbname" binding:"required"`
-	SSLMode  string `json:"sslmode"`
-}
-
 // testDatabase tests database connection
 func testDatabase(c *gin.Context) {
 	var req TestDatabaseRequest
@@ -179,16 +197,6 @@ func testDatabase(c *gin.Context) {
 	response.Success(c, gin.H{"message": "Connection successful"})
 }
 
-// TestRedisRequest represents Redis test request
-type TestRedisRequest struct {
-	Host      string `json:"host" binding:"required"`
-	Port      int    `json:"port" binding:"required"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	DB        int    `json:"db"`
-	EnableTLS bool   `json:"enable_tls"`
-}
-
 // testRedis tests Redis connection
 func testRedis(c *gin.Context) {
 	var req TestRedisRequest
@@ -231,14 +239,6 @@ func testRedis(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "Connection successful"})
-}
-
-// InstallRequest represents installation request
-type InstallRequest struct {
-	Database DatabaseConfig `json:"database" binding:"required"`
-	Redis    RedisConfig    `json:"redis" binding:"required"`
-	Admin    AdminConfig    `json:"admin" binding:"required"`
-	Server   ServerConfig   `json:"server"`
 }
 
 // installWithRestart 执行首次安装，并在成功后请求重启。

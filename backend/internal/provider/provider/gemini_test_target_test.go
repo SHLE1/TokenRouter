@@ -14,6 +14,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
+// 夹具记录传输请求和同步事件，执行使用平台测试组件。
+type geminiTestTransportFixture struct {
+	request *http.Request
+	body    string
+}
+
+type geminiTestSinkFixture struct{ events []provider.TestEvent }
+
 func TestGeminiProviderTestNativeCredentialRoutes(t *testing.T) {
 	for _, test := range []struct {
 		name    string
@@ -50,12 +58,6 @@ func TestGeminiProviderTestNativeCredentialRoutes(t *testing.T) {
 	}
 }
 
-// 夹具记录传输请求和同步事件，执行使用平台测试组件。
-type geminiTestTransportFixture struct {
-	request *http.Request
-	body    string
-}
-
 func (f *geminiTestTransportFixture) DoWithTLS(req *http.Request, _ string, _ int64, _ int, _ *tlsfingerprint.Profile) (*http.Response, error) {
 	f.request = req
 	body, err := io.ReadAll(req.Body)
@@ -65,8 +67,6 @@ func (f *geminiTestTransportFixture) DoWithTLS(req *http.Request, _ string, _ in
 	f.body = string(body)
 	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"hello\"}]}}]}\n\ndata: [DONE]\n\n"))}, nil
 }
-
-type geminiTestSinkFixture struct{ events []provider.TestEvent }
 
 func (*geminiTestSinkFixture) Begin(context.Context, bool) error { return nil }
 

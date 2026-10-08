@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var errStub = errors.New("stub dial")
+
 func TestConfigureTransportProxy_Nil(t *testing.T) {
 	transport := &http.Transport{}
 	err := ConfigureTransportProxy(transport, nil)
@@ -206,8 +208,6 @@ func TestConfigureTransportProxy_SpecialCharsInPassword(t *testing.T) {
 		})
 	}
 }
-
-var errStub = errors.New("stub dial")
 
 // TestSOCKS5ForwardDialerHasBoundedTimeout 检查 SOCKS5 拨号器携带建连超时。
 // SOCKS5 分支替换 Transport.DialContext，底层零值 net.Dialer 会等待内核 TCP 重传结束。

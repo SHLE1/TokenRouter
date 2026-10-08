@@ -1,7 +1,7 @@
 package capability
 
-// ProviderTypeOAuth 等常量定义能力目录中的提供商类型。
 const (
+	// ProviderTypeOAuth 等常量定义能力目录中的提供商类型。
 	ProviderTypeOAuth          = "oauth"           // OAuth类型提供商（full scope: profile + inference）
 	ProviderTypeSetupToken     = "setup-token"     // Setup Token类型提供商（inference only scope）
 	ProviderTypeAPIKey         = "apikey"          // API Key类型提供商
@@ -9,9 +9,7 @@ const (
 	ProviderTypeBedrock        = "bedrock"         // AWS Bedrock 类型提供商（通过 SigV4 签名或 API Key 连接 Bedrock，由 credentials.auth_mode 区分）
 	ProviderTypeServiceAccount = "service_account" // Google Service Account 类型提供商（用于 Vertex AI）
 	ProviderTypeCosy           = "cosy"            // Qoder COSY 协议提供商
-)
 
-const (
 	OpenAIAuthModePersonalAccessToken = "personalAccessToken"
 	OpenAIAuthModeAgentIdentity       = "agentIdentity"
 )

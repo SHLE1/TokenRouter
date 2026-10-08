@@ -4,6 +4,14 @@ import (
 	"encoding/json"
 )
 
+const (
+	// ClaudeCodeBillingHeaderPrefix 是协议报文中计费归因文本的前缀。
+	ClaudeCodeBillingHeaderPrefix = "x-anthropic-billing-header"
+
+	// ClaudeCodeEntrypointMarker 是报文中标识入口来源的字段名。
+	ClaudeCodeEntrypointMarker = "cc_entrypoint="
+)
+
 // ClaudeRequest Claude Messages API 请求
 type ClaudeRequest struct {
 	Model       string          `json:"model"`
@@ -147,9 +155,3 @@ type ClaudeModel struct {
 	DisplayName string `json:"display_name"`
 	CreatedAt   string `json:"created_at"`
 }
-
-// ClaudeCodeBillingHeaderPrefix 是协议报文中计费归因文本的前缀。
-const ClaudeCodeBillingHeaderPrefix = "x-anthropic-billing-header"
-
-// ClaudeCodeEntrypointMarker 是报文中标识入口来源的字段名。
-const ClaudeCodeEntrypointMarker = "cc_entrypoint="

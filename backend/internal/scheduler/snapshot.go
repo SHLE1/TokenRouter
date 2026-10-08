@@ -14,13 +14,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-var (
-	ErrSchedulerCacheNotReady           = errors.New("scheduler cache not ready")
-	ErrSchedulerFallbackLimited         = errors.New("scheduler db fallback limited")
-	ErrSchedulerGroupLifecycleLeaseBusy = errors.New("scheduler group lifecycle lease busy")
-	ErrSchedulerBucketRebuildBusy       = errors.New("scheduler bucket rebuild busy")
-)
-
 const (
 	outboxEventTimeout                    = 2 * time.Minute
 	schedulerOutboxCleanupBatch           = 5000
@@ -30,6 +23,16 @@ const (
 	outboxRebuildRetryBaseDelay           = 5 * time.Second
 	outboxRebuildRetryMaxDelay            = 5 * time.Minute
 	outboxMaxIDErrorLogSampleInterval     = time.Minute
+)
+
+var (
+	ErrSchedulerCacheNotReady           = errors.New("scheduler cache not ready")
+	ErrSchedulerFallbackLimited         = errors.New("scheduler db fallback limited")
+	ErrSchedulerGroupLifecycleLeaseBusy = errors.New("scheduler group lifecycle lease busy")
+	ErrSchedulerBucketRebuildBusy       = errors.New("scheduler bucket rebuild busy")
+
+	ErrSnapshotProviderNotFound = errors.New("scheduler provider not found")
+	ErrSnapshotGroupNotFound    = errors.New("scheduler group not found")
 )
 
 // batchSeenKey 记录单次 pollOutbox 调用内已完成的平台重建与分组生命周期任务。
@@ -63,6 +66,49 @@ type schedulerProviderQueryCache struct {
 type schedulerSnapshotProviderIDWriter interface {
 	SetSnapshotAndReturnProviderIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providers []SnapshotProvider) ([]int64, error)
 	SetSnapshotByProviderIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providerIDs []int64) error
+}
+
+type schedulerGroupLifecyclePlan struct {
+	active bool
+	tasks  []schedulerBucketWriteTask
+}
+
+type schedulerActiveGroupIDLister interface {
+	ListActiveIDs(ctx context.Context) ([]int64, error)
+}
+
+type SnapshotService struct {
+	bindings                     SnapshotBindings
+	cache                        SnapshotCache
+	outboxRepo                   SchedulerOutboxRepository
+	providerRepo                 SnapshotProviderSource
+	groupRepo                    SnapshotGroupSource
+	cfg                          *SnapshotOptions
+	runtime                      WorkerRuntime
+	fallbackLimit                *fallbackLimiter
+	lagMu                        sync.Mutex
+	lagFailures                  int
+	outboxRebuildLatched         bool
+	outboxRebuildRunning         bool
+	outboxRebuildFailures        int
+	outboxRebuildRetryAt         time.Time
+	outboxRebuildRetryReason     string
+	outboxLagWarningActive       bool
+	outboxMaxIDErrorLastLoggedAt time.Time
+
+	fullRebuildGateOnce  sync.Once
+	fullRebuildGate      chan struct{}
+	fullRebuildStateMu   sync.Mutex
+	fullRebuildRequested uint64
+	fullRebuildCompleted uint64
+	fullRebuildLastErr   error
+}
+
+type fallbackLimiter struct {
+	maxQPS int
+	mu     sync.Mutex
+	window time.Time
+	count  int
 }
 
 func newSchedulerProviderQueryCache(taskSets ...[]schedulerBucketWriteTask) *schedulerProviderQueryCache {
@@ -104,42 +150,6 @@ func (c *schedulerProviderQueryCache) release(bucket SchedulerBucket) {
 		return
 	}
 	c.remaining[key] = remaining
-}
-
-type schedulerGroupLifecyclePlan struct {
-	active bool
-	tasks  []schedulerBucketWriteTask
-}
-
-type schedulerActiveGroupIDLister interface {
-	ListActiveIDs(ctx context.Context) ([]int64, error)
-}
-
-type SnapshotService struct {
-	bindings                     SnapshotBindings
-	cache                        SnapshotCache
-	outboxRepo                   SchedulerOutboxRepository
-	providerRepo                 SnapshotProviderSource
-	groupRepo                    SnapshotGroupSource
-	cfg                          *SnapshotOptions
-	runtime                      WorkerRuntime
-	fallbackLimit                *fallbackLimiter
-	lagMu                        sync.Mutex
-	lagFailures                  int
-	outboxRebuildLatched         bool
-	outboxRebuildRunning         bool
-	outboxRebuildFailures        int
-	outboxRebuildRetryAt         time.Time
-	outboxRebuildRetryReason     string
-	outboxLagWarningActive       bool
-	outboxMaxIDErrorLastLoggedAt time.Time
-
-	fullRebuildGateOnce  sync.Once
-	fullRebuildGate      chan struct{}
-	fullRebuildStateMu   sync.Mutex
-	fullRebuildRequested uint64
-	fullRebuildCompleted uint64
-	fullRebuildLastErr   error
 }
 
 func NewSnapshotService(
@@ -558,7 +568,6 @@ func (s *SnapshotService) handleBulkProviderEvent(ctx context.Context, payload m
 		providerGroupIDs := s.normalizeGroupIDs(provider.SnapshotMetadata().GroupIDs)
 		addPlatformGroups("", providerGroupIDs)
 		addPlatformGroups(provider.SnapshotMetadata().Platform, providerGroupIDs)
-
 	}
 
 	// payload 携带更新前的分组，本事件涉及的平台各自重建这些分组。
@@ -1560,13 +1569,6 @@ func toInt64(value any) (int64, bool) {
 	}
 }
 
-type fallbackLimiter struct {
-	maxQPS int
-	mu     sync.Mutex
-	window time.Time
-	count  int
-}
-
 func newFallbackLimiter(maxQPS int) *fallbackLimiter {
 	if maxQPS <= 0 {
 		return nil
@@ -1595,11 +1597,6 @@ func (l *fallbackLimiter) Allow() bool {
 	l.count++
 	return true
 }
-
-var (
-	ErrSnapshotProviderNotFound = errors.New("scheduler provider not found")
-	ErrSnapshotGroupNotFound    = errors.New("scheduler group not found")
-)
 
 func (s *SnapshotService) diagnostics() Diagnostics { return s.bindings.Diagnostics }
 func (s *SnapshotService) providerNotFound() error {

@@ -8,6 +8,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
+// mimicAttempt 的 systemRaw 接收 JSON 字符串或数组格式的系统提示。
+type mimicAttempt struct {
+	*attempt
+	systemRaw any
+}
+
 // shouldNormalizeDateline 日期指纹只在 Anthropic OAuth/SetupToken 的开关开启时处理。
 func (r *Runtime) shouldNormalizeDateline(ctx context.Context, target *gatewayadapter.ExecutionProvider) bool {
 	return target != nil && target.View().IsAnthropicOAuthOrSetupToken() && r.dependencies.Settings != nil && r.dependencies.Settings.IsClientDatelineNormalizationEnabled(ctx)
@@ -22,12 +28,6 @@ func (r *Runtime) normalizeDateline(ctx context.Context, target *gatewayadapter.
 		return nil, false
 	}
 	return next, true
-}
-
-// mimicAttempt 的 systemRaw 接收 JSON 字符串或数组格式的系统提示。
-type mimicAttempt struct {
-	*attempt
-	systemRaw any
 }
 
 func (a *mimicAttempt) RewriteMimicSystem(body []byte, model, prompt, blocks string) []byte {

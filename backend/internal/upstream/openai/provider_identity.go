@@ -19,6 +19,23 @@ const (
 	WSTurnMetadataHeader                  = "x-codex-turn-metadata"
 )
 
+var codexProviderIdentityFields = []struct {
+	name string
+	kind string
+}{
+	{name: "installation_id", kind: "installation"},
+	{name: "x-codex-installation-id", kind: "installation"},
+	{name: "session_id", kind: "session"},
+	{name: "session-id", kind: "session"},
+	{name: "thread_id", kind: "thread"},
+	{name: "thread-id", kind: "thread"},
+	{name: "turn_id", kind: "turn"},
+	{name: "turn-id", kind: "turn"},
+	{name: "window_id", kind: "window"},
+	{name: "x-codex-window-id", kind: "window"},
+	{name: "x-client-request-id", kind: "request"},
+}
+
 // ProviderIdentityInput 只携带原 namespace 所需数据，setup token 禁止序列化或展开日志。
 type ProviderIdentityInput struct {
 	ChatGPTAccountID, ChatGPTUserID, Seed string
@@ -78,23 +95,6 @@ func ScopeCodexProviderIdentityValue(namespace string, apiKeyID int64, kind, raw
 		kind,
 		raw,
 	))
-}
-
-var codexProviderIdentityFields = []struct {
-	name string
-	kind string
-}{
-	{name: "installation_id", kind: "installation"},
-	{name: "x-codex-installation-id", kind: "installation"},
-	{name: "session_id", kind: "session"},
-	{name: "session-id", kind: "session"},
-	{name: "thread_id", kind: "thread"},
-	{name: "thread-id", kind: "thread"},
-	{name: "turn_id", kind: "turn"},
-	{name: "turn-id", kind: "turn"},
-	{name: "window_id", kind: "window"},
-	{name: "x-codex-window-id", kind: "window"},
-	{name: "x-client-request-id", kind: "request"},
 }
 
 func ApplyCodexProviderIdentityFields(values map[string]any, namespace string, apiKeyID int64) bool {

@@ -9,6 +9,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+type redeemRepoStubForAdminList struct {
+	RedeemCodeRepository
+
+	listWithFiltersCalls  int
+	listWithFiltersParams pagination.PaginationParams
+	listWithFiltersType   string
+	listWithFiltersStatus string
+	listWithFiltersSearch string
+	listWithFiltersCodes  []RedeemCode
+	listWithFiltersResult *pagination.PaginationResult
+	listWithFiltersErr    error
+}
+
 func TestAdminService_ListRedeemCodes_WithSearch(t *testing.T) {
 	t.Run("search 参数正常传递到 repository 层", func(t *testing.T) {
 		repo := &redeemRepoStubForAdminList{
@@ -28,19 +41,6 @@ func TestAdminService_ListRedeemCodes_WithSearch(t *testing.T) {
 		require.Equal(t, StatusUnused, repo.listWithFiltersStatus)
 		require.Equal(t, "ABC", repo.listWithFiltersSearch)
 	})
-}
-
-type redeemRepoStubForAdminList struct {
-	RedeemCodeRepository
-
-	listWithFiltersCalls  int
-	listWithFiltersParams pagination.PaginationParams
-	listWithFiltersType   string
-	listWithFiltersStatus string
-	listWithFiltersSearch string
-	listWithFiltersCodes  []RedeemCode
-	listWithFiltersResult *pagination.PaginationResult
-	listWithFiltersErr    error
 }
 
 func (s *redeemRepoStubForAdminList) ListWithFilters(_ context.Context, params pagination.PaginationParams, codeType, status, search string) ([]RedeemCode, *pagination.PaginationResult, error) {

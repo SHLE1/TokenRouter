@@ -16,6 +16,19 @@ import (
 	geminicli "github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 )
 
+// 模拟 Drive 查询期间管理员已经替换凭据与非 tier 配置。
+type tierIdentityPort interface {
+	ProviderManagement
+	provider.TierManagementStore
+}
+
+type tierIdentityAdmin struct {
+	tierIdentityPort
+	current provider.Record
+}
+
+type tierIdentityDrive struct{ admin *tierIdentityAdmin }
+
 func TestTierRefreshDoesNotOverwriteNewCredentials(t *testing.T) {
 	admin := &tierIdentityAdmin{current: provider.Record{ID: 984, Platform: capability.PlatformGemini, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Credentials: map[string]any{"oauth_type": "google_one", "access_token": "old", "tier_id": "old"}, Extra: map[string]any{"admin_setting": "old"}}}
 	gemini := provider.NewGeminiAuthorization(nil, nil, tierIdentityDrive{admin}, provideradapter.GeminiAuthorizationOptions(func() geminicli.OAuthConfig { return geminicli.OAuthConfig{} }, nil))
@@ -26,17 +39,6 @@ func TestTierRefreshDoesNotOverwriteNewCredentials(t *testing.T) {
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/984/tier", nil))
 	require.Equal(t, "admin-new", admin.current.Credentials["access_token"])
 	require.Equal(t, "new", admin.current.Extra["admin_setting"])
-}
-
-// 模拟 Drive 查询期间管理员已经替换凭据与非 tier 配置。
-type tierIdentityPort interface {
-	ProviderManagement
-	provider.TierManagementStore
-}
-
-type tierIdentityAdmin struct {
-	tierIdentityPort
-	current provider.Record
 }
 
 func (s *tierIdentityAdmin) GetProvider(context.Context, int64) (*provider.Record, error) {
@@ -64,8 +66,6 @@ func (s *tierIdentityAdmin) UpdateProvider(_ context.Context, _ int64, input *pr
 	}
 	return &s.current, nil
 }
-
-type tierIdentityDrive struct{ admin *tierIdentityAdmin }
 
 func (d tierIdentityDrive) GetStorageQuota(context.Context, string, string) (*geminicli.DriveStorageInfo, error) {
 	d.admin.current.Credentials = map[string]any{"oauth_type": "google_one", "access_token": "admin-new", "tier_id": "current"}

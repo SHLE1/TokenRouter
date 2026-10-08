@@ -23,6 +23,23 @@ type LocalUsageStatsPair interface {
 	GetProviderWindowStatsPair(context.Context, int64, time.Time, time.Time) (*WindowStats, *WindowStats, error)
 }
 
+type LocalUsageStatisticsOptions struct {
+	Now   func() time.Time
+	Today func() time.Time
+	Log   func(string, ...any)
+}
+
+// LocalUsageStatistics 通过共享窗口缓存按需查询用量，处理并发回源和展示数据转换。
+type LocalUsageStatistics struct {
+	usageLogRepo LocalUsageStats
+	cache        *OAuthUsageCache
+	options      LocalUsageStatisticsOptions
+}
+
+func NewLocalUsageStatistics(reader LocalUsageStats, cache *OAuthUsageCache, options LocalUsageStatisticsOptions) *LocalUsageStatistics {
+	return &LocalUsageStatistics{reader, cache, options}
+}
+
 // GetWindowPair 优先合并窗口，读取器不支持或查询失败时分别读取以保留部分结果。
 func (s *LocalUsageStatistics) GetWindowPair(ctx context.Context, id int64, first, second time.Time) (*WindowStats, *WindowStats) {
 	if reader, ok := s.usageLogRepo.(LocalUsageStatsPair); ok {
@@ -50,23 +67,6 @@ func (s *LocalUsageStatistics) GetWindowPair(ctx context.Context, id int64, firs
 		b = normalizedLocalWindowStats(b)
 	}
 	return a, b
-}
-
-type LocalUsageStatisticsOptions struct {
-	Now   func() time.Time
-	Today func() time.Time
-	Log   func(string, ...any)
-}
-
-// LocalUsageStatistics 通过共享窗口缓存按需查询用量，处理并发回源和展示数据转换。
-type LocalUsageStatistics struct {
-	usageLogRepo LocalUsageStats
-	cache        *OAuthUsageCache
-	options      LocalUsageStatisticsOptions
-}
-
-func NewLocalUsageStatistics(reader LocalUsageStats, cache *OAuthUsageCache, options LocalUsageStatisticsOptions) *LocalUsageStatistics {
-	return &LocalUsageStatistics{reader, cache, options}
 }
 
 func normalizedLocalWindowStats(value *WindowStats) *WindowStats {

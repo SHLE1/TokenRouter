@@ -12,6 +12,9 @@ import (
 	usagecore "github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// 满额夹具通过 SQL 查询返回配额用量。
+type geminiFullLocalUsage struct{ usagecore.UsageLogRepository }
+
 func TestGeminiThirdPartyAPIKeySkipsLocalQuota(t *testing.T) {
 	ctx := context.Background()
 	quotaService := provider.NewGeminiQuotaService(provider.GeminiQuotaOptions{})
@@ -62,9 +65,6 @@ func TestGeminiThirdPartyAPIKeySkipsLocalQuota(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, thirdPartyAllowed)
 }
-
-// 满额夹具通过 SQL 查询返回配额用量。
-type geminiFullLocalUsage struct{ usagecore.UsageLogRepository }
 
 func (r *geminiFullLocalUsage) GetModelStatsWithFilters(context.Context, time.Time, time.Time, int64, int64, int64, int64, *int16, *bool, *int8) ([]usagecore.ModelStat, error) {
 	return []usagecore.ModelStat{{Model: "gemini-2.5-pro", Requests: 50}}, nil

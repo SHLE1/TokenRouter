@@ -33,7 +33,7 @@ func TestShuffleWithinSortGroups_DifferentGroups_OrderPreserved(t *testing.T) {
 	}
 
 	// 每个元素都属于不同组（Priority 或 LoadRate 或 LastUsedAt 不同），顺序不变
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		cpy := make([]BasicCandidate, len(providers))
 		copy(cpy, providers)
 		ShuffleWithinSortGroups(cpy)
@@ -57,7 +57,7 @@ func TestShuffleWithinSortGroups_SameGroup_Shuffled(t *testing.T) {
 
 	// 重复抽样检查首位候选会变化。
 	seen := map[int64]bool{}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		cpy := make([]BasicCandidate, len(providers))
 		copy(cpy, providers)
 		ShuffleWithinSortGroups(cpy)
@@ -81,7 +81,7 @@ func TestShuffleWithinSortGroups_NilLastUsedAt_SameGroup(t *testing.T) {
 	}
 
 	seen := map[int64]bool{}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		cpy := make([]BasicCandidate, len(providers))
 		copy(cpy, providers)
 		ShuffleWithinSortGroups(cpy)
@@ -105,7 +105,7 @@ func TestShuffleWithinSortGroups_MixedGroups(t *testing.T) {
 		{Provider: &BasicProvider{ID: 4, Priority: 2, LastUsedAt: &earlier}, Load: &ProviderLoadInfo{LoadRate: 10}},
 	}
 
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		cpy := make([]BasicCandidate, len(providers))
 		copy(cpy, providers)
 		ShuffleWithinSortGroups(cpy)
@@ -139,7 +139,7 @@ func TestShuffleWithinPriorityAndLastUsed_SameGroup_Shuffled(t *testing.T) {
 	}
 
 	seen := map[int64]bool{}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		cpy := make([]*BasicProvider, len(providers))
 		copy(cpy, providers)
 		ShuffleWithinPriorityAndLastUsed(cpy, false)
@@ -155,7 +155,7 @@ func TestShuffleWithinPriorityAndLastUsed_DifferentPriority_OrderPreserved(t *te
 		{ID: 3, Priority: 3, LastUsedAt: nil},
 	}
 
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		cpy := make([]*BasicProvider, len(providers))
 		copy(cpy, providers)
 		ShuffleWithinPriorityAndLastUsed(cpy, false)
@@ -175,7 +175,7 @@ func TestShuffleWithinPriorityAndLastUsed_DifferentLastUsedAt_OrderPreserved(t *
 		{ID: 3, Priority: 1, LastUsedAt: &now},
 	}
 
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		cpy := make([]*BasicProvider, len(providers))
 		copy(cpy, providers)
 		ShuffleWithinPriorityAndLastUsed(cpy, false)
@@ -281,7 +281,7 @@ func TestSortProvidersByPriorityAndLastUsed_WithShuffle(t *testing.T) {
 		}
 
 		seen := map[int64]bool{}
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			cpy := make([]*BasicProvider, len(providers))
 			copy(cpy, providers)
 			SortProvidersByPriorityAndLastUsed(cpy, false)
@@ -350,7 +350,7 @@ func TestSortProvidersByPriorityAndLastUsed_StableSort(t *testing.T) {
 	// sortProvidersByPriorityAndLastUsed 随机打散同一 Priority 和 LastUsedAt 的候选。
 	// 多次运行后元素集合应相同，并出现不同顺序。
 	seenFirst := map[int64]bool{}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		cpy := make([]*BasicProvider, len(providers))
 		copy(cpy, providers)
 		SortProvidersByPriorityAndLastUsed(cpy, false)
@@ -462,7 +462,7 @@ func TestSelectByLRU_TiePreferOAuth(t *testing.T) {
 		makeAccWithLoad(2, 1, 10, testTimePtr(now), capability.ProviderTypeOAuth),
 		makeAccWithLoad(3, 1, 10, testTimePtr(now.Add(1*time.Hour)), capability.ProviderTypeAPIKey),
 	}
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		result := SelectByLRU(providers, true)
 		require.NotNil(t, result)
 		require.Equal(t, capability.ProviderTypeOAuth, result.Provider.Type)
@@ -609,7 +609,7 @@ func TestSelectByLRU(t *testing.T) {
 		}
 		// 重复抽样检查随机结果属于候选集合。
 		validIDs := map[int64]bool{1: true, 2: true, 3: true}
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			result := SelectByLRU(providers, false)
 			require.NotNil(t, result)
 			require.True(t, validIDs[result.Provider.ID], "selected ID should be one of the candidates")
@@ -624,7 +624,7 @@ func TestSelectByLRU(t *testing.T) {
 		}
 		// 重复抽样检查首位候选会变化。
 		validIDs := map[int64]bool{1: true, 2: true}
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			result := SelectByLRU(providers, false)
 			require.NotNil(t, result)
 			require.True(t, validIDs[result.Provider.ID], "selected ID should be one of the candidates")
@@ -639,7 +639,7 @@ func TestSelectByLRU(t *testing.T) {
 		}
 		// preferOAuth 时，应该从 OAuth 类型中选择
 		oauthIDs := map[int64]bool{2: true, 3: true}
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			result := SelectByLRU(providers, true)
 			require.NotNil(t, result)
 			require.True(t, oauthIDs[result.Provider.ID], "should select from OAuth providers")
@@ -653,7 +653,7 @@ func TestSelectByLRU(t *testing.T) {
 		}
 		// 没有 OAuth 时，从所有候选中选择
 		validIDs := map[int64]bool{1: true, 2: true}
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			result := SelectByLRU(providers, true)
 			require.NotNil(t, result)
 			require.True(t, validIDs[result.Provider.ID])

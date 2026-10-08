@@ -13,6 +13,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic/oauth"
 )
 
+type mockClaudeOAuthClient struct {
+	getOrgUUIDFunc   func(ctx context.Context, sessionKey, proxyURL string) (string, error)
+	getAuthCodeFunc  func(ctx context.Context, sessionKey, orgUUID, scope, codeChallenge, state, proxyURL string) (string, error)
+	exchangeCodeFunc func(ctx context.Context, code, codeVerifier, state, proxyURL string, isSetupToken bool) (*oauth.TokenResponse, error)
+	refreshTokenFunc func(ctx context.Context, refreshToken, proxyURL string) (*oauth.TokenResponse, error)
+}
+
+type mockProxyRepoForOAuth struct {
+	getByIDFunc func(ctx context.Context, id int64) (*egress.Proxy, error)
+}
+
 func TestNewOAuthService(t *testing.T) {
 	t.Parallel()
 
@@ -541,13 +552,6 @@ func TestOAuthService_Stop_NoPanic(t *testing.T) {
 	stopClaudeAuthorization(t, svc)
 }
 
-type mockClaudeOAuthClient struct {
-	getOrgUUIDFunc   func(ctx context.Context, sessionKey, proxyURL string) (string, error)
-	getAuthCodeFunc  func(ctx context.Context, sessionKey, orgUUID, scope, codeChallenge, state, proxyURL string) (string, error)
-	exchangeCodeFunc func(ctx context.Context, code, codeVerifier, state, proxyURL string, isSetupToken bool) (*oauth.TokenResponse, error)
-	refreshTokenFunc func(ctx context.Context, refreshToken, proxyURL string) (*oauth.TokenResponse, error)
-}
-
 func (m *mockClaudeOAuthClient) GetOrganizationUUID(ctx context.Context, sessionKey, proxyURL string) (string, error) {
 	if m.getOrgUUIDFunc != nil {
 		return m.getOrgUUIDFunc(ctx, sessionKey, proxyURL)
@@ -574,10 +578,6 @@ func (m *mockClaudeOAuthClient) RefreshToken(ctx context.Context, refreshToken, 
 		return m.refreshTokenFunc(ctx, refreshToken, proxyURL)
 	}
 	panic("RefreshToken not implemented")
-}
-
-type mockProxyRepoForOAuth struct {
-	getByIDFunc func(ctx context.Context, id int64) (*egress.Proxy, error)
 }
 
 func (m *mockProxyRepoForOAuth) Create(ctx context.Context, proxy *egress.Proxy) error {

@@ -73,6 +73,22 @@ type DashboardAggregationService struct {
 	backfillBudget time.Duration
 }
 
+// NewDashboardAggregationService 创建聚合服务。
+func NewDashboardAggregationService(repo DashboardAggregationRepository, timingWheel TimingWheel, cfg *Options) *DashboardAggregationService {
+	var aggCfg DashboardAggregationConfig
+	if cfg != nil {
+		aggCfg = cfg.DashboardAgg
+	}
+	runCtx, runCancel := context.WithCancel(context.Background())
+	return &DashboardAggregationService{
+		reporter: usageReporter(cfg), runCtx: runCtx, runCancel: runCancel, stopDone: make(chan struct{}),
+		repo:        repo,
+		timingWheel: timingWheel,
+		cfg:         aggCfg,
+		instanceID:  uuid.NewString(),
+	}
+}
+
 // SetPreAggregationSettings 注入统一运行时配置，并在开启或修改周期时立即唤醒任务。
 func (s *DashboardAggregationService) SetPreAggregationSettings(settings AggregationSettings) {
 	if s == nil {
@@ -89,22 +105,6 @@ func (s *DashboardAggregationService) SetPreAggregationSettings(settings Aggrega
 				s.runBackground(s.runScheduledAggregation)
 			}
 		})
-	}
-}
-
-// NewDashboardAggregationService 创建聚合服务。
-func NewDashboardAggregationService(repo DashboardAggregationRepository, timingWheel TimingWheel, cfg *Options) *DashboardAggregationService {
-	var aggCfg DashboardAggregationConfig
-	if cfg != nil {
-		aggCfg = cfg.DashboardAgg
-	}
-	runCtx, runCancel := context.WithCancel(context.Background())
-	return &DashboardAggregationService{
-		reporter: usageReporter(cfg), runCtx: runCtx, runCancel: runCancel, stopDone: make(chan struct{}),
-		repo:        repo,
-		timingWheel: timingWheel,
-		cfg:         aggCfg,
-		instanceID:  uuid.NewString(),
 	}
 }
 
@@ -200,7 +200,7 @@ func (s *DashboardAggregationService) TriggerRecomputeRange(start, end time.Time
 
 	s.runBackground(func() {
 		const maxRetries = 3
-		for i := 0; i < maxRetries; i++ {
+		for range maxRetries {
 			ctx, cancel := context.WithTimeout(s.operationContext(), defaultDashboardAggregationBackfillTimeout)
 			err := s.recomputeRange(ctx, start, end)
 			cancel()
@@ -622,7 +622,7 @@ func (s *DashboardAggregationService) runHistoricalBackfill(ctx context.Context,
 	var previousIterationDuration time.Duration
 	state.Phase = "backfill"
 	_ = s.updateAnalyticsState(ctx, state, AnalyticsAutomaticProgress)
-	for processed := 0; processed < dashboardAggregationBackfillMaxHours; processed++ {
+	for processed := range dashboardAggregationBackfillMaxHours {
 		chunkStart := cursor.Add(-time.Hour)
 		if chunkStart.Before(oldestHour) {
 			chunkStart = oldestHour
@@ -692,7 +692,7 @@ func (s *DashboardAggregationService) runManualHistoricalBackfill(ctx context.Co
 	var previousIterationDuration time.Duration
 	state.Phase = "backfill"
 	_ = s.updateAnalyticsState(ctx, state, AnalyticsManualProgress)
-	for processed := 0; processed < dashboardAggregationBackfillMaxHours; processed++ {
+	for processed := range dashboardAggregationBackfillMaxHours {
 		chunkEnd := cursor
 		chunkStart := cursor.Add(-time.Hour)
 		if chunkStart.Before(target) {

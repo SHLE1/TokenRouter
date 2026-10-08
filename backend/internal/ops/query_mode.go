@@ -5,8 +5,6 @@ import (
 	"errors"
 )
 
-type OpsQueryMode string
-
 const (
 	OpsQueryModeAuto OpsQueryMode = "auto"
 	OpsQueryModeRaw  OpsQueryMode = "raw"
@@ -14,6 +12,8 @@ const (
 
 // ErrOpsPreaggregatedNotPopulated 表示目标窗口尚未形成完整的运维聚合覆盖。
 var ErrOpsPreaggregatedNotPopulated = errors.New("ops pre-aggregated tables not populated")
+
+type OpsQueryMode string
 
 func (m OpsQueryMode) IsValid() bool {
 	switch m {

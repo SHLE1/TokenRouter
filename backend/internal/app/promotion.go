@@ -18,6 +18,9 @@ import (
 	promotionpostgres "github.com/TokenFlux/TokenRouter/internal/promotion/postgres"
 )
 
+// identityPromotion 将推广档案操作结果转换为身份用例需要的成功或失败结果。
+type identityPromotion struct{ Service *promotion.AffiliateService }
+
 func providePromotionAffiliateStore(client *dbent.Client) promotion.AffiliateRepository {
 	return promotionpostgres.NewAffiliateRepository(client, func(tx *dbent.Tx) promotionpostgres.TransferBalance { return billingpostgres.BalanceInTx(tx) })
 }
@@ -27,9 +30,6 @@ func providePromotionAffiliate(repo promotion.AffiliateRepository, settings *pro
 		logging.LegacyPrintf("service.affiliate", "[Affiliate] Failed to invalidate billing cache for user %d: %v", id, err)
 	}})
 }
-
-// identityPromotion 将推广档案操作结果转换为身份用例需要的成功或失败结果。
-type identityPromotion struct{ Service *promotion.AffiliateService }
 
 func (p identityPromotion) EnsureUserAffiliate(ctx context.Context, id int64) error {
 	_, err := p.Service.EnsureUserAffiliate(ctx, id)

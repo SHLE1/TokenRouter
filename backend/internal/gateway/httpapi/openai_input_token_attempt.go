@@ -16,16 +16,16 @@ import (
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 )
 
-func (p OpenAITokenPorts) InputTokensExecution(c *gin.Context, call InputTokensCall) textflow.InputTokensPorts {
-	return &inputTokensAttemptBridge{ports: p, c: c, call: call, key: apikey.CopyAPIKey(call.Key)}
-}
-
 type inputTokensAttemptBridge struct {
 	ports     OpenAITokenPorts
 	c         *gin.Context
 	call      InputTokensCall
 	key       *apikey.APIKey
 	selection InputTokensSelection
+}
+
+func (p OpenAITokenPorts) InputTokensExecution(c *gin.Context, call InputTokensCall) textflow.InputTokensPorts {
+	return &inputTokensAttemptBridge{ports: p, c: c, call: call, key: apikey.CopyAPIKey(call.Key)}
 }
 
 func (p *inputTokensAttemptBridge) Context() context.Context { return p.c.Request.Context() }

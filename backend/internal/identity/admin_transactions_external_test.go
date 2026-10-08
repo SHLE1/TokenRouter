@@ -11,6 +11,21 @@ import (
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 )
 
+// deleteUserKeysStub 记录删除用户时读取的 Key 列表和删除操作。
+type deleteUserKeysStub struct {
+	identity.AdminKeyReader
+	identity.AdminKeyParticipant
+	listByUserIDKeys  []identity.AdminKeySummary
+	listByUserIDCalls []int64
+	deletedIDs        []int64
+}
+
+// deleteUserInvalidator 记录成功删除后身份与各 Key 的失效。
+type deleteUserInvalidator struct {
+	userIDs []int64
+	keys    []string
+}
+
 func TestAdminService_DeleteUser_Success(t *testing.T) {
 	repo := &userRepoStub{user: &identity.User{ID: 7, Role: identity.RoleUser}}
 	svc := newDeleteUserAdminForTest(repo, nil, nil)
@@ -38,15 +53,6 @@ func TestAdminService_DeleteUser_DeletesOwnedAPIKeys(t *testing.T) {
 	require.Equal(t, []int64{11, 12}, apiKeyRepo.deletedIDs)
 	require.ElementsMatch(t, []string{"sk-user-1", "sk-user-2"}, invalidator.keys)
 	require.Equal(t, []int64{7}, invalidator.userIDs)
-}
-
-// deleteUserKeysStub 记录删除用户时读取的 Key 列表和删除操作。
-type deleteUserKeysStub struct {
-	identity.AdminKeyReader
-	identity.AdminKeyParticipant
-	listByUserIDKeys  []identity.AdminKeySummary
-	listByUserIDCalls []int64
-	deletedIDs        []int64
 }
 
 func (s *deleteUserKeysStub) List(_ context.Context, userID int64, page, pageSize int, _, _ string) ([]identity.AdminKeySummary, int64, error) {
@@ -99,12 +105,6 @@ func newDeleteUserAdminForTest(users identity.UserRepository, keys *deleteUserKe
 		d.Keys = keys
 	}
 	return identity.NewUserAdmin(d)
-}
-
-// deleteUserInvalidator 记录成功删除后身份与各 Key 的失效。
-type deleteUserInvalidator struct {
-	userIDs []int64
-	keys    []string
 }
 
 func (s *deleteUserInvalidator) InvalidateAuthCacheByUserID(_ context.Context, id int64) {

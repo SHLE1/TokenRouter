@@ -382,19 +382,19 @@ func (p *OpenAIResponseOutput) ResponseError(
 	var statusCode int
 
 	switch resp.StatusCode {
-	case 401:
+	case http.StatusUnauthorized:
 		statusCode = http.StatusBadGateway
 		errType = "upstream_error"
 		errMsg = "Upstream authentication failed, please contact administrator"
-	case 402:
+	case http.StatusPaymentRequired:
 		statusCode = http.StatusBadGateway
 		errType = "upstream_error"
 		errMsg = "Upstream payment required: insufficient balance or billing issue"
-	case 403:
+	case http.StatusForbidden:
 		statusCode = http.StatusBadGateway
 		errType = "upstream_error"
 		errMsg = "Upstream access forbidden, please contact administrator"
-	case 429:
+	case http.StatusTooManyRequests:
 		statusCode = http.StatusTooManyRequests
 		errType = "rate_limit_error"
 		errMsg = "Upstream rate limit exceeded, please retry later"
@@ -572,11 +572,11 @@ func (p *OpenAIResponseOutput) CompatError(
 	// 按既有状态码映射写出兼容协议错误。
 	errType := "api_error"
 	switch {
-	case resp.StatusCode == 400:
+	case resp.StatusCode == http.StatusBadRequest:
 		errType = "invalid_request_error"
-	case resp.StatusCode == 404:
+	case resp.StatusCode == http.StatusNotFound:
 		errType = "not_found_error"
-	case resp.StatusCode == 429:
+	case resp.StatusCode == http.StatusTooManyRequests:
 		errType = "rate_limit_error"
 	case resp.StatusCode >= 500:
 		errType = "api_error"

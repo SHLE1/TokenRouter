@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity"
 	captcha "github.com/alibabacloud-go/captcha-20230305/client"
 	openapiutil "github.com/alibabacloud-go/darabonba-openapi/v2/utils"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
 const aliyunCaptchaTimeoutMillis = 10_000

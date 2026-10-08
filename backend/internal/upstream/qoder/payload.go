@@ -19,7 +19,24 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-var QoderClaudeBillingCCHRe = regexp.MustCompile(`(x-anthropic-billing-header:[^\n\r;]*?(?:;[^\n\r;]*?)*\bcch=)[0-9a-fA-F]{5}(;)`)
+var (
+	QoderClaudeBillingCCHRe = regexp.MustCompile(`(x-anthropic-billing-header:[^\n\r;]*?(?:;[^\n\r;]*?)*\bcch=)[0-9a-fA-F]{5}(;)`)
+
+	QoderBlankResponseMeta = map[string]any{
+		"id": "",
+		"usage": map[string]any{
+			"prompt_tokens":     0,
+			"completion_tokens": 0,
+			"total_tokens":      0,
+			"completion_tokens_details": map[string]any{
+				"reasoning_tokens": 0,
+			},
+			"prompt_tokens_details": map[string]any{
+				"cached_tokens": 0,
+			},
+		},
+	}
+)
 
 // QoderThinkingDirective 表示下游思考参数归一化后的开关和等级。
 type QoderThinkingDirective struct {
@@ -552,21 +569,6 @@ func QoderBasePayload() map[string]any {
 		"messages": []any{},
 		"tools":    []any{},
 	}
-}
-
-var QoderBlankResponseMeta = map[string]any{
-	"id": "",
-	"usage": map[string]any{
-		"prompt_tokens":     0,
-		"completion_tokens": 0,
-		"total_tokens":      0,
-		"completion_tokens_details": map[string]any{
-			"reasoning_tokens": 0,
-		},
-		"prompt_tokens_details": map[string]any{
-			"cached_tokens": 0,
-		},
-	},
 }
 
 func QoderPayloadMessage(role, text string) map[string]any {

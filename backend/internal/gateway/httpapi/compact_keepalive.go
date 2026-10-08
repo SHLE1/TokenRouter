@@ -11,11 +11,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// openAIStreamKeepaliveBytesContextKey 是 Responses SSE 心跳字节数的上下文键。
-const openAIStreamKeepaliveBytesContextKey = "openai_stream_keepalive_bytes"
+const (
+	// openAIStreamKeepaliveBytesContextKey 是 Responses SSE 心跳字节数的上下文键。
+	openAIStreamKeepaliveBytesContextKey = "openai_stream_keepalive_bytes"
 
-// openAICompactSSEKeepaliveKey 存放 body-signal compact 请求的下游 SSE 心跳器。
-const openAICompactSSEKeepaliveKey = "openai_compact_sse_keepalive"
+	// openAICompactSSEKeepaliveKey 存放 body-signal compact 请求的下游 SSE 心跳器。
+	openAICompactSSEKeepaliveKey = "openai_compact_sse_keepalive"
+)
 
 // openAICompactSSEKeepalive 在等待 Compact 上游 JSON 时发送 SSE 注释心跳。
 // 大上下文处理可能持续数分钟，Nginx 或 Cloudflare Tunnel 的空闲超时会中断静默连接，Codex 重连会重复消耗压缩配额（#3887）。
@@ -30,6 +32,13 @@ type openAICompactSSEKeepalive struct {
 	// OpenAICompactKeepaliveAdjustedWrittenSize 会扣除这些字节。
 	bytes int
 	stop  chan struct{}
+}
+
+// compactKeepaliveWriter 包装 gin.ResponseWriter，写方法在互斥锁下停止心跳，读方法加锁读取状态。
+// Forward 前读取 Size 时心跳继续运行。心跳 goroutine 直接写入内层 k.writer。
+type compactKeepaliveWriter struct {
+	gin.ResponseWriter
+	k *openAICompactSSEKeepalive
 }
 
 // StartOpenAICompactSSEKeepalive 为标记为 body-signal 客户端流式的 Compact 请求启动心跳，返回幂等停止函数。
@@ -183,13 +192,6 @@ func OpenAICompactKeepaliveAdjustedWrittenSize(c *gin.Context) int {
 		return real
 	}
 	return -1
-}
-
-// compactKeepaliveWriter 包装 gin.ResponseWriter，写方法在互斥锁下停止心跳，读方法加锁读取状态。
-// Forward 前读取 Size 时心跳继续运行。心跳 goroutine 直接写入内层 k.writer。
-type compactKeepaliveWriter struct {
-	gin.ResponseWriter
-	k *openAICompactSSEKeepalive
 }
 
 // suspend 在请求开始构造响应时停止心跳，重复调用安全。Header 访问也会触发停止。

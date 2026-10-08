@@ -48,7 +48,7 @@ func (h *PlanHandler) GetPlans(c *gin.Context) {
 	for _, p := range plans {
 		result = append(result, planWithPlatform{
 			Resolution:           p.Resolution,
-			ID:                   int64(p.ID),
+			ID:                   p.ID,
 			Name:                 p.Name,
 			Description:          p.Description,
 			Price:                p.Price,

@@ -8,15 +8,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// AdminSettings 保存团队功能的启用设置。
-type AdminSettings struct {
-	TeamEnabled bool `json:"team_enabled"`
-}
-
 // SettingKeyTeamEnabled 是团队功能的设置键。
 const (
 	SettingKeyTeamEnabled = "team_enabled"
 )
+
+// AdminSettings 保存团队功能的启用设置。
+type AdminSettings struct {
+	TeamEnabled bool `json:"team_enabled"`
+}
 
 // PrepareAdminSettings 将团队启用状态编码为设置键值。
 func PrepareAdminSettings(value AdminSettings) (AdminSettings, map[string]string, error) {

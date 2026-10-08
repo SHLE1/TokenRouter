@@ -6,6 +6,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// benchmarkOpenAIWSBytesSink 保存模型替换基准的结果。
+var benchmarkOpenAIWSBytesSink []byte
+
 func TestOpenAIWSPayloadString_OnlyAcceptsStringValues(t *testing.T) {
 	payload := map[string]any{
 		"type":                 nil,
@@ -85,7 +88,6 @@ func TestIsOpenAIWSTokenEvent_TerminalEventsExcluded(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := IsWSTokenEvent(tc.eventType)
 			require.Equal(t, tc.want, got, "isOpenAIWSTokenEvent(%q)", tc.eventType)
@@ -105,7 +107,6 @@ func TestIsOpenAIWSTokenEvent_DisjointWithTerminal(t *testing.T) {
 		"response.canceled",
 	}
 	for _, ev := range terminalEvents {
-		ev := ev
 		t.Run(ev, func(t *testing.T) {
 			require.True(t, IsWSTerminalEvent(ev), "expected terminal event %q to be classified as terminal", ev)
 			require.False(t, IsWSTokenEvent(ev), "terminal event %q must NOT be classified as token event (issue #2651)", ev)
@@ -118,7 +119,7 @@ func BenchmarkReplaceOpenAIWSMessageModel_NoMatchFastPath(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkOpenAIWSBytesSink = ReplaceWSMessageModel(event, "gpt-5.1", "custom-model")
 	}
 }
@@ -128,10 +129,7 @@ func BenchmarkReplaceOpenAIWSMessageModel_DualReplace(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		benchmarkOpenAIWSBytesSink = ReplaceWSMessageModel(event, "gpt-5.1", "custom-model")
 	}
 }
-
-// benchmarkOpenAIWSBytesSink 保存模型替换基准的结果。
-var benchmarkOpenAIWSBytesSink []byte

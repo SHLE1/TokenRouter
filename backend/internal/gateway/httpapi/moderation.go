@@ -18,6 +18,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+const (
+	CyberWarningRecordedKey      = "openai_cyber_warning_recorded"
+	CyberWarningSnapshotKey      = "openai_cyber_warning_snapshot"
+	CyberWarningPromptExcerptKey = "openai_cyber_warning_prompt_excerpt"
+)
+
 type ModerationEndpoints interface {
 	Inbound(*gin.Context) string
 	Forced(*gin.Context) (string, bool)
@@ -30,11 +36,10 @@ type ModerationPort interface {
 	CyberSessionBlockGroupInScope(context.Context, *int64) (bool, error)
 }
 
-const (
-	CyberWarningRecordedKey      = "openai_cyber_warning_recorded"
-	CyberWarningSnapshotKey      = "openai_cyber_warning_snapshot"
-	CyberWarningPromptExcerptKey = "openai_cyber_warning_prompt_excerpt"
-)
+type ContentModerationIdentity = moderationflow.Identity
+
+// GatewayModerationEndpoints 读取请求路由和强制平台。
+type GatewayModerationEndpoints struct{}
 
 func ContentModerationStatus(decision *moderation.ContentModerationDecision) int {
 	if decision == nil || decision.StatusCode < 400 || decision.StatusCode > 599 {
@@ -262,8 +267,6 @@ func BuildContentModerationInput(endpoints ModerationEndpoints, c *gin.Context, 
 	return input
 }
 
-type ContentModerationIdentity = moderationflow.Identity
-
 func ResolveContentModerationIdentity(key *apikey.APIKey, subject authctx.AuthSubject) ContentModerationIdentity {
 	return moderationflow.ResolveIdentity(key, subject.UserID)
 }
@@ -292,9 +295,6 @@ func ContentModerationRequestID(ctx context.Context) string {
 	}
 	return ""
 }
-
-// GatewayModerationEndpoints 读取请求路由和强制平台。
-type GatewayModerationEndpoints struct{}
 
 func (GatewayModerationEndpoints) Inbound(c *gin.Context) string { return GetInboundEndpoint(c) }
 

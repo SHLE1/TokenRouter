@@ -17,6 +17,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// 死锁重试始终复用 infra 的完整操作闭包机制。
+const postgresDeadlockMaxAttempts = infra.DeadlockMaxAttempts
+
 type (
 	sqlExecutor = infra.Executor
 	sqlQueryer  = infra.Queryer
@@ -66,9 +69,6 @@ func apiKeyEntityToService(m *ent.APIKey) *usage.KeyView {
 	}
 	return querycache.Clone(out)
 }
-
-// 死锁重试始终复用 infra 的完整操作闭包机制。
-const postgresDeadlockMaxAttempts = infra.DeadlockMaxAttempts
 
 func retryPostgresDeadlock[T any](ctx context.Context, operation string, size int, fn func() (T, error)) (T, error) {
 	return infra.RetryDeadlock(ctx, operation, size, fn)

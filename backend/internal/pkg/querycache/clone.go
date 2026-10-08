@@ -59,14 +59,14 @@ func cloneValue(v reflect.Value) reflect.Value {
 			return v
 		}
 		out := reflect.MakeSlice(v.Type(), v.Len(), v.Len())
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			out.Index(i).Set(cloneValue(v.Index(i)))
 		}
 		return out
 	case reflect.Struct:
 		out := reflect.New(v.Type()).Elem()
 		out.Set(v)
-		for i := 0; i < v.NumField(); i++ {
+		for i := range v.NumField() {
 			if v.Type().Field(i).IsExported() {
 				out.Field(i).Set(cloneValue(v.Field(i)))
 			}

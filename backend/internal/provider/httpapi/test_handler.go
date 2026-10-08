@@ -16,10 +16,6 @@ type TestHandler struct {
 	recover func(context.Context, int64) error
 }
 
-func NewTestHandler(tests *provider.TestService, recover func(context.Context, int64) error) *TestHandler {
-	return &TestHandler{tests: tests, recover: recover}
-}
-
 // TestProviderRequest 表示提供商连接测试的请求体。
 type TestProviderRequest struct {
 	ModelID string `json:"model_id"`
@@ -31,6 +27,10 @@ type TestProviderRequest struct {
 	TestType string `json:"test_type"`
 	// TestMode 兼容早期客户端使用的字段名，优先级低于 test_type。
 	TestMode string `json:"test_mode"`
+}
+
+func NewTestHandler(tests *provider.TestService, recover func(context.Context, int64) error) *TestHandler {
+	return &TestHandler{tests: tests, recover: recover}
 }
 
 // Test handles testing provider connectivity with SSE streaming

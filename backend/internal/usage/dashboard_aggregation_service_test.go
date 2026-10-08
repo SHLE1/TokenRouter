@@ -14,12 +14,67 @@ import (
 	p "github.com/TokenFlux/TokenRouter/internal/settings/preaggregation"
 )
 
+const SettingKeyPreAggregationSettings = p.SettingKeyPreAggregationSettings
+
 type blockingAggregation struct {
 	DashboardAggregationRepository
 	entered  chan struct{}
 	release  chan struct{}
 	canceled atomic.Bool
 }
+
+// stateRepo 控制手工回填读取状态的时点，用于交错实时进度写入。
+type stateRepo struct {
+	UsageAnalyticsAggregationRepository
+	mu      sync.Mutex
+	state   UsageAnalyticsAggregationState
+	reads   atomic.Int32
+	entered chan struct{}
+	release chan struct{}
+}
+
+type dashboardAggregationRepoTestStub struct {
+	aggregateCalls       int
+	aggregateRanges      []aggregationRangeCall
+	recomputeCalls       int
+	cleanupUsageCalls    int
+	cleanupDedupCalls    int
+	ensurePartitionCalls int
+	lastStart            time.Time
+	lastEnd              time.Time
+	watermark            time.Time
+	aggregateErr         error
+	cleanupAggregatesErr error
+	cleanupUsageErr      error
+	cleanupDedupErr      error
+	ensurePartitionErr   error
+	aggregateStarted     chan struct{}
+}
+
+type aggregationRangeCall struct {
+	start time.Time
+	end   time.Time
+}
+
+type usageAnalyticsAggregationRepoTestStub struct {
+	state          UsageAnalyticsAggregationState
+	oldest         *time.Time
+	aggregateCalls []aggregationRangeCall
+	hourlyCalls    []aggregationRangeCall
+	dailyCalls     []aggregationRangeCall
+	recomputeCalls []aggregationRangeCall
+	hourlyCallback func(context.Context, time.Time, time.Time) error
+	dailyCallback  func(context.Context, time.Time, time.Time) error
+}
+
+type (
+	PreAggregationUsageSettings = p.PreAggregationUsageSettings
+	PreAggregationOpsSettings   = p.PreAggregationOpsSettings
+	runtimeSettingRepoStub      struct {
+		mu     sync.Mutex
+		values map[string]string
+	}
+)
 
 func (r *blockingAggregation) RecomputeRange(ctx context.Context, a, b time.Time) error {
 	close(r.entered)
@@ -52,16 +107,6 @@ func TestRegressionAggregationStopCancelsWork(t *testing.T) {
 	if !r.canceled.Load() {
 		t.Error("aggregation context was never canceled")
 	}
-}
-
-// stateRepo 控制手工回填读取状态的时点，用于交错实时进度写入。
-type stateRepo struct {
-	UsageAnalyticsAggregationRepository
-	mu      sync.Mutex
-	state   UsageAnalyticsAggregationState
-	reads   atomic.Int32
-	entered chan struct{}
-	release chan struct{}
 }
 
 func (r *stateRepo) GetUsageAnalyticsAggregationState(context.Context) (*UsageAnalyticsAggregationState, error) {
@@ -115,24 +160,6 @@ func (r *stateRepo) ApplyUsageAnalyticsState(_ context.Context, c AnalyticsState
 	return &v, nil
 }
 
-type dashboardAggregationRepoTestStub struct {
-	aggregateCalls       int
-	aggregateRanges      []aggregationRangeCall
-	recomputeCalls       int
-	cleanupUsageCalls    int
-	cleanupDedupCalls    int
-	ensurePartitionCalls int
-	lastStart            time.Time
-	lastEnd              time.Time
-	watermark            time.Time
-	aggregateErr         error
-	cleanupAggregatesErr error
-	cleanupUsageErr      error
-	cleanupDedupErr      error
-	ensurePartitionErr   error
-	aggregateStarted     chan struct{}
-}
-
 func (s *dashboardAggregationRepoTestStub) AggregateRange(ctx context.Context, start, end time.Time) error {
 	s.aggregateCalls++
 	s.aggregateRanges = append(s.aggregateRanges, aggregationRangeCall{start: start, end: end})
@@ -145,22 +172,6 @@ func (s *dashboardAggregationRepoTestStub) AggregateRange(ctx context.Context, s
 		}
 	}
 	return s.aggregateErr
-}
-
-type aggregationRangeCall struct {
-	start time.Time
-	end   time.Time
-}
-
-type usageAnalyticsAggregationRepoTestStub struct {
-	state          UsageAnalyticsAggregationState
-	oldest         *time.Time
-	aggregateCalls []aggregationRangeCall
-	hourlyCalls    []aggregationRangeCall
-	dailyCalls     []aggregationRangeCall
-	recomputeCalls []aggregationRangeCall
-	hourlyCallback func(context.Context, time.Time, time.Time) error
-	dailyCallback  func(context.Context, time.Time, time.Time) error
 }
 
 func (s *usageAnalyticsAggregationRepoTestStub) AggregateUsageAnalyticsRange(_ context.Context, start, end time.Time) error {
@@ -732,17 +743,6 @@ func (s *usageAnalyticsAggregationRepoTestStub) ApplyUsageAnalyticsState(_ conte
 	s.state = v
 	return &v, nil
 }
-
-const SettingKeyPreAggregationSettings = p.SettingKeyPreAggregationSettings
-
-type (
-	PreAggregationUsageSettings = p.PreAggregationUsageSettings
-	PreAggregationOpsSettings   = p.PreAggregationOpsSettings
-	runtimeSettingRepoStub      struct {
-		mu     sync.Mutex
-		values map[string]string
-	}
-)
 
 func newRuntimeSettingRepoStub() *runtimeSettingRepoStub {
 	return &runtimeSettingRepoStub{values: map[string]string{}}

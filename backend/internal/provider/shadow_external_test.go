@@ -23,6 +23,17 @@ type sparkShadowGroupRepoStub struct {
 	groups []routing.Group
 }
 
+// bindFailRepoStub 让 BindGroups 失败,用于验证绑组失败时补偿删除刚建的影子。
+type bindFailRepoStub struct {
+	*sparkShadowRepoStub
+}
+
+// raceCreateRepoStub 模拟并发竞态:对影子的 Create 撞一母一影唯一索引(返回错误),
+// 且复查时另一并发请求的影子已存在 → CreateShadow 应映射为结构化 409。
+type raceCreateRepoStub struct {
+	*sparkShadowRepoStub
+}
+
 func (s *sparkShadowGroupRepoStub) ListActive(_ context.Context) ([]routing.Group, error) {
 	return s.groups, nil
 }
@@ -69,11 +80,6 @@ func TestCreateShadow_InheritsParentGroups(t *testing.T) {
 	shadow, err := svc.CreateShadow(ctx, parent.ID, providercore.ShadowOptions{Name: "grp-shadow"})
 	require.NoError(t, err)
 	require.Equal(t, []int64{11, 22}, repo.groupsOf[shadow.ID], "未指定分组应继承母提供商分组,而非 openai-default")
-}
-
-// bindFailRepoStub 让 BindGroups 失败,用于验证绑组失败时补偿删除刚建的影子。
-type bindFailRepoStub struct {
-	*sparkShadowRepoStub
 }
 
 func (s *bindFailRepoStub) BindGroups(_ context.Context, _ int64, _ []int64) error {
@@ -341,15 +347,8 @@ func TestCreateShadow_StructuredErrors(t *testing.T) {
 	})
 }
 
-// raceCreateRepoStub 模拟并发竞态:对影子的 Create 撞一母一影唯一索引(返回错误),
-// 且复查时另一并发请求的影子已存在 → CreateShadow 应映射为结构化 409。
-type raceCreateRepoStub struct {
-	*sparkShadowRepoStub
-}
-
 func (s *raceCreateRepoStub) Create(ctx context.Context, provider *providercore.Record) error {
 	if provider.ParentProviderID != nil {
-
 		s.nextID++
 		phantom := *provider
 		phantom.ID = s.nextID

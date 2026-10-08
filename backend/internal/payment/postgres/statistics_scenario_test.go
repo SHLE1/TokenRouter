@@ -15,6 +15,23 @@ import (
 	sqlitetest "github.com/TokenFlux/TokenRouter/internal/testutil/sqlite"
 )
 
+type paymentStatsOrderSeed struct {
+	userID       int64
+	userEmail    string
+	userName     string
+	paymentType  string
+	orderType    string
+	status       string
+	amount       float64
+	payAmount    float64
+	feeAmount    float64
+	paidAt       time.Time
+	tradeNo      string
+	planID       *int64
+	planName     string
+	monthlyLimit *float64
+}
+
 func TestPaymentDashboardStatsWithRangeBuildsPurchaseDistribution(t *testing.T) {
 	ctx := context.Background()
 	client := sqlitetest.NewClient(t)
@@ -329,23 +346,6 @@ func findPurchaseDistributionStat(t *testing.T, items []payment.PurchaseDistribu
 	}
 	t.Fatalf("purchase distribution item %q not found", itemType)
 	return payment.PurchaseDistributionStat{}
-}
-
-type paymentStatsOrderSeed struct {
-	userID       int64
-	userEmail    string
-	userName     string
-	paymentType  string
-	orderType    string
-	status       string
-	amount       float64
-	payAmount    float64
-	feeAmount    float64
-	paidAt       time.Time
-	tradeNo      string
-	planID       *int64
-	planName     string
-	monthlyLimit *float64
 }
 
 func createPaidPaymentStatsOrder(t *testing.T, ctx context.Context, client *dbent.Client, seed paymentStatsOrderSeed) {

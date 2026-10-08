@@ -43,6 +43,12 @@ type EmailQueueService struct {
 	stopped      bool
 }
 
+// TaskProcessor 在原 worker 时点准备身份邮件，不把令牌提前生成到入队时。
+type TaskProcessor interface {
+	SendVerifyCode(context.Context, string, string, ...string) error
+	SendPasswordResetEmailWithCooldown(context.Context, string, string, string, ...string) error
+}
+
 // NewEmailQueueService 创建邮件队列服务
 func NewEmailQueueService(emailService TaskProcessor, workers int) *EmailQueueService {
 	if workers <= 0 {
@@ -71,7 +77,7 @@ func (s *EmailQueueService) Start() {
 		return
 	}
 	s.started = true
-	for i := 0; i < s.workers; i++ {
+	for i := range s.workers {
 		s.wg.Add(1)
 		go s.worker(i)
 	}
@@ -197,12 +203,6 @@ func (s *EmailQueueService) StopContext(ctx context.Context) error {
 	s.lifecycleMu.RLock()
 	defer s.lifecycleMu.RUnlock()
 	return s.stopErr
-}
-
-// TaskProcessor 在原 worker 时点准备身份邮件，不把令牌提前生成到入队时。
-type TaskProcessor interface {
-	SendVerifyCode(context.Context, string, string, ...string) error
-	SendPasswordResetEmailWithCooldown(context.Context, string, string, string, ...string) error
 }
 
 func firstEmailLocale(values []string) string {

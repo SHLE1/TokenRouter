@@ -13,6 +13,17 @@ type oauthCaptchaSettingRepo struct {
 	values map[string]string
 }
 
+type oauthCaptchaVerifier struct {
+	calls int
+	proof identity.TencentCaptchaProof
+}
+
+// captchaRuntimeFixture 提供验证码设置，调用嵌入接口中的其他方法会使测试失败。
+type captchaRuntimeFixture struct {
+	identity.AuthSettings
+	runtime *identity.RuntimeSettings
+}
+
 func (r *oauthCaptchaSettingRepo) Get(context.Context, string) (*settingscore.Setting, error) {
 	return nil, settingscore.ErrSettingNotFound
 }
@@ -46,11 +57,6 @@ func (r *oauthCaptchaSettingRepo) GetAll(context.Context) (map[string]string, er
 }
 
 func (r *oauthCaptchaSettingRepo) Delete(context.Context, string) error { return nil }
-
-type oauthCaptchaVerifier struct {
-	calls int
-	proof identity.TencentCaptchaProof
-}
 
 func (v *oauthCaptchaVerifier) VerifyTicket(_ context.Context, _ identity.TencentCaptchaCredentials, proof identity.TencentCaptchaProof, _ string) (*identity.TencentCaptchaVerifyResponse, error) {
 	v.calls++
@@ -95,12 +101,6 @@ func oauthStartHandlers() map[string]func(*AuthenticationHandler, *gin.Context) 
 		"wechat":   func(h *AuthenticationHandler, c *gin.Context) { h.WeChatOAuthStart(c) },
 		"oidc":     func(h *AuthenticationHandler, c *gin.Context) { h.OIDCOAuthStart(c) },
 	}
-}
-
-// captchaRuntimeFixture 提供验证码设置，调用嵌入接口中的其他方法会使测试失败。
-type captchaRuntimeFixture struct {
-	identity.AuthSettings
-	runtime *identity.RuntimeSettings
 }
 
 func (s captchaRuntimeFixture) GetCaptchaProviderConfig(ctx context.Context) (identity.CaptchaProviderConfig, error) {

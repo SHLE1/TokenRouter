@@ -17,6 +17,24 @@ type delayedCloseConn struct {
 	release chan struct{}
 }
 
+// wsAcquireTestResult 将后台获取结果送回测试协程。
+type wsAcquireTestResult struct {
+	lease *WSConnLease
+	err   error
+}
+
+type openAIWSCountingDialer struct {
+	mu             sync.Mutex
+	dialCount      int
+	lastTLSProfile *tlsfingerprint.Profile
+}
+
+type openAIWSFakeConn struct {
+	mu      sync.Mutex
+	closed  bool
+	payload [][]byte
+}
+
 func (c *delayedCloseConn) Close() error {
 	close(c.entered)
 	<-c.release
@@ -53,12 +71,6 @@ func newWSReuseTestPool(capacity, idle int) (*WSConnPool, WSAcquireRequest) {
 	}
 }
 
-// wsAcquireTestResult 将后台获取结果送回测试协程。
-type wsAcquireTestResult struct {
-	lease *WSConnLease
-	err   error
-}
-
 // acquireWSInBackground 启动一次有取消预算的连接获取。
 func acquireWSInBackground(pool *WSConnPool, ctx context.Context, req WSAcquireRequest) <-chan wsAcquireTestResult {
 	result := make(chan wsAcquireTestResult, 1)
@@ -67,12 +79,6 @@ func acquireWSInBackground(pool *WSConnPool, ctx context.Context, req WSAcquireR
 		result <- wsAcquireTestResult{lease: lease, err: err}
 	}()
 	return result
-}
-
-type openAIWSCountingDialer struct {
-	mu             sync.Mutex
-	dialCount      int
-	lastTLSProfile *tlsfingerprint.Profile
 }
 
 func (d *openAIWSCountingDialer) Dial(
@@ -103,12 +109,6 @@ func (d *openAIWSCountingDialer) LastTLSProfile() *tlsfingerprint.Profile {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.lastTLSProfile
-}
-
-type openAIWSFakeConn struct {
-	mu      sync.Mutex
-	closed  bool
-	payload [][]byte
 }
 
 func (c *openAIWSFakeConn) WriteJSON(ctx context.Context, value any) error {

@@ -22,10 +22,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/migrations"
 )
 
-// integrationDB 连接测试容器，测试进程退出前关闭连接和容器。
-var integrationDB *sql.DB
+var (
+	// integrationDB 连接测试容器，测试进程退出前关闭连接和容器。
+	integrationDB *sql.DB
 
-var integrationEntClient *dbent.Client
+	integrationEntClient *dbent.Client
+)
 
 func TestMain(m *testing.M) { os.Exit(runPostgresTests(m)) }
 

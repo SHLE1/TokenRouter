@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/httpapi/dto"
 	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
@@ -15,7 +17,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 // APIKeyHandler 只持有 Key 用例与路由展示端口；分组算法和容量查询仍由其原所有者提供。
@@ -29,29 +30,6 @@ type APIKeyHandler[G any] struct {
 }
 type GroupCapacityReader interface {
 	GetGroupCapacityByIDs(context.Context, []int64) (map[int64]accessview.GroupCapacitySummary, error)
-}
-
-func NewAPIKeyHandler[G any](keys *apikey.APIKeyService, present func(*routing.Group, *accessview.GroupCapacitySummary) *G) *APIKeyHandler[G] {
-	return &APIKeyHandler[G]{apiKeyService: keys, presentGroup: present}
-}
-
-// SetGroupPresentation 设置已授权控制台查询的分组展示函数。
-func (h *APIKeyHandler[G]) SetGroupPresentation(present func(context.Context, *routing.Group, *accessview.GroupCapacitySummary) *G) {
-	h.groupPresentation = present
-}
-
-func (h *APIKeyHandler[G]) SetGroupCapacityService(c GroupCapacityReader) { h.groupCapacityService = c }
-
-func (h *APIKeyHandler[G]) keyResponse(k *apikey.APIKey, language string) *dto.APIKey[G] {
-	return dto.APIKeyFromKey(k, func(g *routing.Group) *G {
-		if g != nil {
-			copy := routing.CloneGroup(g)
-			display, _ := routing.GroupDisplay(g, language)
-			copy.DisplayName, copy.Description = display.DisplayName, display.Description
-			return h.presentGroup(copy, nil)
-		}
-		return h.presentGroup(g, nil)
-	})
 }
 
 // CreateAPIKeyRequest represents the create API key request payload
@@ -120,6 +98,39 @@ type ApiKeyLimitInput struct {
 	value *float64
 }
 
+// APIKeyBillingSubscriptionOptionResponse 是前端选择指定订阅时使用的安全摘要。
+type APIKeyBillingSubscriptionOptionResponse struct {
+	ID               int64     `json:"id"`
+	PlanID           int64     `json:"plan_id"`
+	PlanName         string    `json:"plan_name"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	GroupsRestricted bool      `json:"groups_restricted"`
+	ApplicableGroups []int64   `json:"applicable_groups"`
+}
+
+func NewAPIKeyHandler[G any](keys *apikey.APIKeyService, present func(*routing.Group, *accessview.GroupCapacitySummary) *G) *APIKeyHandler[G] {
+	return &APIKeyHandler[G]{apiKeyService: keys, presentGroup: present}
+}
+
+// SetGroupPresentation 设置已授权控制台查询的分组展示函数。
+func (h *APIKeyHandler[G]) SetGroupPresentation(present func(context.Context, *routing.Group, *accessview.GroupCapacitySummary) *G) {
+	h.groupPresentation = present
+}
+
+func (h *APIKeyHandler[G]) SetGroupCapacityService(c GroupCapacityReader) { h.groupCapacityService = c }
+
+func (h *APIKeyHandler[G]) keyResponse(k *apikey.APIKey, language string) *dto.APIKey[G] {
+	return dto.APIKeyFromKey(k, func(g *routing.Group) *G {
+		if g != nil {
+			copy := routing.CloneGroup(g)
+			display, _ := routing.GroupDisplay(g, language)
+			copy.DisplayName, copy.Description = display.DisplayName, display.Description
+			return h.presentGroup(copy, nil)
+		}
+		return h.presentGroup(g, nil)
+	})
+}
+
 // ValidateAPIKeyLimitFields 对 HTTP 请求中显式提供的限额执行服务层统一校验。
 func ValidateAPIKeyLimitFields(limits ...ApiKeyLimitInput) error {
 	for _, limit := range limits {
@@ -157,16 +168,6 @@ func ValidateAPIKeyUpdateRequest(req UpdateAPIKeyRequest) error {
 		ApiKeyLimitInput{field: "rate_limit_1d", value: req.RateLimit1d},
 		ApiKeyLimitInput{field: "rate_limit_7d", value: req.RateLimit7d},
 	)
-}
-
-// APIKeyBillingSubscriptionOptionResponse 是前端选择指定订阅时使用的安全摘要。
-type APIKeyBillingSubscriptionOptionResponse struct {
-	ID               int64     `json:"id"`
-	PlanID           int64     `json:"plan_id"`
-	PlanName         string    `json:"plan_name"`
-	ExpiresAt        time.Time `json:"expires_at"`
-	GroupsRestricted bool      `json:"groups_restricted"`
-	ApplicableGroups []int64   `json:"applicable_groups"`
 }
 
 // List handles listing user's API keys with pagination

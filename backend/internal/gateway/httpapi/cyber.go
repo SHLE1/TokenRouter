@@ -15,15 +15,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 )
 
-const CyberPolicyRecordedKey = "ops_cyber_recorded"
-
-type CyberBlockFormat int
-
 const (
 	CyberBlockResponses CyberBlockFormat = iota
 	CyberBlockChat
 	CyberBlockAnthropic
+
+	CyberPolicyRecordedKey = "ops_cyber_recorded"
 )
+
+type CyberBlockFormat int
 
 type CyberBackend interface {
 	Available() bool
@@ -42,10 +42,6 @@ type CyberHandler struct {
 	runtime   moderationflow.Runtime
 }
 
-func NewCyberHandler(b CyberBackend, m ModerationPort, e ModerationEndpoints, r moderationflow.Runtime) *CyberHandler {
-	return &CyberHandler{b, m, e, r}
-}
-
 // CyberPolicyCall 的资金数据已在入口转为 completion 的独立快照。
 type CyberPolicyCall struct {
 	Key            *apikey.APIKey
@@ -56,6 +52,10 @@ type CyberPolicyCall struct {
 	BlockKey       string
 	Plan           moderationflow.BlockPlan
 	HasPlan        bool
+}
+
+func NewCyberHandler(b CyberBackend, m ModerationPort, e ModerationEndpoints, r moderationflow.Runtime) *CyberHandler {
+	return &CyberHandler{b, m, e, r}
 }
 
 func (h *CyberHandler) GroupInScope(c *gin.Context, key *apikey.APIKey) bool {

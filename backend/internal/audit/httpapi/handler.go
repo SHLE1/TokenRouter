@@ -7,13 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/gin-gonic/gin"
 
 	"github.com/TokenFlux/TokenRouter/internal/audit"
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	"github.com/gin-gonic/gin"
 )
 
 // AuditLogHandler 操作审计日志管理接口。
@@ -21,6 +20,15 @@ import (
 type AuditLogHandler struct {
 	auditService *audit.AuditLogService
 	totpService  TOTPVerifier
+}
+
+type auditLogClearRequest struct {
+	TotpCode string `json:"totp_code" binding:"required"`
+}
+
+// TOTPVerifier 只验证此次敏感操作的原 TOTP 凭据。
+type TOTPVerifier interface {
+	VerifyCode(context.Context, int64, string) error
 }
 
 // NewAuditLogHandler 创建审计日志处理器。
@@ -103,10 +111,6 @@ func (h *AuditLogHandler) Get(c *gin.Context) {
 	response.Success(c, item)
 }
 
-type auditLogClearRequest struct {
-	TotpCode string `json:"totp_code" binding:"required"`
-}
-
 // Clear 全量清空审计日志。
 // POST /api/v1/admin/audit-logs/clear
 //
@@ -169,9 +173,4 @@ func (h *AuditLogHandler) Clear(c *gin.Context) {
 	// 留痕记录已同步落库，跳过异步审计中间件的重复记录。
 	SkipAudit(c)
 	response.Success(c, gin.H{"deleted": deleted})
-}
-
-// TOTPVerifier 只验证此次敏感操作的原 TOTP 凭据。
-type TOTPVerifier interface {
-	VerifyCode(context.Context, int64, string) error
 }

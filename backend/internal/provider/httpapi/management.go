@@ -31,10 +31,6 @@ type ProviderRuntimePresenter interface {
 }
 type ProviderRuntimePresenterFunc func(context.Context, *providercore.Record) ProviderWithConcurrency
 
-func (f ProviderRuntimePresenterFunc) Present(ctx context.Context, v *providercore.Record) ProviderWithConcurrency {
-	return f(ctx, v)
-}
-
 // ManagementHandler 处理管理员请求，通过绑定的接口读取运行状态和 Ollama 用量。
 type ManagementHandler struct {
 	idempotencyhttp.Executor
@@ -77,6 +73,10 @@ type ManagementOptions struct {
 	Ollama           *providercore.OllamaCloudUsageService
 	Privacy          ProviderCreationPrivacy
 	AfterCreate      func(*providercore.Record)
+}
+
+func (f ProviderRuntimePresenterFunc) Present(ctx context.Context, v *providercore.Record) ProviderWithConcurrency {
+	return f(ctx, v)
 }
 
 func NewManagementHandler(admin ProviderManagement, options ManagementOptions) *ManagementHandler {

@@ -14,6 +14,17 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+// ClaudeFableOAuthSystemPromptBlocks keeps the Claude Code identity required by
+// OAuth credentials without the generic CLI expansion block. Fable 5 rejects
+// that expansion upstream with stop_reason=refusal and zero output tokens,
+// while the native billing + identity shape is accepted. Original client
+// system instructions are still migrated into the message history by
+// RewriteSystemForNonClaudeCodeWithPromptBlocks.
+const ClaudeFableOAuthSystemPromptBlocks = `[
+	{"type":"text","text":"{billing_header}"},
+	{"type":"text","text":"{claude_code_system_prompt}"}
+]`
+
 type AnthropicCacheControlPayload struct {
 	Type string `json:"type"`
 	TTL  string `json:"ttl,omitempty"`
@@ -30,6 +41,21 @@ type ClaudeOAuthNormalizeOptions struct {
 	InjectMetadata          bool
 	MetadataUserID          string
 	StripSystemCacheControl bool
+}
+
+type ClaudeOAuthSystemPromptBlockConfig struct {
+	Enabled      *bool           `json:"enabled,omitempty"`
+	Type         string          `json:"type,omitempty"`
+	Text         string          `json:"text,omitempty"`
+	CacheControl json.RawMessage `json:"cache_control,omitempty"`
+}
+type ClaudeOAuthSystemPromptBlocksEnvelope struct {
+	Blocks []ClaudeOAuthSystemPromptBlockConfig `json:"blocks"`
+}
+
+type CacheControlPath struct {
+	Path string
+	Log  string
 }
 
 // SanitizeSystemText rewrites only the fixed OpenCode identity sentence (if present).
@@ -462,27 +488,6 @@ func InjectClaudeCodePrompt(body []byte, system any) []byte {
 	return result
 }
 
-type ClaudeOAuthSystemPromptBlockConfig struct {
-	Enabled      *bool           `json:"enabled,omitempty"`
-	Type         string          `json:"type,omitempty"`
-	Text         string          `json:"text,omitempty"`
-	CacheControl json.RawMessage `json:"cache_control,omitempty"`
-}
-type ClaudeOAuthSystemPromptBlocksEnvelope struct {
-	Blocks []ClaudeOAuthSystemPromptBlockConfig `json:"blocks"`
-}
-
-// ClaudeFableOAuthSystemPromptBlocks keeps the Claude Code identity required by
-// OAuth credentials without the generic CLI expansion block. Fable 5 rejects
-// that expansion upstream with stop_reason=refusal and zero output tokens,
-// while the native billing + identity shape is accepted. Original client
-// system instructions are still migrated into the message history by
-// RewriteSystemForNonClaudeCodeWithPromptBlocks.
-const ClaudeFableOAuthSystemPromptBlocks = `[
-	{"type":"text","text":"{billing_header}"},
-	{"type":"text","text":"{claude_code_system_prompt}"}
-]`
-
 func ClaudeOAuthSystemPromptBlocksForModel(model, configured string) string {
 	if IsAnthropicFableModel(model) {
 		return ClaudeFableOAuthSystemPromptBlocks
@@ -753,11 +758,6 @@ func RewriteSystemForNonClaudeCodeWithPromptBlocks(body []byte, system any, expa
 	}
 
 	return out
-}
-
-type CacheControlPath struct {
-	Path string
-	Log  string
 }
 
 func CollectCacheControlPaths(body []byte) (invalidThinking []CacheControlPath, messagePaths []string, toolPaths []string, systemPaths []string) {

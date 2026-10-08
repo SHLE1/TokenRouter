@@ -11,6 +11,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 额度提醒测试分别覆盖日、周和累计用量。
+const (
+	quotaDimDaily  = "daily"
+	quotaDimWeekly = "weekly"
+	quotaDimTotal  = "total"
+)
+
+// notifySettingsFixture 提供提醒设置，投递替身收到发送请求时触发 panic。
+type notifySettingsFixture struct{ data map[string]string }
+
+type unexpectedAlertSender struct{}
+
 func TestCheckBalanceAfterDeduction_NilUser(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
 	// Should not panic.
@@ -415,9 +427,6 @@ func TestCollectBalanceNotifyRecipients_TrimsWhitespace(t *testing.T) {
 	require.Equal(t, []string{"trimmed@example.com"}, got)
 }
 
-// notifySettingsFixture 提供提醒设置，投递替身收到发送请求时触发 panic。
-type notifySettingsFixture struct{ data map[string]string }
-
 func (s *notifySettingsFixture) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	values := make(map[string]string, len(keys))
 	for _, key := range keys {
@@ -435,8 +444,6 @@ func (s *notifySettingsFixture) GetValue(_ context.Context, key string) (string,
 	return "", errors.New("setting not found")
 }
 
-type unexpectedAlertSender struct{}
-
 func (unexpectedAlertSender) SendBalanceLowEmails([]string, int64, string, string, float64, float64, string, string) {
 	panic("unexpected balance notification")
 }
@@ -451,10 +458,3 @@ func newBalanceNotifyServiceForTest() (*BalanceNotifyService, *notifySettingsFix
 		panic("unexpected notification dispatch")
 	}), settings
 }
-
-// 额度提醒测试分别覆盖日、周和累计用量。
-const (
-	quotaDimDaily  = "daily"
-	quotaDimWeekly = "weekly"
-	quotaDimTotal  = "total"
-)

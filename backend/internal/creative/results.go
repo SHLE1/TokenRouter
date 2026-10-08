@@ -13,6 +13,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+const (
+	creativeOutboxClaimLimit = 50
+	creativeOutboxLease      = 2 * time.Minute
+	creativeOutboxPoll       = 5 * time.Second
+	creativeOutboxRetry      = 15 * time.Second
+
+	creativeTransientCleanupInterval = 5 * time.Minute
+	creativeTransientCleanupAge      = 10 * time.Minute
+	creativeTransientCleanupLimit    = 100
+
+	maxCreativeErrorMessageChars = 500
+)
+
 var ErrCreativeSettlementProviderMissing = apperror.BadRequest("BATCH_IMAGE_SETTLEMENT_MISSING_PROVIDER_ID", "batch image settlement provider id is missing")
 
 type Results struct {
@@ -558,21 +571,6 @@ func (s *Results) RecordCreativeUsageLog(ctx context.Context, run *CreativeRun, 
 	}
 	s.RecordUsage(ctx, usageLog)
 }
-
-const (
-	creativeOutboxClaimLimit = 50
-	creativeOutboxLease      = 2 * time.Minute
-	creativeOutboxPoll       = 5 * time.Second
-	creativeOutboxRetry      = 15 * time.Second
-)
-
-const (
-	creativeTransientCleanupInterval = 5 * time.Minute
-	creativeTransientCleanupAge      = 10 * time.Minute
-	creativeTransientCleanupLimit    = 100
-)
-
-const maxCreativeErrorMessageChars = 500
 
 // now 保持各原取时点，构造时可注入同一时钟来源。
 func (s *Results) now() time.Time {

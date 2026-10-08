@@ -17,6 +17,111 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/modelmap"
 )
 
+const (
+	OpenAIWorkloadCapabilitiesCredentialKey = "openai_workload_capabilities"
+
+	GeminiProviderTypeCredentialKey = "provider_type"
+	GeminiProviderTypeThirdParty    = "third_party"
+	GeminiOfficialAPIHost           = "generativelanguage.googleapis.com"
+
+	// GrokMediaEligibleExtraKey 是 providers.extra 中可选的提供商级覆盖：true 强制允许
+	// 媒体调度，false 禁用，缺失或 null 时使用上游观测自动判断。
+	GrokMediaEligibleExtraKey = "grok_media_eligible"
+
+	OpenAIAuthModePersonalAccessToken = "personalAccessToken"
+	OpenAIAuthModeCredentialKey       = "auth_mode"
+	OpenAIAuthModeLegacyCredentialKey = "openai_auth_mode"
+
+	// OpenAICompactModeForceOn 表示管理员启用对应压缩能力。
+	OpenAICompactModeForceOn = "force_on"
+	// OpenAICompactModeForceOff 表示管理员关闭对应压缩能力。
+	OpenAICompactModeForceOff            = "force_off"
+	OpenAINativeCompactionV2ModeExtraKey = "openai_native_compaction_v2_mode"
+
+	DefaultPoolModeRetryCount = 3
+	MaxPoolModeRetryCount     = 10
+
+	// OpenAIOAuthClientPolicyAny 表示 OpenAI OAuth 提供商允许任意客户端访问。
+	OpenAIOAuthClientPolicyAny = "any"
+	// OpenAIOAuthClientPolicyCodexOnly 表示仅允许官方 Codex 客户端访问。
+	OpenAIOAuthClientPolicyCodexOnly = "codex_only"
+	// OpenAIOAuthClientPolicyTLSRouterMatchedOnly 表示仅允许 TLS 路由器命中的 UA 访问。
+	OpenAIOAuthClientPolicyTLSRouterMatchedOnly = "tls_router_matched_only"
+
+	// Status constants
+	StatusActive   = "active"
+	StatusDisabled = "disabled"
+	StatusError    = "error"
+
+	// Platform constants
+	PlatformAnthropic   = capability.PlatformAnthropic
+	PlatformOpenAI      = capability.PlatformOpenAI
+	PlatformGemini      = capability.PlatformGemini
+	PlatformAntigravity = capability.PlatformAntigravity
+	PlatformQoder       = capability.PlatformQoder
+	PlatformGrok        = capability.PlatformGrok
+	PlatformKimi        = capability.PlatformKimi
+	PlatformZhipu       = capability.PlatformZhipu
+	PlatformDeepseek    = capability.PlatformDeepseek
+
+	// 提供商接入模式（国产供应商）：按量付费 vs Coding Plan。
+	ProviderModePayG   = "payg"
+	ProviderModeCoding = "coding"
+
+	// 上游 API 协议（国产供应商）：决定转发端点与格式，与接入模式正交。
+	APIProtocolChatCompletions = "chat_completions"
+	APIProtocolAnthropic       = "anthropic"
+	APIProtocolResponses       = "responses"
+	APIProtocolAdaptive        = "adaptive"
+
+	// 国产 OpenAI 兼容供应商各模式的默认 base_url。
+	// 与前端 credentialsBuilder.ts 中的预设保持一致。
+	DefaultKimiPayGBaseURL    = "https://api.moonshot.cn/v1"
+	DefaultKimiCodingBaseURL  = "https://api.kimi.com/coding/v1"
+	DefaultZhipuPayGBaseURL   = "https://open.bigmodel.cn/api/paas/v4"
+	DefaultZhipuCodingBaseURL = "https://open.bigmodel.cn/api/coding/paas/v4"
+	DefaultDeepseekBaseURL    = "https://api.deepseek.com"
+
+	// 国产供应商 Anthropic 协议端点的默认 base_url（上游路径为 {base}/v1/messages）。
+	// 与前端 credentialsBuilder.ts 中的预设保持一致。
+	DefaultKimiPayGAnthropicBaseURL   = "https://api.moonshot.cn/anthropic"
+	DefaultKimiCodingAnthropicBaseURL = "https://api.kimi.com/coding"
+	DefaultZhipuAnthropicBaseURL      = "https://open.bigmodel.cn/api/anthropic"
+	DefaultDeepseekAnthropicBaseURL   = "https://api.deepseek.com/anthropic"
+
+	// Provider type constants
+	ProviderTypeOAuth          = capability.ProviderTypeOAuth          // OAuth类型提供商（full scope: profile + inference）
+	ProviderTypeSetupToken     = capability.ProviderTypeSetupToken     // Setup Token类型提供商（inference only scope）
+	ProviderTypeAPIKey         = capability.ProviderTypeAPIKey         // API Key类型提供商
+	ProviderTypeUpstream       = capability.ProviderTypeUpstream       // 上游透传类型提供商（通过 Base URL + API Key 连接上游）
+	ProviderTypeBedrock        = capability.ProviderTypeBedrock        // AWS Bedrock 类型提供商（通过 SigV4 签名或 API Key 连接 Bedrock，由 credentials.auth_mode 区分）
+	ProviderTypeServiceAccount = capability.ProviderTypeServiceAccount // Google Service Account 类型提供商（用于 Vertex AI）
+	ProviderTypeCosy           = capability.ProviderTypeCosy           // Qoder COSY 协议提供商
+
+	// QuotaDimension constants for spark shadow providers.
+	QuotaDimensionGlobal = "global"
+	QuotaDimensionSpark  = "spark"
+
+	AntigravityPrivacySet    = "privacy_set"
+	AntigravityPrivacyFailed = "privacy_set_failed"
+
+	PrivacyModeTrainingOff = "training_off"
+	PrivacyModeFailed      = "training_set_failed"
+	PrivacyModeCFBlocked   = "training_set_cf_blocked"
+
+	OpenAIImagesCapabilityBasic  OpenAIImagesCapability = "images-basic"
+	OpenAIImagesCapabilityNative OpenAIImagesCapability = "images-native"
+
+	thresholdTypeFixed = "fixed"
+	quotaDimDaily      = "daily"
+	quotaDimWeekly     = "weekly"
+	quotaDimTotal      = "total"
+)
+
+// DefaultPoolModeRetryableStatusCodes 池模式下默认触发同提供商重试的状态码。
+// Provider.Credentials 缺少 pool_mode_retry_status_codes 时使用。
+var DefaultPoolModeRetryableStatusCodes = []int{401, 403, 429}
+
 // Record 保存提供商的配置和运行数据，对外调用使用对应的快照。
 // Credentials 使用 JSON 忽略标记，普通日志输出提供商 ID。
 type Record struct {
@@ -61,6 +166,24 @@ type Record struct {
 	LoadLocation            func(string) (*time.Location, error) `json:"-"`
 }
 
+type TempUnschedulableRule struct {
+	ErrorCode       int      `json:"error_code"`
+	Keywords        []string `json:"keywords"`
+	DurationMinutes int      `json:"duration_minutes"`
+	Description     string   `json:"description"`
+}
+
+type OpenAIImagesCapability string
+
+// GroupMembership 保存提供商与分组的关联。
+type GroupMembership struct {
+	ProviderID int64
+	GroupID    int64
+	CreatedAt  time.Time
+	Provider   *Record
+	Group      *accessview.GroupConfig
+}
+
 func (r *Record) now() time.Time {
 	if r != nil && r.Now != nil {
 		return r.Now()
@@ -76,145 +199,6 @@ func (r *Record) String() string {
 }
 
 func (r *Record) GoString() string { return r.String() }
-
-const OpenAIWorkloadCapabilitiesCredentialKey = "openai_workload_capabilities"
-
-const (
-	GeminiProviderTypeCredentialKey = "provider_type"
-	GeminiProviderTypeThirdParty    = "third_party"
-	GeminiOfficialAPIHost           = "generativelanguage.googleapis.com"
-)
-
-// GrokMediaEligibleExtraKey 是 providers.extra 中可选的提供商级覆盖：true 强制允许
-// 媒体调度，false 禁用，缺失或 null 时使用上游观测自动判断。
-const GrokMediaEligibleExtraKey = "grok_media_eligible"
-
-const (
-	OpenAIAuthModePersonalAccessToken = "personalAccessToken"
-	OpenAIAuthModeCredentialKey       = "auth_mode"
-	OpenAIAuthModeLegacyCredentialKey = "openai_auth_mode"
-)
-
-type TempUnschedulableRule struct {
-	ErrorCode       int      `json:"error_code"`
-	Keywords        []string `json:"keywords"`
-	DurationMinutes int      `json:"duration_minutes"`
-	Description     string   `json:"description"`
-}
-
-const (
-	// OpenAICompactModeForceOn 表示管理员启用对应压缩能力。
-	OpenAICompactModeForceOn = "force_on"
-	// OpenAICompactModeForceOff 表示管理员关闭对应压缩能力。
-	OpenAICompactModeForceOff            = "force_off"
-	OpenAINativeCompactionV2ModeExtraKey = "openai_native_compaction_v2_mode"
-)
-
-const (
-	DefaultPoolModeRetryCount = 3
-	MaxPoolModeRetryCount     = 10
-)
-
-// DefaultPoolModeRetryableStatusCodes 池模式下默认触发同提供商重试的状态码。
-// Provider.Credentials 缺少 pool_mode_retry_status_codes 时使用。
-var DefaultPoolModeRetryableStatusCodes = []int{401, 403, 429}
-
-const (
-	// OpenAIOAuthClientPolicyAny 表示 OpenAI OAuth 提供商允许任意客户端访问。
-	OpenAIOAuthClientPolicyAny = "any"
-	// OpenAIOAuthClientPolicyCodexOnly 表示仅允许官方 Codex 客户端访问。
-	OpenAIOAuthClientPolicyCodexOnly = "codex_only"
-	// OpenAIOAuthClientPolicyTLSRouterMatchedOnly 表示仅允许 TLS 路由器命中的 UA 访问。
-	OpenAIOAuthClientPolicyTLSRouterMatchedOnly = "tls_router_matched_only"
-)
-
-// Status constants
-const (
-	StatusActive   = "active"
-	StatusDisabled = "disabled"
-	StatusError    = "error"
-)
-
-// Platform constants
-const (
-	PlatformAnthropic   = capability.PlatformAnthropic
-	PlatformOpenAI      = capability.PlatformOpenAI
-	PlatformGemini      = capability.PlatformGemini
-	PlatformAntigravity = capability.PlatformAntigravity
-	PlatformQoder       = capability.PlatformQoder
-	PlatformGrok        = capability.PlatformGrok
-	PlatformKimi        = capability.PlatformKimi
-	PlatformZhipu       = capability.PlatformZhipu
-	PlatformDeepseek    = capability.PlatformDeepseek
-)
-
-// 提供商接入模式（国产供应商）：按量付费 vs Coding Plan。
-const (
-	ProviderModePayG   = "payg"
-	ProviderModeCoding = "coding"
-)
-
-// 上游 API 协议（国产供应商）：决定转发端点与格式，与接入模式正交。
-const (
-	APIProtocolChatCompletions = "chat_completions"
-	APIProtocolAnthropic       = "anthropic"
-	APIProtocolResponses       = "responses"
-	APIProtocolAdaptive        = "adaptive"
-)
-
-// 国产 OpenAI 兼容供应商各模式的默认 base_url。
-// 与前端 credentialsBuilder.ts 中的预设保持一致。
-const (
-	DefaultKimiPayGBaseURL    = "https://api.moonshot.cn/v1"
-	DefaultKimiCodingBaseURL  = "https://api.kimi.com/coding/v1"
-	DefaultZhipuPayGBaseURL   = "https://open.bigmodel.cn/api/paas/v4"
-	DefaultZhipuCodingBaseURL = "https://open.bigmodel.cn/api/coding/paas/v4"
-	DefaultDeepseekBaseURL    = "https://api.deepseek.com"
-)
-
-// 国产供应商 Anthropic 协议端点的默认 base_url（上游路径为 {base}/v1/messages）。
-// 与前端 credentialsBuilder.ts 中的预设保持一致。
-const (
-	DefaultKimiPayGAnthropicBaseURL   = "https://api.moonshot.cn/anthropic"
-	DefaultKimiCodingAnthropicBaseURL = "https://api.kimi.com/coding"
-	DefaultZhipuAnthropicBaseURL      = "https://open.bigmodel.cn/api/anthropic"
-	DefaultDeepseekAnthropicBaseURL   = "https://api.deepseek.com/anthropic"
-)
-
-// Provider type constants
-const (
-	ProviderTypeOAuth          = capability.ProviderTypeOAuth          // OAuth类型提供商（full scope: profile + inference）
-	ProviderTypeSetupToken     = capability.ProviderTypeSetupToken     // Setup Token类型提供商（inference only scope）
-	ProviderTypeAPIKey         = capability.ProviderTypeAPIKey         // API Key类型提供商
-	ProviderTypeUpstream       = capability.ProviderTypeUpstream       // 上游透传类型提供商（通过 Base URL + API Key 连接上游）
-	ProviderTypeBedrock        = capability.ProviderTypeBedrock        // AWS Bedrock 类型提供商（通过 SigV4 签名或 API Key 连接 Bedrock，由 credentials.auth_mode 区分）
-	ProviderTypeServiceAccount = capability.ProviderTypeServiceAccount // Google Service Account 类型提供商（用于 Vertex AI）
-	ProviderTypeCosy           = capability.ProviderTypeCosy           // Qoder COSY 协议提供商
-)
-
-// QuotaDimension constants for spark shadow providers.
-const (
-	QuotaDimensionGlobal = "global"
-	QuotaDimensionSpark  = "spark"
-)
-
-const (
-	AntigravityPrivacySet    = "privacy_set"
-	AntigravityPrivacyFailed = "privacy_set_failed"
-)
-
-const (
-	PrivacyModeTrainingOff = "training_off"
-	PrivacyModeFailed      = "training_set_failed"
-	PrivacyModeCFBlocked   = "training_set_cf_blocked"
-)
-
-type OpenAIImagesCapability string
-
-const (
-	OpenAIImagesCapabilityBasic  OpenAIImagesCapability = "images-basic"
-	OpenAIImagesCapabilityNative OpenAIImagesCapability = "images-native"
-)
 
 func IsOpenAIPersonalAccessTokenAuthMode(value string) bool {
 	switch strings.ToLower(strings.TrimSpace(value)) {
@@ -2033,20 +2017,4 @@ func IsCNProvider(platform string) bool {
 	default:
 		return false
 	}
-}
-
-const (
-	thresholdTypeFixed = "fixed"
-	quotaDimDaily      = "daily"
-	quotaDimWeekly     = "weekly"
-	quotaDimTotal      = "total"
-)
-
-// GroupMembership 保存提供商与分组的关联。
-type GroupMembership struct {
-	ProviderID int64
-	GroupID    int64
-	CreatedAt  time.Time
-	Provider   *Record
-	Group      *accessview.GroupConfig
 }

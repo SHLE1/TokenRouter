@@ -8,6 +8,27 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	VerifyCodeTTL         = 15 * time.Minute
+	VerifyCodeCooldown    = 1 * time.Minute
+	MaxVerifyCodeAttempts = 5
+
+	// Password reset token settings
+	PasswordResetTokenTTL = 30 * time.Minute
+
+	// Password reset email cooldown (prevent email bombing)
+	PasswordResetEmailCooldown = 30 * time.Second
+)
+
+var (
+	ErrInvalidVerifyCode     = infraerrors.BadRequest("INVALID_VERIFY_CODE", "invalid or expired verification code")
+	ErrVerifyCodeTooFrequent = infraerrors.TooManyRequests("VERIFY_CODE_TOO_FREQUENT", "please wait before requesting a new code")
+	ErrVerifyCodeMaxAttempts = infraerrors.TooManyRequests("VERIFY_CODE_MAX_ATTEMPTS", "too many failed attempts, please request a new code")
+
+	// Password reset errors
+	ErrInvalidResetToken = infraerrors.BadRequest("INVALID_RESET_TOKEN", "invalid or expired password reset token")
+)
+
 // EmailCache defines cache operations for email service
 type EmailCache interface {
 	GetVerificationCode(ctx context.Context, email string) (*VerificationCodeData, error)
@@ -47,27 +68,6 @@ type PasswordResetTokenData struct {
 	Token     string
 	CreatedAt time.Time
 }
-
-var (
-	ErrInvalidVerifyCode     = infraerrors.BadRequest("INVALID_VERIFY_CODE", "invalid or expired verification code")
-	ErrVerifyCodeTooFrequent = infraerrors.TooManyRequests("VERIFY_CODE_TOO_FREQUENT", "please wait before requesting a new code")
-	ErrVerifyCodeMaxAttempts = infraerrors.TooManyRequests("VERIFY_CODE_MAX_ATTEMPTS", "too many failed attempts, please request a new code")
-
-	// Password reset errors
-	ErrInvalidResetToken = infraerrors.BadRequest("INVALID_RESET_TOKEN", "invalid or expired password reset token")
-)
-
-const (
-	VerifyCodeTTL         = 15 * time.Minute
-	VerifyCodeCooldown    = 1 * time.Minute
-	MaxVerifyCodeAttempts = 5
-
-	// Password reset token settings
-	PasswordResetTokenTTL = 30 * time.Minute
-
-	// Password reset email cooldown (prevent email bombing)
-	PasswordResetEmailCooldown = 30 * time.Second
-)
 
 func FirstEmailLocale(locales []string) string {
 	if len(locales) == 0 {

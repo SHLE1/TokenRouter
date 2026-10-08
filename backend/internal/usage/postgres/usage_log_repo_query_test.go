@@ -15,6 +15,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+type usageLogScannerStub struct {
+	values []any
+}
+
 func TestCoalesceTrimmedString(t *testing.T) {
 	require.Equal(t, "fallback", coalesceTrimmedString(sql.NullString{}, "fallback"))
 	require.Equal(t, "fallback", coalesceTrimmedString(sql.NullString{Valid: true, String: "   "}, "fallback"))
@@ -409,10 +413,6 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 		require.NotNil(t, log.ServiceTier)
 		require.Equal(t, "priority", *log.ServiceTier)
 	})
-}
-
-type usageLogScannerStub struct {
-	values []any
 }
 
 func (s usageLogScannerStub) Scan(dest ...any) error {

@@ -16,8 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 )
 
-var ErrOpsDisabled = infraerrors.NotFound("OPS_DISABLED", "Ops monitoring is disabled")
-
 const (
 	opsMaxStoredErrorBodyBytes = 20 * 1024
 	// OpsErrorLogQueueBodyMaxBytes 限制攻击者可控响应数据在异步错误日志队列中的大小。
@@ -28,6 +26,8 @@ const (
 	opsRuntimeSettingsRefreshTimeout  = 3 * time.Second
 	opsRuntimeSettingsFailureLogEvery = time.Minute
 )
+
+var ErrOpsDisabled = infraerrors.NotFound("OPS_DISABLED", "Ops monitoring is disabled")
 
 type opsRuntimeSettingsSnapshot struct {
 	monitoringEnabled bool
@@ -81,18 +81,35 @@ type OpsService struct {
 	runtimeRefreshLastFailureLog atomic.Int64
 }
 
+// CleanupReloader 由 OpsCleanupService 实现。
+// UpdateOpsAdvancedSettings 写入新配置后调用 Reload，让 schedule/enabled 改动立刻生效。
+type CleanupReloader interface {
+	Reload(ctx context.Context) error
+}
+
+func NewOpsService(
+	opsRepo OpsRepository,
+	settingRepo Settings,
+	cfg *Options,
+	providerRepo ProviderReader,
+	userRepo UserReader,
+	concurrencyService ConcurrencyReader,
+
+	systemLogSink *OpsSystemLogSink,
+	logging LogControl,
+) *OpsService {
+	svc := BuildOpsService(opsRepo, settingRepo, cfg, providerRepo, userRepo, concurrencyService, systemLogSink, logging)
+	svc.initRuntimeSettings(context.Background())
+	svc.ApplyRuntimeLogConfigOnStartup(context.Background())
+	return svc
+}
+
 // SetPreAggregationSettings 注入统一预聚合配置，运维查询只读取这一运行时开关。
 func (s *OpsService) SetPreAggregationSettings(settings PreAggregationReader) {
 	if s == nil {
 		return
 	}
 	s.preAggregationSettings = settings
-}
-
-// CleanupReloader 由 OpsCleanupService 实现。
-// UpdateOpsAdvancedSettings 写入新配置后调用 Reload，让 schedule/enabled 改动立刻生效。
-type CleanupReloader interface {
-	Reload(ctx context.Context) error
 }
 
 // SetCleanupReloader 由 wire 注入 cleanup hook（构造期循环依赖的解耦点）。
@@ -111,23 +128,6 @@ func (s *OpsService) SetOpenAIQuotaAutoPauseSettingsSink(sink func(OpsOpenAIProv
 		return
 	}
 	s.quotaAutoPauseSink = sink
-}
-
-func NewOpsService(
-	opsRepo OpsRepository,
-	settingRepo Settings,
-	cfg *Options,
-	providerRepo ProviderReader,
-	userRepo UserReader,
-	concurrencyService ConcurrencyReader,
-
-	systemLogSink *OpsSystemLogSink,
-	logging LogControl,
-) *OpsService {
-	svc := BuildOpsService(opsRepo, settingRepo, cfg, providerRepo, userRepo, concurrencyService, systemLogSink, logging)
-	svc.initRuntimeSettings(context.Background())
-	svc.ApplyRuntimeLogConfigOnStartup(context.Background())
-	return svc
 }
 
 // BuildOpsService 装配运维服务及其依赖。

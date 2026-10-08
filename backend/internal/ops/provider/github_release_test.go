@@ -17,6 +17,26 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+var (
+	canListenOnce sync.Once
+	canListen     bool
+	canListenErr  error
+)
+
+type GitHubReleaseServiceSuite struct {
+	suite.Suite
+	srv     *httptest.Server
+	client  *githubReleaseClient
+	tempDir string
+}
+
+// testTransport redirects requests to the test server
+type testTransport struct {
+	testServerURL string
+}
+
+type githubReleaseRoundTripFunc func(*http.Request) (*http.Response, error)
+
 func TestGitHubReleaseClientAPIRequestAuthorization(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -134,7 +154,7 @@ func (s *GitHubReleaseServiceSuite) TestDownloadFile_EnforcesMaxSize_Chunked() {
 		if fl, ok := w.(http.Flusher); ok {
 			fl.Flush()
 		}
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			_, _ = w.Write(bytes.Repeat([]byte("b"), 10))
 			if fl, ok := w.(http.Flusher); ok {
 				fl.Flush()
@@ -158,7 +178,7 @@ func (s *GitHubReleaseServiceSuite) TestDownloadFile_Success() {
 		if fl, ok := w.(http.Flusher); ok {
 			fl.Flush()
 		}
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			_, _ = w.Write(bytes.Repeat([]byte("b"), 10))
 			if fl, ok := w.(http.Flusher); ok {
 				fl.Flush()
@@ -441,25 +461,13 @@ func TestGitHubReleaseServiceSuite(t *testing.T) {
 	suite.Run(t, new(GitHubReleaseServiceSuite))
 }
 
-type GitHubReleaseServiceSuite struct {
-	suite.Suite
-	srv     *httptest.Server
-	client  *githubReleaseClient
-	tempDir string
-}
-
-// testTransport redirects requests to the test server
-type testTransport struct {
-	testServerURL string
-}
-
 func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Rewrite the URL to point to our test server
 	testURL := t.testServerURL + req.URL.Path
 	if req.URL.RawQuery != "" {
 		testURL += "?" + req.URL.RawQuery
 	}
-	//nolint:gosec // 测试 transport 只会重写到 httptest.Server 的固定地址。
+
 	newReq, err := http.NewRequestWithContext(req.Context(), req.Method, testURL, req.Body)
 	if err != nil {
 		return nil, err
@@ -474,8 +482,6 @@ func newTestGitHubReleaseClient() *githubReleaseClient {
 		downloadHTTPClient: &http.Client{},
 	}
 }
-
-type githubReleaseRoundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f githubReleaseRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
@@ -496,12 +502,6 @@ func (s *GitHubReleaseServiceSuite) TearDownTest() {
 func NewGitHubReleaseClient(proxy string, allow bool) ReleaseClient {
 	return NewReleaseClient(ReleaseOptions{ProxyURL: proxy, AllowDirectOnProxyError: allow, GitHubToken: os.Getenv("UPDATE_GITHUB_TOKEN")})
 }
-
-var (
-	canListenOnce sync.Once
-	canListen     bool
-	canListenErr  error
-)
 
 func localListenerAvailable() bool {
 	canListenOnce.Do(func() {

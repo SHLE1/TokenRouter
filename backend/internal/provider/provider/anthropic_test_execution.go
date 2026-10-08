@@ -19,6 +19,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
+// AnthropicProviderTest 绑定供应商接口，凭据和健康状态通过提供商接口读写。
+type AnthropicProviderTest struct {
+	Tokens      *providercore.ClaudeTokenSource
+	Transport   QoderTransport
+	Profiles    *egressprovider.TLSProfiles
+	ValidateURL func(string) (string, error)
+	Store       interface {
+		SetError(context.Context, int64, string) error
+	}
+	UserAgent string
+}
+
 // Execute 保留 Anthropic、Vertex 与 Bedrock 各自的测试路径。
 func (s *AnthropicProviderTest) Execute(c *TestRun, value *providercore.Record, modelID string, prompt string) error {
 	ctx := c.Context
@@ -84,7 +96,7 @@ func (s *AnthropicProviderTest) Execute(c *TestRun, value *providercore.Record, 
 	// 报文构造完成后发布开始事件。
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_start", Model: testModelID})
 
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(payloadBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, "Failed to create request")
 	}
@@ -244,7 +256,7 @@ func (s *AnthropicProviderTest) ExecuteBedrock(c *TestRun, ctx context.Context, 
 
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_start", Model: testModelID})
 
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(bedrockBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(bedrockBody))
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, "Failed to create request")
 	}
@@ -306,18 +318,6 @@ func (s *AnthropicProviderTest) ExecuteBedrock(c *TestRun, ctx context.Context, 
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "content", Text: text})
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_complete", Success: true})
 	return nil
-}
-
-// AnthropicProviderTest 绑定供应商接口，凭据和健康状态通过提供商接口读写。
-type AnthropicProviderTest struct {
-	Tokens      *providercore.ClaudeTokenSource
-	Transport   QoderTransport
-	Profiles    *egressprovider.TLSProfiles
-	ValidateURL func(string) (string, error)
-	Store       interface {
-		SetError(context.Context, int64, string) error
-	}
-	UserAgent string
 }
 
 func (s *AnthropicProviderTest) applyUserAgent(req *http.Request) {

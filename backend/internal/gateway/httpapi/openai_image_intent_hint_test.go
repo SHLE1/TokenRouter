@@ -21,6 +21,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+var openAIImageIntentHintBenchmarkSink bool
+
 // TestResolveOpenAIGroupMappedImageIntent 验证生图能力判断使用分组映射后的模型 C 和请求体。
 func TestResolveOpenAIGroupMappedImageIntent(t *testing.T) {
 	tests := []struct {
@@ -306,8 +308,6 @@ func TestResolveOpenAIImageIntentHintConcurrentRequestsAreIsolated(t *testing.T)
 	}
 	require.Equal(t, int64(requests), calls.Load())
 }
-
-var openAIImageIntentHintBenchmarkSink bool
 
 func BenchmarkOpenAIPassthroughImageIntentHintLargeBody(b *testing.B) {
 	body := []byte(`{"model":"gpt-5.4","input":"` + strings.Repeat("x", 4<<20) + `"}`)

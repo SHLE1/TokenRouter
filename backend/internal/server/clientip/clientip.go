@@ -4,16 +4,35 @@ import (
 	"net"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/ipmatch"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/ipmatch"
 )
 
 const forwardedIPSettingsKey = "tokenrouter.forwarded_ip_settings"
 
+var privateNets []*net.IPNet
+
 type forwardedIPSettings struct {
 	trustForwarded bool
 	headers        []string
+}
+
+func init() {
+	for _, cidr := range []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"127.0.0.0/8",
+		"::1/128",
+		"fc00::/7",
+	} {
+		_, block, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic("invalid CIDR: " + cidr)
+		}
+		privateNets = append(privateNets, block)
+	}
 }
 
 // SetForwardedIPSettings 为当前请求保存转发 IP 模式和自定义请求头列表的快照。
@@ -170,25 +189,6 @@ func normalizeValidIP(value string) string {
 		return ""
 	}
 	return parsed.String()
-}
-
-var privateNets []*net.IPNet
-
-func init() {
-	for _, cidr := range []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"127.0.0.0/8",
-		"::1/128",
-		"fc00::/7",
-	} {
-		_, block, err := net.ParseCIDR(cidr)
-		if err != nil {
-			panic("invalid CIDR: " + cidr)
-		}
-		privateNets = append(privateNets, block)
-	}
 }
 
 func isPrivateIP(ipStr string) bool {

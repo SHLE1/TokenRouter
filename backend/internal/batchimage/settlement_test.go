@@ -18,6 +18,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+type resultUsageRepository struct {
+	usage.UsageLogRepository
+
+	inserted   bool
+	err        error
+	calls      int
+	lastLog    *usage.UsageLog
+	lastCtxErr error
+}
+
 func TestBatchImageSettlementOutputExpiration(t *testing.T) {
 	repo := newFakeBatchImageRepository()
 	job := testSettlingBatchImageJob("imgbatch_expire")
@@ -412,7 +422,7 @@ func TestBatchImageSettlementService_CostExceedsHoldExhaustsAndReleases(t *testi
 		// 前 N-1 次：记录失败并返回错误（等待 worker 重试）。
 		nil)
 
-	for i := 0; i < batchimage.BatchImageSettlementMaxRetries-1; i++ {
+	for range batchimage.BatchImageSettlementMaxRetries - 1 {
 		_, err := svc.Settle(context.Background(), job.BatchID)
 		require.ErrorIs(t, err, batchimage.ErrBatchImageSettlementCostExceedsHold)
 		require.Equal(t, batchimage.BatchImageJobStatusSettling, repo.jobs[job.BatchID].Status)
@@ -441,7 +451,7 @@ func TestBatchImageSettlementService_InvalidCountsExhaustsAndReleases(t *testing
 	billing := &fakeBatchImageBillingRepo{}
 	svc := newBatchSettlementFixture(repo, billing, nil, &fakeBatchImagePricingResolver{unitPrice: 0.25}, nil, nil)
 
-	for i := 0; i < batchimage.BatchImageSettlementMaxRetries-1; i++ {
+	for range batchimage.BatchImageSettlementMaxRetries - 1 {
 		_, err := svc.Settle(context.Background(), job.BatchID)
 		require.ErrorIs(t, err, batchimage.ErrBatchImageSettlementInvalidCounts)
 	}
@@ -525,16 +535,6 @@ func testSettlingBatchImageJob(batchID string) *batchimage.BatchImageJob {
 		HoldAmount:        &holdAmount,
 		HoldID:            &holdID,
 	}
-}
-
-type resultUsageRepository struct {
-	usage.UsageLogRepository
-
-	inserted   bool
-	err        error
-	calls      int
-	lastLog    *usage.UsageLog
-	lastCtxErr error
 }
 
 func (s *resultUsageRepository) Create(ctx context.Context, log *usage.UsageLog) (bool, error) {

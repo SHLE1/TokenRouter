@@ -24,6 +24,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
+type billingQuotaNotifyReader struct {
+	providers *providerpostgres.ProviderStore
+}
+
+type expiryNotifications struct {
+	Service *notification.NotificationEmailService
+}
+
 func provideEmailCache(r *redis.Client) identity.EmailCache { return identityredis.NewEmailCache(r) }
 
 func provideMailer(store *settings.Store) *notification.Mailer {
@@ -76,17 +84,9 @@ func provideBalanceNotifications(sender *notification.AlertDelivery, settings *s
 	return billing.NewBalanceNotifyService(sender, settings, billingQuotaNotifyReader{providers}, func(name string, fn func()) { tasks.Go(name, fn) })
 }
 
-type billingQuotaNotifyReader struct {
-	providers *providerpostgres.ProviderStore
-}
-
 func (r billingQuotaNotifyReader) GetByID(ctx context.Context, id int64) (*billing.QuotaNotifyProvider, error) {
 	a, e := r.providers.GetByID(ctx, id)
 	return provideradapter.QuotaNotification(a), e
-}
-
-type expiryNotifications struct {
-	Service *notification.NotificationEmailService
 }
 
 func (n expiryNotifications) Ready(ctx context.Context) error {

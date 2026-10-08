@@ -10,6 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type ingressRejectRecorderStub struct {
+	mu       sync.Mutex
+	calls    int
+	clientIP string
+}
+
 func TestNormalizeIngressRejectIP(t *testing.T) {
 	require.Equal(t, "2001:db8:abcd:1234::", normalizeIngressRejectIP("2001:db8:abcd:1234:ffff::1"))
 	require.Equal(t, "192.0.2.4", normalizeIngressRejectIP("::ffff:192.0.2.4"))
@@ -38,12 +44,6 @@ func TestLoggerRecordsIngressRejectOnce(t *testing.T) {
 func TestNormalizeIngressRejectIPGroupsIPv6By64(t *testing.T) {
 	require.Equal(t, "2001:db8:abcd:1234::", normalizeIngressRejectIP("2001:db8:abcd:1234:1111::1"))
 	require.Equal(t, normalizeIngressRejectIP("2001:db8:abcd:1234:1111::1"), normalizeIngressRejectIP("2001:db8:abcd:1234:ffff::2"))
-}
-
-type ingressRejectRecorderStub struct {
-	mu       sync.Mutex
-	calls    int
-	clientIP string
 }
 
 func (r *ingressRejectRecorderStub) RecordIngressReject(_, _, _, clientIP string, _, _ int64) {

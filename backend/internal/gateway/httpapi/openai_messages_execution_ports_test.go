@@ -23,7 +23,7 @@ func TestOpenAIMessagesExecutionAdapterPreservesNilFailover(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
 	p := &openAIMessagesExecutionAdapter{s: &OpenAITextExecutor{Output: &OpenAIResponseOutput{Health: &provideradapter.OpenAIResponseHealth{}}}, c: c, provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}}
 	body := []byte(`{"error":{"type":"invalid_request_error","message":"model not found"}}`)
-	err := p.FailoverHTTP(context.Background(), &http.Response{StatusCode: 400, Header: make(http.Header)}, body, "model not found", "gpt6")
+	err := p.FailoverHTTP(context.Background(), &http.Response{StatusCode: http.StatusBadRequest, Header: make(http.Header)}, body, "model not found", "gpt6")
 	require.NoError(t, err)
 	require.False(t, c.Writer.Written(), "端口只分类，客户端错误仍由后续协议适配写出")
 }

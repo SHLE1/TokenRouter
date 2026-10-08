@@ -8,8 +8,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-func timePtr(v time.Time) *time.Time { return &v }
-
 const (
 	PlatformOpenAI    = capability.PlatformOpenAI
 	PlatformAnthropic = capability.PlatformAnthropic
@@ -17,9 +15,7 @@ const (
 	StatusError       = "error"
 )
 
-func newLegacyShapeOpsService(repo OpsRepository, settings Settings, cfg *Options, a ProviderReader, u UserReader, c ConcurrencyReader, _ any, _ any, _ any, _ any, sink *OpsSystemLogSink) *OpsService {
-	return NewOpsService(repo, settings, cfg, a, u, c, sink, nil)
-}
+var _ OpsRepository = (*opsRepoMock)(nil)
 
 // opsRepoMock is a test-only OpsRepository implementation with optional function hooks.
 type opsRepoMock struct {
@@ -30,6 +26,25 @@ type opsRepoMock struct {
 	ListRequestTimingsFn          func(ctx context.Context, clientRequestIDs []string) (map[string]*OpsRequestTiming, error)
 	DeleteSystemLogsFn            func(ctx context.Context, filter *OpsSystemLogCleanupFilter) (int64, error)
 	InsertSystemLogCleanupAuditFn func(ctx context.Context, input *OpsSystemLogCleanupAudit) error
+}
+
+type Setting = settings.Setting
+
+type runtimeSettingRepoStub struct {
+	values           map[string]string
+	deleted          map[string]bool
+	setCalls         int
+	getValueCalls    int
+	getMultipleCalls int
+	getValueFn       func(key string) (string, error)
+	setFn            func(key, value string) error
+	deleteFn         func(key string) error
+}
+
+func timePtr(v time.Time) *time.Time { return &v }
+
+func newLegacyShapeOpsService(repo OpsRepository, settings Settings, cfg *Options, a ProviderReader, u UserReader, c ConcurrencyReader, _ any, _ any, _ any, _ any, sink *OpsSystemLogSink) *OpsService {
+	return NewOpsService(repo, settings, cfg, a, u, c, sink, nil)
 }
 
 func (m *opsRepoMock) InsertErrorLog(ctx context.Context, input *OpsInsertErrorLogInput) (int64, error) {
@@ -211,21 +226,6 @@ func (m *opsRepoMock) GetLatestHourlyBucketStart(ctx context.Context) (time.Time
 
 func (m *opsRepoMock) GetLatestDailyBucketDate(ctx context.Context) (time.Time, bool, error) {
 	return time.Time{}, false, nil
-}
-
-var _ OpsRepository = (*opsRepoMock)(nil)
-
-type Setting = settings.Setting
-
-type runtimeSettingRepoStub struct {
-	values           map[string]string
-	deleted          map[string]bool
-	setCalls         int
-	getValueCalls    int
-	getMultipleCalls int
-	getValueFn       func(key string) (string, error)
-	setFn            func(key, value string) error
-	deleteFn         func(key string) error
 }
 
 func newRuntimeSettingRepoStub() *runtimeSettingRepoStub {

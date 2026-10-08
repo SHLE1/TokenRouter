@@ -34,6 +34,32 @@ import (
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
+// gatewayTTLSettingRepo 提供用例指定的设置，其他方法由嵌入的 Repository 接口提供。
+type gatewayTTLSettingRepo struct {
+	settings.Repository
+	data map[string]string
+}
+
+type gatewayForwardErrorPolicyRepoStub struct {
+	gatewayprovider.ExecutionProviderStore
+
+	tempCalls           int
+	overloadCalls       int
+	modelRateLimitCalls []gatewayForwardModelRateLimitCall
+}
+
+type gatewayForwardModelRateLimitCall struct {
+	providerID int64
+	scope      string
+}
+
+type anthropicHTTPUpstreamRecorder struct {
+	lastReq  *http.Request
+	lastBody []byte
+	resp     *http.Response
+	err      error
+}
+
 func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardStreamPreservesBodyAndAuthReplacement(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -958,12 +984,6 @@ func compileResponseHeaderFilter(options *messageforward.Options) *egress.Compil
 	return egress.CompileHeaderFilter(egress.ResponseHeaderOptions{})
 }
 
-// gatewayTTLSettingRepo 提供用例指定的设置，其他方法由嵌入的 Repository 接口提供。
-type gatewayTTLSettingRepo struct {
-	settings.Repository
-	data map[string]string
-}
-
 func (r *gatewayTTLSettingRepo) GetValue(_ context.Context, key string) (string, error) {
 	if value, ok := r.data[key]; ok {
 		return value, nil
@@ -1097,19 +1117,6 @@ func TestGatewayServiceAnthropicCompatibilityForwardersUseFinalOAuthModel(t *tes
 			require.Equal(t, "claude-sonnet-4-5", gjson.GetBytes(upstream.lastBody, "model").String())
 		})
 	}
-}
-
-type gatewayForwardErrorPolicyRepoStub struct {
-	gatewayprovider.ExecutionProviderStore
-
-	tempCalls           int
-	overloadCalls       int
-	modelRateLimitCalls []gatewayForwardModelRateLimitCall
-}
-
-type gatewayForwardModelRateLimitCall struct {
-	providerID int64
-	scope      string
 }
 
 func (r *gatewayForwardErrorPolicyRepoStub) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
@@ -1368,13 +1375,6 @@ func TestGatewayService_Forward_PostOutputSSEOverloadedErrorKeepsExistingStatus(
 	require.Contains(t, rec.Body.String(), "message_start")
 }
 
-type anthropicHTTPUpstreamRecorder struct {
-	lastReq  *http.Request
-	lastBody []byte
-	resp     *http.Response
-	err      error
-}
-
 func newAnthropicAPIKeyProviderForTest() *gatewayprovider.ExecutionProvider {
 	return &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
@@ -1419,7 +1419,7 @@ func TestMaxReasoningPricing_AnthropicForwardReportsOutboundEffort(t *testing.T)
 		for _, effort := range []string{"xhigh", "max"} {
 			t.Run(protocol+"/"+effort, func(t *testing.T) {
 				stream := "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-fable-5-1\",\"usage\":{\"input_tokens\":100}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":1}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
-				upstream := &anthropicHTTPUpstreamRecorder{resp: &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(stream))}}
+				upstream := &anthropicHTTPUpstreamRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(stream))}}
 				svc := newHTTPRuntimeFixture(&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{Transport: upstream}, nil)
 				provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test-key", "base_url": "https://api.anthropic.com"}}}
 				c, _ := gin.CreateTestContext(httptest.NewRecorder())

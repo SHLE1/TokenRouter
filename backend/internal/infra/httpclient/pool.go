@@ -26,6 +26,14 @@ const (
 	validatedHostTTL           = 30 * time.Second // DNS Rebinding 校验缓存 TTL
 )
 
+var (
+	// sharedClients 存储按配置参数缓存的 http.Client 实例
+	sharedClients sync.Map
+
+	// 允许测试替换校验函数，生产默认指向真实实现。
+	validateResolvedIP = ValidateResolvedIP
+)
+
 // Options 定义共享 HTTP 客户端的构建参数
 type Options struct {
 	ProxyURL              string        // 代理 URL（支持 http/https/socks5/socks5h）
@@ -41,11 +49,11 @@ type Options struct {
 	MaxConnsPerHost     int // 每主机最大连接数（默认 0 无限制）
 }
 
-// sharedClients 存储按配置参数缓存的 http.Client 实例
-var sharedClients sync.Map
-
-// 允许测试替换校验函数，生产默认指向真实实现。
-var validateResolvedIP = ValidateResolvedIP
+type validatedTransport struct {
+	base           http.RoundTripper
+	validatedHosts sync.Map // map[string]time.Time, value 为过期时间
+	now            func() time.Time
+}
 
 // GetClient 返回共享的 HTTP 客户端实例
 // 性能优化：相同配置复用同一客户端，避免重复创建 Transport
@@ -142,12 +150,6 @@ func buildClientKey(opts Options) string {
 		opts.MaxIdleConnsPerHost,
 		opts.MaxConnsPerHost,
 	)
-}
-
-type validatedTransport struct {
-	base           http.RoundTripper
-	validatedHosts sync.Map // map[string]time.Time, value 为过期时间
-	now            func() time.Time
 }
 
 func newValidatedTransport(base http.RoundTripper) *validatedTransport {

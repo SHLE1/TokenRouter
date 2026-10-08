@@ -17,6 +17,34 @@ type groupAdminPricingStore struct {
 	routing.PricingConfigRepository
 }
 
+type groupPortFixture struct{ routing.GroupRepository }
+
+type groupDuplicatePortFixture struct {
+	routing.GroupDuplicateRepository
+}
+
+// groupRepoStubForAdmin 记录分组管理测试的存储读写。
+type groupRepoStubForAdmin struct {
+	created *routing.
+		Group
+	updated *routing.
+		Group
+	getByID *routing.
+		Group
+	getErr error // GetByID 返回的错误
+
+	listWithFiltersCalls       int
+	listWithFiltersParams      pagination.PaginationParams
+	listWithFiltersPlatform    string
+	listWithFiltersStatus      string
+	listWithFiltersSearch      string
+	listWithFiltersIsExclusive *bool
+	listWithFiltersGroups      []routing.Group
+	listWithFiltersResult      *pagination.PaginationResult
+	listWithFiltersErr         error
+	groupSortOrderLockCalls    int
+}
+
 func (groupAdminPricingStore) ListAll(context.Context) ([]routing.PricingConfig, error) {
 	return nil, nil
 }
@@ -63,8 +91,6 @@ func newGroupAdminPortsForTest(repo routing.GroupRepository, duplicate routing.G
 		Mutate: func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
 	})
 }
-
-type groupPortFixture struct{ routing.GroupRepository }
 
 func testGroupsFixture(values []routing.Group) []routing.Group {
 	if values == nil {
@@ -116,10 +142,6 @@ func (r groupPortFixture) ListActive(ctx context.Context) ([]routing.Group, erro
 	return testGroupsFixture(v), e
 }
 
-type groupDuplicatePortFixture struct {
-	routing.GroupDuplicateRepository
-}
-
 func (p groupDuplicatePortFixture) FindByDuplicateOperationID(ctx context.Context, id string) (*routing.Group, error) {
 	value, err := p.GroupDuplicateRepository.FindByDuplicateOperationID(ctx, id)
 	return routing.CloneGroup(value), err
@@ -130,28 +152,6 @@ func (p groupDuplicatePortFixture) CreateFromSource(ctx context.Context, value *
 	err := p.GroupDuplicateRepository.CreateFromSource(ctx, copy, id)
 	*value = *routing.CloneGroup(copy)
 	return err
-}
-
-// groupRepoStubForAdmin 记录分组管理测试的存储读写。
-type groupRepoStubForAdmin struct {
-	created *routing.
-		Group
-	updated *routing.
-		Group
-	getByID *routing.
-		Group
-	getErr error // GetByID 返回的错误
-
-	listWithFiltersCalls       int
-	listWithFiltersParams      pagination.PaginationParams
-	listWithFiltersPlatform    string
-	listWithFiltersStatus      string
-	listWithFiltersSearch      string
-	listWithFiltersIsExclusive *bool
-	listWithFiltersGroups      []routing.Group
-	listWithFiltersResult      *pagination.PaginationResult
-	listWithFiltersErr         error
-	groupSortOrderLockCalls    int
 }
 
 func (s *groupRepoStubForAdmin) Create(_ context.Context, g *routing.Group) error {

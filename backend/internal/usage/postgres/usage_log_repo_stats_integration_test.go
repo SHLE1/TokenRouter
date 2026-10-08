@@ -19,6 +19,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// sqlCall 保存查询语句和参数，供查询次数与执行计划检查使用。
+type sqlCall struct {
+	Query string `json:"query"`
+	Args  []any  `json:"-"`
+}
+
+type countingSQL struct {
+	sqlExecutor
+	calls []sqlCall
+}
+
 func TestUsageBatchQueryShape(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
@@ -27,12 +38,12 @@ func TestUsageBatchQueryShape(t *testing.T) {
 	provider := mustCreateProvider(t, client, &providercore.Record{Name: "test-query-shape"})
 	ids := []int64{}
 	keys := []int64{}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		u := mustCreateUser(t, client, &identity.User{Email: fmt.Sprintf("test-query-%d@test.local", i)})
 		key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: u.ID, Key: fmt.Sprintf("sk-test-query-%d", i), Name: "k"})
 		ids = append(ids, u.ID)
 		keys = append(keys, key.ID)
-		for j := 0; j < 4; j++ {
+		for range 4 {
 			_, e := writer.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, ProviderID: provider.ID, Model: "lifecycle-test", InputTokens: 10, OutputTokens: 5, TotalCost: 0.1, ActualCost: 0.1, CreatedAt: time.Now().Add(-time.Hour)})
 			require.NoError(t, e)
 		}
@@ -165,7 +176,7 @@ func TestUsageLog_GetStatsWithFilters_AggregatesAndEndpoints(t *testing.T) {
 	now := time.Now().UTC()
 	inboundEndpoint := "/v1/messages"
 	upstreamEndpoint := "/v1/responses"
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, err := repo.Create(ctx, &usage.UsageLog{
 			UserID: user.ID, APIKeyID: apiKey.ID, ProviderID: provider.ID,
 			Model: "claude-3", InputTokens: 2, OutputTokens: 3,
@@ -233,17 +244,6 @@ func TestUsageLog_GetModelStats_MergesCompositePrefix(t *testing.T) {
 	require.Equal(t, "gpt-5.6-sol", stats[0].Model)
 	require.Equal(t, int64(2), stats[0].Requests)
 	require.Equal(t, int64(30), stats[0].TotalTokens)
-}
-
-// sqlCall 保存查询语句和参数，供查询次数与执行计划检查使用。
-type sqlCall struct {
-	Query string `json:"query"`
-	Args  []any  `json:"-"`
-}
-
-type countingSQL struct {
-	sqlExecutor
-	calls []sqlCall
 }
 
 func (s *countingSQL) QueryContext(ctx context.Context, q string, a ...any) (*sql.Rows, error) {

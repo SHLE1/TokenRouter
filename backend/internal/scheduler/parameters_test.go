@@ -11,6 +11,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
+// parameterSourceStub 提供参数测试中的逐键和批量读取。
+type parameterSourceStub struct{ values map[string]string }
+
 func TestParameters_DBOverridesConfig(t *testing.T) {
 	defaults := DefaultParameters()
 	defaults.TopK = 11
@@ -99,9 +102,6 @@ func TestParameters_InvalidWeightSumsFallBackToConfig(t *testing.T) {
 		})
 	}
 }
-
-// parameterSourceStub 提供参数测试中的逐键和批量读取。
-type parameterSourceStub struct{ values map[string]string }
 
 func (s *parameterSourceStub) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	out := make(map[string]string)

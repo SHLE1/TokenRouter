@@ -9,6 +9,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
+type fakeErr string
+
 func TestIsMissingRelationError(t *testing.T) {
 	cases := []struct {
 		name string
@@ -88,7 +90,5 @@ func TestSleepOpsCleanupWithContextHonorsCancellation(t *testing.T) {
 		t.Fatalf("error = %v, want context canceled", err)
 	}
 }
-
-type fakeErr string
 
 func (e fakeErr) Error() string { return string(e) }

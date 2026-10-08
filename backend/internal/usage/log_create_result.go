@@ -2,13 +2,13 @@ package usage
 
 import "errors"
 
-type usageLogCreateDisposition int
-
 const (
 	usageLogCreateDispositionUnknown usageLogCreateDisposition = iota
 	usageLogCreateDispositionNotPersisted
 	usageLogCreateDispositionDropped
 )
+
+type usageLogCreateDisposition int
 
 type UsageLogCreateError struct {
 	err         error

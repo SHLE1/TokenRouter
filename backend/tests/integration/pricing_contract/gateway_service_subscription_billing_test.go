@@ -17,6 +17,25 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// contractSettlementInput 包含结算金额、付款方和倍率参数。
+type contractSettlementInput struct {
+	Cost                            *pricing.CostBreakdown
+	User                            *identity.User
+	APIKey                          *apikey.APIKey
+	Provider                        *provider.ExecutionProvider
+	Subscription                    *billing.UserSubscription
+	RequestPayloadHash              string
+	ProviderRateMultiplier          float64
+	SubscriptionRateMultiplier      float64
+	SubscriptionRateMultiplierScale float64
+	BalanceRateMultiplier           float64
+	APIKeyService                   provider.QuotaUpdater
+	Platform                        string // 来自 APIKey 关联 Group 的平台标识
+	// BillingBaseAmountUSD 是分配用户资金前的基础金额，nil 时使用 Cost.TotalCost。
+	// 免费 Fast 使用 Standard 用户基础价和 Fast 提供商统计基础成本。
+	BillingBaseAmountUSD *float64
+}
+
 // TestBuildUsageBillingCommand_BillableAmountTracksActualCost 检查用户计费金额使用 ActualCost。
 func TestBuildUsageBillingCommand_BillableAmountTracksActualCost(t *testing.T) {
 	t.Parallel()
@@ -292,25 +311,6 @@ func TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast(t *testing.T
 
 func buildContractBillingCommand(requestID string, usageLog *usage.UsageLog, p *contractSettlementInput) *billing.UsageBillingCommand {
 	return completion.BuildCommand(requestID, querycache.Clone(usageLog), projectContractSettlement(p))
-}
-
-// contractSettlementInput 包含结算金额、付款方和倍率参数。
-type contractSettlementInput struct {
-	Cost                            *pricing.CostBreakdown
-	User                            *identity.User
-	APIKey                          *apikey.APIKey
-	Provider                        *provider.ExecutionProvider
-	Subscription                    *billing.UserSubscription
-	RequestPayloadHash              string
-	ProviderRateMultiplier          float64
-	SubscriptionRateMultiplier      float64
-	SubscriptionRateMultiplierScale float64
-	BalanceRateMultiplier           float64
-	APIKeyService                   provider.QuotaUpdater
-	Platform                        string // 来自 APIKey 关联 Group 的平台标识
-	// BillingBaseAmountUSD 是分配用户资金前的基础金额，nil 时使用 Cost.TotalCost。
-	// 免费 Fast 使用 Standard 用户基础价和 Fast 提供商统计基础成本。
-	BillingBaseAmountUSD *float64
 }
 
 func projectContractSettlement(p *contractSettlementInput) *completion.SettlementInput {

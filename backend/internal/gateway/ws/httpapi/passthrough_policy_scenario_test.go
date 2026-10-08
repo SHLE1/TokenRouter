@@ -33,6 +33,38 @@ import (
 	openaiwsv2 "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws/relay"
 )
 
+// fakePassthroughFrameConn 依次返回预设的客户端帧，读完后返回 io.EOF，并记录写入供断言检查。
+type fakePassthroughFrameConn struct {
+	reads     [][]byte
+	idx       int
+	writes    [][]byte
+	closeOnce bool
+}
+
+type openAIWSPolicyEnforcingFrameConn struct {
+	inner       openaiwsv2.FrameConn
+	filter      func(coderws.MessageType, []byte) ([]byte, *tierpolicy.BlockedError, error)
+	writeFilter func(coderws.MessageType, []byte) ([]byte, error)
+	onBlock     func(*tierpolicy.BlockedError)
+	once        sync.Once
+	core        gatewayws.FrameConn
+}
+
+type openAIWSClientFrameConn struct {
+	interTurnStarted   chan struct{}
+	waitingForNextTurn atomic.Bool
+}
+
+// openAIWSPassthroughUsageMeta 保存会话用量和推理强度。
+type openAIWSPassthroughUsageMeta struct {
+	*gatewayws.UsageMeta
+	// reasoningEffort 指向会话共享的推理强度。
+	reasoningEffort *atomic.Pointer[string]
+}
+
+// 兼容方法使用共享的 turn 屏障。
+type openAIWSPassthroughTurnLifecycle struct{ *gatewayws.TurnLifecycle }
+
 func TestWSResponseCreate_DefaultPassesPriorityAndNormalizesFast(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
@@ -243,14 +275,6 @@ func TestWSResponseCreate_EmptyTypeFrameUntouched(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, string(frame), string(updated))
-}
-
-// fakePassthroughFrameConn 依次返回预设的客户端帧，读完后返回 io.EOF，并记录写入供断言检查。
-type fakePassthroughFrameConn struct {
-	reads     [][]byte
-	idx       int
-	writes    [][]byte
-	closeOnce bool
 }
 
 func (f *fakePassthroughFrameConn) ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error) {
@@ -789,15 +813,6 @@ func TestPassthroughBilling_BlockedFrameDoesNotMutateServiceTier(t *testing.T) {
 		"blocked frame is never sent upstream; billing must retain the previous turn's tier")
 }
 
-type openAIWSPolicyEnforcingFrameConn struct {
-	inner       openaiwsv2.FrameConn
-	filter      func(coderws.MessageType, []byte) ([]byte, *tierpolicy.BlockedError, error)
-	writeFilter func(coderws.MessageType, []byte) ([]byte, error)
-	onBlock     func(*tierpolicy.BlockedError)
-	once        sync.Once
-	core        gatewayws.FrameConn
-}
-
 func (c *openAIWSPolicyEnforcingFrameConn) runtime() gatewayws.FrameConn {
 	c.once.Do(func() {
 		var filter func(int, []byte) ([]byte, *gatewayws.PolicyBlocked, error)
@@ -853,11 +868,6 @@ func (c *openAIWSPolicyEnforcingFrameConn) Close() error {
 	return c.runtime().Close()
 }
 
-type openAIWSClientFrameConn struct {
-	interTurnStarted   chan struct{}
-	waitingForNextTurn atomic.Bool
-}
-
 func (c *openAIWSClientFrameConn) markTurnStarted() {
 	if c != nil {
 		gatewayws.TurnActivity{Waiting: &c.waitingForNextTurn, Started: c.interTurnStarted}.MarkStarted()
@@ -906,13 +916,6 @@ func openAIWSPassthroughPolicyModelFromSessionFrame(provider *gatewayprovider.Ex
 	return gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(gatewayprovider.ExecutionModelPolicy(provider).Mapped(original))
 }
 
-// openAIWSPassthroughUsageMeta 保存会话用量和推理强度。
-type openAIWSPassthroughUsageMeta struct {
-	*gatewayws.UsageMeta
-	// reasoningEffort 指向会话共享的推理强度。
-	reasoningEffort *atomic.Pointer[string]
-}
-
 func newOpenAIWSPassthroughUsageMeta(model string, body []byte) *openAIWSPassthroughUsageMeta {
 	meta := gatewayws.NewUsageMeta(model, body, gatewayws.RequestUsageDecoder{})
 	return &openAIWSPassthroughUsageMeta{UsageMeta: meta, reasoningEffort: &meta.ReasoningEffort}
@@ -935,9 +938,6 @@ func (m *openAIWSPassthroughUsageMeta) updateFromResponseCreate(body []byte, map
 		m.UpdateFromResponseCreate(body)
 	}
 }
-
-// 兼容方法使用共享的 turn 屏障。
-type openAIWSPassthroughTurnLifecycle struct{ *gatewayws.TurnLifecycle }
 
 func newOpenAIWSPassthroughTurnLifecycle(inFlight bool) *openAIWSPassthroughTurnLifecycle {
 	return &openAIWSPassthroughTurnLifecycle{gatewayws.NewTurnLifecycle(inFlight)}

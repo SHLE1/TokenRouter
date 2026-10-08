@@ -18,14 +18,6 @@ type defaultCatalogStub struct {
 	entries map[string]*pricing.CatalogModelPricing
 }
 
-func (s defaultCatalogStub) GetModelPricing(model string) *pricing.CatalogModelPricing {
-	return s.entries[model]
-}
-
-func (s defaultCatalogStub) ForceUpdate() error {
-	panic("default price queries must not update the catalog")
-}
-
 type balanceEligibilityCacheStub struct {
 	billingCacheWorkerStub
 
@@ -34,6 +26,30 @@ type balanceEligibilityCacheStub struct {
 	invalidated              atomic.Bool
 	deductCalls              atomic.Int64
 	invalidateCalls          atomic.Int64
+}
+
+type billingCacheWorkerStub struct {
+	balanceUpdates int64
+	apiKeyUpdates  int64
+}
+
+type balanceLoadUserRepoStub struct {
+	calls   atomic.Int64
+	delay   time.Duration
+	balance float64
+}
+
+// mediaPriceCards 保存图片计费测试的完整型号价卡。
+type mediaPriceCards struct {
+	card *ModelPricingEntry
+}
+
+func (s defaultCatalogStub) GetModelPricing(model string) *pricing.CatalogModelPricing {
+	return s.entries[model]
+}
+
+func (s defaultCatalogStub) ForceUpdate() error {
+	panic("default price queries must not update the catalog")
 }
 
 func (s *balanceEligibilityCacheStub) GetUserBalance(context.Context, int64) (float64, error) {
@@ -57,11 +73,6 @@ func (s *balanceEligibilityCacheStub) InvalidateUserBalance(context.Context, int
 // newEligibilityForTest 构造资金准入检查器，用 goroutine 执行缓存回填。
 func newEligibilityForTest(cache BillingCache, users BalanceReader, keys APIKeyRateLimitLoader, options *EligibilityOptions) *Eligibility {
 	return NewEligibility(cache, users, keys, func() EligibilityOptions { return *options }, nil, func(_ string, fn func()) { go fn() })
-}
-
-type billingCacheWorkerStub struct {
-	balanceUpdates int64
-	apiKeyUpdates  int64
 }
 
 func (b *billingCacheWorkerStub) GetUserBalance(ctx context.Context, userID int64) (float64, error) {
@@ -99,12 +110,6 @@ func (b *billingCacheWorkerStub) InvalidateAPIKeyRateLimit(ctx context.Context, 
 	return nil
 }
 
-type balanceLoadUserRepoStub struct {
-	calls   atomic.Int64
-	delay   time.Duration
-	balance float64
-}
-
 func (s *balanceLoadUserRepoStub) GetByID(ctx context.Context, id int64) (*UserSummary, error) {
 	s.calls.Add(1)
 	if s.delay > 0 {
@@ -115,11 +120,6 @@ func (s *balanceLoadUserRepoStub) GetByID(ctx context.Context, id int64) (*UserS
 		}
 	}
 	return &UserSummary{ID: id, Balance: s.balance}, nil
-}
-
-// mediaPriceCards 保存图片计费测试的完整型号价卡。
-type mediaPriceCards struct {
-	card *ModelPricingEntry
 }
 
 // GetEffectiveConfigModelPricing 返回测试配置的价卡。

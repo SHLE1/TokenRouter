@@ -13,53 +13,55 @@ import (
 // 上游请求头仍可能返回历史版本的 100 万或 200 万额度快照。
 const GrokFreeRolling24hTokenLimit int64 = 500_000
 
-var grokFreeRolling24hTokenLimits = map[int64]struct{}{
-	GrokFreeRolling24hTokenLimit: {},
+var (
+	grokFreeRolling24hTokenLimits = map[int64]struct{}{
+		GrokFreeRolling24hTokenLimit: {},
 
-	1_000_000: {},
-	// 上游观测到的 Free 限额变体。
-	2_000_000: {},
-	// 2026 年 7 月前观测到的旧版 Free 限额。
-}
+		1_000_000: {},
+		// 上游观测到的 Free 限额变体。
+		2_000_000: {},
+		// 2026 年 7 月前观测到的旧版 Free 限额。
+	}
 
-func IsGrokFreeRolling24hTokenLimit(limit int64) bool {
-	_, ok := grokFreeRolling24hTokenLimits[limit]
-	return ok
-}
+	quotaHeaderAllowlist = []string{
+		"x-ratelimit-limit-requests",
+		"x-ratelimit-remaining-requests",
+		"x-ratelimit-reset-requests",
+		"x-ratelimit-limit-tokens",
+		"x-ratelimit-remaining-tokens",
+		"x-ratelimit-reset-tokens",
+		"x-rate-limit-limit-requests",
+		"x-rate-limit-remaining-requests",
+		"x-rate-limit-reset-requests",
+		"x-rate-limit-limit-tokens",
+		"x-rate-limit-remaining-tokens",
+		"x-rate-limit-reset-tokens",
+		"retry-after",
+		"x-subscription-tier",
+		"xai-subscription-tier",
+		"x-xai-subscription-tier",
+		"x-xai-user-tier",
+		"xai-user-tier",
+		"xai-tier",
+		"x-user-tier",
+		"x-plan-tier",
+		"x-subscription-plan",
+		"x-entitlement-status",
+		"xai-entitlement-status",
+		"x-xai-entitlement-status",
+		"x-xai-user-entitlement-status",
+		"x-user-entitlement-status",
+	}
+)
 
 // QuotaWindow 复用提供商展示叶子值；供应商解析仍由本包拥有。
 type QuotaWindow = usageview.QuotaWindow
 
 type QuotaSnapshot = usageview.QuotaSnapshot
 
-var quotaHeaderAllowlist = []string{
-	"x-ratelimit-limit-requests",
-	"x-ratelimit-remaining-requests",
-	"x-ratelimit-reset-requests",
-	"x-ratelimit-limit-tokens",
-	"x-ratelimit-remaining-tokens",
-	"x-ratelimit-reset-tokens",
-	"x-rate-limit-limit-requests",
-	"x-rate-limit-remaining-requests",
-	"x-rate-limit-reset-requests",
-	"x-rate-limit-limit-tokens",
-	"x-rate-limit-remaining-tokens",
-	"x-rate-limit-reset-tokens",
-	"retry-after",
-	"x-subscription-tier",
-	"xai-subscription-tier",
-	"x-xai-subscription-tier",
-	"x-xai-user-tier",
-	"xai-user-tier",
-	"xai-tier",
-	"x-user-tier",
-	"x-plan-tier",
-	"x-subscription-plan",
-	"x-entitlement-status",
-	"xai-entitlement-status",
-	"x-xai-entitlement-status",
-	"x-xai-user-entitlement-status",
-	"x-user-entitlement-status",
+func IsGrokFreeRolling24hTokenLimit(limit int64) bool {
+	_, ok := grokFreeRolling24hTokenLimits[limit]
+	return ok
 }
 
 func ParseQuotaHeaders(headers http.Header, statusCode int) *QuotaSnapshot {

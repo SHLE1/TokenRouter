@@ -25,18 +25,6 @@ type (
 	}
 )
 
-func NewPasskeyHandler(
-	passkeys *identity.PasskeyService,
-	authService *identity.AuthService,
-	settingService BackendSettings,
-) *PasskeyHandler {
-	return &PasskeyHandler{
-		passkeys:    passkeys,
-		authService: authService,
-		settingSvc:  settingService,
-	}
-}
-
 type PasskeyOptionsResponse struct {
 	SessionToken string `json:"session_token"`
 	Options      any    `json:"options"`
@@ -57,6 +45,18 @@ type PasskeyBeginLoginRequest struct {
 
 type PasskeyRenameRequest struct {
 	Name string `json:"name" binding:"required"`
+}
+
+func NewPasskeyHandler(
+	passkeys *identity.PasskeyService,
+	authService *identity.AuthService,
+	settingService BackendSettings,
+) *PasskeyHandler {
+	return &PasskeyHandler{
+		passkeys:    passkeys,
+		authService: authService,
+		settingSvc:  settingService,
+	}
 }
 
 // BeginLogin 启动无需用户名的可发现凭据登录流程。

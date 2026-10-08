@@ -9,6 +9,13 @@ import (
 
 type noSearchExecutor struct{}
 
+type quotaFixture struct {
+	mu               sync.Mutex
+	used, decrements int64
+	uncertain        bool
+	releaseDeadline  bool
+}
+
 func (noSearchExecutor) Search(context.Context, ProviderConfig, SearchRequest) (*SearchResponse, error) {
 	return &SearchResponse{}, nil
 }
@@ -16,13 +23,6 @@ func (noSearchExecutor) Search(context.Context, ProviderConfig, SearchRequest) (
 func (noSearchExecutor) IsProxyError(error) bool { return false }
 
 func (noSearchExecutor) CloseIdle() {}
-
-type quotaFixture struct {
-	mu               sync.Mutex
-	used, decrements int64
-	uncertain        bool
-	releaseDeadline  bool
-}
 
 func (q *quotaFixture) Increment(context.Context, string, time.Duration) (int64, error) {
 	q.mu.Lock()

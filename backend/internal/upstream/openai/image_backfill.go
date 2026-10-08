@@ -20,6 +20,10 @@ import (
 
 const openAIImageURLDownloadTimeout = 60 * time.Second
 
+var openAIImageBackfillContentTypes = map[string]struct{}{
+	"image/png": {}, "image/jpeg": {}, "image/webp": {}, "image/gif": {},
+}
+
 type ImageBackfillOptions struct {
 	Enabled        bool
 	Stream         bool
@@ -134,10 +138,6 @@ func RejectPrivateImageHost(downloadURL string) error {
 		return fmt.Errorf("image url host is not allowed: %s", host)
 	}
 	return nil
-}
-
-var openAIImageBackfillContentTypes = map[string]struct{}{
-	"image/png": {}, "image/jpeg": {}, "image/webp": {}, "image/gif": {},
 }
 
 // IsBackfillImageContent 只允许常见位图格式，避免把 SVG/HTML 等内容写入 b64_json。

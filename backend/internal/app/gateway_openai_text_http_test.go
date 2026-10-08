@@ -60,6 +60,74 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+// mockTempUnscheduler 记录 TempUnscheduleRetryableError 的调用信息。
+type mockTempUnscheduler struct {
+	calls []tempUnscheduleCall
+}
+
+type tempUnscheduleCall struct {
+	providerID  int64
+	failoverErr *forwardcore.UpstreamFailoverError
+}
+
+type countingGatewaySchedulerCache struct {
+	*fakeSchedulerCache
+	snapshotCalls atomic.Int64
+}
+
+// cyberSessionBlockHandlerCacheStub 模拟已命中的会话屏蔽缓存，并记录读取次数。
+type cyberSessionBlockHandlerCacheStub struct {
+	blocked   bool
+	readCalls int
+}
+
+type openAIHTTPPassthroughFailoverUpstream struct {
+	httpclient.
+		UpstreamTransport
+	mu          sync.Mutex
+	providerIDs []int64
+}
+
+type openAIHTTPPassthroughAuthFailoverUpstream struct {
+	httpclient.
+		UpstreamTransport
+	mu          sync.Mutex
+	providerIDs []int64
+	statusCode  int
+}
+
+type openAIHTTPPassthroughSSERateLimitUpstream struct {
+	httpclient.
+		UpstreamTransport
+	mu          sync.Mutex
+	providerIDs []int64
+}
+
+// openAIResponsesFailoverProviderRepo 为 failover 用例提供按平台选号和提供商回读。
+type openAIResponsesFailoverProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	providers []gatewayprovider.ExecutionProvider
+}
+
+// openAIResponsesFailoverCancelUpstream 固定返回 HTTP 520，可在首次上游调用时
+// 触发回调（用于模拟“上游在途期间客户端断开”）。
+type openAIResponsesFailoverCancelUpstream struct {
+	httpclient.
+		UpstreamTransport
+	mu          sync.Mutex
+	providerIDs []int64
+	onFirstDo   func()
+}
+
+// mixedHTTPTransport 通过本地 HTTP server 记录选中的提供商和上游端点。
+type mixedHTTPTransport struct {
+	mu        sync.Mutex
+	providers []int64
+}
+
+type mixedHTTPNoSearch struct{}
+
 // newEmptyGenericSelectionFixture 使用默认预算构造执行入口，提供商和窗口来源留空。
 func newEmptyGenericSelectionFixture() *selection.Generic {
 	return selection.NewGeneric(selection.GenericDependencies{}, selection.DefaultOptions())
@@ -191,27 +259,12 @@ func setImageChatTestAuthForGroup(c *gin.Context, groupID int64) {
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: apiKey.UserID, Concurrency: 1})
 }
 
-// mockTempUnscheduler 记录 TempUnscheduleRetryableError 的调用信息。
-type mockTempUnscheduler struct {
-	calls []tempUnscheduleCall
-}
-
-type tempUnscheduleCall struct {
-	providerID  int64
-	failoverErr *forwardcore.UpstreamFailoverError
-}
-
 func (m *mockTempUnscheduler) TempUnscheduleRetryableError(_ context.Context, providerID int64, failoverErr *forwardcore.UpstreamFailoverError) {
 	m.calls = append(m.calls, tempUnscheduleCall{providerID: providerID, failoverErr: failoverErr})
 }
 
 func newGatewayExecutionHandlerForTest(repo gatewayprovider.ExecutionProviderStore) *messageEndpointsFixture {
 	return newGatewayExecutionHandlerWithPricingConfigForTest(repo, nil)
-}
-
-type countingGatewaySchedulerCache struct {
-	*fakeSchedulerCache
-	snapshotCalls atomic.Int64
 }
 
 func (c *countingGatewaySchedulerCache) GetSnapshot(ctx context.Context, bucket scheduler.SchedulerBucket) ([]scheduler.SnapshotProvider, bool, error) {
@@ -1352,12 +1405,6 @@ func TestOpenAIResponses_FunctionCallOutputHTTPGuidanceDoesNotSuggestPreviousRes
 	require.NotContains(t, w.Body.String(), "reuse previous_response_id")
 }
 
-// cyberSessionBlockHandlerCacheStub 模拟已命中的会话屏蔽缓存，并记录读取次数。
-type cyberSessionBlockHandlerCacheStub struct {
-	blocked   bool
-	readCalls int
-}
-
 func (s *cyberSessionBlockHandlerCacheStub) GetSessionProviderID(context.Context, int64, string) (int64, error) {
 	return 0, errors.New("not found")
 }
@@ -1651,28 +1698,6 @@ func TestOpenAIRejectCyberSessionBlocked_OnlyChecksRiskControlGroups(t *testing.
 			}
 		})
 	}
-}
-
-type openAIHTTPPassthroughFailoverUpstream struct {
-	httpclient.
-		UpstreamTransport
-	mu          sync.Mutex
-	providerIDs []int64
-}
-
-type openAIHTTPPassthroughAuthFailoverUpstream struct {
-	httpclient.
-		UpstreamTransport
-	mu          sync.Mutex
-	providerIDs []int64
-	statusCode  int
-}
-
-type openAIHTTPPassthroughSSERateLimitUpstream struct {
-	httpclient.
-		UpstreamTransport
-	mu          sync.Mutex
-	providerIDs []int64
 }
 
 func (u *openAIHTTPPassthroughFailoverUpstream) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
@@ -2077,13 +2102,6 @@ func TestOpenAIHTTPResourceBindingSharesImageCapacity(t *testing.T) {
 	acquired()
 }
 
-// openAIResponsesFailoverProviderRepo 为 failover 用例提供按平台选号和提供商回读。
-type openAIResponsesFailoverProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	providers []gatewayprovider.ExecutionProvider
-}
-
 func (r openAIResponsesFailoverProviderRepo) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	for i := range r.providers {
 		if r.providers[i].Record.ID == id {
@@ -2114,16 +2132,6 @@ func (r openAIResponsesFailoverProviderRepo) providersForPlatform(platform strin
 		}
 	}
 	return out
-}
-
-// openAIResponsesFailoverCancelUpstream 固定返回 HTTP 520，可在首次上游调用时
-// 触发回调（用于模拟“上游在途期间客户端断开”）。
-type openAIResponsesFailoverCancelUpstream struct {
-	httpclient.
-		UpstreamTransport
-	mu          sync.Mutex
-	providerIDs []int64
-	onFirstDo   func()
 }
 
 func (u *openAIResponsesFailoverCancelUpstream) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
@@ -2576,12 +2584,6 @@ func TestOpenAITextAssemblyReadAndStopBoundaries(t *testing.T) {
 	}
 }
 
-// mixedHTTPTransport 通过本地 HTTP server 记录选中的提供商和上游端点。
-type mixedHTTPTransport struct {
-	mu        sync.Mutex
-	providers []int64
-}
-
 func (s *mixedHTTPTransport) Do(req *http.Request, _ string, id int64, _ int) (*http.Response, error) {
 	s.mu.Lock()
 	s.providers = append(s.providers, id)
@@ -2599,14 +2601,12 @@ func (s *mixedHTTPTransport) calls() []int64 {
 	return slices.Clone(s.providers)
 }
 
-type mixedHTTPNoSearch struct{}
-
 func (mixedHTTPNoSearch) Current() searchtools.Searcher { return nil }
 
 func mixedUpstreamResponse(w http.ResponseWriter, r *http.Request, failAnthropic bool) {
 	body, _ := io.ReadAll(r.Body)
 	if failAnthropic && strings.Contains(r.URL.Path, "/messages") {
-		w.WriteHeader(502)
+		w.WriteHeader(http.StatusBadGateway)
 		_, _ = io.WriteString(w, `{"error":{"type":"overloaded_error","message":"retry another provider"}}`)
 		return
 	}

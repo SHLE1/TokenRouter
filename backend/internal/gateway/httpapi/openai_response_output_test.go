@@ -43,6 +43,45 @@ import (
 // 读取器在输出内容和用量后报错，测试检查返回结果。
 type grokObservationErrorReader struct{ err error }
 
+type grokPingFilterTestReadCloser struct {
+	reader     io.ReadCloser
+	closeCount atomic.Int32
+}
+
+type firstOutputCloseTrackingBody struct {
+	io.ReadCloser
+	closed chan struct{}
+	once   sync.Once
+}
+
+type stagedOpenAISSEReadCloser struct {
+	segments   [][]byte
+	gates      []<-chan struct{}
+	waiting    []chan struct{}
+	eofReached chan struct{}
+	current    []byte
+	index      int
+}
+
+type openAIResponseFlushReadError struct {
+	payload []byte
+	err     error
+	sent    bool
+}
+
+type cancelReadCloser struct{}
+
+type errReadCloser struct {
+	err error
+}
+
+// streamSelectionDiagnosticSource 为流执行后的下一次提供商选择提供调度查询数据。
+// 诊断查询副本包含分组和活动状态，流夹具保存传输字段。
+type streamSelectionDiagnosticSource struct {
+	value gatewayprovider.ExecutionProvider
+	group routing.Group
+}
+
 func (r grokObservationErrorReader) Read([]byte) (int, error) { return 0, r.err }
 
 // TestGrokNativeObservationRetainsPartialUsageAfterReadError 验证可见输出后的读取错误仍保留用量。
@@ -53,7 +92,7 @@ func TestGrokNativeObservationRetainsPartialUsageAfterReadError(t *testing.T) {
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 470, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey}}
-	response := &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(io.MultiReader(strings.NewReader(payload), grokObservationErrorReader{failure}))}
+	response := &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(io.MultiReader(strings.NewReader(payload), grokObservationErrorReader{failure}))}
 	service := newResponseOutputForTest(OpenAIResponseOptions{})
 	result, err := service.ReadStreamObservation(context.Background(), response, c, provider, time.Now(), "grok-fixture", "grok-fixture", "")
 	require.Error(t, err)
@@ -189,7 +228,7 @@ func TestGrokResponsesBillingPingFilterPassesThroughPingFrameWithUnknownField(t 
 // TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame 验证超过行数或字节上限后停止缓冲，候选帧原样直通。
 func TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame(t *testing.T) {
 	lines := []string{"event: ping"}
-	for i := 0; i < grok.ResponsesPingFrameMaxLines; i++ {
+	for range grok.ResponsesPingFrameMaxLines {
 		lines = append(lines, ": filler comment")
 	}
 	lines = append(lines, `data: {"type":"ping","cost":"0"}`, "")
@@ -268,11 +307,6 @@ func TestGrokResponsesBillingPingFilterPreservesUsageAndTerminalEvent(t *testing
 	require.Contains(t, recorder.Body.String(), "response.completed")
 	require.NotContains(t, recorder.Body.String(), "inference-cost")
 	require.NotContains(t, recorder.Body.String(), "event: ping")
-}
-
-type grokPingFilterTestReadCloser struct {
-	reader     io.ReadCloser
-	closeCount atomic.Int32
 }
 
 func (r *grokPingFilterTestReadCloser) Read(p []byte) (int, error) { return r.reader.Read(p) }
@@ -801,12 +835,6 @@ func TestReconstructResponseOutputFromSSE_NonCompactionAddedStillUsesDeltas(t *t
 	require.Equal(t, "hi", items[0].Get("content.0.text").String())
 }
 
-type firstOutputCloseTrackingBody struct {
-	io.ReadCloser
-	closed chan struct{}
-	once   sync.Once
-}
-
 func (b *firstOutputCloseTrackingBody) Close() error {
 	b.once.Do(func() { close(b.closed) })
 	return b.ReadCloser.Close()
@@ -1318,15 +1346,6 @@ func newOpenAIResponseFlushRecorder() *openAIResponseFlushRecorder {
 	}
 }
 
-type stagedOpenAISSEReadCloser struct {
-	segments   [][]byte
-	gates      []<-chan struct{}
-	waiting    []chan struct{}
-	eofReached chan struct{}
-	current    []byte
-	index      int
-}
-
 func (r *stagedOpenAISSEReadCloser) Read(data []byte) (int, error) {
 	if len(r.current) == 0 {
 		if r.index >= len(r.segments) {
@@ -1352,12 +1371,6 @@ func (r *stagedOpenAISSEReadCloser) Read(data []byte) (int, error) {
 }
 
 func (r *stagedOpenAISSEReadCloser) Close() error { return nil }
-
-type openAIResponseFlushReadError struct {
-	payload []byte
-	err     error
-	sent    bool
-}
 
 func (r *openAIResponseFlushReadError) Read(data []byte) (int, error) {
 	if !r.sent {
@@ -1882,15 +1895,9 @@ func waitOpenAIResponseFlushSignal(t *testing.T, signal <-chan struct{}) {
 	}
 }
 
-type cancelReadCloser struct{}
-
 func (c cancelReadCloser) Read(p []byte) (int, error) { return 0, context.Canceled }
 
 func (c cancelReadCloser) Close() error { return nil }
-
-type errReadCloser struct {
-	err error
-}
 
 func (r errReadCloser) Read([]byte) (int, error) { return 0, r.err }
 
@@ -2506,7 +2513,7 @@ func TestOpenAIStreamingPreambleKeepaliveUsesDownstreamIdle(t *testing.T) {
 	go func() {
 		defer func() { _ = pw.Close() }()
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\n"))
-		for i := 0; i < 6; i++ {
+		for range 6 {
 			time.Sleep(250 * time.Millisecond)
 			_, _ = pw.Write([]byte("data: {\"type\":\"response.in_progress\",\"response\":{\"id\":\"resp_1\"}}\n\n"))
 		}
@@ -3509,13 +3516,6 @@ func runSyntheticVisibleTTFTStream(t *testing.T, passthrough bool, visibleDelay 
 		t.Fatal("synthetic upstream writer did not exit")
 	}
 	return result
-}
-
-// streamSelectionDiagnosticSource 为流执行后的下一次提供商选择提供调度查询数据。
-// 诊断查询副本包含分组和活动状态，流夹具保存传输字段。
-type streamSelectionDiagnosticSource struct {
-	value gatewayprovider.ExecutionProvider
-	group routing.Group
 }
 
 func (s streamSelectionDiagnosticSource) GetProvider(context.Context, int64) (*gatewayprovider.ExecutionProvider, error) {

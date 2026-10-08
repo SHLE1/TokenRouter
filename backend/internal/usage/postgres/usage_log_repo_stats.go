@@ -17,6 +17,30 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// UsageStats 表示用量统计。
+type UsageStats = usage.UsageStats
+
+// BatchUserUsageStats 表示单个用户的批量用量统计。
+type BatchUserUsageStats = usage.BatchUserUsageStats
+
+// PlatformUsage 表示按平台拆分的用量明细。
+type PlatformUsage = usage.PlatformUsage
+
+// BatchAPIKeyUsageStats 表示单个 API Key 的批量用量统计。
+type BatchAPIKeyUsageStats = usage.BatchAPIKeyUsageStats
+
+// ProviderUsageHistory 表示提供商的每日用量历史。
+type ProviderUsageHistory = usage.ProviderUsageHistory
+
+// ProviderUsageSummary 表示提供商的用量汇总统计。
+type ProviderUsageSummary = usage.ProviderUsageSummary
+
+// ProviderUsageStatsResponse 表示提供商完整的用量统计响应。
+type ProviderUsageStatsResponse = usage.ProviderUsageStatsResponse
+
+// EndpointStat represents endpoint usage statistics row.
+type EndpointStat = usage.EndpointStat
+
 // GetProviderWindowStatsPair 扫描两个窗口的并集，分别计算各自起点后的统计。
 func (r *Store) GetProviderWindowStatsPair(ctx context.Context, id int64, firstStart, secondStart time.Time) (*usage.ProviderStats, *usage.ProviderStats, error) {
 	const query = `SELECT
@@ -466,15 +490,6 @@ func (r *Store) GetGeminiUsageTotalsBatch(ctx context.Context, providerIDs []int
 	return result, nil
 }
 
-// UsageStats 表示用量统计。
-type UsageStats = usage.UsageStats
-
-// BatchUserUsageStats 表示单个用户的批量用量统计。
-type BatchUserUsageStats = usage.BatchUserUsageStats
-
-// PlatformUsage 表示按平台拆分的用量明细。
-type PlatformUsage = usage.PlatformUsage
-
 func normalizePositiveInt64IDs(ids []int64) []int64 {
 	if len(ids) == 0 {
 		return nil
@@ -573,9 +588,6 @@ func (r *Store) GetBatchUserUsageStats(ctx context.Context, userIDs []int64, sta
 
 	return result, nil
 }
-
-// BatchAPIKeyUsageStats 表示单个 API Key 的批量用量统计。
-type BatchAPIKeyUsageStats = usage.BatchAPIKeyUsageStats
 
 // GetBatchAPIKeyUsageStats gets today and total actual_cost for multiple API keys within a time range.
 // If startTime is zero, defaults to 30 days ago.
@@ -879,18 +891,6 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 
 	return stats, nil
 }
-
-// ProviderUsageHistory 表示提供商的每日用量历史。
-type ProviderUsageHistory = usage.ProviderUsageHistory
-
-// ProviderUsageSummary 表示提供商的用量汇总统计。
-type ProviderUsageSummary = usage.ProviderUsageSummary
-
-// ProviderUsageStatsResponse 表示提供商完整的用量统计响应。
-type ProviderUsageStatsResponse = usage.ProviderUsageStatsResponse
-
-// EndpointStat represents endpoint usage statistics row.
-type EndpointStat = usage.EndpointStat
 
 func (r *Store) getEndpointStatsByColumnWithFilters(ctx context.Context, endpointColumn string, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID, teamID int64, model string, modelSource string, requestType *int16, stream *bool, billingType *int8, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) (results []EndpointStat, err error) {
 	if endpointColumn == "inbound_endpoint" {

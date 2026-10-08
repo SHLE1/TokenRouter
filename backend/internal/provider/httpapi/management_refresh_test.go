@@ -20,6 +20,30 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+// 管理刷新和 SDK 解析使用生产实现，网络交换返回固定的本地响应。
+type agRecoveryIdentityAdmin struct {
+	providercore.ManagedCredentialStore
+	current providercore.Record
+	clears  int
+}
+
+type agRecoveryIdentityTransport struct{ admin *agRecoveryIdentityAdmin }
+
+type grokRefreshOAuthStub struct {
+	provider *providercore.Record
+	info     *providercore.GrokTokenInfo
+	calls    int
+}
+
+type grokRefreshAdminService struct {
+	*managementMutationFixture
+	updatedCredentials map[string]any
+}
+
+type applyOAuthTokenInvalidator struct {
+	providers []*providercore.Record
+}
+
 func TestAntigravityManualRecoveryDoesNotClearNewAdministratorState(t *testing.T) {
 	admin := &agRecoveryIdentityAdmin{current: providercore.Record{ID: 82, Platform: capability.PlatformAntigravity, Type: capability.ProviderTypeOAuth, Status: providercore.StatusError, ErrorMessage: "missing_project_id: original", Credentials: map[string]any{"access_token": "old", "refresh_token": "old"}}}
 	observed := admin.current
@@ -167,13 +191,6 @@ func TestManualRefreshDoesNotOverwriteNewAdministratorCredentials(t *testing.T) 
 	require.Equal(t, "administrator", updated.GetCredential("refresh_token"))
 }
 
-// 管理刷新和 SDK 解析使用生产实现，网络交换返回固定的本地响应。
-type agRecoveryIdentityAdmin struct {
-	providercore.ManagedCredentialStore
-	current providercore.Record
-	clears  int
-}
-
 func (s *agRecoveryIdentityAdmin) GetProvider(context.Context, int64) (*providercore.Record, error) {
 	v := s.current
 	return &v, nil
@@ -199,8 +216,6 @@ func (s *agRecoveryIdentityAdmin) EnsureOpenAIPrivacy(context.Context, *provider
 	return ""
 }
 
-type agRecoveryIdentityTransport struct{ admin *agRecoveryIdentityAdmin }
-
 func (t agRecoveryIdentityTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	body := `{}`
 	if strings.Contains(r.URL.Path, "token") {
@@ -210,7 +225,7 @@ func (t agRecoveryIdentityTransport) RoundTrip(r *http.Request) (*http.Response,
 		t.admin.current.Credentials = map[string]any{"access_token": "administrator", "refresh_token": "administrator", "project_id": "new-project"}
 		body = `{"cloudaicompanionProject":"recovered-project","currentTier":{"id":"STANDARD"}}`
 	}
-	return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+	return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 }
 
 // ClearManagedRefreshError 模拟条件更新，integration 测试覆盖 SQL 交错执行。
@@ -222,12 +237,6 @@ func (s *agRecoveryIdentityAdmin) ClearManagedRefreshError(_ context.Context, ol
 	s.current.Status = billing.StatusActive
 	s.current.ErrorMessage = ""
 	return &s.current, true, nil
-}
-
-type grokRefreshOAuthStub struct {
-	provider *providercore.Record
-	info     *providercore.GrokTokenInfo
-	calls    int
 }
 
 func (s *grokRefreshOAuthStub) RefreshProviderToken(_ context.Context, provider *providercore.Record) (*providercore.GrokTokenInfo, error) {
@@ -245,11 +254,6 @@ func (s *grokRefreshOAuthStub) BuildProviderCredentials(info *providercore.GrokT
 	}
 }
 
-type grokRefreshAdminService struct {
-	*managementMutationFixture
-	updatedCredentials map[string]any
-}
-
 func (s *grokRefreshAdminService) UpdateProvider(_ context.Context, id int64, input *providercore.UpdateProviderInput) (*providercore.Record, error) {
 	s.updatedCredentials = input.Credentials
 	return &providercore.Record{
@@ -259,10 +263,6 @@ func (s *grokRefreshAdminService) UpdateProvider(_ context.Context, id int64, in
 		Status:      billing.StatusActive,
 		Credentials: input.Credentials,
 	}, nil
-}
-
-type applyOAuthTokenInvalidator struct {
-	providers []*providercore.Record
 }
 
 func (i *applyOAuthTokenInvalidator) InvalidateToken(ctx context.Context, provider *providercore.Record) error {

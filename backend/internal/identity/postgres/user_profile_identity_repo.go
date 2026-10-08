@@ -14,6 +14,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/authidentity"
 	"github.com/TokenFlux/TokenRouter/ent/authidentitychannel"
@@ -21,6 +22,11 @@ import (
 	dbpredicate "github.com/TokenFlux/TokenRouter/ent/predicate"
 	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+)
+
+const (
+	ProviderGrantReasonSignup    ProviderGrantReason = "signup"
+	ProviderGrantReasonFirstBind ProviderGrantReason = "first_bind"
 )
 
 var (
@@ -36,14 +42,11 @@ var (
 		"AUTH_IDENTITY_CHANNEL_PROVIDER_MISMATCH",
 		"auth identity channel provider must match canonical identity",
 	)
+
+	IdentityRepositoryScopedKeyLocks = IdentityNewScopedKeyLockRegistry()
 )
 
 type ProviderGrantReason string
-
-const (
-	ProviderGrantReasonSignup    ProviderGrantReason = "signup"
-	ProviderGrantReasonFirstBind ProviderGrantReason = "first_bind"
-)
 
 type AuthIdentityKey struct {
 	ProviderType    string
@@ -76,30 +79,6 @@ type CreateAuthIdentityResult struct {
 	Channel  *dbent.AuthIdentityChannel
 }
 
-func (r *CreateAuthIdentityResult) IdentityRef() AuthIdentityKey {
-	if r == nil || r.Identity == nil {
-		return AuthIdentityKey{}
-	}
-	return AuthIdentityKey{
-		ProviderType:    r.Identity.ProviderType,
-		ProviderKey:     r.Identity.ProviderKey,
-		ProviderSubject: r.Identity.ProviderSubject,
-	}
-}
-
-func (r *CreateAuthIdentityResult) ChannelRef() *AuthIdentityChannelKey {
-	if r == nil || r.Channel == nil {
-		return nil
-	}
-	return &AuthIdentityChannelKey{
-		ProviderType:   r.Channel.ProviderType,
-		ProviderKey:    r.Channel.ProviderKey,
-		Channel:        r.Channel.Channel,
-		ChannelAppID:   r.Channel.ChannelAppID,
-		ChannelSubject: r.Channel.ChannelSubject,
-	}
-}
-
 type UserAuthIdentityLookup struct {
 	User     *dbent.User
 	Identity *dbent.AuthIdentity
@@ -124,8 +103,6 @@ type IdentitySqlQueryExecutor interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-var IdentityRepositoryScopedKeyLocks = IdentityNewScopedKeyLockRegistry()
-
 type IdentityScopedKeyLockRegistry struct {
 	mu    sync.Mutex
 	locks map[string]*IdentityScopedKeyLockEntry
@@ -134,6 +111,30 @@ type IdentityScopedKeyLockRegistry struct {
 type IdentityScopedKeyLockEntry struct {
 	mu   sync.Mutex
 	refs int
+}
+
+func (r *CreateAuthIdentityResult) IdentityRef() AuthIdentityKey {
+	if r == nil || r.Identity == nil {
+		return AuthIdentityKey{}
+	}
+	return AuthIdentityKey{
+		ProviderType:    r.Identity.ProviderType,
+		ProviderKey:     r.Identity.ProviderKey,
+		ProviderSubject: r.Identity.ProviderSubject,
+	}
+}
+
+func (r *CreateAuthIdentityResult) ChannelRef() *AuthIdentityChannelKey {
+	if r == nil || r.Channel == nil {
+		return nil
+	}
+	return &AuthIdentityChannelKey{
+		ProviderType:   r.Channel.ProviderType,
+		ProviderKey:    r.Channel.ProviderKey,
+		Channel:        r.Channel.Channel,
+		ChannelAppID:   r.Channel.ChannelAppID,
+		ChannelSubject: r.Channel.ChannelSubject,
+	}
 }
 
 func IdentityNewScopedKeyLockRegistry() *IdentityScopedKeyLockRegistry {

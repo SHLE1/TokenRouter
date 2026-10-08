@@ -7,22 +7,8 @@ import (
 	"time"
 )
 
-// GetGrokDefaultBaseURLMode 在读取预算内查询 Grok Base URL 模式，缺省使用 CLI。
-func (s *RuntimeSettings) GetGrokDefaultBaseURLMode(ctx context.Context) string {
-	if s == nil || s.settingRepo == nil {
-		return "cli"
-	}
-	dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), gatewayForwardingDBTimeout)
-	defer cancel()
-	raw, err := s.settingRepo.GetValue(dbCtx, SettingKeyGrokDefaultBaseURLMode)
-	if err != nil {
-		return "cli"
-	}
-	return NormalizeGrokDefaultBaseURLMode(raw)
-}
-
-// 转发设置的持久化键和 TTFT 模式值如下。
 const (
+	// 转发设置的持久化键和 TTFT 模式值如下。
 	SettingKeyClaudeOAuthSystemPrompt                = "claude_oauth_system_prompt"
 	SettingKeyClaudeOAuthSystemPromptBlocks          = "claude_oauth_system_prompt_blocks"
 	SettingKeyEnableAnthropicCacheTTL1hInjection     = "enable_anthropic_cache_ttl_1h_injection"
@@ -37,6 +23,22 @@ const (
 	SettingKeyRewriteMessageCacheControl             = "rewrite_message_cache_control"
 	OpenAITTFTModeSemantic                           = "semantic"
 	OpenAITTFTModeVisible                            = "visible"
+
+	// versionBoundsCacheTTL 缓存有效期
+	versionBoundsCacheTTL = 60 * time.Second
+
+	// versionBoundsErrorTTL DB 错误时的短缓存，快速重试
+	versionBoundsErrorTTL = 5 * time.Second
+
+	// versionBoundsDBTimeout singleflight 内 DB 查询超时，独立于请求 context
+	versionBoundsDBTimeout = 5 * time.Second
+
+	gatewayForwardingCacheTTL = 60 * time.Second
+	gatewayForwardingErrorTTL = 5 * time.Second
+
+	// ForwardingSettingsReadTimeout 限制转发设置读取的回源时长。
+	ForwardingSettingsReadTimeout = 5 * time.Second
+	gatewayForwardingDBTimeout    = ForwardingSettingsReadTimeout
 )
 
 // cachedVersionBounds 缓存 Claude Code 版本号上下限（进程内缓存，60s TTL）
@@ -45,15 +47,6 @@ type cachedVersionBounds struct {
 	max       string // 空字符串 = 不检查
 	expiresAt int64  // unix nano
 }
-
-// versionBoundsCacheTTL 缓存有效期
-const versionBoundsCacheTTL = 60 * time.Second
-
-// versionBoundsErrorTTL DB 错误时的短缓存，快速重试
-const versionBoundsErrorTTL = 5 * time.Second
-
-// versionBoundsDBTimeout singleflight 内 DB 查询超时，独立于请求 context
-const versionBoundsDBTimeout = 5 * time.Second
 
 // cachedGatewayForwardingSettings 缓存网关转发行为设置（进程内缓存，60s TTL）
 type cachedGatewayForwardingSettings struct {
@@ -69,17 +62,6 @@ type cachedGatewayForwardingSettings struct {
 	clientDatelineNormalization      bool
 	expiresAt                        int64 // unix nano
 }
-
-const (
-	gatewayForwardingCacheTTL = 60 * time.Second
-	gatewayForwardingErrorTTL = 5 * time.Second
-)
-
-// ForwardingSettingsReadTimeout 限制转发设置读取的回源时长。
-const (
-	ForwardingSettingsReadTimeout = 5 * time.Second
-	gatewayForwardingDBTimeout    = ForwardingSettingsReadTimeout
-)
 
 type gatewayForwardingSettingsResult struct {
 	openAITTFTMode                                                                        string
@@ -100,6 +82,20 @@ type ForwardingSnapshot struct {
 	AnthropicCacheTTL1hInjection     bool
 	RewriteMessageCacheControl       bool
 	ClientDatelineNormalization      bool
+}
+
+// GetGrokDefaultBaseURLMode 在读取预算内查询 Grok Base URL 模式，缺省使用 CLI。
+func (s *RuntimeSettings) GetGrokDefaultBaseURLMode(ctx context.Context) string {
+	if s == nil || s.settingRepo == nil {
+		return "cli"
+	}
+	dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), gatewayForwardingDBTimeout)
+	defer cancel()
+	raw, err := s.settingRepo.GetValue(dbCtx, SettingKeyGrokDefaultBaseURLMode)
+	if err != nil {
+		return "cli"
+	}
+	return NormalizeGrokDefaultBaseURLMode(raw)
 }
 
 // NormalizeOpenAITTFTMode 接受 visible，其他值使用 semantic。

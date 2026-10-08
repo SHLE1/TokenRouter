@@ -19,6 +19,15 @@ import (
 	groupdto "github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 )
 
+// failingUpdateGroupService 让管理请求返回指定的服务错误。
+type failingUpdateGroupService struct {
+	*adminUpdateFixture
+	err error
+}
+
+// adminUpdateFixture 保存管理请求测试使用的 API Key。
+type adminUpdateFixture struct{ apiKeys []apikey.APIKey }
+
 func TestAdminAPIKeyHandler_UpdateGroup_InvalidID(t *testing.T) {
 	router := setupAPIKeyHandler(newAdminUpdateFixture())
 	body := `{"group_id": 2}`
@@ -233,12 +242,6 @@ func setupAPIKeyHandler(adminSvc KeyAdministration) *gin.Engine {
 	return router
 }
 
-// failingUpdateGroupService 让管理请求返回指定的服务错误。
-type failingUpdateGroupService struct {
-	*adminUpdateFixture
-	err error
-}
-
 func (f *failingUpdateGroupService) UpdateManagedFields(_ context.Context, _ int64, _ *int64, _ bool) (*apikey.AdminUpdateAPIKeyGroupIDResult, error) {
 	return nil, f.err
 }
@@ -292,9 +295,6 @@ func (s *adminUpdateFixture) UpdateManagedFields(ctx context.Context, id int64, 
 	}
 	return result, nil
 }
-
-// adminUpdateFixture 保存管理请求测试使用的 API Key。
-type adminUpdateFixture struct{ apiKeys []apikey.APIKey }
 
 func newAdminUpdateFixture() *adminUpdateFixture {
 	now := time.Now().UTC()

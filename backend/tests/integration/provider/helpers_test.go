@@ -20,16 +20,40 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
 )
 
-// deprecatedUpstreamBillingProbeExtraKey 是历史上游计费探测快照键。
-const deprecatedUpstreamBillingProbeExtraKey = "upstream_billing_probe"
+const (
+	// deprecatedUpstreamBillingProbeExtraKey 是历史上游计费探测快照键。
+	deprecatedUpstreamBillingProbeExtraKey = "upstream_billing_probe"
 
-// deprecatedUpstreamBillingProbeEnabledExtraKey 是历史上游计费探测开关键。
-const deprecatedUpstreamBillingProbeEnabledExtraKey = "upstream_billing_probe_enabled"
+	// deprecatedUpstreamBillingProbeEnabledExtraKey 是历史上游计费探测开关键。
+	deprecatedUpstreamBillingProbeEnabledExtraKey = "upstream_billing_probe_enabled"
+)
 
 // captureEntQueryMatcher 记录 Ent 发出的 SQL。
 type captureEntQueryMatcher struct {
 	actual *string
 }
+
+// captureQuerySQL 在执行查询时记录 SQL 和参数。
+type captureQuerySQL struct {
+	db       *sql.DB
+	captured *string
+	args     *[]any
+}
+
+// rowsAffectedResult 提供固定影响行数的 SQL 执行结果。
+type rowsAffectedResult int64
+
+// recordingSQLExecutor 记录写入 SQL，并模拟错误和执行后的回调。
+type recordingSQLExecutor struct {
+	result      sql.Result
+	err         error
+	afterExec   func()
+	execQueries []string
+	execArgs    [][]any
+}
+
+// providerEventsFixture 将提供商事件写入调度 outbox 并发布快照。
+type providerEventsFixture struct{ publisher scheduler.SnapshotPublisher }
 
 // Match 保存待断言的查询文本。
 func (m captureEntQueryMatcher) Match(_, actual string) error {
@@ -50,13 +74,6 @@ func newProxyStoreContract(client *dbent.Client, exec postgresinfra.Executor) *e
 			return schedulerpostgres.EnqueueSchedulerChange(ctx, tx, scheduler.SchedulerOutboxEventProviderBulkChanged, nil, nil, payload)
 		},
 	})
-}
-
-// captureQuerySQL 在执行查询时记录 SQL 和参数。
-type captureQuerySQL struct {
-	db       *sql.DB
-	captured *string
-	args     *[]any
 }
 
 // ExecContext 将写操作交给数据库执行。
@@ -80,23 +97,11 @@ func normalizeSQLWhitespace(sql string) string {
 	return strings.Join(regexp.MustCompile(`\s+`).Split(strings.TrimSpace(sql), -1), " ")
 }
 
-// rowsAffectedResult 提供固定影响行数的 SQL 执行结果。
-type rowsAffectedResult int64
-
 // LastInsertId 返回测试占位值。
 func (r rowsAffectedResult) LastInsertId() (int64, error) { return 0, nil }
 
 // RowsAffected 返回指定的影响行数。
 func (r rowsAffectedResult) RowsAffected() (int64, error) { return int64(r), nil }
-
-// recordingSQLExecutor 记录写入 SQL，并模拟错误和执行后的回调。
-type recordingSQLExecutor struct {
-	result      sql.Result
-	err         error
-	afterExec   func()
-	execQueries []string
-	execArgs    [][]any
-}
 
 // ExecContext 记录写操作并返回配置的结果。
 func (e *recordingSQLExecutor) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
@@ -129,9 +134,6 @@ func newProviderStoreContract(client *dbent.Client, exec postgresinfra.Executor,
 	store.SetEvents(providerPublicationEvents(store, cache))
 	return store
 }
-
-// providerEventsFixture 将提供商事件写入调度 outbox 并发布快照。
-type providerEventsFixture struct{ publisher scheduler.SnapshotPublisher }
 
 // Name 将提供商事件转换为调度 outbox 事件名。
 func (providerEventsFixture) Name(event providerpostgres.ProviderEvent) string {

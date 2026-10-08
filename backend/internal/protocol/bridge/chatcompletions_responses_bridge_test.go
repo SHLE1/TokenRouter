@@ -10,6 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testToolImageDataURL = "data:image/png;base64,AQID"
+	testToolImageRemote  = "https://example.com/tool-output.png"
+)
+
 func TestResponsesInputToChatMessages_DeveloperRoleMapsToSystem(t *testing.T) {
 	messages, err := responsesInputToChatMessagesWithOptions("", json.RawMessage(`[{"role":"developer","content":"follow project instructions"}]`), nil)
 	require.NoError(t, err)
@@ -2320,11 +2325,6 @@ func convertGolden(t *testing.T, input string) []ChatMessage {
 	require.NoError(t, err)
 	return msgs
 }
-
-const (
-	testToolImageDataURL = "data:image/png;base64,AQID"
-	testToolImageRemote  = "https://example.com/tool-output.png"
-)
 
 func convertToolOutputMedia(t *testing.T, input string) []ChatMessage {
 	t.Helper()

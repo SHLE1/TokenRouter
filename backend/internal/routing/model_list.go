@@ -12,6 +12,22 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 )
 
+var sharedModelListMetrics ModelListMetrics
+
+// ModelList 维护原模型列表短缓存，构造时不启动 janitor，由应用时间轮执行到期清理。
+type ModelList struct {
+	Version func() string
+	Cache   *gocache.Cache
+	TTL     time.Duration
+	Read    func(context.Context, *int64) ([]CatalogueProvider, error)
+}
+
+type ModelListMetrics struct{ Hit, Miss, Store atomic.Int64 }
+
+func NewModelList(read func(context.Context, *int64) ([]CatalogueProvider, error), ttl time.Duration) *ModelList {
+	return &ModelList{Cache: gocache.New(ttl, 0), TTL: ttl, Read: read}
+}
+
 // Available 返回分组下可见的模型列表。
 // 它会聚合每个提供商显式配置的“可请求模型”（model_mapping 的 key 或独立 model_whitelist）。
 func (s *ModelList) Available(ctx context.Context, groupID *int64, platform string) []string {
@@ -86,27 +102,11 @@ func ModelListCacheKey(groupID *int64, platform string) string {
 	return fmt.Sprintf("%d|%s", modelListGroupID(groupID), strings.TrimSpace(platform))
 }
 
-// ModelList 维护原模型列表短缓存，构造时不启动 janitor，由应用时间轮执行到期清理。
-type ModelList struct {
-	Version func() string
-	Cache   *gocache.Cache
-	TTL     time.Duration
-	Read    func(context.Context, *int64) ([]CatalogueProvider, error)
-}
-
-func NewModelList(read func(context.Context, *int64) ([]CatalogueProvider, error), ttl time.Duration) *ModelList {
-	return &ModelList{Cache: gocache.New(ttl, 0), TTL: ttl, Read: read}
-}
-
 func (s *ModelList) Expire() {
 	if s != nil && s.Cache != nil {
 		s.Cache.DeleteExpired()
 	}
 }
-
-type ModelListMetrics struct{ Hit, Miss, Store atomic.Int64 }
-
-var sharedModelListMetrics ModelListMetrics
 
 // SharedModelListMetrics 延续全进程唯一指标，旧 Ops 与测试只取得同一状态的引用。
 func SharedModelListMetrics() *ModelListMetrics { return &sharedModelListMetrics }

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -32,6 +33,12 @@ type turnAuthentication struct {
 	acquired   *apikey.APIKey
 	acquireErr error
 }
+
+type turnSubscriptions struct {
+	current *billing.UserSubscription
+}
+
+type entryKeyReader struct{ calls int }
 
 func (a *turnAuthentication) GetByKey(context.Context, string) (*apikey.APIKey, error) {
 	panic("unexpected cached lookup")
@@ -88,10 +95,6 @@ func TestAuthorizeTurn(t *testing.T) {
 			require.Equal(t, 10.0, original.RateLimit5h)
 		})
 	}
-}
-
-type turnSubscriptions struct {
-	current *billing.UserSubscription
 }
 
 func (s turnSubscriptions) GetUsableSubscription(context.Context, int64, ...int64) (*billing.UserSubscription, bool, error) {
@@ -167,8 +170,6 @@ func TestAuthorizeTurnRejectsRevokedWSProtocol(t *testing.T) {
 	require.Nil(t, adapter.requestKey)
 }
 
-type entryKeyReader struct{ calls int }
-
 func (r *entryKeyReader) GetByKey(context.Context, string) (*apikey.APIKey, error) {
 	r.calls++
 	return nil, nil
@@ -206,7 +207,7 @@ func TestWSTurnPricing(t *testing.T) {
 		Models: []string{"priced-review"}, BillingMode: pricing.BillingModePerRequest, PerRequestPrice: &zero,
 	}})}
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest("GET", "/v1/responses", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 	target := &openAIWSEntryTarget{
 		provider: gatewayprovider.NewExecutionProvider(&provider.Record{ID: 1, Platform: "openai", Type: "apikey"}),
 		root: &openAIWSEntryAdapter{c: c, key: &apikey.APIKey{GroupID: testkit.GroupID()}, bindings: Bindings{

@@ -28,6 +28,14 @@ const (
 	openAIImagesEditsURL       = "https://api.openai.com/v1/images/edits"
 )
 
+// OpenAIImagesExecutor 执行单次图片请求，绑定请求构造、响应输出和工具冷却。
+type OpenAIImagesExecutor struct {
+	Requests *OpenAIRequests
+	Output   *OpenAIResponseOutput
+	Cooldown *provideradapter.ImageToolCooldown
+	Enter    func() (func(), error)
+}
+
 func (s *OpenAIImagesExecutor) ForwardImages(
 	ctx context.Context,
 	c *gin.Context,
@@ -225,12 +233,4 @@ func (s *OpenAIImagesExecutor) buildOpenAIImagesRequest(
 	options := s.Requests.ResponseOptions(ctx, c, provider, token, targetURL, false, tlsRouterMatch...)
 	options.AllowHeader = func(name string) bool { return AllowOpenAIPassthroughHeader(name) }
 	return upstreamopenai.BuildImagesRequest(ctx, body, contentType, options)
-}
-
-// OpenAIImagesExecutor 执行单次图片请求，绑定请求构造、响应输出和工具冷却。
-type OpenAIImagesExecutor struct {
-	Requests *OpenAIRequests
-	Output   *OpenAIResponseOutput
-	Cooldown *provideradapter.ImageToolCooldown
-	Enter    func() (func(), error)
 }

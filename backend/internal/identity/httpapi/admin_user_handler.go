@@ -43,22 +43,6 @@ type AdminUserHandler[K any] struct {
 	stepUp       func(*gin.Context) bool
 }
 
-func NewAdminUserHandler[K any](users UserAdministration, keys func(context.Context, int64, int, int, string, string) ([]K, int64, error), concurrency func(context.Context, []identity.User) (map[int64]int, error), stepUp func(*gin.Context) bool) *AdminUserHandler[K] {
-	return &AdminUserHandler[K]{adminService: users, listKeys: keys, concurrency: concurrency, stepUp: stepUp}
-}
-
-func (h *AdminUserHandler[K]) userResponse(u *identity.User) *dto.AdminUser[K] {
-	return dto.AdminUserFromIdentity[K](u, nil)
-}
-
-func adminID(c *gin.Context) int64 {
-	s, ok := authctx.GetAuthSubjectFromContext(c)
-	if !ok {
-		return 0
-	}
-	return s.UserID
-}
-
 // UserWithConcurrency wraps AdminUser with current concurrency info
 type UserWithConcurrency[K any] struct {
 	dto.AdminUser[K]
@@ -131,6 +115,36 @@ type BindUserAuthIdentityChannelRequest struct {
 	ChannelAppID   string         `json:"channel_app_id"`
 	ChannelSubject string         `json:"channel_subject"`
 	Metadata       map[string]any `json:"metadata"`
+}
+
+// ReplaceGroupRequest represents the request to replace a user's exclusive group
+type ReplaceGroupRequest struct {
+	OldGroupID int64 `json:"old_group_id" binding:"required,gt=0"`
+	NewGroupID int64 `json:"new_group_id" binding:"required,gt=0"`
+}
+
+// BatchUpdateLimitsRequest 表示管理员批量覆盖用户限制的请求。
+type BatchUpdateLimitsRequest struct {
+	UserIDs     []int64 `json:"user_ids"`
+	All         bool    `json:"all"`
+	Concurrency *int    `json:"concurrency" binding:"omitempty,min=0"`
+	RPMLimit    *int    `json:"rpm_limit" binding:"omitempty,min=0"`
+}
+
+func NewAdminUserHandler[K any](users UserAdministration, keys func(context.Context, int64, int, int, string, string) ([]K, int64, error), concurrency func(context.Context, []identity.User) (map[int64]int, error), stepUp func(*gin.Context) bool) *AdminUserHandler[K] {
+	return &AdminUserHandler[K]{adminService: users, listKeys: keys, concurrency: concurrency, stepUp: stepUp}
+}
+
+func (h *AdminUserHandler[K]) userResponse(u *identity.User) *dto.AdminUser[K] {
+	return dto.AdminUserFromIdentity[K](u, nil)
+}
+
+func adminID(c *gin.Context) int64 {
+	s, ok := authctx.GetAuthSubjectFromContext(c)
+	if !ok {
+		return 0
+	}
+	return s.UserID
 }
 
 // List handles listing all users with pagination
@@ -557,12 +571,6 @@ func (h *AdminUserHandler[K]) GetBalanceHistory(c *gin.Context) {
 	})
 }
 
-// ReplaceGroupRequest represents the request to replace a user's exclusive group
-type ReplaceGroupRequest struct {
-	OldGroupID int64 `json:"old_group_id" binding:"required,gt=0"`
-	NewGroupID int64 `json:"new_group_id" binding:"required,gt=0"`
-}
-
 // ReplaceGroup handles replacing a user's exclusive group
 // POST /api/v1/admin/users/:id/replace-group
 func (h *AdminUserHandler[K]) ReplaceGroup(c *gin.Context) {
@@ -605,14 +613,6 @@ func (h *AdminUserHandler[K]) GetUserRPMStatus(c *gin.Context) {
 	}
 
 	response.Success(c, status)
-}
-
-// BatchUpdateLimitsRequest 表示管理员批量覆盖用户限制的请求。
-type BatchUpdateLimitsRequest struct {
-	UserIDs     []int64 `json:"user_ids"`
-	All         bool    `json:"all"`
-	Concurrency *int    `json:"concurrency" binding:"omitempty,min=0"`
-	RPMLimit    *int    `json:"rpm_limit" binding:"omitempty,min=0"`
 }
 
 // BatchUpdateLimits 批量覆盖多个用户的并发数和/或 RPM 上限。

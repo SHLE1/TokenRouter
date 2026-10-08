@@ -141,6 +141,45 @@ type UpdateGroupRequest struct {
 	CopyProvidersFromGroupIDs []int64 `json:"copy_providers_from_group_ids"`
 }
 
+// UpdateSortOrderRequest represents the request to update group sort orders
+type UpdateSortOrderRequest struct {
+	Updates []struct {
+		ID        int64 `json:"id" binding:"required"`
+		SortOrder int   `json:"sort_order"`
+	} `json:"updates" binding:"required,min=1"`
+}
+
+// GroupAdministration 提供路由管理所需的操作。
+type GroupAdministration interface {
+	ListGroups(context.Context, int, int, string, string, string, *bool, string, string) ([]routing.Group, int64, error)
+	GetAllGroups(context.Context) ([]routing.Group, error)
+	GetAllGroupsIncludingInactive(context.Context) ([]routing.Group, error)
+	GetGroup(context.Context, int64) (*routing.Group, error)
+	GetGroupModelsListCandidates(context.Context, int64, string) ([]string, error)
+	CreateGroup(context.Context, *routing.CreateGroupInput) (*routing.Group, error)
+	UpdateGroup(context.Context, int64, *routing.UpdateGroupInput) (*routing.Group, error)
+	DuplicateGroup(context.Context, int64, string, string) (*routing.Group, error)
+	RecoverDuplicateGroup(context.Context, int64, string, string) (*routing.Group, error)
+	DeleteGroup(context.Context, int64) error
+	UpdateGroupSortOrders(context.Context, []routing.GroupSortOrderUpdate) error
+}
+
+// GroupHandler 只解码输入和输出 HTTP，业务规则通过窄用例接口调用。
+type GroupHandler struct {
+	idempotencyhttp.Executor
+
+	adminService GroupAdministration
+	resources    GroupResources
+}
+
+func NewGroupHandler(admin GroupAdministration, resources ...GroupResources) *GroupHandler {
+	handler := &GroupHandler{adminService: admin}
+	if len(resources) > 0 {
+		handler.resources = resources[0]
+	}
+	return handler
+}
+
 // List handles listing all groups with pagination
 // GET /api/v1/admin/groups
 func (h *GroupHandler) List(c *gin.Context) {
@@ -452,14 +491,6 @@ func (h *GroupHandler) Delete(c *gin.Context) {
 	httpx.Success(c, gin.H{"message": "Group deleted successfully"})
 }
 
-// UpdateSortOrderRequest represents the request to update group sort orders
-type UpdateSortOrderRequest struct {
-	Updates []struct {
-		ID        int64 `json:"id" binding:"required"`
-		SortOrder int   `json:"sort_order"`
-	} `json:"updates" binding:"required,min=1"`
-}
-
 // UpdateSortOrder handles updating group sort orders
 // PUT /api/v1/admin/groups/sort-order
 func (h *GroupHandler) UpdateSortOrder(c *gin.Context) {
@@ -483,35 +514,4 @@ func (h *GroupHandler) UpdateSortOrder(c *gin.Context) {
 	}
 
 	httpx.Success(c, gin.H{"message": "Sort order updated successfully"})
-}
-
-// GroupAdministration 提供路由管理所需的操作。
-type GroupAdministration interface {
-	ListGroups(context.Context, int, int, string, string, string, *bool, string, string) ([]routing.Group, int64, error)
-	GetAllGroups(context.Context) ([]routing.Group, error)
-	GetAllGroupsIncludingInactive(context.Context) ([]routing.Group, error)
-	GetGroup(context.Context, int64) (*routing.Group, error)
-	GetGroupModelsListCandidates(context.Context, int64, string) ([]string, error)
-	CreateGroup(context.Context, *routing.CreateGroupInput) (*routing.Group, error)
-	UpdateGroup(context.Context, int64, *routing.UpdateGroupInput) (*routing.Group, error)
-	DuplicateGroup(context.Context, int64, string, string) (*routing.Group, error)
-	RecoverDuplicateGroup(context.Context, int64, string, string) (*routing.Group, error)
-	DeleteGroup(context.Context, int64) error
-	UpdateGroupSortOrders(context.Context, []routing.GroupSortOrderUpdate) error
-}
-
-// GroupHandler 只解码输入和输出 HTTP，业务规则通过窄用例接口调用。
-type GroupHandler struct {
-	idempotencyhttp.Executor
-
-	adminService GroupAdministration
-	resources    GroupResources
-}
-
-func NewGroupHandler(admin GroupAdministration, resources ...GroupResources) *GroupHandler {
-	handler := &GroupHandler{adminService: admin}
-	if len(resources) > 0 {
-		handler.resources = resources[0]
-	}
-	return handler
 }

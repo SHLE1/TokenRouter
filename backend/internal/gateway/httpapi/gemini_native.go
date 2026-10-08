@@ -30,6 +30,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 )
 
+var GeminiCLITmpDirRegex = regexp.MustCompile(`/\.gemini/tmp/([A-Fa-f0-9]{64})`)
+
 type (
 	GeminiNativeOptions struct{ MaxSwitches int }
 	GeminiNativeCall    struct {
@@ -74,6 +76,8 @@ type GeminiNativeHandler struct {
 	newID       func() string
 }
 
+type GeminiPathParseError struct{ message string }
+
 func NewGeminiNativeHandler(options GeminiNativeOptions, backend GeminiNativeBackend, prompt MessagesPrompt, concurrency *ConcurrencyHelper, newID func() string, executor execution.Executor) *GeminiNativeHandler {
 	return &GeminiNativeHandler{executor: executor, options: options, backend: backend, prompt: prompt, concurrency: concurrency, newID: newID}
 }
@@ -94,10 +98,6 @@ func geminiNativeIsolationError(c *gin.Context, err error) bool {
 	}
 	return true
 }
-
-var GeminiCLITmpDirRegex = regexp.MustCompile(`/\.gemini/tmp/([A-Fa-f0-9]{64})`)
-
-type GeminiPathParseError struct{ message string }
 
 func (e *GeminiPathParseError) Error() string { return e.message }
 

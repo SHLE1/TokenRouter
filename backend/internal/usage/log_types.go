@@ -8,22 +8,6 @@ const (
 	ModelSourceMapping   = "mapping"
 )
 
-func IsValidModelSource(source string) bool {
-	switch source {
-	case ModelSourceRequested, ModelSourceUpstream, ModelSourceMapping:
-		return true
-	default:
-		return false
-	}
-}
-
-func NormalizeModelSource(source string) string {
-	if IsValidModelSource(source) {
-		return source
-	}
-	return ModelSourceRequested
-}
-
 // DashboardStats 仪表盘统计
 type DashboardStats struct {
 	// 用户统计
@@ -416,4 +400,20 @@ type ProviderUsageStatsResponse struct {
 	Models            []ModelStat            `json:"models"`
 	Endpoints         []EndpointStat         `json:"endpoints"`
 	UpstreamEndpoints []EndpointStat         `json:"upstream_endpoints"`
+}
+
+func IsValidModelSource(source string) bool {
+	switch source {
+	case ModelSourceRequested, ModelSourceUpstream, ModelSourceMapping:
+		return true
+	default:
+		return false
+	}
+}
+
+func NormalizeModelSource(source string) string {
+	if IsValidModelSource(source) {
+		return source
+	}
+	return ModelSourceRequested
 }

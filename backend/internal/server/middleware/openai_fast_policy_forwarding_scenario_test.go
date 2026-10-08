@@ -39,6 +39,20 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type openAIFastPolicyForwardingAPIKeyRepo struct {
+	apikey.APIKeyRepository
+	apiKeys map[string]*apikey.APIKey
+}
+
+type openAIFastPolicyForwardingSettingRepo struct {
+	settingscore.Repository
+	value string
+}
+
+type openAIFastPolicyForwardingHTTPUpstream struct {
+	client *http.Client
+}
+
 func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 	upstreamBodies := make(chan []byte, 2)
 	upstreamServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -178,11 +192,6 @@ func newOpenAIFastPolicyForwardingAPIKey(id int64, key string, userID, groupID i
 	}
 }
 
-type openAIFastPolicyForwardingAPIKeyRepo struct {
-	apikey.APIKeyRepository
-	apiKeys map[string]*apikey.APIKey
-}
-
 func (r *openAIFastPolicyForwardingAPIKeyRepo) GetByKeyForAuth(_ context.Context, key string) (*apikey.APIKey, error) {
 	apiKey, ok := r.apiKeys[key]
 	if !ok {
@@ -196,17 +205,8 @@ func (r *openAIFastPolicyForwardingAPIKeyRepo) UpdateLastUsed(context.Context, i
 	return nil
 }
 
-type openAIFastPolicyForwardingSettingRepo struct {
-	settingscore.Repository
-	value string
-}
-
 func (r *openAIFastPolicyForwardingSettingRepo) GetValue(context.Context, string) (string, error) {
 	return r.value, nil
-}
-
-type openAIFastPolicyForwardingHTTPUpstream struct {
-	client *http.Client
 }
 
 func (u *openAIFastPolicyForwardingHTTPUpstream) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {

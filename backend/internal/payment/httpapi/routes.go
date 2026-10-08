@@ -18,6 +18,12 @@ type RouteMiddleware struct {
 	JWT, BackendMode, Panel, Admin, Audit gin.HandlerFunc
 }
 
+// WeChatAuthEndpoints 提供支付 OAuth 的发起与回调处理方法。
+type WeChatAuthEndpoints interface {
+	WeChatPaymentOAuthStart(*gin.Context)
+	WeChatPaymentOAuthCallback(*gin.Context)
+}
+
 // RegisterRoutes 注册用户支付、公开查询、渠道回调和管理接口。
 func RegisterRoutes(
 	v1 *gin.RouterGroup,
@@ -117,12 +123,6 @@ func RegisterRoutes(
 			providers.DELETE("/:id", adminPaymentHandler.DeleteProvider)
 		}
 	}
-}
-
-// WeChatAuthEndpoints 提供支付 OAuth 的发起与回调处理方法。
-type WeChatAuthEndpoints interface {
-	WeChatPaymentOAuthStart(*gin.Context)
-	WeChatPaymentOAuthCallback(*gin.Context)
 }
 
 // RegisterWeChatAuthRoutes 在身份路由组上注册支付 OAuth 的发起与回调接口。

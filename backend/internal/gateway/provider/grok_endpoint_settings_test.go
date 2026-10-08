@@ -15,6 +15,8 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+type grokBaseURLSettingRepoStub struct{ values map[string]string }
+
 func TestGrokBaseURLForMode(t *testing.T) {
 	for _, tc := range []struct {
 		mode string
@@ -32,8 +34,6 @@ func TestGrokBaseURLForMode(t *testing.T) {
 		})
 	}
 }
-
-type grokBaseURLSettingRepoStub struct{ values map[string]string }
 
 func (r *grokBaseURLSettingRepoStub) GetValue(_ context.Context, key string) (string, error) {
 	if value, ok := r.values[key]; ok {

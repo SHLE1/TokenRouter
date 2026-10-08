@@ -15,6 +15,35 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+type subscriptionExpiryRepoStub struct {
+	UserSubscriptionRepository
+
+	pages           [][]UserSubscription
+	listCalls       int
+	listContextErrs []error
+}
+
+type subscriptionExpiryBlockingSender struct {
+	readyErr error
+	mu       sync.Mutex
+	calls    int
+	errs     []error
+}
+
+type subscriptionExpirySettingRepoStub struct {
+	values   map[string]string
+	err      error
+	multiErr error
+}
+
+// 可控存储证明停止会取消在途调用并等待退出，重复启动不会创建第二轮。
+type expiryLifecycleRepo struct {
+	UserSubscriptionRepository
+	entered      chan struct{}
+	release      chan struct{}
+	ignoreCancel bool
+}
+
 func TestSubscriptionExpiryReminderSendTimeoutDoesNotPoisonNextPageList(t *testing.T) {
 	now := time.Now()
 	repo := &subscriptionExpiryRepoStub{
@@ -107,7 +136,7 @@ func TestSubscriptionExpiryService_ReminderRunsEveryCycleSingleInstance(t *testi
 			}
 		}
 		svc := NewSubscriptionExpiryService(repo, options)
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			svc.sendExpiryReminders(context.Background())
 		}
 		require.Equal(t, 3, repo.listCalls)
@@ -188,14 +217,6 @@ func TestSubscriptionExpiryBlockedStopReturnsBudget(t *testing.T) {
 	require.NoError(t, svc.StopContext(context.Background()))
 }
 
-type subscriptionExpiryRepoStub struct {
-	UserSubscriptionRepository
-
-	pages           [][]UserSubscription
-	listCalls       int
-	listContextErrs []error
-}
-
 func (r *subscriptionExpiryRepoStub) List(ctx context.Context, params pagination.PaginationParams, _userID, _planID *int64, status, _platform, sortBy, sortOrder string) ([]UserSubscription, *pagination.PaginationResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
@@ -217,13 +238,6 @@ func requireSubscriptionExpiryListParams(ctx context.Context, params pagination.
 	if params.PageSize != 200 || status != SubscriptionStatusActive || sortBy != "expires_at" || sortOrder != "asc" {
 		panic("unexpected subscription expiry list params")
 	}
-}
-
-type subscriptionExpiryBlockingSender struct {
-	readyErr error
-	mu       sync.Mutex
-	calls    int
-	errs     []error
 }
 
 func (s *subscriptionExpiryBlockingSender) Send(ctx context.Context, input ExpiryReminder) error {
@@ -250,12 +264,6 @@ func (s *subscriptionExpiryBlockingSender) recordErr(err error) {
 }
 
 func (s *subscriptionExpiryBlockingSender) Ready(context.Context) error { return s.readyErr }
-
-type subscriptionExpirySettingRepoStub struct {
-	values   map[string]string
-	err      error
-	multiErr error
-}
 
 func (r *subscriptionExpirySettingRepoStub) Get(context.Context, string) (*settings.Setting, error) {
 	return nil, settings.ErrSettingNotFound
@@ -299,14 +307,6 @@ func (r *subscriptionExpirySettingRepoStub) GetAll(context.Context) (map[string]
 
 func (r *subscriptionExpirySettingRepoStub) Delete(context.Context, string) error {
 	return nil
-}
-
-// 可控存储证明停止会取消在途调用并等待退出，重复启动不会创建第二轮。
-type expiryLifecycleRepo struct {
-	UserSubscriptionRepository
-	entered      chan struct{}
-	release      chan struct{}
-	ignoreCancel bool
 }
 
 func (r *expiryLifecycleRepo) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {

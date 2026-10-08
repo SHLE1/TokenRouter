@@ -26,6 +26,12 @@ import (
 	schedulerpostgres "github.com/TokenFlux/TokenRouter/internal/scheduler/postgres"
 )
 
+// subscriptionContractEmptyGroups 模拟未配置分组来源时的空查询结果。
+type subscriptionContractEmptyGroups struct{}
+
+// billingUsersForContract 为余额和权益测试读取付款用户资料。
+type billingUsersForContract struct{ repository identity.UserRepository }
+
 // committedEntitlementClient 在事务提交后按用户清理关联数据，隔离各个测试。
 func committedEntitlementClient(t *testing.T) *dbent.Client {
 	t.Helper()
@@ -79,9 +85,6 @@ func billingUserForContract(u *identity.User) *billing.UserSummary {
 	return out
 }
 
-// subscriptionContractEmptyGroups 模拟未配置分组来源时的空查询结果。
-type subscriptionContractEmptyGroups struct{}
-
 func (subscriptionContractEmptyGroups) GetByIDLite(context.Context, int64) (*billing.SubscriptionPlanGroup, error) {
 	return nil, nil
 }
@@ -100,9 +103,6 @@ func newSettlementFixture(db *sql.DB) *billingpostgres.SettlementStore {
 }
 
 func testEntClient(t *testing.T) *dbent.Client { t.Helper(); return integrationEntClient }
-
-// billingUsersForContract 为余额和权益测试读取付款用户资料。
-type billingUsersForContract struct{ repository identity.UserRepository }
 
 func (r billingUsersForContract) GetByID(ctx context.Context, id int64) (*billing.UserSummary, error) {
 	user, err := r.repository.GetByID(ctx, id)

@@ -5,6 +5,15 @@ import (
 	"strings"
 )
 
+// 接收输入时删除废弃探测键，路由和调度使用协议配置。
+var DeprecatedOpenAIProviderExtraKeys = [...]string{
+	"openai_responses_probe_status", "openai_responses_supported",
+	"openai_compact_supported", "openai_compact_checked_at",
+	"openai_compact_last_status", "openai_compact_last_error",
+	"openai_native_compaction_v2_supported", "openai_native_compaction_v2_checked_at",
+	"openai_native_compaction_v2_last_status", "openai_native_compaction_v2_last_error",
+}
+
 // DiscardDeprecatedProviderExtra 静默移除旧客户端可能继续提交的废弃提供商扩展键。
 func DiscardDeprecatedProviderExtra(extra map[string]any) {
 	NormalizeLegacyOpenAIProviderExtra(extra)
@@ -30,15 +39,6 @@ func DiscardDeprecatedExtra(extra map[string]any) {
 	delete(extra, "upstream_billing_probe")
 	delete(extra, "upstream_billing_probe_enabled")
 	delete(extra, "openai_long_context_billing_enabled")
-}
-
-// 接收输入时删除废弃探测键，路由和调度使用协议配置。
-var DeprecatedOpenAIProviderExtraKeys = [...]string{
-	"openai_responses_probe_status", "openai_responses_supported",
-	"openai_compact_supported", "openai_compact_checked_at",
-	"openai_compact_last_status", "openai_compact_last_error",
-	"openai_native_compaction_v2_supported", "openai_native_compaction_v2_checked_at",
-	"openai_native_compaction_v2_last_status", "openai_native_compaction_v2_last_error",
 }
 
 // NormalizeLegacyOpenAIProviderExtra 清理提供商历史探测字段并规范化压缩开关。

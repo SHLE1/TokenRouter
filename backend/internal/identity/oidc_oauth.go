@@ -54,20 +54,6 @@ type OIDCTokenExchangeError struct {
 	Body                string
 }
 
-func (e *OIDCTokenExchangeError) Error() string {
-	if e == nil {
-		return ""
-	}
-	parts := []string{fmt.Sprintf("token exchange status=%d", e.StatusCode)}
-	if strings.TrimSpace(e.ProviderError) != "" {
-		parts = append(parts, "error="+strings.TrimSpace(e.ProviderError))
-	}
-	if strings.TrimSpace(e.ProviderDescription) != "" {
-		parts = append(parts, "error_description="+strings.TrimSpace(e.ProviderDescription))
-	}
-	return strings.Join(parts, " ")
-}
-
 type OIDCUserInfoClaims struct {
 	Email         string
 	Username      string
@@ -86,6 +72,20 @@ type OIDCOAuthClient interface {
 	ExchangeCode(context.Context, OIDCOAuthOptions, string, string, string) (*OIDCTokenResponse, error)
 	FetchUserInfo(context.Context, OIDCOAuthOptions, *OIDCTokenResponse) (*OIDCUserInfoClaims, error)
 	ValidateIDToken(context.Context, OIDCOAuthOptions, string, string) (*OIDCVerifiedClaims, error)
+}
+
+func (e *OIDCTokenExchangeError) Error() string {
+	if e == nil {
+		return ""
+	}
+	parts := []string{fmt.Sprintf("token exchange status=%d", e.StatusCode)}
+	if strings.TrimSpace(e.ProviderError) != "" {
+		parts = append(parts, "error="+strings.TrimSpace(e.ProviderError))
+	}
+	if strings.TrimSpace(e.ProviderDescription) != "" {
+		parts = append(parts, "error_description="+strings.TrimSpace(e.ProviderDescription))
+	}
+	return strings.Join(parts, " ")
 }
 
 func OIDCIdentityKey(issuer, subject string) string {

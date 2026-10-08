@@ -8,6 +8,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 )
 
+// MetricsQueries 查询监控指标所需的业务表。
+type MetricsQueries struct {
+	*Advisory
+	db *sql.DB
+}
+
 func (c *MetricsQueries) QueryProviderSwitchCount(ctx context.Context, start, end time.Time) (int64, error) {
 	q := `
 SELECT
@@ -151,12 +157,6 @@ WHERE created_at >= $1 AND created_at < $2`
 		tokenConsumed = tokens.Int64
 	}
 	return successCount, tokenConsumed, nil
-}
-
-// MetricsQueries 查询监控指标所需的业务表。
-type MetricsQueries struct {
-	*Advisory
-	db *sql.DB
 }
 
 func NewMetricsQueries(db *sql.DB) ops.MetricsSource {

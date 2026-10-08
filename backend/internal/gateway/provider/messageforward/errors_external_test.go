@@ -24,6 +24,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type errorRulesFixtureRepo struct {
+	errorpolicy.ErrorPassthroughRepository
+	rules []*errorpolicy.ErrorPassthroughRule
+}
+
 // TestAnthropicErrorEntryRuleAndMonitoring 检查错误处理经 HTTP Adapter 提交的响应和监控标记。
 func TestAnthropicErrorEntryRuleAndMonitoring(t *testing.T) {
 	for _, tc := range []struct {
@@ -75,11 +80,6 @@ func TestAnthropicErrorEntryRuleAndMonitoring(t *testing.T) {
 			}
 		})
 	}
-}
-
-type errorRulesFixtureRepo struct {
-	errorpolicy.ErrorPassthroughRepository
-	rules []*errorpolicy.ErrorPassthroughRule
 }
 
 func (r errorRulesFixtureRepo) List(context.Context) ([]*errorpolicy.ErrorPassthroughRule, error) {

@@ -73,7 +73,7 @@ func TestFixedResponsesRetainsPartialFailureAcrossIndependentRequests(t *testing
 	cause := errors.New("partial image")
 	runtime := &fixedResponseRuntime{outcome: ResponseOutcome{Images: true, Outcome: Outcome{Err: cause, HasResult: true, Attempt: upstream.AttemptResult{ObservedImages: 1}}}}
 	executor := NewResponsesExecutor(runtime, ResponseOptions{}, ResponseOptions{MaxSwitches: 3, FirstOutputBudget: true})
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		result, err := executor.Execute(context.Background(), execution.Request{Text: execution.TextState{Kind: execution.TextOpenAIResponses}}, nil)
 		require.ErrorIs(t, err, cause)
 		require.Equal(t, 1, result.Attempt.ObservedImages)

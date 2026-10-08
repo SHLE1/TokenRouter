@@ -8,6 +8,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const testCodexFingerprintSeed = "11111111-1111-4111-8111-111111111111"
+
 func newTestOAuthProvider(id int64, extra map[string]any) *Record {
 	if CodexFingerprintModeRequiresSeed(CodexFingerprintModeFromExtra(extra)) {
 		if extra == nil {
@@ -50,5 +52,3 @@ func TestGetCodexFingerprintMode(t *testing.T) {
 		})
 	}
 }
-
-const testCodexFingerprintSeed = "11111111-1111-4111-8111-111111111111"

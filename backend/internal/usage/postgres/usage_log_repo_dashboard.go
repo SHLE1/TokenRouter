@@ -13,6 +13,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// UserStats 用户使用统计
+type UserStats struct {
+	TotalRequests   int64   `json:"total_requests"`
+	TotalTokens     int64   `json:"total_tokens"`
+	TotalCost       float64 `json:"total_cost"`
+	InputTokens     int64   `json:"input_tokens"`
+	OutputTokens    int64   `json:"output_tokens"`
+	CacheReadTokens int64   `json:"cache_read_tokens"`
+}
+
+// DashboardStats 仪表盘统计
+type DashboardStats = usage.DashboardStats
+
+// UserDashboardStats 用户仪表盘统计
+type UserDashboardStats = usage.UserDashboardStats
+
 // getPerformanceStats 获取 RPM 和 TPM（近5分钟平均值，可选纳入 Owner 团队）。
 func (r *Store) getPerformanceStats(ctx context.Context, userID int64, includeOwnedTeam bool) (rpm, tpm int64, err error) {
 	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
@@ -37,16 +53,6 @@ func (r *Store) getPerformanceStats(ctx context.Context, userID int64, includeOw
 		return 0, 0, err
 	}
 	return requestCount / 5, tokenCount / 5, nil
-}
-
-// UserStats 用户使用统计
-type UserStats struct {
-	TotalRequests   int64   `json:"total_requests"`
-	TotalTokens     int64   `json:"total_tokens"`
-	TotalCost       float64 `json:"total_cost"`
-	InputTokens     int64   `json:"input_tokens"`
-	OutputTokens    int64   `json:"output_tokens"`
-	CacheReadTokens int64   `json:"cache_read_tokens"`
 }
 
 func (r *Store) GetUserStats(ctx context.Context, userID int64, startTime, endTime time.Time) (*UserStats, error) {
@@ -79,9 +85,6 @@ func (r *Store) GetUserStats(ctx context.Context, userID int64, startTime, endTi
 	}
 	return stats, nil
 }
-
-// DashboardStats 仪表盘统计
-type DashboardStats = usage.DashboardStats
 
 // runDashboardQueries 仅在连接池上并行查询；事务等单连接执行器必须串行使用。
 func (r *Store) runDashboardQueries(ctx context.Context, queries ...func(context.Context) error) error {
@@ -367,9 +370,6 @@ func (r *Store) fillDashboardUsageStatsFromUsageLogs(ctx context.Context, stats 
 
 	return nil
 }
-
-// UserDashboardStats 用户仪表盘统计
-type UserDashboardStats = usage.UserDashboardStats
 
 // GetUserDashboardStats 获取用户专属的仪表盘统计
 func (r *Store) GetUserDashboardStats(ctx context.Context, userID int64) (*UserDashboardStats, error) {

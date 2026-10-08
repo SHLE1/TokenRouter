@@ -10,6 +10,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type leaseLossQueue struct {
+	BatchImageQueue
+	lock *leaseLossLock
+}
+
+type leaseLossLock struct {
+	heartbeatErr, refreshErr  error
+	acked, requeued, released atomic.Int64
+}
+
+type leaseLossProcessor struct{ cause error }
+
 // TestWorkerLostLeaseCancelsProcessingWithoutQueueMutation 验证取消必须传到实际 processor；即便其迟到返回终态，也不能 ACK 或重排接管者任务。
 func TestWorkerLostLeaseCancelsProcessingWithoutQueueMutation(t *testing.T) {
 	for _, test := range []struct {
@@ -35,22 +47,12 @@ func TestWorkerLostLeaseCancelsProcessingWithoutQueueMutation(t *testing.T) {
 	}
 }
 
-type leaseLossQueue struct {
-	BatchImageQueue
-	lock *leaseLossLock
-}
-
 func (q leaseLossQueue) Reserve(context.Context, time.Duration) (ReservedBatchImageJob, error) {
 	return ReservedBatchImageJob{BatchID: "imgbatch_lease"}, nil
 }
 
 func (q leaseLossQueue) TryAcquireJobLock(context.Context, string, time.Duration) (BatchImageJobLock, bool, error) {
 	return q.lock, true, nil
-}
-
-type leaseLossLock struct {
-	heartbeatErr, refreshErr  error
-	acked, requeued, released atomic.Int64
 }
 
 func (l *leaseLossLock) Heartbeat(context.Context) error { return l.heartbeatErr }
@@ -65,8 +67,6 @@ func (l *leaseLossLock) RequeueAfter(context.Context, time.Duration) error {
 }
 
 func (l *leaseLossLock) Release(context.Context) error { l.released.Add(1); return nil }
-
-type leaseLossProcessor struct{ cause error }
 
 func (p *leaseLossProcessor) Process(ctx context.Context, _ string) (BatchImageProcessResult, error) {
 	<-ctx.Done()

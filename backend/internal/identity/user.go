@@ -10,6 +10,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 )
 
+const (
+	RoleAdmin    = "admin"
+	RoleUser     = "user"
+	StatusActive = "active"
+
+	DefaultUserAPIKeyLimit              = 100
+	MaxUserAPIKeyLimit                  = 2_147_483_647
+	LinuxDoConnectSyntheticEmailDomain  = "@linuxdo-connect.invalid"
+	OIDCConnectSyntheticEmailDomain     = "@oidc-connect.invalid"
+	WeChatConnectSyntheticEmailDomain   = "@wechat-connect.invalid"
+	DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
+)
+
+// ErrUserNotFound 与资金消费者维持同一个用户缺失错误。
+var ErrUserNotFound = billing.ErrUserNotFound
+
 type User struct {
 	Subscriptions []billing.UserSubscription
 	ID            int64
@@ -74,6 +90,17 @@ type User struct {
 	UserGroupRPMOverride *int
 }
 
+// NotifyEmailEntry 是已验证的通知邮箱值；验证流程归用户用例。
+type NotifyEmailEntry = contact.Entry
+
+// Principal 是通过认证的调用方身份。
+type Principal struct {
+	UserID         int64
+	Role           string
+	SessionID      string
+	CredentialKind string
+}
+
 func (u *User) IsAdmin() bool {
 	return u.Role == RoleAdmin
 }
@@ -119,26 +146,6 @@ func (u *User) CheckPassword(password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)) == nil
 }
 
-// NotifyEmailEntry 是已验证的通知邮箱值；验证流程归用户用例。
-type NotifyEmailEntry = contact.Entry
-
-// Principal 是通过认证的调用方身份。
-type Principal struct {
-	UserID         int64
-	Role           string
-	SessionID      string
-	CredentialKind string
-}
-
-const (
-	RoleAdmin    = "admin"
-	RoleUser     = "user"
-	StatusActive = "active"
-)
-
-// ErrUserNotFound 与资金消费者维持同一个用户缺失错误。
-var ErrUserNotFound = billing.ErrUserNotFound
-
 // ParseNotifyEmails 复用身份联系邮箱序列化兼容。
 func ParseNotifyEmails(raw string) []NotifyEmailEntry { return contact.ParseNotifyEmails(raw) }
 
@@ -153,15 +160,6 @@ func IsReservedEmail(email string) bool {
 		strings.HasSuffix(normalized, WeChatConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, DingTalkConnectSyntheticEmailDomain)
 }
-
-const (
-	DefaultUserAPIKeyLimit              = 100
-	MaxUserAPIKeyLimit                  = 2_147_483_647
-	LinuxDoConnectSyntheticEmailDomain  = "@linuxdo-connect.invalid"
-	OIDCConnectSyntheticEmailDomain     = "@oidc-connect.invalid"
-	WeChatConnectSyntheticEmailDomain   = "@wechat-connect.invalid"
-	DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
-)
 
 // CopyUser 浅复制用户结构体。
 // 关联切片、映射和指针共享引用。跨请求缓存通过各自的入口深复制。

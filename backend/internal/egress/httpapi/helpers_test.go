@@ -10,13 +10,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 )
 
-func (s *proxyAdminFixture) TestProxy(ctx context.Context, id int64) (*egress.ProxyTestResult, error) {
-	s.mu.Lock()
-	s.testedProxyIDs = append(s.testedProxyIDs, id)
-	s.mu.Unlock()
-	return &egress.ProxyTestResult{Success: true, Message: "ok"}, nil
-}
-
 // proxyAdminFixture 记录代理管理测试的写入参数和探测调用。
 type proxyAdminFixture struct {
 	proxies                         []egress.Proxy
@@ -29,6 +22,13 @@ type proxyAdminFixture struct {
 		protocol, status, search, sortBy, sortOrder string
 		calls                                       int
 	}
+}
+
+func (s *proxyAdminFixture) TestProxy(ctx context.Context, id int64) (*egress.ProxyTestResult, error) {
+	s.mu.Lock()
+	s.testedProxyIDs = append(s.testedProxyIDs, id)
+	s.mu.Unlock()
+	return &egress.ProxyTestResult{Success: true, Message: "ok"}, nil
 }
 
 func newProxyAdminFixture() *proxyAdminFixture {

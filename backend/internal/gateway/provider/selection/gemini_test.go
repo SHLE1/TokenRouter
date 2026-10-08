@@ -27,6 +27,12 @@ type mockProviderRepoForGemini struct {
 	listByPlatformFunc func(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionProvider, error)
 }
 
+// mockGatewayCacheForGemini Gemini 测试用的 cache mock
+type mockGatewayCacheForGemini struct {
+	sessionBindings map[string]int64
+	deletedSessions map[string]int
+}
+
 func (m *mockProviderRepoForGemini) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	if acc, ok := m.providersByID[id]; ok {
 		prepareSelectionFixtureProvider(ctx, acc, nil)
@@ -90,12 +96,6 @@ func (m *mockProviderRepoForGemini) ListSchedulableUngroupedByPlatform(ctx conte
 
 func (m *mockProviderRepoForGemini) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
 	return m.ListSchedulableByPlatforms(ctx, platforms)
-}
-
-// mockGatewayCacheForGemini Gemini 测试用的 cache mock
-type mockGatewayCacheForGemini struct {
-	sessionBindings map[string]int64
-	deletedSessions map[string]int
 }
 
 func (m *mockGatewayCacheForGemini) GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {

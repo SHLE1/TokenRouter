@@ -17,6 +17,9 @@ type OAuthClient struct {
 	Config   func() OAuthConfig
 }
 
+// TokenResponse 是 Google OAuth 令牌响应。
+type TokenResponse = wire.TokenResponse
+
 // NewOAuthClient 使用调用方提供的配置读取函数创建 OAuth 客户端。
 func NewOAuthClient(config func() OAuthConfig) *OAuthClient {
 	return &OAuthClient{TokenURL: TokenURL, Config: config}
@@ -112,6 +115,3 @@ func CreateOAuthReqClient(proxyURL string) (*req.Client, error) {
 		Timeout:  60 * time.Second,
 	})
 }
-
-// TokenResponse 是 Google OAuth 令牌响应。
-type TokenResponse = wire.TokenResponse

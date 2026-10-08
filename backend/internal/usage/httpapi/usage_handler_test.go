@@ -32,6 +32,43 @@ type dailyUsageRepoStub struct {
 	apiKeyID    int64
 }
 
+type dailyUsageAPIKeyRepoStub struct {
+	ports.KeyReader
+	keys map[int64]*ports.KeyReference
+}
+
+type dailyUsageHandlerResponse struct {
+	Code int `json:"code"`
+	Data struct {
+		Items []usage.APIKeyDailyUsagePoint `json:"items"`
+		Days  int                           `json:"days"`
+	} `json:"data"`
+}
+
+type userUsageRepoCapture struct {
+	usage.UsageLogRepository
+	listParams   pagination.PaginationParams
+	listFilters  usage.UsageLogFilters
+	statsFilters usage.UsageLogFilters
+	trendFilters usage.UsageLogFilters
+	groupFilters usage.UsageLogFilters
+	listRows     []usage.UsageLog
+	stats        *usage.UsageStats
+	modelStats   []usage.ModelStat
+	groupStats   []usage.GroupStat
+}
+
+type usageRankingSettingRepoStub struct {
+	settings.Repository
+	values map[string]string
+}
+
+type usageRankingRepoCapture struct {
+	usage.UsageLogRepository
+	called bool
+	sortBy usage.UsageRankingSortBy
+}
+
 func (s *dailyUsageRepoStub) GetUsageTrendWithFilters(
 	ctx context.Context,
 	startTime, endTime time.Time,
@@ -49,11 +86,6 @@ func (s *dailyUsageRepoStub) GetUsageTrendWithFilters(
 	s.userID = userID
 	s.apiKeyID = apiKeyID
 	return s.trend, nil
-}
-
-type dailyUsageAPIKeyRepoStub struct {
-	ports.KeyReader
-	keys map[int64]*ports.KeyReference
 }
 
 func (s *dailyUsageAPIKeyRepoStub) GetByID(ctx context.Context, id int64) (*ports.KeyReference, error) {
@@ -76,14 +108,6 @@ func newDailyUsageTestRouter(usageRepo *dailyUsageRepoStub, apiKeyRepo *dailyUsa
 	})
 	router.GET("/user/api-keys/:id/usage/daily", handler.GetMyAPIKeyDailyUsage)
 	return router
-}
-
-type dailyUsageHandlerResponse struct {
-	Code int `json:"code"`
-	Data struct {
-		Items []usage.APIKeyDailyUsagePoint `json:"items"`
-		Days  int                           `json:"days"`
-	} `json:"data"`
 }
 
 func TestGetMyAPIKeyDailyUsageRejectsCrossUserAccess(t *testing.T) {
@@ -196,19 +220,6 @@ func TestGetMyAPIKeyDailyUsageAggregatesByDayForOwnedKey(t *testing.T) {
 		Cost:             0.5,
 		ActualCost:       0.4,
 	}, got.Data.Items[0])
-}
-
-type userUsageRepoCapture struct {
-	usage.UsageLogRepository
-	listParams   pagination.PaginationParams
-	listFilters  usage.UsageLogFilters
-	statsFilters usage.UsageLogFilters
-	trendFilters usage.UsageLogFilters
-	groupFilters usage.UsageLogFilters
-	listRows     []usage.UsageLog
-	stats        *usage.UsageStats
-	modelStats   []usage.ModelStat
-	groupStats   []usage.GroupStat
 }
 
 func (s *userUsageRepoCapture) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters usage.UsageLogFilters) ([]usage.UsageLog, *pagination.PaginationResult, error) {
@@ -598,11 +609,6 @@ func TestUserUsageListSortDefaults(t *testing.T) {
 	require.Equal(t, "desc", repo.listParams.SortOrder)
 }
 
-type usageRankingSettingRepoStub struct {
-	settings.Repository
-	values map[string]string
-}
-
 func (s *usageRankingSettingRepoStub) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	result := make(map[string]string, len(keys))
 	for _, key := range keys {
@@ -611,12 +617,6 @@ func (s *usageRankingSettingRepoStub) GetMultiple(_ context.Context, keys []stri
 		}
 	}
 	return result, nil
-}
-
-type usageRankingRepoCapture struct {
-	usage.UsageLogRepository
-	called bool
-	sortBy usage.UsageRankingSortBy
 }
 
 func (r *usageRankingRepoCapture) GetUsageRanking(_ context.Context, _, _ time.Time, _ int, sortBy usage.UsageRankingSortBy) (*usage.UsageRankingResponse, error) {

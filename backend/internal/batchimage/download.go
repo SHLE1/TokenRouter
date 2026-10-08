@@ -19,6 +19,16 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	DefaultBatchImageZipMaxItems      = 200
+	DefaultBatchImageZipMaxBytes      = 512 * 1024 * 1024
+	DefaultBatchImageDownloadDuration = 10 * time.Minute
+
+	BatchImageDownloadScannerMaxLineBytes = 16 * 1024 * 1024
+)
+
+var ErrBatchImageDownloadSizeExceeded = errors.New("batch image download size limit exceeded")
+
 type DownloadOptions struct {
 	MaxItems int
 	MaxBytes int64
@@ -30,16 +40,6 @@ type Download struct {
 	Limiter         BatchImageDownloadLimiter
 	Options         DownloadOptions
 }
-
-const (
-	DefaultBatchImageZipMaxItems      = 200
-	DefaultBatchImageZipMaxBytes      = 512 * 1024 * 1024
-	DefaultBatchImageDownloadDuration = 10 * time.Minute
-
-	BatchImageDownloadScannerMaxLineBytes = 16 * 1024 * 1024
-)
-
-var ErrBatchImageDownloadSizeExceeded = errors.New("batch image download size limit exceeded")
 
 type BatchImageDownloadLimiter interface {
 	Acquire(ctx context.Context, userID string, kind string) (BatchImageDownloadPermit, error)
@@ -77,6 +77,33 @@ type BatchImageDownloadLimitWriter struct {
 	w       io.Writer
 	limit   int64
 	written int64
+}
+
+type BatchImageZipManifest struct {
+	BatchID      string                      `json:"batch_id"`
+	Model        string                      `json:"model"`
+	ItemCount    int                         `json:"item_count"`
+	SuccessCount int                         `json:"success_count"`
+	FailCount    int                         `json:"fail_count"`
+	Files        []BatchImageZipManifestFile `json:"files"`
+}
+type BatchImageZipManifestFile struct {
+	CustomID   string `json:"custom_id"`
+	Filename   string `json:"filename"`
+	MimeType   string `json:"mime_type"`
+	ImageIndex int    `json:"image_index"`
+}
+type BatchImageZipError struct {
+	CustomID string `json:"custom_id"`
+	Code     string `json:"code"`
+	Message  string `json:"message"`
+}
+
+type BatchImagePermitReadCloser struct {
+	io.Reader
+	permit BatchImageDownloadPermit
+	once   sync.Once
+	err    error
 }
 
 func (w *BatchImageDownloadLimitWriter) Write(p []byte) (int, error) {
@@ -570,26 +597,6 @@ func WriteBatchImageZipJSON(zipWriter *zip.Writer, name string, value any) error
 	return encoder.Encode(value)
 }
 
-type BatchImageZipManifest struct {
-	BatchID      string                      `json:"batch_id"`
-	Model        string                      `json:"model"`
-	ItemCount    int                         `json:"item_count"`
-	SuccessCount int                         `json:"success_count"`
-	FailCount    int                         `json:"fail_count"`
-	Files        []BatchImageZipManifestFile `json:"files"`
-}
-type BatchImageZipManifestFile struct {
-	CustomID   string `json:"custom_id"`
-	Filename   string `json:"filename"`
-	MimeType   string `json:"mime_type"`
-	ImageIndex int    `json:"image_index"`
-}
-type BatchImageZipError struct {
-	CustomID string `json:"custom_id"`
-	Code     string `json:"code"`
-	Message  string `json:"message"`
-}
-
 func BatchImageZipErrorsFromItems(items []*BatchImageItem) []BatchImageZipError {
 	out := make([]BatchImageZipError, 0, len(items))
 	for _, item := range items {
@@ -603,13 +610,6 @@ func BatchImageZipErrorsFromItems(items []*BatchImageItem) []BatchImageZipError 
 		})
 	}
 	return out
-}
-
-type BatchImagePermitReadCloser struct {
-	io.Reader
-	permit BatchImageDownloadPermit
-	once   sync.Once
-	err    error
 }
 
 func (r *BatchImagePermitReadCloser) Close() error {

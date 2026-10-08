@@ -12,6 +12,50 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
+// 本组用例记录存储写入，调用未实现的方法会触发 panic。
+type antigravityHealthStoreFixture struct {
+	AntigravityHealthStore
+	modelRateLimitCalls []struct {
+		providerID int64
+		modelKey   string
+		resetAt    time.Time
+	}
+	extraUpdateCalls []struct {
+		providerID int64
+		updates    map[string]any
+	}
+}
+
+type mockInternal500Cache struct {
+	incrementCount int64
+	incrementErr   error
+	resetErr       error
+
+	incrementCalls []int64 // 记录 IncrementInternal500Count 被调用时的 providerID
+	resetCalls     []int64 // 记录 ResetInternal500Count 被调用时的 providerID
+}
+
+type internal500ProviderRepoStub struct {
+	AntigravityHealthStore // 嵌入接口，未实现的方法会 panic（不应被调用）
+
+	tempUnschedCalls []tempUnschedCall
+	setErrorCalls    []setErrorCall
+}
+
+type tempUnschedCall struct {
+	providerID int64
+	until      time.Time
+	reason     string
+}
+
+type setErrorCall struct {
+	providerID int64
+	reason     string
+}
+
+// 发布替身记录收到的提供商数据。
+type antigravityPublicationFixture struct{ setProviderCalls []*Record }
+
 func TestClearCreditsExhausted(t *testing.T) {
 	t.Run("provider 为 nil 不操作", func(t *testing.T) {
 		repo := &antigravityHealthStoreFixture{}
@@ -84,20 +128,6 @@ func TestClearCreditsExhausted(t *testing.T) {
 	})
 }
 
-// 本组用例记录存储写入，调用未实现的方法会触发 panic。
-type antigravityHealthStoreFixture struct {
-	AntigravityHealthStore
-	modelRateLimitCalls []struct {
-		providerID int64
-		modelKey   string
-		resetAt    time.Time
-	}
-	extraUpdateCalls []struct {
-		providerID int64
-		updates    map[string]any
-	}
-}
-
 func (s *antigravityHealthStoreFixture) SetModelRateLimit(_ context.Context, id int64, key string, at time.Time, _ ...string) error {
 	s.modelRateLimitCalls = append(s.modelRateLimitCalls, struct {
 		providerID int64
@@ -115,15 +145,6 @@ func (s *antigravityHealthStoreFixture) UpdateExtra(_ context.Context, id int64,
 	return nil
 }
 
-type mockInternal500Cache struct {
-	incrementCount int64
-	incrementErr   error
-	resetErr       error
-
-	incrementCalls []int64 // 记录 IncrementInternal500Count 被调用时的 providerID
-	resetCalls     []int64 // 记录 ResetInternal500Count 被调用时的 providerID
-}
-
 func (m *mockInternal500Cache) IncrementInternal500Count(_ context.Context, providerID int64) (int64, error) {
 	m.incrementCalls = append(m.incrementCalls, providerID)
 	return m.incrementCount, m.incrementErr
@@ -132,24 +153,6 @@ func (m *mockInternal500Cache) IncrementInternal500Count(_ context.Context, prov
 func (m *mockInternal500Cache) ResetInternal500Count(_ context.Context, providerID int64) error {
 	m.resetCalls = append(m.resetCalls, providerID)
 	return m.resetErr
-}
-
-type internal500ProviderRepoStub struct {
-	AntigravityHealthStore // 嵌入接口，未实现的方法会 panic（不应被调用）
-
-	tempUnschedCalls []tempUnschedCall
-	setErrorCalls    []setErrorCall
-}
-
-type tempUnschedCall struct {
-	providerID int64
-	until      time.Time
-	reason     string
-}
-
-type setErrorCall struct {
-	providerID int64
-	reason     string
 }
 
 func (r *internal500ProviderRepoStub) SetTempUnschedulable(_ context.Context, id int64, until time.Time, reason string) error {
@@ -512,9 +515,6 @@ func TestUpdateProviderModelRateLimitInCache_PreservesExistingExtra(t *testing.T
 	require.NotNil(t, limits["gemini-3-flash"])
 	require.NotNil(t, limits["claude-sonnet-4-5"])
 }
-
-// 发布替身记录收到的提供商数据。
-type antigravityPublicationFixture struct{ setProviderCalls []*Record }
 
 func (s *antigravityPublicationFixture) publish(_ context.Context, v *Record) error {
 	s.setProviderCalls = append(s.setProviderCalls, v)

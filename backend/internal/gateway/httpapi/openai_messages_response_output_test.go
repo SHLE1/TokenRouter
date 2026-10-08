@@ -22,6 +22,9 @@ import (
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// messagesBufferedReadErrorFixture 返回读取失败信号并记录关闭结果。
+type messagesBufferedReadErrorFixture struct{ err error }
+
 func TestAnthropicBufferedResponsesReadErrorKeepsExistingBehavior(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -38,9 +41,6 @@ func TestAnthropicBufferedResponsesReadErrorKeepsExistingBehavior(t *testing.T) 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.NotErrorAs(t, err, &failoverErr)
 }
-
-// messagesBufferedReadErrorFixture 返回读取失败信号并记录关闭结果。
-type messagesBufferedReadErrorFixture struct{ err error }
 
 func (r *messagesBufferedReadErrorFixture) Read([]byte) (int, error) { return 0, r.err }
 

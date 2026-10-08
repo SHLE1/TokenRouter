@@ -35,6 +35,8 @@ import (
 	usagepostgres "github.com/TokenFlux/TokenRouter/internal/usage/postgres"
 )
 
+type providerGroupReferences struct{ store *routingpostgres.GroupStore }
+
 // providePrivacyClientFactory 为隐私请求配置超时、Chrome 指纹和共享连接池。
 func providePrivacyClientFactory() openai.PrivacyClientFactory {
 	return func(proxyURL string) (*req.Client, error) {
@@ -50,8 +52,6 @@ func providePrivacyClientFactory() openai.PrivacyClientFactory {
 func provideProviderAdmin(store *providerpostgres.ProviderStore, usage *billingpostgres.ProviderUsageStore, blocker provider.RuntimeUnblocker, privacy *provider.PrivacyService, groups *routingpostgres.GroupStore, proxies *egresspostgres.ProxyStore, tasks *lifecycle.Tasks, upstream httpclient.UpstreamTransport, tls *egressadapter.TLSProfiles) *provider.Admin {
 	return provider.NewAdmin(store, provider.AdminOptions{ShadowModels: provideradapter.DefaultSparkShadowModels, Duplicates: store, Quotas: usage, RuntimeBlocker: blocker, Privacy: privacy, Groups: providerGroupReferences{groups}, Proxies: proxies, Creation: provider.CreationOptions{Now: time.Now, LoadLocation: time.LoadLocation, NewSeed: uuid.NewString}, Credentials: provideradapter.CreateCredentialHooks(upstream, tls), Background: tasks.Go, Error: slog.Error})
 }
-
-type providerGroupReferences struct{ store *routingpostgres.GroupStore }
 
 func (g providerGroupReferences) GetGroup(ctx context.Context, id int64) (*provider.GroupReference, error) {
 	value, err := g.store.GetByID(ctx, id)

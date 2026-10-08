@@ -26,6 +26,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type anthropicHTTPUpstreamRecorder struct {
+	lastReq  *http.Request
+	lastBody []byte
+	resp     *http.Response
+	err      error
+}
+
+// deferredActivityRepository 记录最后使用时间的批量写入，供测试核对。
+type deferredActivityRepository struct {
+	updates sync.Map
+}
+
 func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardDirect_NonStreamingSuccess(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := newPrivateHTTPFixture(rec)
@@ -242,13 +254,6 @@ func passthroughFixture(runtime *Runtime, ctx context.Context, output HTTPBounda
 	return runtime.passthrough(ctx, output, target, forwardcore.APIKeyInput{Body: body, RequestModel: model, OriginalModel: original, RequestStream: stream, StartTime: started})
 }
 
-type anthropicHTTPUpstreamRecorder struct {
-	lastReq  *http.Request
-	lastBody []byte
-	resp     *http.Response
-	err      error
-}
-
 func newAnthropicAPIKeyProviderForTest() *gatewayprovider.ExecutionProvider {
 	return &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
@@ -286,11 +291,6 @@ func (u *anthropicHTTPUpstreamRecorder) Do(req *http.Request, proxyURL string, p
 
 func (u *anthropicHTTPUpstreamRecorder) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
 	return u.Do(req, proxyURL, providerID, providerConcurrency)
-}
-
-// deferredActivityRepository 记录最后使用时间的批量写入，供测试核对。
-type deferredActivityRepository struct {
-	updates sync.Map
 }
 
 func (r *deferredActivityRepository) BatchUpdateLastUsed(_ context.Context, updates map[int64]time.Time) error {

@@ -19,6 +19,10 @@ import (
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+type testSettingRepo struct {
+	values map[string]string
+}
+
 func TestOpsRuntimeLoggingHandler_GetConfig(t *testing.T) {
 	h := NewOpsHandler(newRuntimeOpsService(t))
 	r := newOpsRuntimeRouter(h, false)
@@ -94,10 +98,6 @@ func TestEmailReportRejectsLegacyProviderFields(t *testing.T) {
 		router.ServeHTTP(recorder, request)
 		require.Equal(t, tc.status, recorder.Code, recorder.Body.String())
 	}
-}
-
-type testSettingRepo struct {
-	values map[string]string
 }
 
 func newTestSettingRepo() *testSettingRepo {

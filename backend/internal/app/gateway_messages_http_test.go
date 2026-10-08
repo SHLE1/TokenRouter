@@ -45,6 +45,18 @@ type gatewayExecutionProviderRows struct {
 	byGroup map[int64][]gatewayprovider.ExecutionProvider
 }
 
+// 记录 handler 对会话缓存的操作，释放判断由调度和请求完成处理执行。
+type gatewaySessionLimitCacheStub struct {
+	testutil.StubSessionLimitCache
+	registered   map[int64][]string
+	unregistered map[int64][]string
+}
+
+type gatewaySessionUpstreamStub struct {
+	respond func(int64) (*http.Response, error)
+	called  []int64
+}
+
 func (s *gatewayExecutionProviderRows) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionProvider, error) {
 	providers, ok := s.byGroup[groupID]
 	if !ok {
@@ -139,13 +151,6 @@ func TestPrepareGatewayAttemptRequestUsesGeminiGroupMapping(t *testing.T) {
 	require.Equal(t, int64(703), mapping.PricingConfigID)
 }
 
-// 记录 handler 对会话缓存的操作，释放判断由调度和请求完成处理执行。
-type gatewaySessionLimitCacheStub struct {
-	testutil.StubSessionLimitCache
-	registered   map[int64][]string
-	unregistered map[int64][]string
-}
-
 func (s *gatewaySessionLimitCacheStub) RegisterSession(_ context.Context, providerID int64, sessionID string, _ int, _ time.Duration) (bool, error) {
 	s.registered[providerID] = append(s.registered[providerID], sessionID)
 	return true, nil
@@ -154,11 +159,6 @@ func (s *gatewaySessionLimitCacheStub) RegisterSession(_ context.Context, provid
 func (s *gatewaySessionLimitCacheStub) UnregisterSession(_ context.Context, providerID int64, sessionID string) error {
 	s.unregistered[providerID] = append(s.unregistered[providerID], sessionID)
 	return nil
-}
-
-type gatewaySessionUpstreamStub struct {
-	respond func(int64) (*http.Response, error)
-	called  []int64
 }
 
 func (s *gatewaySessionUpstreamStub) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {

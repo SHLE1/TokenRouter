@@ -22,6 +22,18 @@ import (
 	usagecore "github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+type marketplaceFixtureGroups struct{ source routing.GroupRepository }
+
+type marketplaceFixturePrices struct {
+	calculator *billing.Calculator
+	resolver   *billing.PriceResolver
+}
+
+// catalogFixture 保存测试提供的模型价格目录。
+type catalogFixture struct {
+	pricingData map[string]*pricing.CatalogModelPricing
+}
+
 // newCalculator 使用测试目录构造计价器。
 func newCalculator(catalog *provider.Service) *billing.Calculator {
 	return newCalculatorWithPrices(catalog, nil)
@@ -121,8 +133,6 @@ func newPricingMarketplaceFixture(groupRepo routing.GroupRepository, settingRepo
 	return routing.NewMarketplace(groups, settingRepo, source, projection, prices, capacity, availabilityRepo, routing.MarketplaceOptions{Timezone: timezone, Now: time.Now, Warn: slog.Warn})
 }
 
-type marketplaceFixtureGroups struct{ source routing.GroupRepository }
-
 func (g marketplaceFixtureGroups) ListActive(ctx context.Context) ([]routing.Group, error) {
 	v, err := g.source.ListActive(ctx)
 	if v == nil {
@@ -133,11 +143,6 @@ func (g marketplaceFixtureGroups) ListActive(ctx context.Context) ([]routing.Gro
 		out[i] = *routing.CloneGroup(&v[i])
 	}
 	return out, err
-}
-
-type marketplaceFixturePrices struct {
-	calculator *billing.Calculator
-	resolver   *billing.PriceResolver
 }
 
 func (p marketplaceFixturePrices) Quote(ctx context.Context, req routing.MarketplaceQuoteRequest) pricing.ModelDisplayPricing {
@@ -152,11 +157,6 @@ func (p marketplaceFixturePrices) Quote(ctx context.Context, req routing.Marketp
 
 func (p marketplaceFixturePrices) GetModelModalities(model string) ([]string, []string) {
 	return p.calculator.GetModelModalities(model)
-}
-
-// catalogFixture 保存测试提供的模型价格目录。
-type catalogFixture struct {
-	pricingData map[string]*pricing.CatalogModelPricing
 }
 
 func newCatalogFixture(fixture catalogFixture) *provider.Service {

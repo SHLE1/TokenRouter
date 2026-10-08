@@ -10,6 +10,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/grok"
 )
 
+type grokSSOPanicClient struct{}
+
 func TestGrokSSOImportExpiryUsesTokenExpiryWithoutRefreshToken(t *testing.T) {
 	tokenExpiry := time.Now().Add(6 * time.Hour).Unix()
 	expiresAt, autoPause := GrokSSOImportExpiry(nil, nil, &GrokTokenInfo{
@@ -86,8 +88,6 @@ func TestGrokSSOImportCredentialsDefaultsToOfficialBaseURL(t *testing.T) {
 	require.Equal(t, "https://cli-chat-proxy.grok.com/v1", credentials["base_url"])
 	require.Equal(t, "at-2", credentials["access_token"])
 }
-
-type grokSSOPanicClient struct{}
 
 func (grokSSOPanicClient) ExchangeCode(context.Context, string, string, string, string, string) (*grok.TokenResponse, error) {
 	return nil, nil

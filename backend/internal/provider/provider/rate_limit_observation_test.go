@@ -15,6 +15,34 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// updateExtraSpyRepo 记录 UpdateExtra 是否被调用,用于验证影子 codex_* 快照守卫。
+type updateExtraSpyRepo struct {
+	*openAI429SnapshotRepo
+	updateExtraCalled bool
+}
+
+type openAI429SnapshotRepo struct {
+	providercore.HealthStore
+	rateLimitedID      int64
+	updatedExtra       map[string]any
+	bulkUpdatedIDs     []int64
+	bulkUpdatedPayload providercore.ProviderBulkUpdate
+}
+
+// 观测替身记录本次字段写入，健康规则和平台解析使用生产实现。
+type openAI429Store interface {
+	providercore.HealthStore
+	providercore.SessionWindowStore
+	providercore.OpenAIPlanWriter
+}
+
+type rateLimit429ProviderRepoStub struct {
+	providercore.HealthStore
+	rateLimitCalls     int
+	lastRateLimitID    int64
+	lastRateLimitReset time.Time
+}
+
 // TestPersistOpenAI429PlanType_SkipsShadow 检查影子提供商跳过 429 响应中的 plan_type 写入。
 // 普通提供商通过 BulkUpdate 写入 credentials。
 func TestPersistOpenAI429PlanType_SkipsShadow(t *testing.T) {
@@ -235,23 +263,9 @@ func TestHandle429_FallbackUsesDefaultSecondsWhenSettingServiceMissing(t *testin
 	require.True(t, !providerRepo.lastRateLimitReset.Before(before.Add(5*time.Second)) && !providerRepo.lastRateLimitReset.After(after.Add(5*time.Second)))
 }
 
-// updateExtraSpyRepo 记录 UpdateExtra 是否被调用,用于验证影子 codex_* 快照守卫。
-type updateExtraSpyRepo struct {
-	*openAI429SnapshotRepo
-	updateExtraCalled bool
-}
-
 func (r *updateExtraSpyRepo) UpdateExtra(_ context.Context, _ int64, _ map[string]any) error {
 	r.updateExtraCalled = true
 	return nil
-}
-
-type openAI429SnapshotRepo struct {
-	providercore.HealthStore
-	rateLimitedID      int64
-	updatedExtra       map[string]any
-	bulkUpdatedIDs     []int64
-	bulkUpdatedPayload providercore.ProviderBulkUpdate
 }
 
 func (r *openAI429SnapshotRepo) SetRateLimited(_ context.Context, id int64, _ time.Time) error {
@@ -270,26 +284,12 @@ func (r *openAI429SnapshotRepo) BulkUpdate(_ context.Context, ids []int64, updat
 	return int64(len(ids)), nil
 }
 
-// 观测替身记录本次字段写入，健康规则和平台解析使用生产实现。
-type openAI429Store interface {
-	providercore.HealthStore
-	providercore.SessionWindowStore
-	providercore.OpenAIPlanWriter
-}
-
 func newOpenAI429Observer(repo openAI429Store) *RateLimitObserver {
 	return &RateLimitObserver{Health: providercore.NewHealthService(repo, nil, providercore.HealthOptions{SessionWindows: repo}), Plans: repo}
 }
 
 func (*openAI429SnapshotRepo) UpdateSessionWindow(context.Context, int64, *time.Time, *time.Time, string) error {
 	panic("unexpected session window")
-}
-
-type rateLimit429ProviderRepoStub struct {
-	providercore.HealthStore
-	rateLimitCalls     int
-	lastRateLimitID    int64
-	lastRateLimitReset time.Time
 }
 
 func (r *rateLimit429ProviderRepoStub) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {

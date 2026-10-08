@@ -44,6 +44,8 @@ const (
 	QoderDSMLInvokeEnd      = "</｜｜DSML｜｜invoke>"
 	QoderDSMLParameterStart = "<｜｜DSML｜｜parameter"
 	QoderDSMLParameterEnd   = "</｜｜DSML｜｜parameter>"
+
+	defaultMaxLineSize = upstream.DefaultSSELineLimit
 )
 
 // QoderModelInfo 包含上游请求的路由键和来源标记。
@@ -58,6 +60,86 @@ type QoderMessage struct {
 	ToolCallID  string
 	Raw         map[string]any
 	TextContent []map[string]any
+}
+
+type QoderStreamResult struct {
+	// HasUsage 标记上游已明确提供计量，显式零值与缺失分开。
+	HasUsage     bool
+	Usage        upstream.TokenUsage
+	UsageDetails UsageDetails
+	TotalTokens  int
+	HasOutput    bool
+}
+
+type QoderStreamWriteTracker struct {
+	disconnected bool
+}
+
+type QoderDisconnectAwareWriter struct {
+	writer  io.Writer
+	tracker *QoderStreamWriteTracker
+}
+
+type QoderToolNameMapper func(string) string
+
+type QoderOpenAIStreamResponseOption struct {
+	mapUsage     func(upstream.TokenUsage) upstream.TokenUsage
+	mapToolName  QoderToolNameMapper
+	includeUsage bool
+}
+
+type QoderAnthropicStreamResponseOption struct {
+	mapUsage    func(upstream.TokenUsage) upstream.TokenUsage
+	mapToolName QoderToolNameMapper
+}
+
+type QoderResponsesStreamResponseOption struct {
+	mapUsage    func(upstream.TokenUsage) upstream.TokenUsage
+	mapToolName QoderToolNameMapper
+	responseID  string
+}
+
+type QoderTextToolCallTransformer struct {
+	buffer       string
+	nextToolCall int
+}
+
+type QoderOpenAIToolCallAccumulator struct {
+	calls               []QoderOpenAIToolCallState
+	slotByUpstreamIndex map[int]int
+	mapToolName         QoderToolNameMapper
+}
+
+type QoderOpenAIToolCallState struct {
+	ID        string
+	Type      string
+	Name      string
+	Arguments string
+}
+
+type QoderResponsesStreamToolState struct {
+	itemID      string
+	callID      string
+	name        string
+	arguments   string
+	outputIndex int
+	added       bool
+	done        bool
+}
+
+type QoderAnthropicContentWriter struct {
+	w                 io.Writer
+	nextIndex         int
+	openTextIndex     *int
+	openThinkingIndex *int
+	pendingToolCalls  *QoderOpenAIToolCallAccumulator
+	mapToolName       QoderToolNameMapper
+	sawToolCall       bool
+}
+
+type QoderEventResult struct {
+	events []SSEEvent
+	err    error
 }
 
 func QoderMessageHasToolCalls(message QoderMessage) bool {
@@ -154,24 +236,6 @@ func WriteQoderStreamKeepalive(c *upstream.OutputContext, started bool) error {
 	return err
 }
 
-type QoderStreamResult struct {
-	// HasUsage 标记上游已明确提供计量，显式零值与缺失分开。
-	HasUsage     bool
-	Usage        upstream.TokenUsage
-	UsageDetails UsageDetails
-	TotalTokens  int
-	HasOutput    bool
-}
-
-type QoderStreamWriteTracker struct {
-	disconnected bool
-}
-
-type QoderDisconnectAwareWriter struct {
-	writer  io.Writer
-	tracker *QoderStreamWriteTracker
-}
-
 func (w QoderDisconnectAwareWriter) Write(p []byte) (int, error) {
 	if w.tracker != nil && w.tracker.disconnected {
 		return len(p), nil
@@ -199,25 +263,6 @@ func (w QoderDisconnectAwareWriter) Flush() {
 	if flusher, ok := w.writer.(http.Flusher); ok {
 		flusher.Flush()
 	}
-}
-
-type QoderToolNameMapper func(string) string
-
-type QoderOpenAIStreamResponseOption struct {
-	mapUsage     func(upstream.TokenUsage) upstream.TokenUsage
-	mapToolName  QoderToolNameMapper
-	includeUsage bool
-}
-
-type QoderAnthropicStreamResponseOption struct {
-	mapUsage    func(upstream.TokenUsage) upstream.TokenUsage
-	mapToolName QoderToolNameMapper
-}
-
-type QoderResponsesStreamResponseOption struct {
-	mapUsage    func(upstream.TokenUsage) upstream.TokenUsage
-	mapToolName QoderToolNameMapper
-	responseID  string
 }
 
 func QoderOpenAIStreamUsageMapper(mapper func(upstream.TokenUsage) upstream.TokenUsage) QoderOpenAIStreamResponseOption {
@@ -298,11 +343,6 @@ func QoderResponsesStreamResponseOptions(options []QoderResponsesStreamResponseO
 		}
 	}
 	return usageMapper, toolNameMapper, responseID
-}
-
-type QoderTextToolCallTransformer struct {
-	buffer       string
-	nextToolCall int
 }
 
 func NewQoderTextToolCallTransformer() *QoderTextToolCallTransformer {
@@ -724,19 +764,6 @@ func NormalizeQoderOutboundToolCallEvent(event SSEEvent) SSEEvent {
 func QoderTextToolCallID(index int, segment string) string {
 	sum := sha1.Sum([]byte(fmt.Sprintf("%d\n%s", index, segment)))
 	return fmt.Sprintf("call_%x", sum[:12])
-}
-
-type QoderOpenAIToolCallAccumulator struct {
-	calls               []QoderOpenAIToolCallState
-	slotByUpstreamIndex map[int]int
-	mapToolName         QoderToolNameMapper
-}
-
-type QoderOpenAIToolCallState struct {
-	ID        string
-	Type      string
-	Name      string
-	Arguments string
 }
 
 func NewQoderOpenAIToolCallAccumulator(toolNameMappers ...QoderToolNameMapper) *QoderOpenAIToolCallAccumulator {
@@ -1684,16 +1711,6 @@ func WriteQoderResponsesStreamResponse(ctx context.Context, c *upstream.OutputCo
 	return result, nil
 }
 
-type QoderResponsesStreamToolState struct {
-	itemID      string
-	callID      string
-	name        string
-	arguments   string
-	outputIndex int
-	added       bool
-	done        bool
-}
-
 func ToResponsesCallIDForQoder(id string) string {
 	trimmed := strings.TrimSpace(id)
 	if trimmed == "" {
@@ -1720,16 +1737,6 @@ func QoderResponsesUsage(usage upstream.TokenUsage) *protocolopenai.ResponsesUsa
 		out.InputTokensDetails = &protocolopenai.ResponsesInputTokensDetails{CachedTokens: usage.CacheReadInputTokens}
 	}
 	return out
-}
-
-type QoderAnthropicContentWriter struct {
-	w                 io.Writer
-	nextIndex         int
-	openTextIndex     *int
-	openThinkingIndex *int
-	pendingToolCalls  *QoderOpenAIToolCallAccumulator
-	mapToolName       QoderToolNameMapper
-	sawToolCall       bool
 }
 
 func NewQoderAnthropicContentWriter(w io.Writer, toolNameMapper ...QoderToolNameMapper) *QoderAnthropicContentWriter {
@@ -1916,11 +1923,6 @@ func (w *QoderAnthropicContentWriter) stopReason() string {
 		return "tool_use"
 	}
 	return "end_turn"
-}
-
-type QoderEventResult struct {
-	events []SSEEvent
-	err    error
 }
 
 func QoderSendEventResult(ctx context.Context, results chan<- QoderEventResult, result QoderEventResult) bool {
@@ -2549,8 +2551,6 @@ func FirstNonEmptyQoder(values ...string) string {
 	}
 	return ""
 }
-
-const defaultMaxLineSize = upstream.DefaultSSELineLimit
 
 // qoderPartialStreamResult 保留已服务且已观测用量的失败结果，不推断缺失计量。
 func qoderPartialStreamResult(result *QoderStreamResult) *QoderStreamResult {

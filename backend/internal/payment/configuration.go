@@ -40,10 +40,8 @@ const (
 	SettingCancelWindowMode              = "CANCEL_RATE_LIMIT_WINDOW_MODE"
 	SettingAlipayForceQRCode             = "ALIPAY_FORCE_QRCODE"
 	SettingAlipayMobilePrecreateDeepLink = "ALIPAY_MOBILE_PRECREATE_DEEP_LINK"
-)
 
-// Default values for payment configuration settings.
-const (
+	// Default values for payment configuration settings.
 	ConfigDefaultOrderTimeoutMin  = 30
 	ConfigDefaultMaxPendingOrders = 3
 )

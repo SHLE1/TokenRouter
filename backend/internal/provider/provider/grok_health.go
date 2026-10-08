@@ -10,6 +10,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+const grokQuotaSnapshotExtraKey = "grok_usage_snapshot"
+
 // GrokHealthStore 保留现有快照与状态写权限，扩展/恢复 CAS 仍由实际存储能力提供。
 type GrokHealthStore interface {
 	providercore.GrokRateLimitWriter
@@ -27,8 +29,6 @@ type GrokHealth struct {
 	Health         *UpstreamHealth
 	ModelTransient *providercore.ModelTransientState
 }
-
-const grokQuotaSnapshotExtraKey = "grok_usage_snapshot"
 
 // ProviderStateContext 为提供商状态写入保留五秒独立预算。
 func ProviderStateContext(ctx context.Context) (context.Context, context.CancelFunc) {

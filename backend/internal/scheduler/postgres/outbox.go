@@ -15,6 +15,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
+const schedulerOutboxDefaultCleanSize = 5000
+
 type schedulerOutboxRepository struct {
 	db *sql.DB
 }
@@ -22,8 +24,6 @@ type schedulerOutboxRepository struct {
 type schedulerOutboxCleanupLease struct {
 	conn *sql.Conn
 }
-
-const schedulerOutboxDefaultCleanSize = 5000
 
 func NewSchedulerOutboxRepository(db *sql.DB) scheduler.SchedulerOutboxRepository {
 	return &schedulerOutboxRepository{db: db}

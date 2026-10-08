@@ -32,6 +32,12 @@ type (
 	}
 )
 
+type GeminiAPIError struct {
+	StatusCode int
+	Code       string
+	Message    string
+}
+
 func NewGeminiBatchHTTPClient(baseURL string, client *http.Client, missingAPIKey error) *GeminiBatchHTTPClient {
 	if missingAPIKey == nil {
 		missingAPIKey = apperror.BadRequest("BATCH_IMAGE_PROVIDER_MISSING_API_KEY", "batch image provider is missing api key")
@@ -247,12 +253,6 @@ func validateGeminiDownloadHost(downloadURL, baseURL string) error {
 		return nil
 	}
 	return ProviderError("GEMINI_INVALID_RESPONSE", "Gemini download uri host is not allowed", nil)
-}
-
-type GeminiAPIError struct {
-	StatusCode int
-	Code       string
-	Message    string
 }
 
 func (e *GeminiAPIError) Error() string {

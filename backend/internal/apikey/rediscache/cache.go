@@ -8,8 +8,9 @@ import (
 	"log"
 	"time"
 
-	keycore "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/redis/go-redis/v9"
+
+	keycore "github.com/TokenFlux/TokenRouter/internal/apikey"
 )
 
 const (
@@ -19,6 +20,10 @@ const (
 	AuthCacheInvalidateChannel = "auth:cache:invalidate"
 )
 
+type ApiKeyCache struct {
+	rdb *redis.Client
+}
+
 // ApiKeyRateLimitKey generates the Redis key for API key creation rate limiting.
 func ApiKeyRateLimitKey(userID int64) string {
 	return fmt.Sprintf("%s%d", ApiKeyRateLimitKeyPrefix, userID)
@@ -26,10 +31,6 @@ func ApiKeyRateLimitKey(userID int64) string {
 
 func ApiKeyAuthCacheKey(key string) string {
 	return fmt.Sprintf("%s%s", ApiKeyAuthCachePrefix, key)
-}
-
-type ApiKeyCache struct {
-	rdb *redis.Client
 }
 
 func NewAPIKeyCache(rdb *redis.Client) keycore.APIKeyCache {

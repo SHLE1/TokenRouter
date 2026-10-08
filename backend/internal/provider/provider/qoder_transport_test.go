@@ -17,6 +17,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type qoderHTTPUpstreamRecorder struct {
+	body                string
+	userInfoBody        string
+	userInfoStatusCode  int
+	proxyURL            string
+	providerID          int64
+	providerConcurrency int
+	profileSet          bool
+	requests            []*http.Request
+}
+
 func TestQoderGatewayRequestDoerUsesHTTPUpstreamProxyAndTLS(t *testing.T) {
 	proxyID := int64(11)
 	provider := &providercore.Record{
@@ -49,17 +60,6 @@ func TestQoderGatewayRequestDoerUsesHTTPUpstreamProxyAndTLS(t *testing.T) {
 	require.Equal(t, "http://proxy.example.com:8080", upstream.proxyURL)
 	require.Equal(t, int64(66), upstream.providerID)
 	require.True(t, upstream.profileSet)
-}
-
-type qoderHTTPUpstreamRecorder struct {
-	body                string
-	userInfoBody        string
-	userInfoStatusCode  int
-	proxyURL            string
-	providerID          int64
-	providerConcurrency int
-	profileSet          bool
-	requests            []*http.Request
 }
 
 func (u *qoderHTTPUpstreamRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {

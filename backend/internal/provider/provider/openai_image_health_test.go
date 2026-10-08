@@ -12,6 +12,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 健康替身记录模型范围的状态写入，其他接口留空。
+type imageHealthStore struct {
+	providercore.HealthStore
+	modelRateLimitCalls []imageHealthWrite
+}
+
+type imageHealthWrite struct {
+	providerID int64
+	scope      string
+	resetAt    time.Time
+	reason     string
+}
+
 func TestRateLimitService_HandleOpenAIImageRateLimit_ParsesTryAgainCooldown(t *testing.T) {
 	repo := &imageHealthStore{}
 	svc := providercore.NewHealthService(repo, nil, providercore.HealthOptions{})
@@ -92,19 +105,6 @@ func TestRateLimitServiceHandleOpenAIImageCapabilityLoss_RespectsPlatformAndErro
 		require.False(t, handled)
 		require.Empty(t, repo.modelRateLimitCalls)
 	})
-}
-
-// 健康替身记录模型范围的状态写入，其他接口留空。
-type imageHealthStore struct {
-	providercore.HealthStore
-	modelRateLimitCalls []imageHealthWrite
-}
-
-type imageHealthWrite struct {
-	providerID int64
-	scope      string
-	resetAt    time.Time
-	reason     string
 }
 
 func (s *imageHealthStore) SetModelRateLimit(_ context.Context, id int64, scope string, resetAt time.Time, reasons ...string) error {

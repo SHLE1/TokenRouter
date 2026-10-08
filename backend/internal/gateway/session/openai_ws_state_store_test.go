@@ -10,6 +10,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type openAIWSStateStoreTimeoutProbeCache struct {
+	setHasDeadline    bool
+	getHasDeadline    bool
+	deleteHasDeadline bool
+	setDeadlineDelta  time.Duration
+	getDeadlineDelta  time.Duration
+	delDeadlineDelta  time.Duration
+}
+
+type stubGatewayCache struct {
+	sessionBindings map[string]int64
+	deletedSessions map[string]int
+}
+
 func TestOpenAIWSStateStoreInvalidEncryptedContentLineage(t *testing.T) {
 	t.Parallel()
 
@@ -200,7 +214,7 @@ func TestOpenAIWSStateStore_MaybeCleanupRemovesExpiredIncrementally(t *testing.T
 	expiredAt := time.Now().Add(-time.Minute)
 	total := 2048
 	store.responseToConnMu.Lock()
-	for i := 0; i < total; i++ {
+	for i := range total {
 		store.responseToConn[fmt.Sprintf("resp_%d", i)] = openAIWSConnBinding{
 			connID:    "conn_incremental",
 			expiresAt: expiredAt,
@@ -217,7 +231,7 @@ func TestOpenAIWSStateStore_MaybeCleanupRemovesExpiredIncrementally(t *testing.T
 	require.Less(t, remainingAfterFirst, total, "单轮 cleanup 应至少有进展")
 	require.Greater(t, remainingAfterFirst, 0, "增量清理不要求单轮清空全部键")
 
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		store.lastCleanupUnixNano.Store(time.Now().Add(-2 * openAIWSStateStoreCleanupInterval).UnixNano())
 		store.maybeCleanup()
 	}
@@ -295,15 +309,6 @@ func TestWithOpenAIWSStateStoreRedisTimeout_WithParentContext(t *testing.T) {
 	require.True(t, ok, "应附加短超时")
 }
 
-type openAIWSStateStoreTimeoutProbeCache struct {
-	setHasDeadline    bool
-	getHasDeadline    bool
-	deleteHasDeadline bool
-	setDeadlineDelta  time.Duration
-	getDeadlineDelta  time.Duration
-	delDeadlineDelta  time.Duration
-}
-
 func (c *openAIWSStateStoreTimeoutProbeCache) GetSessionProviderID(ctx context.Context, _ int64, _ string) (int64, error) {
 	if deadline, ok := ctx.Deadline(); ok {
 		c.getHasDeadline = true
@@ -342,11 +347,6 @@ func (c *openAIWSStateStoreTimeoutProbeCache) GetSessionOwnerGroupID(context.Con
 
 func (c *openAIWSStateStoreTimeoutProbeCache) RefreshSessionOwnerTTL(context.Context, int64, string, string, time.Duration) error {
 	return nil
-}
-
-type stubGatewayCache struct {
-	sessionBindings map[string]int64
-	deletedSessions map[string]int
 }
 
 func (c *stubGatewayCache) GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {

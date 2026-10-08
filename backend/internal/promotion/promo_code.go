@@ -6,6 +6,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 )
 
+const (
+	PromoCodeStatusActive   = "active"
+	PromoCodeStatusDisabled = "disabled"
+)
+
 // PromoCode 注册优惠码
 type PromoCode struct {
 	ID          int64
@@ -36,26 +41,6 @@ type PromoCodeUsage struct {
 	User      *UserView
 }
 
-func (p *PromoCode) CanUseAt(now time.Time) bool {
-	if p.Status != PromoCodeStatusActive {
-		return false
-	}
-	if p.ExpiresAt != nil && now.After(*p.ExpiresAt) {
-		return false
-	}
-	if p.MaxUses > 0 && p.UsedCount >= p.MaxUses {
-		return false
-	}
-	return true
-}
-
-// IsExpired 检查是否已过期
-func (p *PromoCode) IsExpired() bool { return p.IsExpiredAt(time.Now()) }
-
-func (p *PromoCode) IsExpiredAt(now time.Time) bool {
-	return p.ExpiresAt != nil && now.After(*p.ExpiresAt)
-}
-
 // CreatePromoCodeInput 创建优惠码输入
 type CreatePromoCodeInput struct {
 	Code        string
@@ -74,11 +59,6 @@ type UpdatePromoCodeInput struct {
 	ExpiresAt   *time.Time
 	Notes       *string
 }
-
-const (
-	PromoCodeStatusActive   = "active"
-	PromoCodeStatusDisabled = "disabled"
-)
 
 // UserView 包含优惠码使用记录中的用户资料。
 type UserView struct {
@@ -103,4 +83,24 @@ type UserView struct {
 	TotalRecharged             float64
 	RPMLimit                   int
 	APIKeyLimit                int
+}
+
+func (p *PromoCode) CanUseAt(now time.Time) bool {
+	if p.Status != PromoCodeStatusActive {
+		return false
+	}
+	if p.ExpiresAt != nil && now.After(*p.ExpiresAt) {
+		return false
+	}
+	if p.MaxUses > 0 && p.UsedCount >= p.MaxUses {
+		return false
+	}
+	return true
+}
+
+// IsExpired 检查是否已过期
+func (p *PromoCode) IsExpired() bool { return p.IsExpiredAt(time.Now()) }
+
+func (p *PromoCode) IsExpiredAt(now time.Time) bool {
+	return p.ExpiresAt != nil && now.After(*p.ExpiresAt)
 }

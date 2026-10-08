@@ -9,28 +9,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-func TestAdminServiceUpdateGroupCopiesMembershipWithoutAssociationPriority(t *testing.T) {
-	target := &Group{ID: 1701, Name: "target", Status: StatusActive}
-	source := &Group{ID: 1702, Name: "source", Status: StatusActive}
-	base := &groupRepoStubForAdmin{}
-	repo := &groupProviderCopyRepoStub{
-		groupRepoStubForAdmin: base,
-		groupsByID:            map[int64]*Group{target.ID: target, source.ID: source},
-		sourceProviderIDs:     []int64{71, 72},
-	}
-	svc := &GroupAdmin{groupRepo: repo, options: GroupAdminOptions{Mutate: func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }}}
-
-	updated, err := svc.UpdateGroup(context.Background(), target.ID, &UpdateGroupInput{
-		CopyProvidersFromGroupIDs: []int64{source.ID},
-	})
-
-	require.NoError(t, err)
-	require.Same(t, target, updated)
-	require.Equal(t, target.ID, repo.deletedGroupID)
-	require.Equal(t, target.ID, repo.boundGroupID)
-	require.Equal(t, []int64{71, 72}, repo.boundProviderIDs)
-}
-
 // groupRepoStubForAdmin 记录分组管理测试的存储读写。
 type groupRepoStubForAdmin struct {
 	created *Group // 记录 Create 调用的参数
@@ -57,6 +35,28 @@ type groupProviderCopyRepoStub struct {
 	deletedGroupID    int64
 	boundGroupID      int64
 	boundProviderIDs  []int64
+}
+
+func TestAdminServiceUpdateGroupCopiesMembershipWithoutAssociationPriority(t *testing.T) {
+	target := &Group{ID: 1701, Name: "target", Status: StatusActive}
+	source := &Group{ID: 1702, Name: "source", Status: StatusActive}
+	base := &groupRepoStubForAdmin{}
+	repo := &groupProviderCopyRepoStub{
+		groupRepoStubForAdmin: base,
+		groupsByID:            map[int64]*Group{target.ID: target, source.ID: source},
+		sourceProviderIDs:     []int64{71, 72},
+	}
+	svc := &GroupAdmin{groupRepo: repo, options: GroupAdminOptions{Mutate: func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }}}
+
+	updated, err := svc.UpdateGroup(context.Background(), target.ID, &UpdateGroupInput{
+		CopyProvidersFromGroupIDs: []int64{source.ID},
+	})
+
+	require.NoError(t, err)
+	require.Same(t, target, updated)
+	require.Equal(t, target.ID, repo.deletedGroupID)
+	require.Equal(t, target.ID, repo.boundGroupID)
+	require.Equal(t, []int64{71, 72}, repo.boundProviderIDs)
 }
 
 func (s *groupProviderCopyRepoStub) GetByID(_ context.Context, id int64) (*Group, error) {

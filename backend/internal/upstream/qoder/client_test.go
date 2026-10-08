@@ -212,7 +212,7 @@ func TestBearerJSONRequestUsesSecurityOAuthToken(t *testing.T) {
 func getHeaders(t *testing.T) http.Header {
 	t.Helper()
 	c := NewClient("https://test.qoder.sh")
-	req, _ := http.NewRequest("POST", "https://test.qoder.sh/test", nil)
+	req, _ := http.NewRequest(http.MethodPost, "https://test.qoder.sh/test", nil)
 	c.setHeaders(req, testSession(), "/test", "encoded-body")
 	return req.Header
 }
@@ -258,7 +258,7 @@ func TestHeadersIncludeMachineOSAndLegacyFallbacks(t *testing.T) {
 	session.Machine.MachineType = ""
 	client := NewClient("https://test.qoder.sh")
 	client.MachineOS = "aarch64_darwin"
-	req, _ := http.NewRequest("POST", "https://test.qoder.sh/test", nil)
+	req, _ := http.NewRequest(http.MethodPost, "https://test.qoder.sh/test", nil)
 	client.setHeaders(req, session, "/test", "encoded-body")
 	require.Equal(t, session.Machine.MachineID, req.Header.Get("cosy-machinetoken"))
 	require.Equal(t, "5", req.Header.Get("cosy-machinetype"))
@@ -270,7 +270,7 @@ func TestCNHeadersIgnoreLegacyRandomMachineFields(t *testing.T) {
 	session.Site = SiteCN
 	client := NewClientForProfile(MustProfileForSite(SiteCN))
 	client.ClientIP = "172.18.0.1"
-	req, _ := http.NewRequest("POST", "https://gateway.qoder.com.cn/test", nil)
+	req, _ := http.NewRequest(http.MethodPost, "https://gateway.qoder.com.cn/test", nil)
 
 	client.setHeaders(req, session, "/test", "encoded-body")
 
@@ -685,7 +685,7 @@ func TestParseSSELineUpstreamErrorWrapper(t *testing.T) {
 	if !errors.As(err, &apiErr) {
 		t.Fatalf("error type = %T, want *APIError", err)
 	}
-	if apiErr.StatusCode != 403 {
+	if apiErr.StatusCode != http.StatusForbidden {
 		t.Errorf("status code = %d, want 403", apiErr.StatusCode)
 	}
 	if apiErr.Code != "101" {

@@ -25,6 +25,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+// compositeGrokVideoCacheStub 仅在指定分组返回任务绑定提供商。
+type compositeGrokVideoCacheStub struct {
+	groupID    int64
+	providerID int64
+	ownerID    int64
+}
+
 func TestRecordGrokMediaUsageIgnoresNilResult(t *testing.T) {
 	require.NotPanics(t, func() {
 		recordGrokMediaUsage(
@@ -172,13 +179,6 @@ func TestGrokMediaScheduleModelUsesNormalizedMappedUpstream(t *testing.T) {
 	}))
 	require.Equal(t, "mapped-video-model", grokMediaScheduleModel(provider, "grok-imagine-video", &forwardcore.OpenAIResult{}))
 	require.Equal(t, "grok-imagine-video", grokMediaScheduleModel(nil, " grok-imagine-video ", nil))
-}
-
-// compositeGrokVideoCacheStub 仅在指定分组返回任务绑定提供商。
-type compositeGrokVideoCacheStub struct {
-	groupID    int64
-	providerID int64
-	ownerID    int64
 }
 
 func (s *compositeGrokVideoCacheStub) GetSessionProviderID(_ context.Context, groupID int64, _ string) (int64, error) {

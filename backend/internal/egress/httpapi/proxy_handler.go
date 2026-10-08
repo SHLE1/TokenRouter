@@ -22,20 +22,6 @@ type ProxyHandler struct {
 	adminService egress.ProxyAdministrator
 }
 
-// NewProxyHandler creates a new admin proxy handler
-func NewProxyHandler(adminService egress.ProxyAdministrator, transfers ...*egress.ProxyTransfer) *ProxyHandler {
-	var transfer *egress.ProxyTransfer
-	if len(transfers) > 0 {
-		transfer = transfers[0]
-	}
-	if transfer == nil {
-		transfer = egress.NewProxyTransfer(adminService, nil, time.Now)
-	}
-	return &ProxyHandler{
-		adminService: adminService, transfer: transfer,
-	}
-}
-
 // CreateProxyRequest represents create proxy request
 type CreateProxyRequest struct {
 	Name           string `json:"name" binding:"required"`
@@ -63,6 +49,43 @@ type UpdateProxyRequest struct {
 	FallbackMode   string `json:"fallback_mode" binding:"omitempty,oneof=none proxy direct"`
 	BackupProxyID  *int64 `json:"backup_proxy_id"`
 	ExpiryWarnDays int    `json:"expiry_warn_days" binding:"omitempty,min=0"`
+}
+
+// BatchCreateProxyItem represents a single proxy in batch create request
+type BatchCreateProxyItem struct {
+	Protocol string `json:"protocol" binding:"required,oneof=http https socks5 socks5h"`
+	Host     string `json:"host" binding:"required"`
+	Port     int    `json:"port" binding:"required,min=1,max=65535"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// BatchCreateRequest represents batch create proxies request
+type BatchCreateRequest struct {
+	Proxies []BatchCreateProxyItem `json:"proxies" binding:"required,min=1"`
+}
+
+// AdminProxy 是代理管理接口返回的数据。
+type AdminProxy = proxydto.AdminProxy
+
+// AdminProxyWithProviderCount 包含代理数据及提供商数量。
+type AdminProxyWithProviderCount = proxydto.AdminProxyWithProviderCount
+
+// ProxyProviderSummary 包含使用代理的提供商摘要。
+type ProxyProviderSummary = proxydto.ProxyProviderSummary
+
+// NewProxyHandler creates a new admin proxy handler
+func NewProxyHandler(adminService egress.ProxyAdministrator, transfers ...*egress.ProxyTransfer) *ProxyHandler {
+	var transfer *egress.ProxyTransfer
+	if len(transfers) > 0 {
+		transfer = transfers[0]
+	}
+	if transfer == nil {
+		transfer = egress.NewProxyTransfer(adminService, nil, time.Now)
+	}
+	return &ProxyHandler{
+		adminService: adminService, transfer: transfer,
+	}
 }
 
 // List handles listing all proxies with pagination
@@ -337,20 +360,6 @@ func (h *ProxyHandler) GetProxyProviders(c *gin.Context) {
 	response.Success(c, out)
 }
 
-// BatchCreateProxyItem represents a single proxy in batch create request
-type BatchCreateProxyItem struct {
-	Protocol string `json:"protocol" binding:"required,oneof=http https socks5 socks5h"`
-	Host     string `json:"host" binding:"required"`
-	Port     int    `json:"port" binding:"required,min=1,max=65535"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-// BatchCreateRequest represents batch create proxies request
-type BatchCreateRequest struct {
-	Proxies []BatchCreateProxyItem `json:"proxies" binding:"required,min=1"`
-}
-
 // BatchCreate handles batch creating proxies
 // POST /api/v1/admin/proxies/batch
 func (h *ProxyHandler) BatchCreate(c *gin.Context) {
@@ -405,15 +414,6 @@ func (h *ProxyHandler) BatchCreate(c *gin.Context) {
 		"skipped": skipped,
 	})
 }
-
-// AdminProxy 是代理管理接口返回的数据。
-type AdminProxy = proxydto.AdminProxy
-
-// AdminProxyWithProviderCount 包含代理数据及提供商数量。
-type AdminProxyWithProviderCount = proxydto.AdminProxyWithProviderCount
-
-// ProxyProviderSummary 包含使用代理的提供商摘要。
-type ProxyProviderSummary = proxydto.ProxyProviderSummary
 
 // ProxyFromServiceAdmin 将代理转为包含管理字段的响应。
 func ProxyFromServiceAdmin(p *egress.Proxy) *AdminProxy { return proxydto.ProxyFromEgressAdmin(p) }

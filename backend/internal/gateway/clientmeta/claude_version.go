@@ -9,6 +9,8 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+var claudeUAVersionPattern = regexp.MustCompile(`(?i)^claude-cli/(\d+\.\d+\.\d+)`)
+
 // IsSupportedClaudeCLIVersion 校验运维设置的版本覆盖值。
 // 版本需要为三段纯数字（如 2.1.251），并且不低于内置基线 CLICurrentVersion。
 // -local、-dev、+build 等后缀会被 fingerprintUserAgentPattern 拒绝，写入持久指纹后可能持续触发上游 429，系统没有指纹重置入口。
@@ -34,7 +36,7 @@ func IsSupportedClaudeCLIVersion(version, minimum string) bool {
 func CompareVersions(a, b string) int {
 	aParts := parseSemver(a)
 	bParts := parseSemver(b)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if aParts[i] < bParts[i] {
 			return -1
 		}
@@ -57,8 +59,6 @@ func parseSemver(v string) [3]int {
 	}
 	return result
 }
-
-var claudeUAVersionPattern = regexp.MustCompile(`(?i)^claude-cli/(\d+\.\d+\.\d+)`)
 
 func ExtractClaudeCLIVersion(ua string) string {
 	matches := claudeUAVersionPattern.FindStringSubmatch(ua)

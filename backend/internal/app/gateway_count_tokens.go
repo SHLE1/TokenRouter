@@ -31,6 +31,15 @@ type countExecution struct {
 	cooldown  func(context.Context, int64, *forwardcore.UpstreamFailoverError)
 }
 
+// countTarget 保存单次计数使用的提供商，凭据在执行时传给上游。
+type countTarget struct {
+	choices   *selection.Generic
+	gateway   *gatewayhttp.MessagesExecutor
+	auxiliary *gatewayhttp.OpenAIAuxiliary
+	gemini    *gatewayhttp.GeminiExecutor
+	provider  *gatewayprovider.ExecutionProvider
+}
+
 func (p countExecution) SelectCountTarget(ctx context.Context, id *int64, hash, model string, excluded map[int64]struct{}) (gatewayhttp.CountTarget, error) {
 	value, err := p.choices.SelectProviderForModelWithExclusions(ctx, id, hash, model, excluded)
 	if err != nil {
@@ -41,15 +50,6 @@ func (p countExecution) SelectCountTarget(ctx context.Context, id *int64, hash, 
 
 func (p countExecution) PlanCountRoute(ctx context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 	return p.planner.PlanKey(ctx, key, model)
-}
-
-// countTarget 保存单次计数使用的提供商，凭据在执行时传给上游。
-type countTarget struct {
-	choices   *selection.Generic
-	gateway   *gatewayhttp.MessagesExecutor
-	auxiliary *gatewayhttp.OpenAIAuxiliary
-	gemini    *gatewayhttp.GeminiExecutor
-	provider  *gatewayprovider.ExecutionProvider
 }
 
 func (t countTarget) Snapshot() provider.ProviderSnapshot {

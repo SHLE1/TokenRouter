@@ -8,6 +8,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type catalogProvider struct{ *provider.Record }
+
 // CatalogProvider 向公开目录提供模型规则。
 func CatalogProvider(value *provider.Record) creative.CatalogProvider {
 	if value == nil {
@@ -15,8 +17,6 @@ func CatalogProvider(value *provider.Record) creative.CatalogProvider {
 	}
 	return catalogProvider{value}
 }
-
-type catalogProvider struct{ *provider.Record }
 
 func (a catalogProvider) GetModelMapping() map[string]string {
 	return provider.ResolveModelMapping(a.Record, provideradapter.ModelDefaults())

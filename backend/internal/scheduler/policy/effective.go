@@ -5,6 +5,15 @@ import (
 	"math"
 )
 
+const (
+	defaultAdvancedSchedulerErrorRateAlpha = 0.2
+	defaultAdvancedSchedulerTTFTAlpha      = 0.2
+
+	// 消息串行和节流模式使用配置中的字符串值。
+	MessageQueueSerialize = "serialize"
+	MessageQueueThrottle  = "throttle"
+)
+
 // EffectiveSettings 是完成全局与分组覆盖合并后的请求级配置。
 // 分组字段优先级最高；缺失字段继续继承设置仓库和静态配置的结果。
 type EffectiveSettings struct {
@@ -14,6 +23,51 @@ type EffectiveSettings struct {
 	Weights                     ScoreWeights
 	Feedback                    FeedbackConfig
 	StickyEscape                StickyEscapeConfig
+}
+
+type ScoreWeights struct {
+	Priority  float64
+	Load      float64
+	Queue     float64
+	ErrorRate float64
+	TTFT      float64
+	// Reset 为会话窗口更早重置的提供商加分，默认为 0，表示关闭。
+	Reset float64
+	// QuotaHeadroom 倾向 Codex 7d 剩余额度更健康的提供商；0 表示关闭（默认）。
+	QuotaHeadroom float64
+	Previous      float64
+	SessionSticky float64
+}
+
+type RuntimeSettings struct {
+	StickyWeightedEnabled       bool
+	SubscriptionPriorityEnabled bool
+	LbTopKOverride              int
+	WeightOverrides             map[string]float64
+	EwmaErrorRateAlpha          float64
+	EwmaErrorRateAlphaSet       bool
+	EwmaTTFTAlpha               float64
+	EwmaTTFTAlphaSet            bool
+	StickyEscapeEnabled         bool
+	StickyEscapeEnabledSet      bool
+	StickyEscapeTTFTMs          float64
+	StickyEscapeTTFTMsSet       bool
+	StickyEscapeErrorRate       float64
+	StickyEscapeErrorRateSet    bool
+	StickyEscape                StickyEscapeConfig
+}
+
+type StickyEscapeConfig struct {
+	Enabled   bool
+	TtftMs    float64
+	ErrorRate float64
+}
+
+// FeedbackConfig 保存一次请求回写运行时反馈时使用的 EWMA 系数。
+// 统计仍按提供商共享，但系数由请求最终命中的分组决定。
+type FeedbackConfig struct {
+	ErrorRateAlpha float64
+	TtftAlpha      float64
 }
 
 // ValidateGroupOverrides 校验分组覆盖字段的取值范围。
@@ -211,44 +265,6 @@ func ResolveEffective(
 	return effective
 }
 
-type ScoreWeights struct {
-	Priority  float64
-	Load      float64
-	Queue     float64
-	ErrorRate float64
-	TTFT      float64
-	// Reset 为会话窗口更早重置的提供商加分，默认为 0，表示关闭。
-	Reset float64
-	// QuotaHeadroom 倾向 Codex 7d 剩余额度更健康的提供商；0 表示关闭（默认）。
-	QuotaHeadroom float64
-	Previous      float64
-	SessionSticky float64
-}
-
-type RuntimeSettings struct {
-	StickyWeightedEnabled       bool
-	SubscriptionPriorityEnabled bool
-	LbTopKOverride              int
-	WeightOverrides             map[string]float64
-	EwmaErrorRateAlpha          float64
-	EwmaErrorRateAlphaSet       bool
-	EwmaTTFTAlpha               float64
-	EwmaTTFTAlphaSet            bool
-	StickyEscapeEnabled         bool
-	StickyEscapeEnabledSet      bool
-	StickyEscapeTTFTMs          float64
-	StickyEscapeTTFTMsSet       bool
-	StickyEscapeErrorRate       float64
-	StickyEscapeErrorRateSet    bool
-	StickyEscape                StickyEscapeConfig
-}
-
-type StickyEscapeConfig struct {
-	Enabled   bool
-	TtftMs    float64
-	ErrorRate float64
-}
-
 // NormalizeStickyEscape 将健康逃逸配置限制在允许的取值范围内。
 func NormalizeStickyEscape(value StickyEscapeConfig) StickyEscapeConfig {
 	thresholdsUnset := value.TtftMs == 0 && value.ErrorRate == 0
@@ -297,18 +313,6 @@ func ApplyGlobalWeightOverrides(
 	return Weights
 }
 
-// FeedbackConfig 保存一次请求回写运行时反馈时使用的 EWMA 系数。
-// 统计仍按提供商共享，但系数由请求最终命中的分组决定。
-type FeedbackConfig struct {
-	ErrorRateAlpha float64
-	TtftAlpha      float64
-}
-
-const (
-	defaultAdvancedSchedulerErrorRateAlpha = 0.2
-	defaultAdvancedSchedulerTTFTAlpha      = 0.2
-)
-
 func NormalizeFeedback(value FeedbackConfig) FeedbackConfig {
 	if value.ErrorRateAlpha <= 0 || value.ErrorRateAlpha > 1 || math.IsNaN(value.ErrorRateAlpha) || math.IsInf(value.ErrorRateAlpha, 0) {
 		value.ErrorRateAlpha = defaultAdvancedSchedulerErrorRateAlpha
@@ -332,9 +336,3 @@ func (w ScoreWeights) TotalWeightSum() float64 {
 func (w ScoreWeights) ValidGlobal() bool {
 	return ValidateEffectiveWeights(w) == nil && w.BaseWeightSum() > 0
 }
-
-// 消息串行和节流模式使用配置中的字符串值。
-const (
-	MessageQueueSerialize = "serialize"
-	MessageQueueThrottle  = "throttle"
-)

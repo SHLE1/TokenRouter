@@ -1,8 +1,9 @@
 package httpx
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
 // ErrorResponse 标准错误响应结构

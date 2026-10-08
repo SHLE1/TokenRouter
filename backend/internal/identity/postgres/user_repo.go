@@ -47,9 +47,20 @@ const (
 	IdentityNormalizedUserEmailSQL = `CASE WHEN ` + IdentityNormalizedUserEmailDomainSQL + ` IN ('gmail.com', 'googlemail.com') ` +
 		`THEN coalesce(nullif(replace(` + IdentityNormalizedUserEmailBaseLocalSQL + `, '.', ''), ''), ` + IdentityNormalizedUserEmailBaseLocalSQL + `) || '@gmail.com' ` +
 		`ELSE ` + IdentityNormalizedUserEmailBaseLocalSQL + ` || '@' || ` + IdentityNormalizedUserEmailDomainSQL + ` END`
+
+	IdentityRegistrationEmailLockNamespace = 148623451
+
+	// IdentityEmailAliasCandidateLimit 限制别名查重一次加载到内存的候选数量。
+	// 命中候选后按邮箱归一化规则再次校验。
+	IdentityEmailAliasCandidateLimit = 50
 )
 
-const IdentityRegistrationEmailLockNamespace = 148623451
+var (
+	// IdentityEscapeLikeWildcards 防止邮箱本地部分的 %、_ 或反斜杠被解释为 LIKE 通配符。
+	IdentityLikeWildcardEscaper = strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
+
+	likePatternReplacer = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+)
 
 type UserStore struct {
 	client *dbent.Client
@@ -923,10 +934,6 @@ func (r *UserStore) ExistsByEmail(ctx context.Context, email string) (bool, erro
 	return client.User.Query().Where(IdentityUserEmailLookupPredicate(email)).Exist(ctx)
 }
 
-// IdentityEmailAliasCandidateLimit 限制别名查重一次加载到内存的候选数量。
-// 命中候选后按邮箱归一化规则再次校验。
-const IdentityEmailAliasCandidateLimit = 50
-
 // ExistsByEmailAlias 判断是否已有用户与 email 指向同一收件箱。
 // 软删除过滤由 User 的 SoftDelete 拦截器统一处理。
 func (r *UserStore) ExistsByEmailAlias(ctx context.Context, email string) (bool, error) {
@@ -1009,9 +1016,6 @@ func IdentityDotStrippedEmailLike(pattern string) predicate.User {
 		}))
 	})
 }
-
-// IdentityEscapeLikeWildcards 防止邮箱本地部分的 %、_ 或反斜杠被解释为 LIKE 通配符。
-var IdentityLikeWildcardEscaper = strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
 
 func IdentityEscapeLikeWildcards(value string) string {
 	return IdentityLikeWildcardEscaper.Replace(value)
@@ -1679,5 +1683,3 @@ func scanSingleRow(ctx context.Context, q sqlQueryer, query string, args []any, 
 func escapeLikePattern(s string) string {
 	return likePatternReplacer.Replace(s)
 }
-
-var likePatternReplacer = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)

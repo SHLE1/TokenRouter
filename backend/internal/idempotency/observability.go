@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var defaultIdempotencyMetrics idempotencyMetrics
+
 // IdempotencyMetricsSnapshot 包含进程内累计的幂等指标。
 type IdempotencyMetricsSnapshot struct {
 	ClaimTotal                uint64  `json:"claim_total"`
@@ -29,7 +31,11 @@ type idempotencyMetrics struct {
 	storeUnavailableTotal    atomic.Uint64
 }
 
-var defaultIdempotencyMetrics idempotencyMetrics
+// Observer 输出已脱敏的幂等事件消息。
+type Observer interface {
+	Observe(component, message string)
+}
+type ObserverFunc func(component, message string)
 
 // GetIdempotencyMetricsSnapshot 返回当前幂等指标快照。
 func GetIdempotencyMetricsSnapshot() IdempotencyMetricsSnapshot {
@@ -157,12 +163,6 @@ func builderWriteString(builder *strings.Builder, value string) {
 func builderWriteByte(builder *strings.Builder, value byte) {
 	_ = builder.WriteByte(value)
 }
-
-// Observer 输出已脱敏的幂等事件消息。
-type Observer interface {
-	Observe(component, message string)
-}
-type ObserverFunc func(component, message string)
 
 func (f ObserverFunc) Observe(component, message string) { f(component, message) }
 

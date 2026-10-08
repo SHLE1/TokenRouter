@@ -103,7 +103,6 @@ func (h *ManagementHandler) Create(c *gin.Context) {
 		return h.presenter.Present(ctx, provider), nil
 	})
 	if err != nil {
-
 		if retryAfter := idempotency.RetryAfterSecondsFromError(err); retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}
@@ -214,7 +213,6 @@ func (h *ManagementHandler) Update(c *gin.Context) {
 		AutoPauseOnExpired: req.AutoPauseOnExpired,
 	})
 	if err != nil {
-
 		response.ErrorFrom(c, err)
 		return
 	}

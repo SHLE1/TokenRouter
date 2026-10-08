@@ -14,10 +14,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-func NewPricingHandler(pricingConfigs *routing.PricingConfigService, catalog *routing.PricingCatalog) *PricingHandler {
-	return &PricingHandler{pricingConfigs: pricingConfigs, catalog: catalog}
-}
-
 // PricingHandler 处理管理员价格配置管理请求
 type PricingHandler struct {
 	pricingConfigs *routing.PricingConfigService
@@ -179,6 +175,10 @@ type providerStatsPricingRuleResponse struct {
 	GroupIDs    []int64                `json:"group_ids"`
 	ProviderIDs []int64                `json:"provider_ids"`
 	Pricing     []modelPricingResponse `json:"pricing"`
+}
+
+func NewPricingHandler(pricingConfigs *routing.PricingConfigService, catalog *routing.PricingCatalog) *PricingHandler {
+	return &PricingHandler{pricingConfigs: pricingConfigs, catalog: catalog}
 }
 
 // firstNonNilFloat 兼容旧版 fast_mode_multiplier 与新版 fast_multiplier。

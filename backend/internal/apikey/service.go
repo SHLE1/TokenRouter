@@ -25,6 +25,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+const (
+	MaxAPIKeyCredentialBytes        = 128
+	KeyDefaultAuthLookupConcurrency = 64
+	KeyDefaultNegativeAuthCacheSize = 16384
+	KeyApiKeyMaxErrorsPerHour       = 20
+	KeyApiKeyLastUsedMinTouch       = 30 * time.Second
+	// PostgreSQL DECIMAL(20,8) 的整数部分最多 12 位，输入必须严格小于该上界。
+	KeyApiKeyLimitUpperBound = 1_000_000_000_000
+	// KeyApiKeyLastUsedFailBackoff 是数据库写入失败后的重试间隔，用于限制连续请求触发的同步写入次数。
+	KeyApiKeyLastUsedFailBackoff = 5 * time.Second
+)
+
 var (
 	ErrGroupNotAllowed                   = infraerrors.Forbidden("GROUP_NOT_ALLOWED", "user is not allowed to bind this group")
 	ErrGroupDisabledForUser              = infraerrors.Forbidden("GROUP_DISABLED_FOR_USER", "user is not allowed to use this public group")
@@ -65,26 +77,9 @@ var (
 	ErrAPIKeyRateLimit7dExceeded = billing.ErrAPIKeyRateLimit7dExceeded
 	ErrTeamActorInactive         = infraerrors.Forbidden("TEAM_ACTOR_INACTIVE", "The member assigned to this team API key is inactive")
 	ErrTeamBillingOwnerInactive  = infraerrors.Forbidden("TEAM_BILLING_OWNER_INACTIVE", "The team billing owner is inactive")
-)
 
-// NewAPIKeyLimitReachedError 返回包含当前数量和上限的结构化冲突错误。
-func NewAPIKeyLimitReachedError(current int64, limit int) error {
-	return ErrAPIKeyLimitReached.WithMetadata(map[string]string{
-		"current": strconv.FormatInt(current, 10),
-		"limit":   strconv.Itoa(limit),
-	})
-}
-
-const (
-	MaxAPIKeyCredentialBytes        = 128
-	KeyDefaultAuthLookupConcurrency = 64
-	KeyDefaultNegativeAuthCacheSize = 16384
-	KeyApiKeyMaxErrorsPerHour       = 20
-	KeyApiKeyLastUsedMinTouch       = 30 * time.Second
-	// PostgreSQL DECIMAL(20,8) 的整数部分最多 12 位，输入必须严格小于该上界。
-	KeyApiKeyLimitUpperBound = 1_000_000_000_000
-	// KeyApiKeyLastUsedFailBackoff 是数据库写入失败后的重试间隔，用于限制连续请求触发的同步写入次数。
-	KeyApiKeyLastUsedFailBackoff = 5 * time.Second
+	// ErrAPIKeyNotFound 表示 API Key 不存在。
+	ErrAPIKeyNotFound = billing.ErrAPIKeyNotFound
 )
 
 // APIKeyUpdateFields 声明 APIKeyRepository.Update 允许写回的列。
@@ -121,11 +116,6 @@ type APIKeyUpdateFields struct {
 	RateLimitUsage bool
 	// IPRules 覆盖 ip_whitelist 与 ip_blacklist。
 	IPRules bool
-}
-
-// IsEmpty 报告该次 Update 是否不写任何列。
-func (f APIKeyUpdateFields) IsEmpty() bool {
-	return f == APIKeyUpdateFields{}
 }
 
 type APIKeyRepository interface {
@@ -193,17 +183,6 @@ type APIKeyCache interface {
 }
 
 type KeyAuthCacheSubscriptionReadyKey struct{}
-
-func KeyWithAuthCacheSubscriptionReady(ctx context.Context, ready func()) context.Context {
-	return context.WithValue(ctx, KeyAuthCacheSubscriptionReadyKey{}, ready)
-}
-
-// NotifyAuthCacheSubscriptionReady 允许缓存实现报告服务端已确认订阅，且无需扩展公开缓存接口。
-func NotifyAuthCacheSubscriptionReady(ctx context.Context) {
-	if ready, ok := ctx.Value(KeyAuthCacheSubscriptionReadyKey{}).(func()); ok && ready != nil {
-		ready()
-	}
-}
 
 // APIKeyAuthCacheInvalidator 提供认证缓存失效能力
 type APIKeyAuthCacheInvalidator interface {
@@ -298,6 +277,82 @@ type UpdateAPIKeyRequest struct {
 	FallbackWhenGroupUnavailable *bool `json:"fallback_when_group_unavailable"`
 }
 
+// APIKeyService API Key服务
+// RateLimitCacheInvalidator invalidates rate limit cache entries on manual reset.
+type RateLimitCacheInvalidator interface {
+	InvalidateAPIKeyRateLimit(ctx context.Context, keyID int64) error
+}
+
+type APIKeyService struct {
+	calendar                  timezone.Calendar
+	groupFastPolicy           func(string, bool) string
+	runtimeStart              sync.Once
+	runtimeStop               sync.Once
+	runtimeMu                 sync.Mutex
+	operations                authOperationGate
+	stopped                   chan struct{}
+	subscriberMu              sync.Mutex
+	subscriberStopped         bool
+	apiKeyRepo                APIKeyRepository
+	userRepo                  UserRepository
+	groupRepo                 GroupRepository
+	userSubRepo               UserSubscriptionRepository
+	userGroupRateRepo         UserGroupRateRepository
+	cache                     APIKeyCache
+	rateLimitCacheInvalid     RateLimitCacheInvalidator // optional: invalidate Redis rate limit cache
+	concurrencyService        ConcurrencyReader
+	teamRepo                  TeamRepository
+	cfg                       *Options
+	authCacheL1               atomic.Pointer[ristretto.Cache]
+	authNegativeCacheL1       atomic.Pointer[ristretto.Cache]
+	authCfg                   KeyApiKeyAuthCacheConfig
+	authGroup                 singleflight.Group
+	authLookupSlots           chan struct{}
+	authLookupTotal           atomic.Uint64
+	authLookupRejected        atomic.Uint64
+	authLookupInFlight        atomic.Int64
+	invalidAuthAbuse          *KeyInvalidAuthAbuseLimiter
+	authInvalidationStart     sync.Once
+	authInvalidationStop      sync.Once
+	authInvalidationCancel    context.CancelFunc
+	authInvalidationWG        sync.WaitGroup
+	authInvalidationConnected atomic.Bool
+	authInvalidationFailures  atomic.Uint64
+	lastUsedTouchL1           sync.Map // keyID -> nextAllowedAt(time.Time)
+	lastUsedTouchSF           singleflight.Group
+}
+
+type APIKeyAuthLookupMetrics struct {
+	Total    uint64 `json:"total"`
+	Rejected uint64 `json:"rejected"`
+	InFlight int64  `json:"in_flight"`
+	Capacity int    `json:"capacity"`
+}
+
+// NewAPIKeyLimitReachedError 返回包含当前数量和上限的结构化冲突错误。
+func NewAPIKeyLimitReachedError(current int64, limit int) error {
+	return ErrAPIKeyLimitReached.WithMetadata(map[string]string{
+		"current": strconv.FormatInt(current, 10),
+		"limit":   strconv.Itoa(limit),
+	})
+}
+
+// IsEmpty 报告该次 Update 是否不写任何列。
+func (f APIKeyUpdateFields) IsEmpty() bool {
+	return f == APIKeyUpdateFields{}
+}
+
+func KeyWithAuthCacheSubscriptionReady(ctx context.Context, ready func()) context.Context {
+	return context.WithValue(ctx, KeyAuthCacheSubscriptionReadyKey{}, ready)
+}
+
+// NotifyAuthCacheSubscriptionReady 允许缓存实现报告服务端已确认订阅，且无需扩展公开缓存接口。
+func NotifyAuthCacheSubscriptionReady(ctx context.Context) {
+	if ready, ok := ctx.Value(KeyAuthCacheSubscriptionReadyKey{}).(func()); ok && ready != nil {
+		ready()
+	}
+}
+
 // ValidateAPIKeyLimit 校验可写入 DECIMAL(20,8) 的 API Key 配额或滚动限额。
 func ValidateAPIKeyLimit(field string, value float64) error {
 	if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 || value >= KeyApiKeyLimitUpperBound {
@@ -365,70 +420,6 @@ func KeyValidateUpdateAPIKeyRequest(req UpdateAPIKeyRequest) error {
 	return nil
 }
 
-// APIKeyService API Key服务
-// RateLimitCacheInvalidator invalidates rate limit cache entries on manual reset.
-type RateLimitCacheInvalidator interface {
-	InvalidateAPIKeyRateLimit(ctx context.Context, keyID int64) error
-}
-
-type APIKeyService struct {
-	calendar                  timezone.Calendar
-	groupFastPolicy           func(string, bool) string
-	runtimeStart              sync.Once
-	runtimeStop               sync.Once
-	runtimeMu                 sync.Mutex
-	operations                authOperationGate
-	stopped                   chan struct{}
-	subscriberMu              sync.Mutex
-	subscriberStopped         bool
-	apiKeyRepo                APIKeyRepository
-	userRepo                  UserRepository
-	groupRepo                 GroupRepository
-	userSubRepo               UserSubscriptionRepository
-	userGroupRateRepo         UserGroupRateRepository
-	cache                     APIKeyCache
-	rateLimitCacheInvalid     RateLimitCacheInvalidator // optional: invalidate Redis rate limit cache
-	concurrencyService        ConcurrencyReader
-	teamRepo                  TeamRepository
-	cfg                       *Options
-	authCacheL1               atomic.Pointer[ristretto.Cache]
-	authNegativeCacheL1       atomic.Pointer[ristretto.Cache]
-	authCfg                   KeyApiKeyAuthCacheConfig
-	authGroup                 singleflight.Group
-	authLookupSlots           chan struct{}
-	authLookupTotal           atomic.Uint64
-	authLookupRejected        atomic.Uint64
-	authLookupInFlight        atomic.Int64
-	invalidAuthAbuse          *KeyInvalidAuthAbuseLimiter
-	authInvalidationStart     sync.Once
-	authInvalidationStop      sync.Once
-	authInvalidationCancel    context.CancelFunc
-	authInvalidationWG        sync.WaitGroup
-	authInvalidationConnected atomic.Bool
-	authInvalidationFailures  atomic.Uint64
-	lastUsedTouchL1           sync.Map // keyID -> nextAllowedAt(time.Time)
-	lastUsedTouchSF           singleflight.Group
-}
-
-type APIKeyAuthLookupMetrics struct {
-	Total    uint64 `json:"total"`
-	Rejected uint64 `json:"rejected"`
-	InFlight int64  `json:"in_flight"`
-	Capacity int    `json:"capacity"`
-}
-
-func (s *APIKeyService) AuthLookupMetrics() APIKeyAuthLookupMetrics {
-	if s == nil {
-		return APIKeyAuthLookupMetrics{}
-	}
-	return APIKeyAuthLookupMetrics{
-		Total:    s.authLookupTotal.Load(),
-		Rejected: s.authLookupRejected.Load(),
-		InFlight: s.authLookupInFlight.Load(),
-		Capacity: cap(s.authLookupSlots),
-	}
-}
-
 // NewAPIKeyService 创建API Key服务实例
 func NewAPIKeyService(
 	apiKeyRepo APIKeyRepository,
@@ -461,6 +452,18 @@ func NewAPIKeyService(
 	svc.authLookupSlots = make(chan struct{}, lookupConcurrency)
 	svc.invalidAuthAbuse = KeyNewInvalidAuthAbuseLimiter(cfg)
 	return svc
+}
+
+func (s *APIKeyService) AuthLookupMetrics() APIKeyAuthLookupMetrics {
+	if s == nil {
+		return APIKeyAuthLookupMetrics{}
+	}
+	return APIKeyAuthLookupMetrics{
+		Total:    s.authLookupTotal.Load(),
+		Rejected: s.authLookupRejected.Load(),
+		InFlight: s.authLookupInFlight.Load(),
+		Capacity: cap(s.authLookupSlots),
+	}
 }
 
 // SetRateLimitCacheInvalidator sets the optional rate limit cache invalidator.
@@ -1775,6 +1778,3 @@ func (s *APIKeyService) UpdateRateLimitUsage(ctx context.Context, apiKeyID int64
 	}
 	return s.apiKeyRepo.IncrementRateLimitUsage(ctx, apiKeyID, cost)
 }
-
-// ErrAPIKeyNotFound 表示 API Key 不存在。
-var ErrAPIKeyNotFound = billing.ErrAPIKeyNotFound

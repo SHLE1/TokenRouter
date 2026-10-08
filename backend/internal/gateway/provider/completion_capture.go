@@ -44,24 +44,6 @@ type QuotaUpdater interface {
 	UpdateRateLimitUsage(ctx context.Context, apiKeyID int64, cost float64) error
 }
 
-func CompletionRequestID(ctx context.Context, upstreamRequestID string) string {
-	return completion.ResolveRequestID(RequestIdentity(ctx, upstreamRequestID, ""), scheduler.GenerateRequestID)
-}
-
-// StableAudioBillingRequestID 为单次 TTS/STT HTTP 调用生成持久用量去重键，优先沿用上游请求 ID。
-func StableAudioBillingRequestID(upstreamRequestID string) string {
-	return completion.StableAudioRequestID(upstreamRequestID, scheduler.GenerateRequestID)
-}
-
-// StableRealtimeBillingRequestID 为单个 Realtime WebSocket 会话生成持久用量去重键。
-func StableRealtimeBillingRequestID(sessionID string) string {
-	return completion.StableRealtimeRequestID(sessionID, scheduler.GenerateRequestID)
-}
-
-func CompletionPayloadFingerprint(ctx context.Context, requestPayloadHash string) string {
-	return completion.PayloadFingerprint(RequestIdentity(ctx, "", requestPayloadHash))
-}
-
 // OpenAICapture 包含同步捕获的输入和 HTTP 请求或 WS turn 的计费时刻。
 type OpenAICapture struct {
 	Result             *forwardcore.OpenAIResult
@@ -106,6 +88,24 @@ type CyberCapture struct {
 	// NativeCompactionV2 保留错误路径中原生 compaction 标记。
 	NativeCompactionV2 bool
 	routing.PricingUsageFields
+}
+
+func CompletionRequestID(ctx context.Context, upstreamRequestID string) string {
+	return completion.ResolveRequestID(RequestIdentity(ctx, upstreamRequestID, ""), scheduler.GenerateRequestID)
+}
+
+// StableAudioBillingRequestID 为单次 TTS/STT HTTP 调用生成持久用量去重键，优先沿用上游请求 ID。
+func StableAudioBillingRequestID(upstreamRequestID string) string {
+	return completion.StableAudioRequestID(upstreamRequestID, scheduler.GenerateRequestID)
+}
+
+// StableRealtimeBillingRequestID 为单个 Realtime WebSocket 会话生成持久用量去重键。
+func StableRealtimeBillingRequestID(sessionID string) string {
+	return completion.StableRealtimeRequestID(sessionID, scheduler.GenerateRequestID)
+}
+
+func CompletionPayloadFingerprint(ctx context.Context, requestPayloadHash string) string {
+	return completion.PayloadFingerprint(RequestIdentity(ctx, "", requestPayloadHash))
 }
 
 // CaptureMessages 在提交完成记录时保存用量和付款主体快照。

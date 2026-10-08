@@ -24,6 +24,16 @@ type contractBatchUseCases struct {
 	marked atomic.Int64
 }
 
+type contractDownload struct {
+	DownloadUseCases
+	closed atomic.Int64
+}
+
+type contractBody struct {
+	io.Reader
+	closed *atomic.Int64
+}
+
 func (s *contractBatchUseCases) Submit(_ context.Context, owner batchimage.BatchImageOwner, input batchimage.BatchImageSubmitRequest, key string) (*batchimage.BatchImagePublicBatch, error) {
 	s.owner = owner
 	s.input = input
@@ -34,16 +44,6 @@ func (s *contractBatchUseCases) Submit(_ context.Context, owner batchimage.Batch
 func (s *contractBatchUseCases) MarkDownloaded(context.Context, batchimage.BatchImageOwner, string) error {
 	s.marked.Add(1)
 	return nil
-}
-
-type contractDownload struct {
-	DownloadUseCases
-	closed atomic.Int64
-}
-
-type contractBody struct {
-	io.Reader
-	closed *atomic.Int64
 }
 
 func (b contractBody) Close() error { b.closed.Add(1); return nil }
@@ -64,10 +64,10 @@ func TestBatchHTTPSubmitProjectionAndParseOrder(t *testing.T) {
 	router := gin.New()
 	router.POST("/batches", h.Submit)
 	bad := httptest.NewRecorder()
-	router.ServeHTTP(bad, httptest.NewRequest("POST", "/batches", strings.NewReader("{")))
+	router.ServeHTTP(bad, httptest.NewRequest(http.MethodPost, "/batches", strings.NewReader("{")))
 	require.Equal(t, 400, bad.Code)
 	require.Zero(t, authCalls.Load())
-	req := httptest.NewRequest("POST", "/batches", strings.NewReader(`{"model":"image","items":[{"prompt":"hello"}]}`))
+	req := httptest.NewRequest(http.MethodPost, "/batches", strings.NewReader(`{"model":"image","items":[{"prompt":"hello"}]}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Idempotency-Key", "same-key")
 	response := httptest.NewRecorder()

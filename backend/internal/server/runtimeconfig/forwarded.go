@@ -40,15 +40,15 @@ type ForwardedSettings struct {
 	options     ForwardedSettingsOptions
 }
 
-// NewForwardedSettings 构造不回源，启动时由 app 显式加载。
-func NewForwardedSettings(repo ForwardedSettingsRepository, options ForwardedSettingsOptions) *ForwardedSettings {
-	return &ForwardedSettings{settingRepo: repo, options: options}
-}
-
 // ForwardedInput 只保存客户端地址管理字段。
 type ForwardedInput struct {
 	APIKeyACLTrustForwardedIP bool     `json:"api_key_acl_trust_forwarded_ip"`
 	ForwardedClientIPHeaders  []string `json:"forwarded_client_ip_headers"`
+}
+
+// NewForwardedSettings 构造不回源，启动时由 app 显式加载。
+func NewForwardedSettings(repo ForwardedSettingsRepository, options ForwardedSettingsOptions) *ForwardedSettings {
+	return &ForwardedSettings{settingRepo: repo, options: options}
 }
 
 // PrepareForwardedSettings 使用同一名称校验和 JSON 编码，不发布运行状态。

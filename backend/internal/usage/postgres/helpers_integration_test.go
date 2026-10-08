@@ -23,6 +23,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+type UsageLogRepoSuite struct {
+	suite.Suite
+	ctx    context.Context
+	tx     *dbent.Tx
+	client *dbent.Client
+	repo   *Store
+}
+
 func mustCreateUser(t *testing.T, client *dbent.Client, u *identity.User) *identity.User {
 	t.Helper()
 	ctx := context.Background()
@@ -298,14 +306,6 @@ func testEntTx(t *testing.T) *dbent.Tx {
 		_ = tx.Rollback()
 	})
 	return tx
-}
-
-type UsageLogRepoSuite struct {
-	suite.Suite
-	ctx    context.Context
-	tx     *dbent.Tx
-	client *dbent.Client
-	repo   *Store
 }
 
 func (s *UsageLogRepoSuite) SetupTest() {

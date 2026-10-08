@@ -28,6 +28,19 @@ type HTTPResult struct {
 	Body       []byte
 }
 
+// Model 保存模型名称及支持的生成方法。
+type Model struct {
+	Name                       string   `json:"name"`
+	DisplayName                string   `json:"displayName,omitempty"`
+	Description                string   `json:"description,omitempty"`
+	SupportedGenerationMethods []string `json:"supportedGenerationMethods,omitempty"`
+}
+
+// ModelsListResponse 是模型列表接口的响应体。
+type ModelsListResponse struct {
+	Models []Model `json:"models"`
+}
+
 func ReadAIStudioModel(ctx context.Context, path string, options ModelGetOptions) (*HTTPResult, error) {
 	if options.Enter != nil {
 		done, err := options.Enter()
@@ -93,17 +106,4 @@ func ReadAIStudioModel(ctx context.Context, path string, options ModelGetOptions
 		Headers:    filteredHeaders,
 		Body:       body,
 	}, nil
-}
-
-// Model 保存模型名称及支持的生成方法。
-type Model struct {
-	Name                       string   `json:"name"`
-	DisplayName                string   `json:"displayName,omitempty"`
-	Description                string   `json:"description,omitempty"`
-	SupportedGenerationMethods []string `json:"supportedGenerationMethods,omitempty"`
-}
-
-// ModelsListResponse 是模型列表接口的响应体。
-type ModelsListResponse struct {
-	Models []Model `json:"models"`
 }

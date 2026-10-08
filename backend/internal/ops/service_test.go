@@ -16,9 +16,38 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+var (
+	benchmarkOpsMonitoringEnabled bool
+	benchmarkOpsAdvancedSettings  OpsAdvancedSettings
+)
+
+type opsRuntimeRefreshRepo struct {
+	Settings
+	mu     sync.RWMutex
+	values map[string]string
+	fail   atomic.Bool
+	calls  atomic.Int64
+}
+
+// OpsRuntimeSettingsRefreshHealth 汇总测试所需的配置刷新状态。
+type OpsRuntimeSettingsRefreshHealth struct {
+	Running      bool   `json:"running"`
+	SuccessTotal uint64 `json:"success_total"`
+	FailureTotal uint64 `json:"failure_total"`
+}
+
+type stubOpsRepoForUserErr struct {
+	OpsRepository // 嵌入接口，未实现的方法 panic，仅覆盖 ListErrorLogs
+	gotFilter     *OpsErrorLogFilter
+
+	// GetErrorLogByID 控制字段
+	detailToReturn    *OpsErrorLogDetail
+	detailErrToReturn error
+}
+
 func TestSanitizeOpsUpstreamErrorsForQueueBoundsAndRedacts(t *testing.T) {
 	entry := &OpsInsertErrorLogInput{}
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		entry.UpstreamErrors = append(entry.UpstreamErrors, &OpsUpstreamErrorEvent{
 			Platform:             strings.Repeat("p", 100),
 			ProviderName:         strings.Repeat("a", 300),
@@ -57,19 +86,6 @@ func TestSanitizeOpsUpstreamErrorsForQueueBoundsAndRedacts(t *testing.T) {
 			t.Fatal("credential material was not redacted")
 		}
 	}
-}
-
-var (
-	benchmarkOpsMonitoringEnabled bool
-	benchmarkOpsAdvancedSettings  OpsAdvancedSettings
-)
-
-type opsRuntimeRefreshRepo struct {
-	Settings
-	mu     sync.RWMutex
-	values map[string]string
-	fail   atomic.Bool
-	calls  atomic.Int64
 }
 
 func (r *opsRuntimeRefreshRepo) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
@@ -426,13 +442,6 @@ func (s *OpsService) RuntimeSettingsRefreshHealth() OpsRuntimeSettingsRefreshHea
 	}
 }
 
-// OpsRuntimeSettingsRefreshHealth 汇总测试所需的配置刷新状态。
-type OpsRuntimeSettingsRefreshHealth struct {
-	Running      bool   `json:"running"`
-	SuccessTotal uint64 `json:"success_total"`
-	FailureTotal uint64 `json:"failure_total"`
-}
-
 func TestIsSensitiveKey_TokenBudgetKeysNotRedacted(t *testing.T) {
 	t.Parallel()
 
@@ -524,15 +533,6 @@ func TestShrinkToEssentials_IncludesThinking(t *testing.T) {
 	if _, ok := out["thinking"]; !ok {
 		t.Fatalf("expected thinking to be included in essentials: %#v", out)
 	}
-}
-
-type stubOpsRepoForUserErr struct {
-	OpsRepository // 嵌入接口，未实现的方法 panic，仅覆盖 ListErrorLogs
-	gotFilter     *OpsErrorLogFilter
-
-	// GetErrorLogByID 控制字段
-	detailToReturn    *OpsErrorLogDetail
-	detailErrToReturn error
 }
 
 func (s *stubOpsRepoForUserErr) ListErrorLogs(ctx context.Context, f *OpsErrorLogFilter) (*OpsErrorLogList, error) {

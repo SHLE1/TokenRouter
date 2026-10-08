@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/redis/go-redis/v9"
+
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-	"github.com/redis/go-redis/v9"
 )
 
 // 并发槽位使用 Redis 有序集合，每个提供商或用户对应一个键，成员为 requestID，分数为时间戳。
@@ -341,12 +342,30 @@ var (
 		end
 		return {removed, remaining}
 	`)
+
+	providerSlotIndex = slotIndexSpec{indexKey: providerActiveIndexKey, slotKey: providerSlotKey, waitKey: providerWaitKey}
+	userSlotIndex     = slotIndexSpec{indexKey: userActiveIndexKey, slotKey: userSlotKey, waitKey: waitQueueKey}
 )
 
 type concurrencyCache struct {
 	rdb                 *redis.Client
 	slotTTLSeconds      int // 槽位过期时间（秒）
 	waitQueueTTLSeconds int // 等待队列过期时间（秒）
+}
+
+// slotIndexSpec 描述一个活跃索引及其对应的槽位/等待键构造方式。
+// slotKey 和 waitKey 的函数签名相同，通过字段名区分用途。
+type slotIndexSpec struct {
+	indexKey string
+	slotKey  func(int64) string
+	waitKey  func(int64) string
+}
+
+type activeIndexLoad struct {
+	id        int64
+	member    string
+	slotCount int
+	waitCount int
 }
 
 // NewConcurrencyCache 创建并发控制缓存
@@ -412,19 +431,6 @@ func (c *concurrencyCache) redisUnixSeconds(ctx context.Context) (int64, error) 
 	return now.Unix(), nil
 }
 
-// slotIndexSpec 描述一个活跃索引及其对应的槽位/等待键构造方式。
-// slotKey 和 waitKey 的函数签名相同，通过字段名区分用途。
-type slotIndexSpec struct {
-	indexKey string
-	slotKey  func(int64) string
-	waitKey  func(int64) string
-}
-
-var (
-	providerSlotIndex = slotIndexSpec{indexKey: providerActiveIndexKey, slotKey: providerSlotKey, waitKey: providerWaitKey}
-	userSlotIndex     = slotIndexSpec{indexKey: userActiveIndexKey, slotKey: userSlotKey, waitKey: waitQueueKey}
-)
-
 // touchActiveIndexAt 是写路径上的轻量标记：主操作已成功时，尽力把 ID 放入活跃索引，
 // score 为给定的绝对过期时间（Redis Unix 秒）。索引失败不影响并发槽位/等待队列本身，
 // 后续释放或清理会再次校正，因此只记日志不上抛。
@@ -479,13 +485,6 @@ func (c *concurrencyCache) refreshActiveIndex(ctx context.Context, indexKey stri
 		return
 	}
 	c.touchActiveIndexAt(ctx, indexKey, id, now+int64(ttlSeconds))
-}
-
-type activeIndexLoad struct {
-	id        int64
-	member    string
-	slotCount int
-	waitCount int
 }
 
 // activeIndexTTL 取槽位 TTL 与等待队列 TTL 中仍然需要关注的较大值。

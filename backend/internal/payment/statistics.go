@@ -291,7 +291,7 @@ func StatsBuildTopUsers(orders []*Order) TopUsersByCurrency {
 			limit = len(userList)
 		}
 		result[currency] = make([]TopUserStat, 0, limit)
-		for i := 0; i < limit; i++ {
+		for i := range limit {
 			result[currency] = append(result[currency], *userList[i])
 		}
 	}

@@ -5,6 +5,49 @@ import (
 	"time"
 )
 
+const (
+	ProxyQualityMaxBodyBytes    = int64(8 * 1024)
+	ProxyQualityClientUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+)
+
+var ProxyQualityTargets = []ProxyQualityTarget{
+	{
+		Target: "openai",
+		URL:    "https://api.openai.com/v1/models",
+		Method: "GET",
+		AllowedStatuses: map[int]struct{}{
+			401: {},
+		},
+	},
+	{
+		Target: "anthropic",
+		URL:    "https://api.anthropic.com/v1/messages",
+		Method: "GET",
+		AllowedStatuses: map[int]struct{}{
+			401: {},
+			405: {},
+			404: {},
+			400: {},
+		},
+	},
+	{
+		Target: "gemini",
+		URL:    "https://generativelanguage.googleapis.com/$discovery/rest?version=v1beta",
+		Method: "GET",
+		AllowedStatuses: map[int]struct{}{
+			200: {},
+		},
+	},
+	{
+		Target: "grok",
+		URL:    "https://api.x.ai/v1/models",
+		Method: "GET",
+		AllowedStatuses: map[int]struct{}{
+			401: {},
+		},
+	},
+}
+
 type CreateProxyInput struct {
 	Name           string
 	Protocol       string
@@ -100,46 +143,3 @@ type ProxyQualityTarget struct {
 	Method          string
 	AllowedStatuses map[int]struct{}
 }
-
-var ProxyQualityTargets = []ProxyQualityTarget{
-	{
-		Target: "openai",
-		URL:    "https://api.openai.com/v1/models",
-		Method: "GET",
-		AllowedStatuses: map[int]struct{}{
-			401: {},
-		},
-	},
-	{
-		Target: "anthropic",
-		URL:    "https://api.anthropic.com/v1/messages",
-		Method: "GET",
-		AllowedStatuses: map[int]struct{}{
-			401: {},
-			405: {},
-			404: {},
-			400: {},
-		},
-	},
-	{
-		Target: "gemini",
-		URL:    "https://generativelanguage.googleapis.com/$discovery/rest?version=v1beta",
-		Method: "GET",
-		AllowedStatuses: map[int]struct{}{
-			200: {},
-		},
-	},
-	{
-		Target: "grok",
-		URL:    "https://api.x.ai/v1/models",
-		Method: "GET",
-		AllowedStatuses: map[int]struct{}{
-			401: {},
-		},
-	},
-}
-
-const (
-	ProxyQualityMaxBodyBytes    = int64(8 * 1024)
-	ProxyQualityClientUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
-)

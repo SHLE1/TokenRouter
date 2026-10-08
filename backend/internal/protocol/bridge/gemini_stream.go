@@ -6,15 +6,15 @@ import (
 	"fmt"
 )
 
-// BlockType 内容块类型
-type BlockType int
-
 const (
 	BlockTypeNone BlockType = iota
 	BlockTypeText
 	BlockTypeThinking
 	BlockTypeFunction
 )
+
+// BlockType 内容块类型
+type BlockType int
 
 // GeminiToAnthropicStreamProcessor 流式响应处理器
 type GeminiToAnthropicStreamProcessor struct {
@@ -36,6 +36,12 @@ type GeminiToAnthropicStreamProcessor struct {
 	outputTokens      int
 	cacheReadTokens   int
 	imageOutputTokens int
+}
+
+// GeminiResponseInput 是解包后的协议输入，和平台 v1internal 包装无类型依赖。
+type GeminiResponseInput struct {
+	Response                 GeminiResponse
+	ResponseID, ModelVersion string
 }
 
 // NewGeminiToAnthropicStreamProcessor 创建流式响应处理器
@@ -500,12 +506,6 @@ func (p *GeminiToAnthropicStreamProcessor) formatSSE(eventType string, data any)
 	}
 
 	return []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", eventType, string(jsonData)))
-}
-
-// GeminiResponseInput 是解包后的协议输入，和平台 v1internal 包装无类型依赖。
-type GeminiResponseInput struct {
-	Response                 GeminiResponse
-	ResponseID, ModelVersion string
 }
 
 // TakeDiagnostics 返回本轮转换诊断并释放暂存切片。

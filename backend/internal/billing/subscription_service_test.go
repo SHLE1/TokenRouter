@@ -17,6 +17,56 @@ import (
 	sqlitetest "github.com/TokenFlux/TokenRouter/internal/testutil/sqlite"
 )
 
+// subscriptionSelectionGroupFixture 拒绝订阅选择测试中未预期的分组回源。
+type subscriptionSelectionGroupFixture struct{}
+
+// resetQuotaUserSubRepoStub 支持 GetByID、ResetUsageWindows，
+// 其余方法继承 billingtestkit.SubscriptionRepositoryNoop（panic）。
+type resetQuotaUserSubRepoStub struct {
+	billingtestkit.SubscriptionRepositoryNoop
+
+	sub *billing.UserSubscription
+
+	resetDailyCalled   bool
+	resetWeeklyCalled  bool
+	resetMonthlyCalled bool
+	resetDailyErr      error
+	resetWeeklyErr     error
+	resetMonthlyErr    error
+}
+
+// transactionTrackingUserSubRepo 记录订阅写操作使用的事务上下文。
+type transactionTrackingUserSubRepo struct {
+	*billingtestkit.SubscriptionRepository
+	writeContexts []context.Context
+}
+
+// subscriptionContextTransactions 用 SQLite 检查事务对象是否复用。PostgreSQL 集成测试检查锁和回滚。
+type subscriptionContextTransactions struct {
+	*billingpostgres.SubscriptionMutations
+	t  *testing.T
+	tx *dbent.Tx
+}
+
+type dailyResetTrackingUserSubRepo struct {
+	billingtestkit.SubscriptionRepositoryNoop
+
+	resetDailyCalled   bool
+	resetWeeklyCalled  bool
+	resetMonthlyCalled bool
+	activateCalled     bool
+	lastActivation     billing.SubscriptionWindowActivation
+	lastDailyStart     time.Time
+}
+
+type revokeSubscriptionRepoStub struct {
+	*billingtestkit.SubscriptionRepository
+}
+
+type resettingRevokeSubscriptionRepoStub struct {
+	*revokeSubscriptionRepoStub
+}
+
 func TestAssignSubscription_SamePlanCreatesPendingChain(t *testing.T) {
 	subRepo := billingtestkit.NewSubscriptionRepository()
 	now := time.Now().UTC()
@@ -1196,9 +1246,6 @@ func newTestSubscriptionService() *billing.SubscriptionService {
 
 func ptrFloat64(v float64) *float64 { return &v }
 
-// subscriptionSelectionGroupFixture 拒绝订阅选择测试中未预期的分组回源。
-type subscriptionSelectionGroupFixture struct{}
-
 func (subscriptionSelectionGroupFixture) GetByIDLite(context.Context, int64) (*billing.SubscriptionPlanGroup, error) {
 	panic("unexpected GetByIDLite call")
 }
@@ -1212,21 +1259,6 @@ func newSubscriptionServiceForTest(repo billing.UserSubscriptionRepository) *bil
 func subscriptionClockFixture() billing.DateRuntime {
 	calendar := timezone.NewCalendar(time.UTC)
 	return billing.DateRuntime{Now: func() time.Time { return time.Now().UTC() }, Calendar: &calendar}
-}
-
-// resetQuotaUserSubRepoStub 支持 GetByID、ResetUsageWindows，
-// 其余方法继承 billingtestkit.SubscriptionRepositoryNoop（panic）。
-type resetQuotaUserSubRepoStub struct {
-	billingtestkit.SubscriptionRepositoryNoop
-
-	sub *billing.UserSubscription
-
-	resetDailyCalled   bool
-	resetWeeklyCalled  bool
-	resetMonthlyCalled bool
-	resetDailyErr      error
-	resetWeeklyErr     error
-	resetMonthlyErr    error
 }
 
 func (r *resetQuotaUserSubRepoStub) GetByID(_ context.Context, id int64) (*billing.UserSubscription, error) {
@@ -1295,12 +1327,6 @@ func billingEligibilityLimitPtr(v float64) *float64 {
 	return &v
 }
 
-// transactionTrackingUserSubRepo 记录订阅写操作使用的事务上下文。
-type transactionTrackingUserSubRepo struct {
-	*billingtestkit.SubscriptionRepository
-	writeContexts []context.Context
-}
-
 func (r *transactionTrackingUserSubRepo) ExtendExpiry(ctx context.Context, subscriptionID int64, newExpiresAt time.Time) error {
 	r.writeContexts = append(r.writeContexts, ctx)
 	sub := r.ByID[subscriptionID]
@@ -1328,27 +1354,9 @@ func (r *transactionTrackingUserSubRepo) Delete(ctx context.Context, subscriptio
 	return nil
 }
 
-// subscriptionContextTransactions 用 SQLite 检查事务对象是否复用。PostgreSQL 集成测试检查锁和回滚。
-type subscriptionContextTransactions struct {
-	*billingpostgres.SubscriptionMutations
-	t  *testing.T
-	tx *dbent.Tx
-}
-
 func (s *subscriptionContextTransactions) LockSubscription(ctx context.Context, _ int64) error {
 	require.Same(s.t, s.tx, dbent.TxFromContext(ctx))
 	return nil
-}
-
-type dailyResetTrackingUserSubRepo struct {
-	billingtestkit.SubscriptionRepositoryNoop
-
-	resetDailyCalled   bool
-	resetWeeklyCalled  bool
-	resetMonthlyCalled bool
-	activateCalled     bool
-	lastActivation     billing.SubscriptionWindowActivation
-	lastDailyStart     time.Time
 }
 
 func (r *dailyResetTrackingUserSubRepo) ActivateWindows(_ context.Context, _ int64, _ time.Time, activation billing.SubscriptionWindowActivation) error {
@@ -1373,10 +1381,6 @@ func (r *dailyResetTrackingUserSubRepo) ResetMonthlyUsage(context.Context, int64
 	return nil
 }
 
-type revokeSubscriptionRepoStub struct {
-	*billingtestkit.SubscriptionRepository
-}
-
 func (r *revokeSubscriptionRepoStub) Delete(_ context.Context, id int64) error {
 	if _, ok := r.ByID[id]; !ok {
 		return billing.ErrSubscriptionNotFound
@@ -1384,10 +1388,6 @@ func (r *revokeSubscriptionRepoStub) Delete(_ context.Context, id int64) error {
 	delete(r.ByID, id)
 	r.RebuildIndex()
 	return nil
-}
-
-type resettingRevokeSubscriptionRepoStub struct {
-	*revokeSubscriptionRepoStub
 }
 
 func (r *resettingRevokeSubscriptionRepoStub) ResetMonthlyUsage(_ context.Context, id int64, _ *time.Time, newWindowStart time.Time) error {

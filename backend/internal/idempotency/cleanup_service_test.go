@@ -14,6 +14,12 @@ type idempotencyCleanupRepoStub struct {
 	deleteErr   error
 }
 
+// blockingCleanupRepository 阻塞首轮清理，供测试检查 Stop 等待清理结束和重复启动行为。
+type blockingCleanupRepository struct {
+	IdempotencyRepository
+	entered, release chan struct{}
+}
+
 func (r *idempotencyCleanupRepoStub) CreateProcessing(context.Context, *IdempotencyRecord) (bool, error) {
 	return false, nil
 }
@@ -67,12 +73,6 @@ func TestIdempotencyCleanupService_CleanupOnce(t *testing.T) {
 	svc.cleanupOnce()
 	require.Equal(t, 1, repo.deleteCalls)
 	require.Equal(t, 99, repo.lastLimit)
-}
-
-// blockingCleanupRepository 阻塞首轮清理，供测试检查 Stop 等待清理结束和重复启动行为。
-type blockingCleanupRepository struct {
-	IdempotencyRepository
-	entered, release chan struct{}
 }
 
 func (r *blockingCleanupRepository) DeleteExpired(ctx context.Context, _ time.Time, limit int) (int64, error) {

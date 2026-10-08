@@ -13,7 +13,21 @@ const (
 	batchImageHoldRequestPrefix    = "batch_image_hold:"
 	batchImageCaptureRequestPrefix = "batch_image_capture:"
 	batchImageReleaseRequestPrefix = "batch_image_release:"
+
+	// FundingScope 标识批量图片作业的资金用途。
+	FundingScope billing.TaskScope = "batchimage"
 )
+
+// FundingStore 由唯一 billing.Funds 提供，同一任务的三个动作复用原幂等标识。
+type FundingStore interface {
+	Reserve(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
+	Capture(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
+	Release(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
+}
+type Funding struct {
+	Store   FundingStore
+	Observe func(string, ...any)
+}
 
 func BatchImageHoldRequestID(batchID string) string {
 	return batchImageHoldRequestPrefix + strings.TrimSpace(batchID)
@@ -194,17 +208,6 @@ func CloneInt64Ptr(value *int64) *int64 {
 	return &cloned
 }
 
-// FundingStore 由唯一 billing.Funds 提供，同一任务的三个动作复用原幂等标识。
-type FundingStore interface {
-	Reserve(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
-	Capture(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
-	Release(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
-}
-type Funding struct {
-	Store   FundingStore
-	Observe func(string, ...any)
-}
-
 func (f Funding) warn(event string, values ...any) {
 	if f.Observe != nil {
 		f.Observe(event, values...)
@@ -221,9 +224,6 @@ func cloneBillingAllocations(values []billing.BillingAllocation) []billing.Billi
 	}
 	return out
 }
-
-// FundingScope 标识批量图片作业的资金用途。
-const FundingScope billing.TaskScope = "batchimage"
 
 // FundingReference 返回作业的资金引用和预留请求标识。
 func FundingReference(id string) billing.TaskReference {

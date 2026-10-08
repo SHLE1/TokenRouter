@@ -17,6 +17,58 @@ const (
 	opsRawPeakQueryTimeout    = 1500 * time.Millisecond
 )
 
+type opsDashboardPartial struct {
+	successCount         int64
+	ttftSampleCount      int64
+	errorCountTotal      int64
+	businessLimitedCount int64
+	errorCountSLA        int64
+
+	upstreamErrorCountExcl429529 int64
+	upstream429Count             int64
+	upstream529Count             int64
+
+	tokenConsumed int64
+
+	duration ops.OpsPercentiles
+	ttft     ops.OpsPercentiles
+}
+
+type opsHourlyMetricsRow struct {
+	bucketStart time.Time
+
+	successCount         int64
+	ttftSampleCount      int64
+	errorCountTotal      int64
+	businessLimitedCount int64
+	errorCountSLA        int64
+
+	upstreamErrorCountExcl429529 int64
+	upstream429Count             int64
+	upstream529Count             int64
+
+	tokenConsumed int64
+
+	durationP50 sql.NullInt64
+	durationP90 sql.NullInt64
+	durationP95 sql.NullInt64
+	durationP99 sql.NullInt64
+	durationAvg sql.NullFloat64
+	durationMax sql.NullInt64
+
+	ttftP50 sql.NullInt64
+	ttftP90 sql.NullInt64
+	ttftP95 sql.NullInt64
+	ttftP99 sql.NullInt64
+	ttftAvg sql.NullFloat64
+	ttftMax sql.NullInt64
+}
+
+type opsPercentileSegment struct {
+	weight int64
+	p      ops.OpsPercentiles
+}
+
 func (r *Store) GetDashboardOverview(ctx context.Context, filter *ops.OpsDashboardFilter) (*ops.OpsDashboardOverview, error) {
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("nil ops repository")
@@ -157,23 +209,6 @@ func (r *Store) getDashboardOverviewRaw(ctx context.Context, filter *ops.OpsDash
 		Duration: duration,
 		TTFT:     ttft,
 	}, nil
-}
-
-type opsDashboardPartial struct {
-	successCount         int64
-	ttftSampleCount      int64
-	errorCountTotal      int64
-	businessLimitedCount int64
-	errorCountSLA        int64
-
-	upstreamErrorCountExcl429529 int64
-	upstream429Count             int64
-	upstream529Count             int64
-
-	tokenConsumed int64
-
-	duration ops.OpsPercentiles
-	ttft     ops.OpsPercentiles
 }
 
 func (r *Store) getDashboardOverviewPreaggregated(ctx context.Context, filter *ops.OpsDashboardFilter) (*ops.OpsDashboardOverview, error) {
@@ -371,36 +406,6 @@ func (r *Store) hasCompleteHourlyMetricsCoverage(ctx context.Context, start, end
 		return false, err
 	}
 	return actual == expected, nil
-}
-
-type opsHourlyMetricsRow struct {
-	bucketStart time.Time
-
-	successCount         int64
-	ttftSampleCount      int64
-	errorCountTotal      int64
-	businessLimitedCount int64
-	errorCountSLA        int64
-
-	upstreamErrorCountExcl429529 int64
-	upstream429Count             int64
-	upstream529Count             int64
-
-	tokenConsumed int64
-
-	durationP50 sql.NullInt64
-	durationP90 sql.NullInt64
-	durationP95 sql.NullInt64
-	durationP99 sql.NullInt64
-	durationAvg sql.NullFloat64
-	durationMax sql.NullInt64
-
-	ttftP50 sql.NullInt64
-	ttftP90 sql.NullInt64
-	ttftP95 sql.NullInt64
-	ttftP99 sql.NullInt64
-	ttftAvg sql.NullFloat64
-	ttftMax sql.NullInt64
 }
 
 func (r *Store) listHourlyMetricsRows(ctx context.Context, filter *ops.OpsDashboardFilter, start, end time.Time) ([]opsHourlyMetricsRow, error) {
@@ -725,11 +730,6 @@ func (r *Store) rawOpsDataExists(ctx context.Context, filter *ops.OpsDashboardFi
 		}
 		return exists, nil
 	}
-}
-
-type opsPercentileSegment struct {
-	weight int64
-	p      ops.OpsPercentiles
 }
 
 func combineApproxPercentiles(segments []opsPercentileSegment) ops.OpsPercentiles {

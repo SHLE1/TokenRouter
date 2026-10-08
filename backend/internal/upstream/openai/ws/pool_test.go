@@ -17,6 +17,44 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type openAIWSFakeDialer struct{}
+
+type openAIWSFirstDialBlockingCaptureDialer struct {
+	mu           sync.Mutex
+	dialCount    int
+	headers      []http.Header
+	connections  []*openAIWSFakeConn
+	firstStarted chan struct{}
+	releaseFirst chan struct{}
+}
+
+type openAIWSAlwaysFailDialer struct {
+	mu        sync.Mutex
+	dialCount int
+}
+type openAIWSPingBlockingConn struct {
+	current       *atomic.Int32
+	maxConcurrent *atomic.Int32
+	release       <-chan struct{}
+}
+type openAIWSIdlePingUnsupportedConn struct {
+	openAIWSFakeConn
+}
+
+type openAIWSBlockingConn struct {
+	readDelay time.Duration
+}
+
+type openAIWSWriteBlockingConn struct{}
+
+type openAIWSPingFailConn struct{}
+
+type openAIWSContextProbeConn struct {
+	lastWriteCtx context.Context
+}
+
+type openAIWSNilConnDialer struct{}
+
 func TestPoolShrinkKeepsActiveLeaseAndRejectsUpdatesAfterClose(t *testing.T) {
 	pool := NewWSConnPool(&WSPoolOptions{MaxConnsPerProvider: 4, MinIdlePerProvider: 0, MaxIdlePerProvider: 4})
 	provider := pool.getOrCreateProviderPool(1)
@@ -40,11 +78,11 @@ func TestPoolConcurrentOptionsPublication(t *testing.T) {
 	pool := NewWSConnPool(&WSPoolOptions{MaxConnsPerProvider: 4})
 	defer pool.Close()
 	var workers sync.WaitGroup
-	for worker := 0; worker < 4; worker++ {
+	for range 4 {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			for i := 0; i < 100; i++ {
+			for i := range 100 {
 				_ = pool.UpdateOptions(WSPoolOptions{MaxConnsPerProvider: i + 1})
 				_ = pool.nativeOptions().MaxConnsHardCap()
 			}
@@ -172,7 +210,7 @@ func BenchmarkOpenAIWSPoolAcquire(b *testing.B) {
 				got        *WSConnLease
 				acquireErr error
 			)
-			for retry := 0; retry < 3; retry++ {
+			for range 3 {
 				got, acquireErr = pool.Acquire(ctx, req)
 				if acquireErr == nil {
 					break
@@ -2283,7 +2321,7 @@ func TestOpenAIWSConnPool_RunBackgroundPingSweep_ConcurrencyLimit(t *testing.T) 
 	var current atomic.Int32
 	var maxConcurrent atomic.Int32
 	release := make(chan struct{})
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		conn := NewWSConn(pool.nextConnID(providerID), providerID, &openAIWSPingBlockingConn{
 			current:       &current,
 			maxConcurrent: &maxConcurrent,
@@ -2665,8 +2703,6 @@ func TestOpenAIWSConnPool_Acquire_ErrorBranches(t *testing.T) {
 	require.ErrorIs(t, err, openai.ErrOpenAIWSConnQueueFull)
 }
 
-type openAIWSFakeDialer struct{}
-
 func (d *openAIWSFakeDialer) Dial(
 	ctx context.Context,
 	wsURL string,
@@ -2682,33 +2718,11 @@ func (d *openAIWSFakeDialer) Dial(
 	return &openAIWSFakeConn{}, 0, nil, nil
 }
 
-type openAIWSFirstDialBlockingCaptureDialer struct {
-	mu           sync.Mutex
-	dialCount    int
-	headers      []http.Header
-	connections  []*openAIWSFakeConn
-	firstStarted chan struct{}
-	releaseFirst chan struct{}
-}
-
 func newOpenAIWSFirstDialBlockingCaptureDialer() *openAIWSFirstDialBlockingCaptureDialer {
 	return &openAIWSFirstDialBlockingCaptureDialer{
 		firstStarted: make(chan struct{}),
 		releaseFirst: make(chan struct{}),
 	}
-}
-
-type openAIWSAlwaysFailDialer struct {
-	mu        sync.Mutex
-	dialCount int
-}
-type openAIWSPingBlockingConn struct {
-	current       *atomic.Int32
-	maxConcurrent *atomic.Int32
-	release       <-chan struct{}
-}
-type openAIWSIdlePingUnsupportedConn struct {
-	openAIWSFakeConn
 }
 
 func (c *openAIWSIdlePingUnsupportedConn) SupportsIdlePingWithoutReader() bool {
@@ -2809,10 +2823,6 @@ func (d *openAIWSAlwaysFailDialer) DialCount() int {
 	return d.dialCount
 }
 
-type openAIWSBlockingConn struct {
-	readDelay time.Duration
-}
-
 func (c *openAIWSBlockingConn) WriteJSON(ctx context.Context, value any) error {
 	_ = ctx
 	_ = value
@@ -2844,8 +2854,6 @@ func (c *openAIWSBlockingConn) Close() error {
 	return nil
 }
 
-type openAIWSWriteBlockingConn struct{}
-
 func (c *openAIWSWriteBlockingConn) WriteJSON(ctx context.Context, _ any) error {
 	<-ctx.Done()
 	return ctx.Err()
@@ -2863,8 +2871,6 @@ func (c *openAIWSWriteBlockingConn) Close() error {
 	return nil
 }
 
-type openAIWSPingFailConn struct{}
-
 func (c *openAIWSPingFailConn) WriteJSON(context.Context, any) error {
 	return nil
 }
@@ -2879,10 +2885,6 @@ func (c *openAIWSPingFailConn) Ping(context.Context) error {
 
 func (c *openAIWSPingFailConn) Close() error {
 	return nil
-}
-
-type openAIWSContextProbeConn struct {
-	lastWriteCtx context.Context
 }
 
 func (c *openAIWSContextProbeConn) WriteJSON(ctx context.Context, _ any) error {
@@ -2901,8 +2903,6 @@ func (c *openAIWSContextProbeConn) Ping(context.Context) error {
 func (c *openAIWSContextProbeConn) Close() error {
 	return nil
 }
-
-type openAIWSNilConnDialer struct{}
 
 func (d *openAIWSNilConnDialer) Dial(
 	ctx context.Context,

@@ -15,6 +15,12 @@ const (
 
 var KeyCompositeKeyPrefixPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
+// APIKeyCompositeGroupInput 是创建和更新复合映射时的公共输入。
+type APIKeyCompositeGroupInput struct {
+	GroupID int64  `json:"group_id"`
+	Prefix  string `json:"prefix"`
+}
+
 // AllowsRuntimeGroup 限制复合 Key 的运行时回退只能使用已绑定分组，普通 Key 继续检查用户权限。
 func (k *APIKey) AllowsRuntimeGroup(groupID int64) bool {
 	if k == nil || groupID <= 0 {
@@ -29,12 +35,6 @@ func (k *APIKey) AllowsRuntimeGroup(groupID int64) bool {
 		}
 	}
 	return false
-}
-
-// APIKeyCompositeGroupInput 是创建和更新复合映射时的公共输入。
-type APIKeyCompositeGroupInput struct {
-	GroupID int64  `json:"group_id"`
-	Prefix  string `json:"prefix"`
 }
 
 // NormalizeCompositeKeyPrefix 规范化并校验用户输入的分组前缀。

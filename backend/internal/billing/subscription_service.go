@@ -13,17 +13,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
-var ErrSubscriptionAlreadyExists = apperror.Conflict("SUBSCRIPTION_ALREADY_EXISTS", "subscription already exists")
-
-var ErrSubscriptionNilInput = apperror.BadRequest("SUBSCRIPTION_NIL_INPUT", "subscription input cannot be nil")
-
-var ErrSubscriptionNotFound = apperror.NotFound("SUBSCRIPTION_NOT_FOUND", "subscription not found")
-
-var MaxExpiresAt = time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
-
 const MaxValidityDays = 36500
 
 var (
+	ErrSubscriptionAlreadyExists = apperror.Conflict("SUBSCRIPTION_ALREADY_EXISTS", "subscription already exists")
+
+	ErrSubscriptionNilInput = apperror.BadRequest("SUBSCRIPTION_NIL_INPUT", "subscription input cannot be nil")
+
+	ErrSubscriptionNotFound = apperror.NotFound("SUBSCRIPTION_NOT_FOUND", "subscription not found")
+
+	MaxExpiresAt = time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
+
 	ErrSubscriptionExpired         = apperror.Forbidden("SUBSCRIPTION_EXPIRED", "subscription has expired")
 	ErrSubscriptionSuspended       = apperror.Forbidden("SUBSCRIPTION_SUSPENDED", "subscription is suspended")
 	ErrSubscriptionNotRevoked      = apperror.Conflict("SUBSCRIPTION_NOT_REVOKED", "subscription is not revoked")
@@ -35,6 +35,8 @@ var (
 	ErrWeeklyLimitExceeded         = apperror.TooManyRequests("WEEKLY_LIMIT_EXCEEDED", "weekly usage limit exceeded")
 	ErrMonthlyLimitExceeded        = apperror.TooManyRequests("MONTHLY_LIMIT_EXCEEDED", "monthly usage limit exceeded")
 	ErrAdjustWouldExpire           = apperror.BadRequest("ADJUST_WOULD_EXPIRE", "adjustment would result in invalid subscription window")
+
+	ErrSubscriptionInvalid = apperror.Forbidden("SUBSCRIPTION_INVALID", "subscription is invalid or expired")
 )
 
 // SubscriptionGroupReader 只读取权益展示所需的分组名称。
@@ -67,6 +69,74 @@ type SelfRevokeSubscriptionResult struct {
 	RevokedSubscriptionID     int64
 	ReplacementSubscriptionID *int64
 	ReboundAPIKeyCount        int
+}
+
+type AssignSubscriptionInput struct {
+	UserID              int64
+	PlanID              int64
+	ValidityDays        int
+	DailyLimitUSD       *float64
+	WeeklyLimitUSD      *float64
+	MonthlyLimitUSD     *float64
+	UseProvidedTemplate bool
+	SourceOrderID       *int64
+	AssignedBy          int64
+	Notes               string
+}
+
+type GrantPlanTemplate struct {
+	ValidityDays    int
+	DailyLimitUSD   *float64
+	WeeklyLimitUSD  *float64
+	MonthlyLimitUSD *float64
+}
+
+type BulkAssignSubscriptionInput struct {
+	UserIDs         []int64
+	PlanID          int64
+	ValidityDays    int
+	DailyLimitUSD   *float64
+	WeeklyLimitUSD  *float64
+	MonthlyLimitUSD *float64
+	AssignedBy      int64
+	Notes           string
+}
+
+type BulkAssignResult struct {
+	SuccessCount  int
+	CreatedCount  int
+	ReusedCount   int
+	FailedCount   int
+	Subscriptions []UserSubscription
+	Errors        []string
+	Statuses      map[int64]string
+}
+
+type UserSubscriptionGroupFilter interface {
+	FilterByGroup(ctx context.Context, subs []UserSubscription, groupID int64) ([]UserSubscription, error)
+}
+
+type SubscriptionProgress struct {
+	ID            int64                `json:"id"`
+	PlanID        int64                `json:"plan_id"`
+	PlanName      string               `json:"plan_name"`
+	StartsAt      time.Time            `json:"starts_at"`
+	ExpiresAt     time.Time            `json:"expires_at"`
+	Status        string               `json:"status"`
+	ExpiresInDays int                  `json:"expires_in_days"`
+	Daily         *UsageWindowProgress `json:"daily,omitempty"`
+	Weekly        *UsageWindowProgress `json:"weekly,omitempty"`
+	Monthly       *UsageWindowProgress `json:"monthly,omitempty"`
+}
+
+type UsageWindowProgress struct {
+	LimitUSD        float64   `json:"limit_usd"`
+	UsedUSD         float64   `json:"used_usd"`
+	RemainingUSD    float64   `json:"remaining_usd"`
+	Percentage      float64   `json:"percentage"`
+	WindowStart     time.Time `json:"window_start"`
+	ResetsAt        time.Time `json:"resets_at"`
+	ResetsInSeconds int64     `json:"resets_in_seconds"`
 }
 
 // NewSubscriptionService 构造订阅用例，不启动后台任务。
@@ -106,26 +176,6 @@ func (s *SubscriptionService) EnrichSubscriptionPlanGroups(ctx context.Context, 
 }
 
 func (s *SubscriptionService) Stop() {}
-
-type AssignSubscriptionInput struct {
-	UserID              int64
-	PlanID              int64
-	ValidityDays        int
-	DailyLimitUSD       *float64
-	WeeklyLimitUSD      *float64
-	MonthlyLimitUSD     *float64
-	UseProvidedTemplate bool
-	SourceOrderID       *int64
-	AssignedBy          int64
-	Notes               string
-}
-
-type GrantPlanTemplate struct {
-	ValidityDays    int
-	DailyLimitUSD   *float64
-	WeeklyLimitUSD  *float64
-	MonthlyLimitUSD *float64
-}
 
 func (s *SubscriptionService) resolveGrantPlanTemplate(ctx context.Context, input *AssignSubscriptionInput) (*GrantPlanTemplate, error) {
 	if input == nil || input.PlanID <= 0 {
@@ -291,27 +341,6 @@ func (s *SubscriptionService) assignOrExtendSubscriptionUnlocked(ctx context.Con
 		return nil, false, err
 	}
 	return created, queued, nil
-}
-
-type BulkAssignSubscriptionInput struct {
-	UserIDs         []int64
-	PlanID          int64
-	ValidityDays    int
-	DailyLimitUSD   *float64
-	WeeklyLimitUSD  *float64
-	MonthlyLimitUSD *float64
-	AssignedBy      int64
-	Notes           string
-}
-
-type BulkAssignResult struct {
-	SuccessCount  int
-	CreatedCount  int
-	ReusedCount   int
-	FailedCount   int
-	Subscriptions []UserSubscription
-	Errors        []string
-	Statuses      map[int64]string
 }
 
 func (s *SubscriptionService) BulkAssignSubscription(ctx context.Context, input *BulkAssignSubscriptionInput) (*BulkAssignResult, error) {
@@ -821,10 +850,6 @@ func (s *SubscriptionService) filterSubscriptionsByGroup(ctx context.Context, su
 	return filter.FilterByGroup(ctx, subs, groupID)
 }
 
-type UserSubscriptionGroupFilter interface {
-	FilterByGroup(ctx context.Context, subs []UserSubscription, groupID int64) ([]UserSubscription, error)
-}
-
 func (s *SubscriptionService) ListUserSubscriptions(ctx context.Context, userID int64) ([]UserSubscription, error) {
 	subs, err := s.userSubRepo.ListByUserID(ctx, userID)
 	if err != nil {
@@ -1047,29 +1072,6 @@ func (s *SubscriptionService) DoWindowMaintenance(sub *UserSubscription) {
 	_ = s.CheckAndResetWindows(ctx, sub)
 }
 
-type SubscriptionProgress struct {
-	ID            int64                `json:"id"`
-	PlanID        int64                `json:"plan_id"`
-	PlanName      string               `json:"plan_name"`
-	StartsAt      time.Time            `json:"starts_at"`
-	ExpiresAt     time.Time            `json:"expires_at"`
-	Status        string               `json:"status"`
-	ExpiresInDays int                  `json:"expires_in_days"`
-	Daily         *UsageWindowProgress `json:"daily,omitempty"`
-	Weekly        *UsageWindowProgress `json:"weekly,omitempty"`
-	Monthly       *UsageWindowProgress `json:"monthly,omitempty"`
-}
-
-type UsageWindowProgress struct {
-	LimitUSD        float64   `json:"limit_usd"`
-	UsedUSD         float64   `json:"used_usd"`
-	RemainingUSD    float64   `json:"remaining_usd"`
-	Percentage      float64   `json:"percentage"`
-	WindowStart     time.Time `json:"window_start"`
-	ResetsAt        time.Time `json:"resets_at"`
-	ResetsInSeconds int64     `json:"resets_in_seconds"`
-}
-
 func (s *SubscriptionService) GetSubscriptionProgress(ctx context.Context, subscriptionID int64) (*SubscriptionProgress, error) {
 	sub, err := s.userSubRepo.GetByID(ctx, subscriptionID)
 	if err != nil {
@@ -1141,8 +1143,6 @@ func NormalizedWindowProgress(limit *float64, used float64, resetAt, windowStart
 		ResetsInSeconds: resetsIn,
 	}, true
 }
-
-var ErrSubscriptionInvalid = apperror.Forbidden("SUBSCRIPTION_INVALID", "subscription is invalid or expired")
 
 // RevokeSubscription 在完整事务和用户锁内重新读取权益状态，避免并发时间链被旧快照覆盖。
 func (s *SubscriptionService) RevokeSubscription(ctx context.Context, subscriptionID int64) error {

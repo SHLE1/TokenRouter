@@ -37,6 +37,9 @@ type usageBillingApplyOutcome struct {
 	err    error
 }
 
+// directUsageExecutor 通过 SQL 执行器同步写入用量，供锁顺序测试使用。
+type directUsageExecutor struct{ infra.Executor }
+
 func TestUsageBillingRepositoryApply_DeduplicatesBalanceBilling(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
@@ -1386,9 +1389,6 @@ func mustCreateProvider(t *testing.T, client *dbent.Client, a *providercore.Reco
 	a.UpdatedAt = created.UpdatedAt
 	return a
 }
-
-// directUsageExecutor 通过 SQL 执行器同步写入用量，供锁顺序测试使用。
-type directUsageExecutor struct{ infra.Executor }
 
 // newAggregationFixture 为聚合存储配置资金去重记录的归档回调。
 func newAggregationFixture(q infra.Executor) *usagepg.AggregationStore {

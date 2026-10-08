@@ -18,6 +18,12 @@ type GeminiToAnthropicResponseProcessor struct {
 	hasToolCall       bool
 }
 
+// GeminiConversionRuntime 使用平台传入的 ID 生成函数。
+type GeminiConversionRuntime struct {
+	RandomID  func() string
+	MessageID func() string
+}
+
 // NewGeminiToAnthropicResponseProcessor 创建非流式响应处理器
 func NewGeminiToAnthropicResponseProcessor(runtime GeminiConversionRuntime) *GeminiToAnthropicResponseProcessor {
 	return &GeminiToAnthropicResponseProcessor{
@@ -305,12 +311,6 @@ func buildGroundingText(grounding *GeminiGroundingMetadata) string {
 	}
 
 	return builder.String()
-}
-
-// GeminiConversionRuntime 使用平台传入的 ID 生成函数。
-type GeminiConversionRuntime struct {
-	RandomID  func() string
-	MessageID func() string
 }
 
 // TakeDiagnostics 交回本轮纯转换诊断，由平台适配按原日志格式输出。

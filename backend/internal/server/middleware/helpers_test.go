@@ -19,6 +19,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 )
 
+type testLogSink struct {
+	mu     sync.Mutex
+	events []*logging.LogEvent
+}
+
+func init() {
+	// Gin 测试模式由 TestMain 设置。
+}
+
+func init() {
+}
+
 // NewAPIKeyAuthMiddleware 为中间件测试组合 API Key 认证和订阅检查。
 func NewAPIKeyAuthMiddleware(apiKeyService *apikey.APIKeyService, subscriptionService *billing.SubscriptionService, cfg *config.Config) keyhttp.APIKeyAuthMiddleware {
 	return keyhttp.APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, cfg))
@@ -65,10 +77,6 @@ func newGatewayAuthorization(keys *apikey.APIKeyService, subscriptions *billing.
 	return gatewayhttp.NewAPIKeyAuthorization(nativeKeys, reader, options)
 }
 
-func init() {
-	// Gin 测试模式由 TestMain 设置。
-}
-
 // setGroupContext 将有效分组写入测试请求上下文。
 func setGroupContext(c *gin.Context, group *routing.Group) {
 	if !routing.IsGroupContextValid(group) {
@@ -83,11 +91,6 @@ func setGroupContext(c *gin.Context, group *routing.Group) {
 
 // invalidAuthClientKey 返回无效认证请求的客户端分桶键。
 func invalidAuthClientKey(c *gin.Context) string { return InvalidAuthClientKey(c) }
-
-type testLogSink struct {
-	mu     sync.Mutex
-	events []*logging.LogEvent
-}
 
 func (s *testLogSink) WriteLogEvent(event *logging.LogEvent) {
 	s.mu.Lock()
@@ -131,7 +134,4 @@ func initMiddlewareTestLoggerWithLevel(t *testing.T, level string) *testLogSink 
 		logging.SetSink(nil)
 	})
 	return sink
-}
-
-func init() {
 }

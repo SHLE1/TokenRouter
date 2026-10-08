@@ -8,6 +8,7 @@ import (
 	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/proxy"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
@@ -15,6 +16,8 @@ import (
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
+
+const proxyProviderOutboxChunkSize = 500
 
 // ProxyProviderParticipant 不拥有事务；操作必须落到给定连接。
 type ProxyProviderParticipant interface {
@@ -26,10 +29,6 @@ type ProxyStoreOptions struct {
 	Enqueue   func(context.Context, postgresinfra.Executor, any) error
 }
 
-func NewProxyStore(client *dbent.Client, db postgresinfra.Executor, options ProxyStoreOptions) *ProxyStore {
-	return &ProxyStore{client: client, sql: db, changes: options}
-}
-
 // sqlQuerier 已替换为 postgresinfra.Executor（定义在 group_repo.go），
 // ProxyStore 使用同一接口以支持 ExecContext。
 type ProxyStore struct {
@@ -38,7 +37,11 @@ type ProxyStore struct {
 	sql     postgresinfra.Executor
 }
 
-const proxyProviderOutboxChunkSize = 500
+type ProxyConnectionIdentity = egress.ProxyConnectionIdentity
+
+func NewProxyStore(client *dbent.Client, db postgresinfra.Executor, options ProxyStoreOptions) *ProxyStore {
+	return &ProxyStore{client: client, sql: db, changes: options}
+}
 
 func (r *ProxyStore) Create(ctx context.Context, proxyIn *egress.Proxy) error {
 	builder := r.client.Proxy.Create().
@@ -129,8 +132,6 @@ func (r *ProxyStore) Update(ctx context.Context, proxyIn *egress.Proxy) error {
 	applyProxyEntityToService(proxyIn, updated)
 	return nil
 }
-
-type ProxyConnectionIdentity = egress.ProxyConnectionIdentity
 
 func ProxyConnectionIdentityFromProxy(proxyIn *egress.Proxy) ProxyConnectionIdentity {
 	return egress.ProxyConnectionIdentityFromProxy(proxyIn)

@@ -11,6 +11,28 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const (
+	GrokTokenCacheSkew          = 5 * time.Minute
+	GrokRequestRefreshTimeout   = 8 * time.Second
+	GrokRefreshLockWaitTimeout  = 2 * time.Second
+	GrokRefreshLockPollInterval = 25 * time.Millisecond
+)
+
+var (
+	ErrGrokOAuthRefreshNotConfigured = errors.New("grok oauth refresh is not configured")
+	ErrGrokOAuthRefreshTokenMissing  = errors.New("grok oauth refresh token is missing")
+	ErrGrokOAuthAccessTokenMissing   = errors.New("grok oauth access token is missing")
+	ErrGrokOAuthAccessTokenExpired   = errors.New("grok oauth access token is expired")
+	ErrGrokOAuthConfiguredProxyMiss  = errors.New("grok oauth configured proxy is missing")
+)
+
+type GrokTokenSource struct {
+	Cache      AccessTokenCache
+	Repository RefreshRepository
+	Policy     ProviderRefreshPolicy
+	Refresh    func(context.Context, *Record, time.Duration) (*OAuthRefreshResult, error)
+}
+
 // GrokStoredAccessToken 按提供商类型读取已存储的访问令牌。
 func GrokStoredAccessToken(value *Record) (string, error) {
 	switch value.Type {
@@ -40,28 +62,6 @@ func GrokStoredAccessToken(value *Record) (string, error) {
 		return "", fmt.Errorf("unsupported provider type: %s", value.Type)
 	}
 }
-
-type GrokTokenSource struct {
-	Cache      AccessTokenCache
-	Repository RefreshRepository
-	Policy     ProviderRefreshPolicy
-	Refresh    func(context.Context, *Record, time.Duration) (*OAuthRefreshResult, error)
-}
-
-const (
-	GrokTokenCacheSkew          = 5 * time.Minute
-	GrokRequestRefreshTimeout   = 8 * time.Second
-	GrokRefreshLockWaitTimeout  = 2 * time.Second
-	GrokRefreshLockPollInterval = 25 * time.Millisecond
-)
-
-var (
-	ErrGrokOAuthRefreshNotConfigured = errors.New("grok oauth refresh is not configured")
-	ErrGrokOAuthRefreshTokenMissing  = errors.New("grok oauth refresh token is missing")
-	ErrGrokOAuthAccessTokenMissing   = errors.New("grok oauth access token is missing")
-	ErrGrokOAuthAccessTokenExpired   = errors.New("grok oauth access token is expired")
-	ErrGrokOAuthConfiguredProxyMiss  = errors.New("grok oauth configured proxy is missing")
-)
 
 // @project-doc docs/interfaces/grok_upstream.md#grok_account_contract
 func (p *GrokTokenSource) GetAccessToken(ctx context.Context, provider *Record) (string, error) {

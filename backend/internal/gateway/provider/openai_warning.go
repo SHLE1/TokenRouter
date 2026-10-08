@@ -11,6 +11,14 @@ import (
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// openAIUpstreamWarningError 实现共享的上游警告接口。
+var _ forwardcore.UpstreamWarningCarrier = (*openAIUpstreamWarningError)(nil)
+
+type openAIUpstreamWarningError struct {
+	warning *forwardcore.UpstreamWarning
+	err     error
+}
+
 // ParseOpenAICyberPolicyEvent 识别供应商安全策略事件，记录截断后的正文和已观测用量。
 func ParseOpenAICyberPolicyEvent(payload []byte, upstreamStatus int, usage *openai.ForwardUsage) *moderationflow.Mark {
 	hit, code, message := upstreamopenai.DetectOpenAICyberPolicy(payload)
@@ -108,11 +116,3 @@ func WrapOpenAIUpstreamWarningIfCyber(statusCode int, responseBody []byte, messa
 	}
 	return &openAIUpstreamWarningError{warning: warning, err: err}
 }
-
-type openAIUpstreamWarningError struct {
-	warning *forwardcore.UpstreamWarning
-	err     error
-}
-
-// openAIUpstreamWarningError 实现共享的上游警告接口。
-var _ forwardcore.UpstreamWarningCarrier = (*openAIUpstreamWarningError)(nil)

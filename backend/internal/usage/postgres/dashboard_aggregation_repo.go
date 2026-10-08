@@ -13,13 +13,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
+const usageLogsCleanupBatchSize = 10000
+
 type AggregationStore struct {
 	archiveDedup func(context.Context, time.Time) error
 	sql          sqlExecutor
 	calendar     timezone.Calendar
 }
-
-const usageLogsCleanupBatchSize = 10000
 
 // NewDashboardAggregationRepository 创建仪表盘预聚合仓储。
 func NewDashboardAggregationRepository(sqlDB *sql.DB, calendar timezone.Calendar, archive func(context.Context, time.Time) error) *AggregationStore {

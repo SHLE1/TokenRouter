@@ -7,15 +7,29 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/gin-gonic/gin"
 
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
+)
+
+const (
+	opsListViewErrors   = "errors"
+	opsListViewExcluded = "excluded"
+	opsListViewAll      = "all"
 )
 
 type OpsHandler struct {
 	opsService *ops.OpsService
+}
+
+type opsResolveRequest struct {
+	Resolved bool `json:"resolved"`
+}
+
+func NewOpsHandler(opsService *ops.OpsService) *OpsHandler {
+	return &OpsHandler{opsService: opsService}
 }
 
 // GetErrorLogByID returns ops error log detail.
@@ -46,12 +60,6 @@ func (h *OpsHandler) GetErrorLogByID(c *gin.Context) {
 	response.Success(c, detail)
 }
 
-const (
-	opsListViewErrors   = "errors"
-	opsListViewExcluded = "excluded"
-	opsListViewAll      = "all"
-)
-
 func parseOpsViewParam(c *gin.Context) string {
 	if c == nil {
 		return ""
@@ -67,10 +75,6 @@ func parseOpsViewParam(c *gin.Context) string {
 	default:
 		return opsListViewErrors
 	}
-}
-
-func NewOpsHandler(opsService *ops.OpsService) *OpsHandler {
-	return &OpsHandler{opsService: opsService}
 }
 
 // applyOpsErrorSortParams 将 sort_by 和 sort_order 查询参数写入过滤器。
@@ -650,10 +654,6 @@ func (h *OpsHandler) ListRequestDetails(c *gin.Context) {
 	}
 
 	response.Paginated(c, out.Items, out.Total, out.Page, out.PageSize)
-}
-
-type opsResolveRequest struct {
-	Resolved bool `json:"resolved"`
 }
 
 // UpdateErrorResolution allows manual resolve/unresolve.

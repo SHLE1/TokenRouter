@@ -20,6 +20,23 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+type paymentOrderLifecycleRedeemRepo struct {
+	codesByCode map[string]*billing.RedeemCode
+	// 按兑换码和用户记录使用情况，供仓储查询重复兑换。
+	usageByRedeemCodeID map[int64]map[int64]*billing.RedeemCodeUsage
+	useCalls            []struct {
+		id     int64
+		userID int64
+	}
+}
+
+// fulfillmentBalance 提供可配置的余额读写。调用未配置的嵌入接口方法会 panic。
+type fulfillmentBalance struct {
+	billingpostgres.RedeemUserWriter
+	getByIDUser     *billing.UserSummary
+	updateBalanceFn func(context.Context, int64, float64) error
+}
+
 func ensurePaymentAuditOrderActionUniqueIndex(t *testing.T, ctx context.Context, client *dbent.Client) {
 	t.Helper()
 	_, err := client.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_audit_logs_order_action_uniq ON payment_audit_logs(order_id, action)")
@@ -63,16 +80,6 @@ func createPaymentFulfillmentSubscriptionOrder(
 		Save(ctx)
 	require.NoError(t, err)
 	return order
-}
-
-type paymentOrderLifecycleRedeemRepo struct {
-	codesByCode map[string]*billing.RedeemCode
-	// 按兑换码和用户记录使用情况，供仓储查询重复兑换。
-	usageByRedeemCodeID map[int64]map[int64]*billing.RedeemCodeUsage
-	useCalls            []struct {
-		id     int64
-		userID int64
-	}
 }
 
 func (r *paymentOrderLifecycleRedeemRepo) Create(context.Context, *billing.RedeemCode) error {
@@ -253,13 +260,6 @@ func createPaymentOrderLifecycleOrder(t *testing.T, ctx context.Context, client 
 		Save(ctx)
 	require.NoError(t, err)
 	return order
-}
-
-// fulfillmentBalance 提供可配置的余额读写。调用未配置的嵌入接口方法会 panic。
-type fulfillmentBalance struct {
-	billingpostgres.RedeemUserWriter
-	getByIDUser     *billing.UserSummary
-	updateBalanceFn func(context.Context, int64, float64) error
 }
 
 func (r *fulfillmentBalance) GetByID(context.Context, int64) (*billing.UserSummary, error) {

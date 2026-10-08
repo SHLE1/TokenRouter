@@ -11,6 +11,34 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+type mockPricingConfigRepository struct {
+	readGroup                        func(context.Context, int64) (*Group, error)
+	listAllFn                        func(ctx context.Context) ([]PricingConfig, error)
+	getGroupPlatformsFn              func(ctx context.Context, groupIDs []int64) (map[int64]string, error)
+	createFn                         func(ctx context.Context, pricingConfig *PricingConfig) error
+	getByIDFn                        func(ctx context.Context, id int64) (*PricingConfig, error)
+	updateFn                         func(ctx context.Context, pricingConfig *PricingConfig) error
+	deleteFn                         func(ctx context.Context, id int64) error
+	listFn                           func(ctx context.Context, params pagination.PaginationParams, status, search string) ([]PricingConfig, *pagination.PaginationResult, error)
+	existsByNameFn                   func(ctx context.Context, name string) (bool, error)
+	existsByNameExcludingFn          func(ctx context.Context, name string, excludeID int64) (bool, error)
+	getGroupIDsFn                    func(ctx context.Context, pricingConfigID int64) ([]int64, error)
+	setGroupIDsFn                    func(ctx context.Context, pricingConfigID int64, groupIDs []int64) error
+	getPricingConfigIDByGroupIDFn    func(ctx context.Context, groupID int64) (int64, error)
+	getGroupsInOtherPricingConfigsFn func(ctx context.Context, pricingConfigID int64, groupIDs []int64) ([]int64, error)
+	listModelPricingFn               func(ctx context.Context, pricingConfigID int64) ([]ModelPricingEntry, error)
+	createModelPricingFn             func(ctx context.Context, pricing *ModelPricingEntry) error
+	updateModelPricingFn             func(ctx context.Context, pricing *ModelPricingEntry) error
+	deleteModelPricingFn             func(ctx context.Context, id int64) error
+	replaceModelPricingFn            func(ctx context.Context, pricingConfigID int64, pricingList []ModelPricingEntry) error
+}
+
+type mockPricingConfigAuthCacheInvalidator struct {
+	invalidatedGroupIDs []int64
+	invalidatedKeys     []string
+	invalidatedUserIDs  []int64
+}
+
 // TestPricingConfigPublicationOwnsSnapshot 检查修改输入后缓存中的价格配置和分组关联。
 func TestPricingConfigPublicationOwnsSnapshot(t *testing.T) {
 	pricingConfigs := []PricingConfig{{ID: 1, Status: StatusActive, GroupIDs: []int64{9}}}
@@ -2003,28 +2031,6 @@ func TestPricingConfigModelLookupIndependentOfGroupPlatform(t *testing.T) {
 	}
 }
 
-type mockPricingConfigRepository struct {
-	readGroup                        func(context.Context, int64) (*Group, error)
-	listAllFn                        func(ctx context.Context) ([]PricingConfig, error)
-	getGroupPlatformsFn              func(ctx context.Context, groupIDs []int64) (map[int64]string, error)
-	createFn                         func(ctx context.Context, pricingConfig *PricingConfig) error
-	getByIDFn                        func(ctx context.Context, id int64) (*PricingConfig, error)
-	updateFn                         func(ctx context.Context, pricingConfig *PricingConfig) error
-	deleteFn                         func(ctx context.Context, id int64) error
-	listFn                           func(ctx context.Context, params pagination.PaginationParams, status, search string) ([]PricingConfig, *pagination.PaginationResult, error)
-	existsByNameFn                   func(ctx context.Context, name string) (bool, error)
-	existsByNameExcludingFn          func(ctx context.Context, name string, excludeID int64) (bool, error)
-	getGroupIDsFn                    func(ctx context.Context, pricingConfigID int64) ([]int64, error)
-	setGroupIDsFn                    func(ctx context.Context, pricingConfigID int64, groupIDs []int64) error
-	getPricingConfigIDByGroupIDFn    func(ctx context.Context, groupID int64) (int64, error)
-	getGroupsInOtherPricingConfigsFn func(ctx context.Context, pricingConfigID int64, groupIDs []int64) ([]int64, error)
-	listModelPricingFn               func(ctx context.Context, pricingConfigID int64) ([]ModelPricingEntry, error)
-	createModelPricingFn             func(ctx context.Context, pricing *ModelPricingEntry) error
-	updateModelPricingFn             func(ctx context.Context, pricing *ModelPricingEntry) error
-	deleteModelPricingFn             func(ctx context.Context, id int64) error
-	replaceModelPricingFn            func(ctx context.Context, pricingConfigID int64, pricingList []ModelPricingEntry) error
-}
-
 func (m *mockPricingConfigRepository) Create(ctx context.Context, pricingConfig *PricingConfig) error {
 	if m.createFn != nil {
 		return m.createFn(ctx, pricingConfig)
@@ -2149,12 +2155,6 @@ func (m *mockPricingConfigRepository) ReplaceModelPricing(ctx context.Context, p
 		return m.replaceModelPricingFn(ctx, pricingConfigID, pricingList)
 	}
 	return nil
-}
-
-type mockPricingConfigAuthCacheInvalidator struct {
-	invalidatedGroupIDs []int64
-	invalidatedKeys     []string
-	invalidatedUserIDs  []int64
 }
 
 func (m *mockPricingConfigAuthCacheInvalidator) InvalidateAuthCacheByKey(_ context.Context, key string) {

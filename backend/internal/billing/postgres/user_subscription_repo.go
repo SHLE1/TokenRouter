@@ -15,6 +15,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+var _ billing.UserSubscriptionRepository = (*SubscriptionStore)(nil)
+
 type SubscriptionStore struct {
 	client *dbent.Client
 }
@@ -745,5 +747,3 @@ func cloneInt64Float64Map(in map[int64]float64) map[int64]float64 {
 	}
 	return out
 }
-
-var _ billing.UserSubscriptionRepository = (*SubscriptionStore)(nil)

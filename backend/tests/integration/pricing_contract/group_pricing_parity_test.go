@@ -25,6 +25,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
+type configuredPrices struct {
+	base     *billing.PriceResolver
+	groupID  int64
+	settings pricing.BillingSettings
+	cards    []routing.ModelPricingEntry
+}
+
 func TestGroupPricingFreeFastWithIntervalsAndTurnTime(t *testing.T) {
 	for _, free := range []bool{false, true} {
 		t.Run(fmt.Sprint(free), func(t *testing.T) {
@@ -378,13 +385,6 @@ func configureBillingGroup(svc *testkit.Recording, group *routing.Group, setting
 	source := configuredPrices{base: svc.Dependencies.Prices, groupID: group.ID, settings: settings, cards: cards}
 	svc.Dependencies.Prices = billing.NewPriceResolver(source, svc.Dependencies.Calculator, nil, nil)
 	return group
-}
-
-type configuredPrices struct {
-	base     *billing.PriceResolver
-	groupID  int64
-	settings pricing.BillingSettings
-	cards    []routing.ModelPricingEntry
 }
 
 func (s configuredPrices) GetEffectiveBillingSettings(ctx context.Context, id int64) pricing.BillingSettings {

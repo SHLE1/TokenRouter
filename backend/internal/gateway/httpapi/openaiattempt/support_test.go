@@ -136,7 +136,7 @@ func TestOpenAIRequestAllowsFailoverReplayStopsCanceledClient(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	requestCtx, cancel := context.WithCancel(context.Background())
-	c.Request = httptest.NewRequest("POST", "/v1/responses", nil).WithContext(requestCtx)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil).WithContext(requestCtx)
 
 	require.True(t, OpenAIRequestAllowsFailoverReplay(c))
 	cancel()

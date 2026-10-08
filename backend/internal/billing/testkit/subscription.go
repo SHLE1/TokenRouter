@@ -11,6 +11,15 @@ import (
 
 type SubscriptionRepositoryNoop struct{}
 
+type SubscriptionRepository struct {
+	SubscriptionRepositoryNoop
+
+	nextID      int64
+	ByID        map[int64]*billing.UserSubscription
+	byUserPlan  map[string][]int64
+	CreateCalls int
+}
+
 func (SubscriptionRepositoryNoop) Create(context.Context, *billing.UserSubscription) error {
 	panic("unexpected Create call")
 }
@@ -117,15 +126,6 @@ func (SubscriptionRepositoryNoop) IncrementUsage(context.Context, int64, float64
 
 func (SubscriptionRepositoryNoop) BatchUpdateExpiredStatus(context.Context) (int64, error) {
 	panic("unexpected BatchUpdateExpiredStatus call")
-}
-
-type SubscriptionRepository struct {
-	SubscriptionRepositoryNoop
-
-	nextID      int64
-	ByID        map[int64]*billing.UserSubscription
-	byUserPlan  map[string][]int64
-	CreateCalls int
 }
 
 func NewSubscriptionRepository() *SubscriptionRepository {

@@ -7,6 +7,19 @@ import (
 	"testing"
 )
 
+// mockProvider implements the Provider interface for testing.
+type mockProvider struct {
+	name           string
+	key            string
+	supportedTypes []PaymentType
+}
+
+// blockedProvider 暂停候选渠道构造，用于检查发布前的注册表读取。
+type blockedProvider struct {
+	mockProvider
+	entered, release chan struct{}
+}
+
 func TestRegistryRegisterAndGetProvider(t *testing.T) {
 	t.Parallel()
 	r := NewRegistry()
@@ -180,20 +193,20 @@ func TestRegistryConcurrentAccess(t *testing.T) {
 	wg.Add(goroutines * 2)
 
 	// Concurrent writers
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		go func(idx int) {
 			defer wg.Done()
 			p := &mockProvider{
 				name:           fmt.Sprintf("Provider-%d", idx),
 				key:            fmt.Sprintf("key-%d", idx),
-				supportedTypes: []PaymentType{PaymentType(fmt.Sprintf("type-%d", idx))},
+				supportedTypes: []PaymentType{fmt.Sprintf("type-%d", idx)},
 			}
 			r.Register(p)
 		}(i)
 	}
 
 	// Concurrent readers
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 			_ = r.SupportedTypes()
@@ -237,13 +250,6 @@ func TestRegistryReplacePublishesOnlyCompleteMap(t *testing.T) {
 	}
 }
 
-// mockProvider implements the Provider interface for testing.
-type mockProvider struct {
-	name           string
-	key            string
-	supportedTypes []PaymentType
-}
-
 func (m *mockProvider) Name() string { return m.name }
 
 func (m *mockProvider) ProviderKey() string { return m.key }
@@ -264,12 +270,6 @@ func (m *mockProvider) VerifyNotification(_ context.Context, _ string, _ map[str
 
 func (m *mockProvider) Refund(_ context.Context, _ RefundRequest) (*RefundResponse, error) {
 	return nil, nil
-}
-
-// blockedProvider 暂停候选渠道构造，用于检查发布前的注册表读取。
-type blockedProvider struct {
-	mockProvider
-	entered, release chan struct{}
 }
 
 func (p *blockedProvider) SupportedTypes() []PaymentType {

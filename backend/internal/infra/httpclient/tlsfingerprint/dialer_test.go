@@ -19,6 +19,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// FingerprintResponse 保存 tls.peet.ws/api/all 返回的指纹数据。
+type FingerprintResponse struct {
+	IP    string  `json:"ip"`
+	TLS   TLSInfo `json:"tls"`
+	HTTP2 any     `json:"http2"`
+}
+
+// TestProfileExpectation 描述一个模板的预期 TLS 指纹。
+type TestProfileExpectation struct {
+	Profile       *Profile
+	ExpectedJA3   string // 预期 JA3 哈希，空字符串表示跳过检查。
+	ExpectedJA4   string // 预期完整 JA4，空字符串表示跳过检查。
+	JA4CipherHash string // JA4 中部的加密套件哈希，空字符串表示跳过检查。
+}
+
+// TLSInfo 保存 JA3、JA4 和 TLS 会话参数。
+type TLSInfo struct {
+	JA3           string `json:"ja3"`
+	JA3Hash       string `json:"ja3_hash"`
+	JA4           string `json:"ja4"`
+	PeetPrint     string `json:"peetprint"`
+	PeetPrintHash string `json:"peetprint_hash"`
+	ClientRandom  string `json:"client_random"`
+	SessionID     string `json:"session_id"`
+}
+
 // TestDialerBasicConnection 检查拨号器建立 TLS 连接。
 func TestDialerBasicConnection(t *testing.T) {
 	skipNetworkTest(t)
@@ -75,7 +101,7 @@ func TestJA3Fingerprint(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://tls.peet.ws/api/all", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://tls.peet.ws/api/all", nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
@@ -410,7 +436,7 @@ func TestAllProfiles(t *testing.T) {
 	}
 
 	for _, tc := range profiles {
-		tc := tc // 保存当前模板。
+		// 保存当前模板。
 		t.Run(tc.Profile.Name, func(t *testing.T) {
 			fp := fetchFingerprint(t, tc.Profile)
 			if fp == nil {
@@ -469,7 +495,7 @@ func fetchFingerprint(t *testing.T, profile *Profile) *TLSInfo {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://tls.peet.ws/api/all", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://tls.peet.ws/api/all", nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 		return nil
@@ -510,30 +536,4 @@ func TestTLSFingerprintNetworkDialerHasBoundedTimeout(t *testing.T) {
 	require.Equal(t, defaultTLSFingerprintDialTimeout, dialer.Timeout)
 	require.Equal(t, defaultTLSFingerprintDialKeepAlive, dialer.KeepAlive)
 	require.Equal(t, 10*time.Second, defaultTLSFingerprintHandshakeTimeout)
-}
-
-// FingerprintResponse 保存 tls.peet.ws/api/all 返回的指纹数据。
-type FingerprintResponse struct {
-	IP    string  `json:"ip"`
-	TLS   TLSInfo `json:"tls"`
-	HTTP2 any     `json:"http2"`
-}
-
-// TestProfileExpectation 描述一个模板的预期 TLS 指纹。
-type TestProfileExpectation struct {
-	Profile       *Profile
-	ExpectedJA3   string // 预期 JA3 哈希，空字符串表示跳过检查。
-	ExpectedJA4   string // 预期完整 JA4，空字符串表示跳过检查。
-	JA4CipherHash string // JA4 中部的加密套件哈希，空字符串表示跳过检查。
-}
-
-// TLSInfo 保存 JA3、JA4 和 TLS 会话参数。
-type TLSInfo struct {
-	JA3           string `json:"ja3"`
-	JA3Hash       string `json:"ja3_hash"`
-	JA4           string `json:"ja4"`
-	PeetPrint     string `json:"peetprint"`
-	PeetPrintHash string `json:"peetprint_hash"`
-	ClientRandom  string `json:"client_random"`
-	SessionID     string `json:"session_id"`
 }

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 const timeoutCounterPrefix = "timeout_count:provider:"

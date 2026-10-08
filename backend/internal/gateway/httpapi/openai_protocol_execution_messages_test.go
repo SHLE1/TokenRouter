@@ -33,6 +33,25 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type openAICompatFailingWriter struct {
+	gin.ResponseWriter
+	failAfter int
+	writes    int
+}
+
+// errTailReader 先返回指定数据，再以 err 代替 io.EOF，模拟上游连接在流中断开。
+type errTailReader struct {
+	data []byte
+	off  int
+	err  error
+}
+
+type tempUnschedulableOpenAIProviderRepo struct {
+	stubOpenAIProviderRepo
+	modelRateLimitProviderID int64
+	modelRateLimitKey        string
+}
+
 func TestAdaptiveProtocolRoutesMessagesToNativeAnthropic(t *testing.T) {
 	body := []byte(`{"model":"glm-4.7","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	upstream := &auxiliaryHTTPRecorder{err: errors.New("stop after capture")}
@@ -46,12 +65,6 @@ func TestAdaptiveProtocolRoutesMessagesToNativeAnthropic(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, "http://anthropic.example/v1/messages", upstream.lastReq.URL.String())
 	require.Equal(t, "glm-4.7", gjson.GetBytes(upstream.lastBody, "model").String())
-}
-
-type openAICompatFailingWriter struct {
-	gin.ResponseWriter
-	failAfter int
-	writes    int
 }
 
 func (w *openAICompatFailingWriter) Write(p []byte) (int, error) {
@@ -440,7 +453,6 @@ func TestForwardAsAnthropic_GPT6AstraPromptCacheIdentityStableAcrossAppendedTurn
 	t.Parallel()
 
 	for _, mappedModel := range []string{"gpt-6-astra"} {
-		mappedModel := mappedModel
 		t.Run(mappedModel, func(t *testing.T) {
 			t.Parallel()
 
@@ -575,7 +587,7 @@ func TestForwardAsAnthropic_TrimsFullReplayOnlyForCodexCompatModels(t *testing.T
 	t.Parallel()
 
 	messages := make([]string, 0, 12+3)
-	for i := 0; i < 12+3; i++ {
+	for i := range 12 + 3 {
 		messages = append(messages, `{"role":"user","content":"message-`+fmt.Sprintf("%02d", i)+`"}`)
 	}
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[` + strings.Join(messages, ",") + `],"stream":false}`)
@@ -637,7 +649,7 @@ func TestForwardAsAnthropic_OAuthCompatKeepsFullReplayForCacheGrowth(t *testing.
 	t.Parallel()
 
 	messages := make([]string, 0, 12+3)
-	for i := 0; i < 12+3; i++ {
+	for i := range 12 + 3 {
 		messages = append(messages, `{"role":"user","content":"message-`+fmt.Sprintf("%02d", i)+`"}`)
 	}
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[` + strings.Join(messages, ",") + `],"stream":false}`)
@@ -2674,13 +2686,6 @@ func forceChatMessagesFallbackProvider() *gatewayprovider.ExecutionProvider {
 	return provider
 }
 
-// errTailReader 先返回指定数据，再以 err 代替 io.EOF，模拟上游连接在流中断开。
-type errTailReader struct {
-	data []byte
-	off  int
-	err  error
-}
-
 func (r *errTailReader) Read(p []byte) (int, error) {
 	if r.off < len(r.data) {
 		n := copy(p, r.data[r.off:])
@@ -3508,12 +3513,6 @@ func TestForwardAsAnthropic_ResponseFailed_ErrorCodeRuleMatchesViaSemanticStatus
 	require.NotEmpty(t, gjson.Get(respBody, "error.message").String())
 }
 
-type tempUnschedulableOpenAIProviderRepo struct {
-	stubOpenAIProviderRepo
-	modelRateLimitProviderID int64
-	modelRateLimitKey        string
-}
-
 func (r *tempUnschedulableOpenAIProviderRepo) SetModelRateLimit(_ context.Context, providerID int64, modelKey string, _ time.Time, _ ...string) error {
 	r.modelRateLimitProviderID = providerID
 	r.modelRateLimitKey = modelKey
@@ -3631,7 +3630,7 @@ func TestOpenAISetupTokenMessagesUsesCodexBridgeAndTurnState(t *testing.T) {
 	provider := openAISetupTokenCompatProvider(72)
 
 	messages := make([]string, 0, 12+3)
-	for i := 0; i < 12+3; i++ {
+	for i := range 12 + 3 {
 		messages = append(messages, `{"role":"user","content":"message-`+fmt.Sprintf("%02d", i)+`"}`)
 	}
 	firstBody := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[` + strings.Join(messages, ",") + `],"stream":false}`)

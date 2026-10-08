@@ -9,43 +9,43 @@ import (
 
 const DefaultPaymentCurrency = "CNY"
 
-type paymentCurrencyAmountUnit struct {
-	apiMinorUnit      int
-	maxFractionDigits int
-}
-
 var (
 	zeroDecimalAmountUnit  = paymentCurrencyAmountUnit{apiMinorUnit: 0, maxFractionDigits: 0}
 	twoDecimalAmountUnit   = paymentCurrencyAmountUnit{apiMinorUnit: 2, maxFractionDigits: 2}
 	threeDecimalAmountUnit = paymentCurrencyAmountUnit{apiMinorUnit: 3, maxFractionDigits: 3}
 	stripeLegacyZeroAmount = paymentCurrencyAmountUnit{apiMinorUnit: 2, maxFractionDigits: 0}
+
+	paymentCurrencyAmountUnits = map[string]paymentCurrencyAmountUnit{
+		"BIF": zeroDecimalAmountUnit,
+		"CLP": zeroDecimalAmountUnit,
+		"DJF": zeroDecimalAmountUnit,
+		"GNF": zeroDecimalAmountUnit,
+		"JPY": zeroDecimalAmountUnit,
+		"KMF": zeroDecimalAmountUnit,
+		"KRW": zeroDecimalAmountUnit,
+		"MGA": zeroDecimalAmountUnit,
+		"PYG": zeroDecimalAmountUnit,
+		"RWF": zeroDecimalAmountUnit,
+		"VND": zeroDecimalAmountUnit,
+		"VUV": zeroDecimalAmountUnit,
+		"XAF": zeroDecimalAmountUnit,
+		"XOF": zeroDecimalAmountUnit,
+		"XPF": zeroDecimalAmountUnit,
+		"ISK": stripeLegacyZeroAmount,
+		"UGX": stripeLegacyZeroAmount,
+		"BHD": threeDecimalAmountUnit,
+		"IQD": threeDecimalAmountUnit,
+		"JOD": threeDecimalAmountUnit,
+		"KWD": threeDecimalAmountUnit,
+		"LYD": threeDecimalAmountUnit,
+		"OMR": threeDecimalAmountUnit,
+		"TND": threeDecimalAmountUnit,
+	}
 )
 
-var paymentCurrencyAmountUnits = map[string]paymentCurrencyAmountUnit{
-	"BIF": zeroDecimalAmountUnit,
-	"CLP": zeroDecimalAmountUnit,
-	"DJF": zeroDecimalAmountUnit,
-	"GNF": zeroDecimalAmountUnit,
-	"JPY": zeroDecimalAmountUnit,
-	"KMF": zeroDecimalAmountUnit,
-	"KRW": zeroDecimalAmountUnit,
-	"MGA": zeroDecimalAmountUnit,
-	"PYG": zeroDecimalAmountUnit,
-	"RWF": zeroDecimalAmountUnit,
-	"VND": zeroDecimalAmountUnit,
-	"VUV": zeroDecimalAmountUnit,
-	"XAF": zeroDecimalAmountUnit,
-	"XOF": zeroDecimalAmountUnit,
-	"XPF": zeroDecimalAmountUnit,
-	"ISK": stripeLegacyZeroAmount,
-	"UGX": stripeLegacyZeroAmount,
-	"BHD": threeDecimalAmountUnit,
-	"IQD": threeDecimalAmountUnit,
-	"JOD": threeDecimalAmountUnit,
-	"KWD": threeDecimalAmountUnit,
-	"LYD": threeDecimalAmountUnit,
-	"OMR": threeDecimalAmountUnit,
-	"TND": threeDecimalAmountUnit,
+type paymentCurrencyAmountUnit struct {
+	apiMinorUnit      int
+	maxFractionDigits int
 }
 
 func NormalizePaymentCurrency(raw string) (string, error) {

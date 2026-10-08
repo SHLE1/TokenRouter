@@ -15,16 +15,46 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// MetricsSnapshot 记录用量解析失败次数。
+type MetricsSnapshot struct {
+	UsageParseFailureTotal int64
+}
+
+type delayedReadFrameConn struct {
+	base       FrameConn
+	firstDelay time.Duration
+	once       sync.Once
+}
+type readStartSpyFrameConn struct {
+	base      FrameConn
+	started   chan struct{}
+	startOnce sync.Once
+}
+type closeSpyFrameConn struct {
+	closeCalls atomic.Int32
+}
+type eofReplacementFrameConn struct {
+	FrameConn
+	err error
+}
+type cancelJoinProbeFrameConn struct {
+	readStarted  chan struct{}
+	readCanceled chan struct{}
+	allowReturn  chan struct{}
+	readReturned chan struct{}
+	startOnce    sync.Once
+	cancelOnce   sync.Once
+	returnOnce   sync.Once
+}
+
+// errorOnWriteFrameConn 是一个写入总是失败的 FrameConn 实现，用于测试首包写入失败。
+type errorOnWriteFrameConn struct{}
+
 // SnapshotMetrics 返回当前 passthrough 指标快照。
 func SnapshotMetrics() MetricsSnapshot {
 	return MetricsSnapshot{
 		UsageParseFailureTotal: passthroughUsageParseFailureTotal.Load(),
 	}
-}
-
-// MetricsSnapshot 记录用量解析失败次数。
-type MetricsSnapshot struct {
-	UsageParseFailureTotal int64
 }
 
 func TestRunClientToUpstream_ErrorPaths(t *testing.T) {
@@ -766,33 +796,6 @@ func TestRelayResponseModelsAreIsolated(t *testing.T) {
 	observe(`{"type":"response.created","response":{"id":"c"}}`)
 	c := observe(`{"type":"response.completed","response":{"id":"c"}}`)
 	require.Empty(t, c.responseModel)
-}
-
-type delayedReadFrameConn struct {
-	base       FrameConn
-	firstDelay time.Duration
-	once       sync.Once
-}
-type readStartSpyFrameConn struct {
-	base      FrameConn
-	started   chan struct{}
-	startOnce sync.Once
-}
-type closeSpyFrameConn struct {
-	closeCalls atomic.Int32
-}
-type eofReplacementFrameConn struct {
-	FrameConn
-	err error
-}
-type cancelJoinProbeFrameConn struct {
-	readStarted  chan struct{}
-	readCanceled chan struct{}
-	allowReturn  chan struct{}
-	readReturned chan struct{}
-	startOnce    sync.Once
-	cancelOnce   sync.Once
-	returnOnce   sync.Once
 }
 
 func (c *eofReplacementFrameConn) ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error) {
@@ -1811,9 +1814,6 @@ func TestRelay_TraceEvents_IdleTimeout(t *testing.T) {
 	require.Contains(t, capturedStages, "relay_exit")
 }
 
-// errorOnWriteFrameConn 是一个写入总是失败的 FrameConn 实现，用于测试首包写入失败。
-type errorOnWriteFrameConn struct{}
-
 func (c *errorOnWriteFrameConn) ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error) {
 	<-ctx.Done()
 	return coderws.MessageText, nil, ctx.Err()
@@ -1831,7 +1831,6 @@ func TestRelay_NoSemanticOutputTerminalSequence_FirstTokenMsNil(t *testing.T) {
 	t.Parallel()
 
 	for _, terminalEvent := range []string{"response.completed", "response.done"} {
-		terminalEvent := terminalEvent
 		t.Run(terminalEvent, func(t *testing.T) {
 			t.Parallel()
 
@@ -1898,7 +1897,6 @@ func TestRelay_NoDeltaOutputDoneEvent_RecordsFirstTokenBeforeTerminal(t *testing
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

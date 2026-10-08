@@ -10,6 +10,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
+// GroupPolicyView 包含当前分组的路由策略和允许的协议。
+type GroupPolicyView struct {
+	GroupRoutingPolicy
+	AllowedProtocols  []protocol.ProtocolID
+	ProtocolFallbacks map[protocol.ProtocolID][]protocol.ProtocolID
+	RequireOAuthOnly  bool
+}
+
 // PlatformBoolOverride 读取分组的布尔覆盖，兼容按平台保存的对象。
 // 未配置或值类型不匹配时返回 nil，由调用方使用默认策略。
 func PlatformBoolOverride(values map[string]any, key string, platform string) *bool {
@@ -40,14 +48,6 @@ func PlatformBoolOverride(values map[string]any, key string, platform string) *b
 
 func BoolOverridePtr(v bool) *bool {
 	return &v
-}
-
-// GroupPolicyView 包含当前分组的路由策略和允许的协议。
-type GroupPolicyView struct {
-	GroupRoutingPolicy
-	AllowedProtocols  []protocol.ProtocolID
-	ProtocolFallbacks map[protocol.ProtocolID][]protocol.ProtocolID
-	RequireOAuthOnly  bool
 }
 
 // DecodeGroupRoutingPolicy 解析存储的策略，数据损坏时返回拒绝全部模型的策略。

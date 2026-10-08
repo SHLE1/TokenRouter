@@ -26,6 +26,11 @@ type ApplicationError struct {
 	cause error
 }
 
+// Newf New(code fmt.Sprintf(format, a...))
+func Newf(code Category, reason, format string, a ...any) *ApplicationError {
+	return New(code, reason, fmt.Sprintf(format, a...))
+}
+
 func (e *ApplicationError) Error() string {
 	if e == nil {
 		return "<nil>"
@@ -79,11 +84,6 @@ func New(code Category, reason, message string) *ApplicationError {
 			Reason:  reason,
 		},
 	}
-}
-
-// Newf New(code fmt.Sprintf(format, a...))
-func Newf(code Category, reason, format string, a ...any) *ApplicationError {
-	return New(code, reason, fmt.Sprintf(format, a...))
 }
 
 // CategoryOf 返回可被包装的错误类别；nil 保留旧成功标识。

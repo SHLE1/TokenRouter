@@ -22,10 +22,6 @@ type UserHandler struct {
 	emailCache   identity.EmailCache
 }
 
-func NewUserHandler(users *identity.UserService, auth *identity.AuthService, email identity.NotifyVerificationSender, cache identity.EmailCache) *UserHandler {
-	return &UserHandler{users, auth, email, cache}
-}
-
 // ChangePasswordRequest represents the change password request payload
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
@@ -63,6 +59,47 @@ type UserProfileResponse struct {
 type UserProfileSourceContext struct {
 	Provider string `json:"provider,omitempty"`
 	Source   string `json:"source,omitempty"`
+}
+
+type StartIdentityBindingRequest struct {
+	Provider   string `json:"provider" binding:"required"`
+	RedirectTo string `json:"redirect_to"`
+}
+
+type BindEmailIdentityRequest struct {
+	Email      string `json:"email" binding:"required,email"`
+	VerifyCode string `json:"verify_code" binding:"required"`
+	Password   string `json:"password" binding:"required"`
+}
+
+type SendEmailBindingCodeRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// SendNotifyEmailCodeRequest represents the request to send notify email verification code
+type SendNotifyEmailCodeRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// VerifyNotifyEmailRequest represents the request to verify and add notify email
+type VerifyNotifyEmailRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required,len=6"`
+}
+
+// RemoveNotifyEmailRequest represents the request to remove a notify email
+type RemoveNotifyEmailRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// ToggleNotifyEmailRequest represents the request to toggle a notify email's disabled state
+type ToggleNotifyEmailRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Disabled bool   `json:"disabled"`
+}
+
+func NewUserHandler(users *identity.UserService, auth *identity.AuthService, email identity.NotifyVerificationSender, cache identity.EmailCache) *UserHandler {
+	return &UserHandler{users, auth, email, cache}
 }
 
 // GetProfile handles getting user profile
@@ -165,21 +202,6 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	response.Success(c, profileResp)
-}
-
-type StartIdentityBindingRequest struct {
-	Provider   string `json:"provider" binding:"required"`
-	RedirectTo string `json:"redirect_to"`
-}
-
-type BindEmailIdentityRequest struct {
-	Email      string `json:"email" binding:"required,email"`
-	VerifyCode string `json:"verify_code" binding:"required"`
-	Password   string `json:"password" binding:"required"`
-}
-
-type SendEmailBindingCodeRequest struct {
-	Email string `json:"email" binding:"required,email"`
 }
 
 // StartIdentityBinding returns the backend authorize URL for starting a third-party identity bind flow.
@@ -309,11 +331,6 @@ func (h *UserHandler) SendEmailBindingCode(c *gin.Context) {
 	response.Success(c, gin.H{"message": "Verification code sent successfully"})
 }
 
-// SendNotifyEmailCodeRequest represents the request to send notify email verification code
-type SendNotifyEmailCodeRequest struct {
-	Email string `json:"email" binding:"required,email"`
-}
-
 // SendNotifyEmailCode sends verification code to extra notification email
 // POST /api/v1/user/notify-email/send-code
 func (h *UserHandler) SendNotifyEmailCode(c *gin.Context) {
@@ -336,12 +353,6 @@ func (h *UserHandler) SendNotifyEmailCode(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "Verification code sent successfully"})
-}
-
-// VerifyNotifyEmailRequest represents the request to verify and add notify email
-type VerifyNotifyEmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	Code  string `json:"code" binding:"required,len=6"`
 }
 
 // VerifyNotifyEmail verifies code and adds email to notification list
@@ -381,11 +392,6 @@ func (h *UserHandler) VerifyNotifyEmail(c *gin.Context) {
 	response.Success(c, profileResp)
 }
 
-// RemoveNotifyEmailRequest represents the request to remove a notify email
-type RemoveNotifyEmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
-}
-
 // RemoveNotifyEmail removes email from notification list
 // DELETE /api/v1/user/notify-email
 func (h *UserHandler) RemoveNotifyEmail(c *gin.Context) {
@@ -421,12 +427,6 @@ func (h *UserHandler) RemoveNotifyEmail(c *gin.Context) {
 	}
 
 	response.Success(c, profileResp)
-}
-
-// ToggleNotifyEmailRequest represents the request to toggle a notify email's disabled state
-type ToggleNotifyEmailRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Disabled bool   `json:"disabled"`
 }
 
 // ToggleNotifyEmail toggles the disabled state of a notification email

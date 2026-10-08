@@ -5,32 +5,12 @@ import (
 	"strings"
 )
 
+var openAILegacySessionHashKey = openAILegacySessionHashContextKey{}
+
 type agentTaskRecoveryKey struct{}
-
-// WithAgentTaskRecovery 标记当前尝试序列已使用恢复机会。
-func WithAgentTaskRecovery(ctx context.Context) context.Context {
-	return context.WithValue(ctx, agentTaskRecoveryKey{}, true)
-}
-
-// AgentTaskRecoveryTried 返回当前尝试序列是否已使用恢复机会。
-func AgentTaskRecoveryTried(ctx context.Context) bool {
-	value, _ := ctx.Value(agentTaskRecoveryKey{}).(bool)
-	return value
-}
 
 // cacheBillingKey 标识当前尝试的强制缓存计费状态。
 type cacheBillingKey struct{}
-
-// IsForceCacheBilling 读取强制缓存计费标记，缺失或类型错误时返回 false。
-func IsForceCacheBilling(ctx context.Context) bool {
-	value, _ := ctx.Value(cacheBillingKey{}).(bool)
-	return value
-}
-
-// WithForceCacheBilling 在派生的尝试 context 中设置强制缓存计费标记。
-func WithForceCacheBilling(ctx context.Context) context.Context {
-	return context.WithValue(ctx, cacheBillingKey{}, true)
-}
 
 // Hint 通过设置标记区分未提供与零值，保存传入数据的值副本。
 type Hint[T bool | int | int64] struct {
@@ -60,6 +40,32 @@ type ExecutionHints struct {
 	PrefetchedStickyGroupID     Hint[int64]
 	SingleProviderRetry         Hint[bool]
 	ProviderSwitchCount         Hint[int]
+}
+
+type executionHintsKey struct{}
+
+type openAILegacySessionHashContextKey struct{}
+
+// WithAgentTaskRecovery 标记当前尝试序列已使用恢复机会。
+func WithAgentTaskRecovery(ctx context.Context) context.Context {
+	return context.WithValue(ctx, agentTaskRecoveryKey{}, true)
+}
+
+// AgentTaskRecoveryTried 返回当前尝试序列是否已使用恢复机会。
+func AgentTaskRecoveryTried(ctx context.Context) bool {
+	value, _ := ctx.Value(agentTaskRecoveryKey{}).(bool)
+	return value
+}
+
+// IsForceCacheBilling 读取强制缓存计费标记，缺失或类型错误时返回 false。
+func IsForceCacheBilling(ctx context.Context) bool {
+	value, _ := ctx.Value(cacheBillingKey{}).(bool)
+	return value
+}
+
+// WithForceCacheBilling 在派生的尝试 context 中设置强制缓存计费标记。
+func WithForceCacheBilling(ctx context.Context) context.Context {
+	return context.WithValue(ctx, cacheBillingKey{}, true)
 }
 
 // IsClaudeCodeClient 返回入口保存的 Claude Code 客户端判断结果。
@@ -100,8 +106,6 @@ func WithOpenAIImagesEndpoint(ctx context.Context) context.Context {
 func OpenAIImagesEndpointFromContext(ctx context.Context) bool {
 	return ExecutionHintsFromContext(ctx).OpenAIImagesEndpoint
 }
-
-type executionHintsKey struct{}
 
 // ExecutionHintsFromContext 读取 context 中的执行提示，平台执行入口通过参数接收该值。
 func ExecutionHintsFromContext(ctx context.Context) ExecutionHints {
@@ -203,7 +207,3 @@ func OpenAILegacySessionHashFromContext(ctx context.Context) string {
 	value, _ := ctx.Value(openAILegacySessionHashKey).(string)
 	return strings.TrimSpace(value)
 }
-
-type openAILegacySessionHashContextKey struct{}
-
-var openAILegacySessionHashKey = openAILegacySessionHashContextKey{}

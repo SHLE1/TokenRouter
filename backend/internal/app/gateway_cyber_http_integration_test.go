@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -40,7 +41,7 @@ func TestNativeCyberSessionBindingOnRedis(t *testing.T) {
 	core := provideCyberBlocks(cache, runtime)
 	ctx := t.Context()
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	c.Request.Header.Set("session_id", "native-cyber-session")
 	explicit := gatewayhttp.CyberSessionExplicitBlockKey(91, c, nil)
 	require.NotEmpty(t, explicit)

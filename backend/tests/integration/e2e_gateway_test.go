@@ -15,6 +15,14 @@ import (
 	"time"
 )
 
+const (
+	// claudeAPIKeyEnv 指定 Claude E2E 测试读取密钥的环境变量。
+	claudeAPIKeyEnv = "CLAUDE_API_KEY"
+
+	// geminiAPIKeyEnv 指定 Gemini E2E 测试读取密钥的环境变量。
+	geminiAPIKeyEnv = "GEMINI_API_KEY"
+)
+
 var (
 	baseURL = getEnv("BASE_URL", "http://localhost:8080")
 	// ENDPOINT_PREFIX: 端点前缀，支持混合模式和非混合模式测试
@@ -22,40 +30,34 @@ var (
 	// - "/antigravity": 使用 /antigravity/v1/messages, /antigravity/v1beta/models（非混合模式，仅 antigravity 提供商）
 	endpointPrefix = getEnv("ENDPOINT_PREFIX", "")
 	testInterval   = 1 * time.Second // 测试间隔，防止限流
+
+	// Claude 模型列表
+	claudeModels = []string{
+		// Opus 系列
+		"claude-opus-4-5-thinking", // 直接支持
+		"claude-opus-4",            // 映射到 claude-opus-4-5-thinking
+		"claude-opus-4-5-20251101", // 映射到 claude-opus-4-5-thinking
+		// Sonnet 系列
+		"claude-sonnet-4-5",          // 直接支持
+		"claude-sonnet-4-5-thinking", // 直接支持
+		"claude-sonnet-4-5-20250929", // 映射到 claude-sonnet-4-5-thinking
+		"claude-3-5-sonnet-20241022", // 映射到 claude-sonnet-4-5
+		// Haiku 系列（映射到 gemini-3-flash）
+		"claude-haiku-4",
+		"claude-haiku-4-5",
+		"claude-haiku-4-5-20251001",
+		"claude-3-haiku-20240307",
+	}
+
+	// Gemini 模型列表
+	geminiModels = []string{
+		"gemini-2.5-flash",
+		"gemini-2.5-flash-lite",
+		"gemini-3-flash",
+		"gemini-3-pro-low",
+		"gemini-3-pro-high",
+	}
 )
-
-// claudeAPIKeyEnv 指定 Claude E2E 测试读取密钥的环境变量。
-const claudeAPIKeyEnv = "CLAUDE_API_KEY"
-
-// geminiAPIKeyEnv 指定 Gemini E2E 测试读取密钥的环境变量。
-const geminiAPIKeyEnv = "GEMINI_API_KEY"
-
-// Claude 模型列表
-var claudeModels = []string{
-	// Opus 系列
-	"claude-opus-4-5-thinking", // 直接支持
-	"claude-opus-4",            // 映射到 claude-opus-4-5-thinking
-	"claude-opus-4-5-20251101", // 映射到 claude-opus-4-5-thinking
-	// Sonnet 系列
-	"claude-sonnet-4-5",          // 直接支持
-	"claude-sonnet-4-5-thinking", // 直接支持
-	"claude-sonnet-4-5-20250929", // 映射到 claude-sonnet-4-5-thinking
-	"claude-3-5-sonnet-20241022", // 映射到 claude-sonnet-4-5
-	// Haiku 系列（映射到 gemini-3-flash）
-	"claude-haiku-4",
-	"claude-haiku-4-5",
-	"claude-haiku-4-5-20251001",
-	"claude-3-haiku-20240307",
-}
-
-// Gemini 模型列表
-var geminiModels = []string{
-	"gemini-2.5-flash",
-	"gemini-2.5-flash-lite",
-	"gemini-3-flash",
-	"gemini-3-pro-low",
-	"gemini-3-pro-high",
-}
 
 func requireClaudeAPIKey(t *testing.T) string {
 	t.Helper()

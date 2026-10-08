@@ -14,6 +14,67 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
+type testCapacityProviders struct {
+	Repository capacityFixtureRepository
+	Settings   capacitySettingsReader
+}
+
+type testtestCapacityProviderBatchReader interface {
+	ListSchedulableCapacityByGroupIDs(context.Context, []int64) ([]provider.GroupProviderCapacityRow, error)
+}
+
+type testCapacityProviderBatch struct {
+	testCapacityProviders
+	Reader testtestCapacityProviderBatchReader
+}
+
+type testCapacityGroups struct{ routing.GroupRepository }
+
+// capacityFixtureRepository 为容量测试提供分组内的可调度提供商。
+type capacityFixtureRepository interface {
+	ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error)
+}
+
+type capacitySettingsReader interface {
+	GetOpenAIQuotaAutoPauseSettings(context.Context) provider.QuotaAutoPauseSettings
+}
+
+type groupCapacityProviderRepoStub struct {
+	providers []provider.Record
+	rows      []provider.GroupProviderCapacityRow
+	requested []int64
+}
+
+type groupCapacitySettingsStub struct {
+	settings provider.QuotaAutoPauseSettings
+}
+
+type groupCapacityGroupRepoStub struct {
+	routing.GroupRepository
+
+	groupIDs  []int64
+	listCalls int
+}
+
+type groupCapacityConcurrencyCacheStub struct {
+	scheduler.ConcurrencyCache
+	counts    map[int64]int
+	requested []int64
+}
+
+type groupCapacitySessionCacheStub struct {
+	scheduler.SessionLimitCache
+	counts       map[int64]int
+	requested    []int64
+	idleTimeouts map[int64]time.Duration
+}
+
+type groupCapacityRPMCacheStub struct {
+	scheduler.RPMCache
+	counts    map[int64]int
+	requested []int64
+}
+
 func TestGroupCapacityService_ExcludesOpenAIQuotaAutoPausedProviders(t *testing.T) {
 	providers := []provider.Record{
 		{
@@ -216,26 +277,12 @@ func TestGetGroupCapacityByIDsUsesBatchPathAndDeduplicatesIDs(t *testing.T) {
 	}, results)
 }
 
-type testCapacityProviders struct {
-	Repository capacityFixtureRepository
-	Settings   capacitySettingsReader
-}
-
 func (r testCapacityProviders) ListSchedulableByGroupID(ctx context.Context, id int64) ([]provider.CapacitySnapshot, error) {
 	values, err := r.Repository.ListSchedulableByGroupID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return capacitySnapshots(ctx, values, r.Settings), nil
-}
-
-type testtestCapacityProviderBatchReader interface {
-	ListSchedulableCapacityByGroupIDs(context.Context, []int64) ([]provider.GroupProviderCapacityRow, error)
-}
-
-type testCapacityProviderBatch struct {
-	testCapacityProviders
-	Reader testtestCapacityProviderBatchReader
 }
 
 func (r testCapacityProviderBatch) ListSchedulableCapacityByGroupIDs(ctx context.Context, ids []int64) ([]routing.CapacityProviderRow, error) {
@@ -253,8 +300,6 @@ func newTestCapacityProviders(repo capacityFixtureRepository, settings capacityS
 	}
 	return base
 }
-
-type testCapacityGroups struct{ routing.GroupRepository }
 
 func (r testCapacityGroups) ListActiveIDs(ctx context.Context) ([]int64, error) {
 	if actual, ok := r.GroupRepository.(interface {
@@ -279,15 +324,6 @@ func newTestGroupCapacityService(providers capacityFixtureRepository, groups rou
 		counters = concurrency
 	}
 	return routing.NewCapacityService(newTestCapacityProviders(providers, settings), testCapacityGroups{groups}, counters, sessions, rpm)
-}
-
-// capacityFixtureRepository 为容量测试提供分组内的可调度提供商。
-type capacityFixtureRepository interface {
-	ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error)
-}
-
-type capacitySettingsReader interface {
-	GetOpenAIQuotaAutoPauseSettings(context.Context) provider.QuotaAutoPauseSettings
 }
 
 func capacitySettings(ctx context.Context, reader capacitySettingsReader) provider.QuotaAutoPauseSettings {
@@ -321,12 +357,6 @@ func capacityRows(ctx context.Context, rows []provider.GroupProviderCapacityRow,
 	return out
 }
 
-type groupCapacityProviderRepoStub struct {
-	providers []provider.Record
-	rows      []provider.GroupProviderCapacityRow
-	requested []int64
-}
-
 func (s *groupCapacityProviderRepoStub) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]provider.Record, error) {
 	out := make([]provider.Record, len(s.providers))
 	copy(out, s.providers)
@@ -338,30 +368,13 @@ func (s *groupCapacityProviderRepoStub) ListSchedulableCapacityByGroupIDs(_ cont
 	return append([]provider.GroupProviderCapacityRow(nil), s.rows...), nil
 }
 
-type groupCapacitySettingsStub struct {
-	settings provider.QuotaAutoPauseSettings
-}
-
 func (s groupCapacitySettingsStub) GetOpenAIQuotaAutoPauseSettings(ctx context.Context) provider.QuotaAutoPauseSettings {
 	return s.settings
-}
-
-type groupCapacityGroupRepoStub struct {
-	routing.GroupRepository
-
-	groupIDs  []int64
-	listCalls int
 }
 
 func (s *groupCapacityGroupRepoStub) ListActiveIDs(context.Context) ([]int64, error) {
 	s.listCalls++
 	return append([]int64(nil), s.groupIDs...), nil
-}
-
-type groupCapacityConcurrencyCacheStub struct {
-	scheduler.ConcurrencyCache
-	counts    map[int64]int
-	requested []int64
 }
 
 func (s *groupCapacityConcurrencyCacheStub) GetProviderConcurrencyBatch(_ context.Context, providerIDs []int64) (map[int64]int, error) {
@@ -371,13 +384,6 @@ func (s *groupCapacityConcurrencyCacheStub) GetProviderConcurrencyBatch(_ contex
 		out[id] = s.counts[id]
 	}
 	return out, nil
-}
-
-type groupCapacitySessionCacheStub struct {
-	scheduler.SessionLimitCache
-	counts       map[int64]int
-	requested    []int64
-	idleTimeouts map[int64]time.Duration
 }
 
 func (s *groupCapacitySessionCacheStub) GetActiveSessionCountBatch(_ context.Context, providerIDs []int64, idleTimeouts map[int64]time.Duration) (map[int64]int, error) {
@@ -391,12 +397,6 @@ func (s *groupCapacitySessionCacheStub) GetActiveSessionCountBatch(_ context.Con
 		out[id] = s.counts[id]
 	}
 	return out, nil
-}
-
-type groupCapacityRPMCacheStub struct {
-	scheduler.RPMCache
-	counts    map[int64]int
-	requested []int64
 }
 
 func (s *groupCapacityRPMCacheStub) GetRPMBatch(_ context.Context, providerIDs []int64) (map[int64]int, error) {

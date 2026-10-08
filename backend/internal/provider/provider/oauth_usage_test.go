@@ -17,6 +17,24 @@ import (
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
+type providerUsageHTTPUpstreamStub struct {
+	tlsProfile *tlsfingerprint.Profile
+	req        *http.Request
+	proxyURL   string
+	providerID int64
+}
+
+// OpenAI 异步写回保留独立取消，但只能写入产生该响应的提供商身份。
+type openAIObservationIdentityRepo struct {
+	qoderObservationIdentityRepo
+	written chan struct{}
+}
+
+type openAIObservationIdentityUpstream struct {
+	providerUsageHTTPUpstreamStub
+	beforeReturn func()
+}
+
 func TestProviderUsageService_ShouldProbeOpenAICodexSnapshot_ForceBypassesCache(t *testing.T) {
 	t.Parallel()
 
@@ -205,13 +223,6 @@ func TestOpenAIUsageProbeCannotWriteNewAdministratorIdentity(t *testing.T) {
 	}
 }
 
-type providerUsageHTTPUpstreamStub struct {
-	tlsProfile *tlsfingerprint.Profile
-	req        *http.Request
-	proxyURL   string
-	providerID int64
-}
-
 func (s *providerUsageHTTPUpstreamStub) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
 	return s.DoWithTLS(req, proxyURL, providerID, providerConcurrency, nil)
 }
@@ -233,23 +244,12 @@ func (s *providerUsageHTTPUpstreamStub) DoWithTLS(req *http.Request, proxyURL st
 	}, nil
 }
 
-// OpenAI 异步写回保留独立取消，但只能写入产生该响应的提供商身份。
-type openAIObservationIdentityRepo struct {
-	qoderObservationIdentityRepo
-	written chan struct{}
-}
-
 func (r *openAIObservationIdentityRepo) UpdateExtra(context.Context, int64, map[string]any) error {
 	select {
 	case r.written <- struct{}{}:
 	default:
 	}
 	return nil
-}
-
-type openAIObservationIdentityUpstream struct {
-	providerUsageHTTPUpstreamStub
-	beforeReturn func()
 }
 
 func (u *openAIObservationIdentityUpstream) DoWithTLS(req *http.Request, proxy string, id int64, n int, p *tlsfingerprint.Profile) (*http.Response, error) {

@@ -12,6 +12,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
+// geminiDigestSessionKeyPrefix Gemini 摘要 fallback 会话 key 前缀
+const geminiDigestSessionKeyPrefix = "gemini:digest:"
+
 // BuildGeminiDigestChain 根据 Gemini 请求生成摘要链
 // 格式: s:<hash>-u:<hash>-m:<hash>-u:<hash>-...
 // s = systemInstruction, u = user, m = model
@@ -86,9 +89,6 @@ func ParseGeminiSessionValue(value string) (uuid string, providerID int64, ok bo
 func FormatGeminiSessionValue(uuid string, providerID int64) string {
 	return uuid + ":" + strconv.FormatInt(providerID, 10)
 }
-
-// geminiDigestSessionKeyPrefix Gemini 摘要 fallback 会话 key 前缀
-const geminiDigestSessionKeyPrefix = "gemini:digest:"
 
 // GenerateGeminiDigestSessionKey 拼接 prefixHash 和 uuid 各自前八位，生成 Gemini 内容摘要的会话键。
 // SelectProviderWithLoadAwareness 据此保持会话粘性。

@@ -17,6 +17,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/transfer"
 )
 
+// proxyTaskFixture 异步执行导入探测，测试结束时等待回调完成。
+type proxyTaskFixture struct{ wg sync.WaitGroup }
+
+type proxyDataResponse struct {
+	Code int                  `json:"code"`
+	Data transfer.DataPayload `json:"data"`
+}
+
+type proxyImportResponse struct {
+	Code int                       `json:"code"`
+	Data transfer.DataImportResult `json:"data"`
+}
+
 func TestProxyExportDataRespectsFilters(t *testing.T) {
 	router, adminSvc := setupProxyDataRouter(t)
 
@@ -263,23 +276,10 @@ func TestProxyImportDataReusesAndTriggersLatencyProbe(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 }
 
-// proxyTaskFixture 异步执行导入探测，测试结束时等待回调完成。
-type proxyTaskFixture struct{ wg sync.WaitGroup }
-
 func (f *proxyTaskFixture) Go(_ string, run func()) bool {
 	f.wg.Add(1)
 	go func() { defer f.wg.Done(); run() }()
 	return true
-}
-
-type proxyDataResponse struct {
-	Code int                  `json:"code"`
-	Data transfer.DataPayload `json:"data"`
-}
-
-type proxyImportResponse struct {
-	Code int                       `json:"code"`
-	Data transfer.DataImportResult `json:"data"`
 }
 
 func setupProxyDataRouter(t *testing.T) (*gin.Engine, *proxyAdminFixture) {

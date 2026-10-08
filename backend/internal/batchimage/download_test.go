@@ -12,6 +12,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 )
 
+const batchImageDownloadTestBase64 = "Zmlyc3Q="
+
 func TestBatchImageDownloadService_OpenItemContent(t *testing.T) {
 	ctx := context.Background()
 
@@ -184,5 +186,3 @@ func TestBatchImageDownloadFilenames(t *testing.T) {
 	require.Equal(t, "___secret_name.png", batchimage.BatchImageSafeDownloadFilename("../../secret\nname", "png"))
 	require.Equal(t, `attachment; filename="cover_001.png"`, batchimage.BatchImageContentDispositionAttachment(`cover"001.png`))
 }
-
-const batchImageDownloadTestBase64 = "Zmlyc3Q="

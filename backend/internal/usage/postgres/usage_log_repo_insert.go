@@ -16,6 +16,23 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+const (
+	usageLogCreateStateQueued int32 = iota
+	usageLogCreateStateProcessing
+	usageLogCreateStateCompleted
+	usageLogCreateStateCanceled
+
+	usageLogCreateBatchMaxSize  = 64
+	usageLogCreateBatchWindow   = 3 * time.Millisecond
+	usageLogCreateBatchQueueCap = 4096
+	usageLogCreateCancelWait    = 2 * time.Second
+
+	usageLogBestEffortBatchMaxSize  = 256
+	usageLogBestEffortBatchWindow   = 20 * time.Millisecond
+	usageLogBestEffortBatchQueueCap = 32768
+	usageLogBestEffortRecentTTL     = 30 * time.Second
+)
+
 // usageLogInsertArgTypes 必须与以下位置保持相同顺序：
 //  1. prepareUsageLogInsert().args
 //  2. 本文件内所有 INSERT/CTE VALUES 列表
@@ -94,18 +111,6 @@ var usageLogInsertArgTypes = [...]string{
 	"boolean",     // upstream_model_mismatch
 }
 
-const (
-	usageLogCreateBatchMaxSize  = 64
-	usageLogCreateBatchWindow   = 3 * time.Millisecond
-	usageLogCreateBatchQueueCap = 4096
-	usageLogCreateCancelWait    = 2 * time.Second
-
-	usageLogBestEffortBatchMaxSize  = 256
-	usageLogBestEffortBatchWindow   = 20 * time.Millisecond
-	usageLogBestEffortBatchQueueCap = 32768
-	usageLogBestEffortRecentTTL     = 30 * time.Second
-)
-
 type usageLogCreateRequest struct {
 	log      *usage.UsageLog
 	prepared usageLogInsertPrepared
@@ -148,13 +153,6 @@ type usageLogBatchRow struct {
 type usageLogCreateShared struct {
 	state atomic.Int32
 }
-
-const (
-	usageLogCreateStateQueued int32 = iota
-	usageLogCreateStateProcessing
-	usageLogCreateStateCompleted
-	usageLogCreateStateCanceled
-)
 
 func (r *Store) Create(ctx context.Context, log *usage.UsageLog) (bool, error) {
 	if log == nil {
@@ -834,7 +832,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 		args = append(args, idx)
 		argPos++
 		prepared := preparedByKey[key]
-		for i := 0; i < len(prepared.args); i++ {
+		for i := range len(prepared.args) {
 			_, _ = query.WriteString(",")
 			_, _ = query.WriteString("$")
 			_, _ = query.WriteString(strconv.Itoa(argPos))
@@ -1108,7 +1106,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			_, _ = query.WriteString(",")
 		}
 		_, _ = query.WriteString("(")
-		for i := 0; i < len(prepared.args); i++ {
+		for i := range len(prepared.args) {
 			if i > 0 {
 				_, _ = query.WriteString(",")
 			}

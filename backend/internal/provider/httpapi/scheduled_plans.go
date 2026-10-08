@@ -15,11 +15,6 @@ type ScheduledTestHandler struct {
 	scheduledTestSvc *provider.ScheduledTestService
 }
 
-// NewScheduledTestHandler 只绑定所属提供商用例。
-func NewScheduledTestHandler(scheduledTestSvc *provider.ScheduledTestService) *ScheduledTestHandler {
-	return &ScheduledTestHandler{scheduledTestSvc: scheduledTestSvc}
-}
-
 type createScheduledTestPlanRequest struct {
 	ProviderID     int64  `json:"provider_id" binding:"required"`
 	ModelID        string `json:"model_id"`
@@ -35,6 +30,11 @@ type updateScheduledTestPlanRequest struct {
 	Enabled        *bool  `json:"enabled"`
 	MaxResults     int    `json:"max_results"`
 	AutoRecover    *bool  `json:"auto_recover"`
+}
+
+// NewScheduledTestHandler 只绑定所属提供商用例。
+func NewScheduledTestHandler(scheduledTestSvc *provider.ScheduledTestService) *ScheduledTestHandler {
+	return &ScheduledTestHandler{scheduledTestSvc: scheduledTestSvc}
 }
 
 // ListByProvider GET /admin/providers/:id/scheduled-test-plans

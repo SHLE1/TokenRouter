@@ -362,9 +362,7 @@ func OpenaiFastPolicySettingsFromDTO(s *gatewaydto.OpenAIFastPolicySettings) *ti
 
 func loginAgreementDocumentsToDTO(items []site.LoginAgreementDocument) []sitedto.LoginAgreementDocument {
 	result := make([]sitedto.LoginAgreementDocument, 0, len(items))
-	for _, item := range items {
-		result = append(result, sitedto.LoginAgreementDocument(item))
-	}
+	result = append(result, items...)
 	return result
 }
 

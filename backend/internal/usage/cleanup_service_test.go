@@ -23,50 +23,10 @@ type partialCleanup struct {
 	deleted int64
 }
 
-func (r *partialCleanup) GetTaskStatus(context.Context, int64) (string, error) {
-	r.checks++
-	if r.checks > 1 {
-		return UsageCleanupStatusCanceled, nil
-	}
-	return UsageCleanupStatusRunning, nil
-}
-
-func (r *partialCleanup) DeleteUsageLogsBatch(context.Context, UsageCleanupFilters, int) (int64, error) {
-	r.deleted = 5000
-	return 5000, nil
-}
-
-func (r *partialCleanup) UpdateTaskProgress(context.Context, int64, int64) error { return nil }
-
 type recomputeRecorder struct {
 	DashboardAggregationRepository
 	calls atomic.Int64
 }
-
-func (r *recomputeRecorder) RecomputeRange(context.Context, time.Time, time.Time) error {
-	r.calls.Add(1)
-	return nil
-}
-
-func TestRegressionCanceledCleanupRepairsAggregates(t *testing.T) {
-	r := &partialCleanup{}
-	ar := &recomputeRecorder{}
-	agg := NewDashboardAggregationService(ar, nil, nil)
-	agg.runtimeStarted = true
-	s := NewUsageCleanupService(r, nil, agg, nil)
-	defer s.Stop()
-	s.executeTask(context.Background(), &UsageCleanupTask{ID: 1, Filters: UsageCleanupFilters{StartTime: time.Now().Add(-24 * time.Hour), EndTime: time.Now().Add(-time.Hour)}})
-	agg.runtimeWG.Wait()
-	agg.Stop()
-	if r.deleted != 5000 {
-		t.Fatalf("fixture failed to delete batch")
-	}
-	if ar.calls.Load() == 0 {
-		t.Error("5000 rows were deleted before cancellation, but neither legacy nor analytics recompute was requested")
-	}
-}
-
-func NewTimingWheelService() (*timingwheel.Wheel, error) { return timingwheel.New(), nil }
 
 type cleanupDeleteResponse struct {
 	deleted int64
@@ -111,6 +71,52 @@ type dashboardRepoStub struct {
 	recomputeErr   error
 	recomputeCalls atomic.Int64
 }
+
+// 手动创建任务会立即派发执行，Stop 等待该任务响应取消并返回。
+type blockingCleanupClaimRepo struct {
+	UsageCleanupRepository
+	entered, canceled, release chan struct{}
+}
+
+func (r *partialCleanup) GetTaskStatus(context.Context, int64) (string, error) {
+	r.checks++
+	if r.checks > 1 {
+		return UsageCleanupStatusCanceled, nil
+	}
+	return UsageCleanupStatusRunning, nil
+}
+
+func (r *partialCleanup) DeleteUsageLogsBatch(context.Context, UsageCleanupFilters, int) (int64, error) {
+	r.deleted = 5000
+	return 5000, nil
+}
+
+func (r *partialCleanup) UpdateTaskProgress(context.Context, int64, int64) error { return nil }
+
+func (r *recomputeRecorder) RecomputeRange(context.Context, time.Time, time.Time) error {
+	r.calls.Add(1)
+	return nil
+}
+
+func TestRegressionCanceledCleanupRepairsAggregates(t *testing.T) {
+	r := &partialCleanup{}
+	ar := &recomputeRecorder{}
+	agg := NewDashboardAggregationService(ar, nil, nil)
+	agg.runtimeStarted = true
+	s := NewUsageCleanupService(r, nil, agg, nil)
+	defer s.Stop()
+	s.executeTask(context.Background(), &UsageCleanupTask{ID: 1, Filters: UsageCleanupFilters{StartTime: time.Now().Add(-24 * time.Hour), EndTime: time.Now().Add(-time.Hour)}})
+	agg.runtimeWG.Wait()
+	agg.Stop()
+	if r.deleted != 5000 {
+		t.Fatalf("fixture failed to delete batch")
+	}
+	if ar.calls.Load() == 0 {
+		t.Error("5000 rows were deleted before cancellation, but neither legacy nor analytics recompute was requested")
+	}
+}
+
+func NewTimingWheelService() (*timingwheel.Wheel, error) { return timingwheel.New(), nil }
 
 func (s *dashboardRepoStub) AggregateRange(ctx context.Context, start, end time.Time) error {
 	return nil
@@ -947,12 +953,6 @@ func TestUsageCleanupServiceIsTaskCanceledError(t *testing.T) {
 	_, err := svc.isTaskCanceled(context.Background(), 9)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "status err")
-}
-
-// 手动创建任务会立即派发执行，Stop 等待该任务响应取消并返回。
-type blockingCleanupClaimRepo struct {
-	UsageCleanupRepository
-	entered, canceled, release chan struct{}
 }
 
 func (r *blockingCleanupClaimRepo) ClaimNextPendingTask(ctx context.Context, _ int64) (*UsageCleanupTask, error) {

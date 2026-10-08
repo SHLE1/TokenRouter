@@ -12,6 +12,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 )
 
+const claudeCodeMetadataUserIDJSON = `{"device_id":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","account_uuid":"","session_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}`
+
 func TestSystemPromptSimilarity(t *testing.T) {
 	v := NewClaudeCodeValidator()
 
@@ -134,7 +136,7 @@ func TestValidate_NonMessagesPath_UAOnly(t *testing.T) {
 	v := newTestValidator()
 
 	// 非 messages 路径只检查 UA
-	req := httptest.NewRequest("GET", "/v1/models", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	req.Header.Set("User-Agent", "claude-cli/1.0.0")
 
 	result := v.Validate(claudeCodeInputFixture(req), nil)
@@ -144,7 +146,7 @@ func TestValidate_NonMessagesPath_UAOnly(t *testing.T) {
 func TestValidate_NonMessagesPath_InvalidUA(t *testing.T) {
 	v := newTestValidator()
 
-	req := httptest.NewRequest("GET", "/v1/models", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	req.Header.Set("User-Agent", "curl/7.64.1")
 
 	result := v.Validate(claudeCodeInputFixture(req), nil)
@@ -154,7 +156,7 @@ func TestValidate_NonMessagesPath_InvalidUA(t *testing.T) {
 func TestValidate_MessagesPath_FullValid(t *testing.T) {
 	v := newTestValidator()
 
-	req := httptest.NewRequest("POST", "/v1/messages", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	req.Header.Set("User-Agent", "claude-cli/1.0.0")
 	req.Header.Set("X-App", "claude-code")
 	req.Header.Set("anthropic-beta", "max-tokens-3-5-sonnet-2024-07-15")
@@ -179,7 +181,7 @@ func TestValidate_MessagesPath_MissingHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("POST", "/v1/messages", nil)
+			req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 			req.Header.Set("User-Agent", "claude-cli/1.0.0")
 			req.Header.Set("X-App", "claude-code")
 			req.Header.Set("anthropic-beta", "beta")
@@ -208,7 +210,7 @@ func TestValidate_MessagesPath_InvalidMetadataUserID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("POST", "/v1/messages", nil)
+			req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 			req.Header.Set("User-Agent", "claude-cli/1.0.0")
 			req.Header.Set("X-App", "claude-code")
 			req.Header.Set("anthropic-beta", "beta")
@@ -236,7 +238,7 @@ func TestValidate_MessagesPath_InvalidMetadataUserID(t *testing.T) {
 func TestValidate_MessagesPath_InvalidSystemPrompt(t *testing.T) {
 	v := newTestValidator()
 
-	req := httptest.NewRequest("POST", "/v1/messages", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	req.Header.Set("User-Agent", "claude-cli/1.0.0")
 	req.Header.Set("X-App", "claude-code")
 	req.Header.Set("anthropic-beta", "beta")
@@ -262,7 +264,7 @@ func TestValidate_MessagesPath_InvalidSystemPrompt(t *testing.T) {
 func TestValidate_MaxTokensOneHaikuBypass(t *testing.T) {
 	v := newTestValidator()
 
-	req := httptest.NewRequest("POST", "/v1/messages", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	req.Header.Set("User-Agent", "claude-cli/1.0.0")
 	// 不设置 X-App 等头，通过 context 标记为 haiku 探测请求
 	ctx := requeststate.WithIsMaxTokensOneHaikuRequest(req.Context(), true)
@@ -276,7 +278,7 @@ func TestValidate_MaxTokensOneHaikuBypass(t *testing.T) {
 func TestValidate_NilBody_MessagesPath(t *testing.T) {
 	v := newTestValidator()
 
-	req := httptest.NewRequest("POST", "/v1/messages", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	req.Header.Set("User-Agent", "claude-cli/1.0.0")
 	req.Header.Set("X-App", "claude-code")
 	req.Header.Set("anthropic-beta", "beta")
@@ -361,8 +363,6 @@ func TestIsClaudeCodeClient(t *testing.T) {
 		})
 	}
 }
-
-const claudeCodeMetadataUserIDJSON = `{"device_id":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","account_uuid":"","session_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}`
 
 func TestClaudeCodeValidator_ProbeBypass(t *testing.T) {
 	validator := NewClaudeCodeValidator()

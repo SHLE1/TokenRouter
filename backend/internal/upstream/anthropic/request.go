@@ -117,7 +117,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 		body = sanitized
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", targetURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, targetURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, nil, err
 	}

@@ -8,6 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	TestSettingKeyBackupS3Config      = settingKeyBackupS3Config
+	TestSettingKeyBackupStorageConfig = settingKeyBackupStorageConfig
+	TestSettingKeyBackupRecords       = settingKeyBackupRecords
+)
+
 func TestRestoreMustRegister(t *testing.T) {
 	repo := &runtimeSettings{}
 	archive := &runtimeArchive{}
@@ -41,9 +47,3 @@ func AccessWait(s *BackupService) { s.wg.Wait() }
 func AccessBackingUp(s *BackupService) { s.opMu.Lock(); s.backingUp = true; s.opMu.Unlock() }
 
 func AccessArchive(s *BackupService) ArchiveExecutor { return s.archive }
-
-const (
-	TestSettingKeyBackupS3Config      = settingKeyBackupS3Config
-	TestSettingKeyBackupStorageConfig = settingKeyBackupStorageConfig
-	TestSettingKeyBackupRecords       = settingKeyBackupRecords
-)

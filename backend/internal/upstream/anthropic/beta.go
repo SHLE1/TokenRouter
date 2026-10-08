@@ -8,6 +8,9 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// 缺省 drop 集合只初始化一次，调用方需要扩展时使用副本。
+var DefaultDroppedBetasSet = BuildBetaTokenSet(DroppedBetas)
+
 // GetBetaHeader 处理anthropic-beta header
 // 对于OAuth提供商，需要确保包含oauth-2025-04-20
 func GetBetaHeader(modelID string, clientBetaHeader string) string {
@@ -368,6 +371,3 @@ func ApplyClaudeCodeMimicHeaders(req *http.Request, isStream bool) {
 		SetHeaderRaw(req.Header, "x-client-request-id", uuid.NewString())
 	}
 }
-
-// 缺省 drop 集合只初始化一次，调用方需要扩展时使用副本。
-var DefaultDroppedBetasSet = BuildBetaTokenSet(DroppedBetas)

@@ -15,13 +15,24 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-const opsCleanupDefaultSchedule = "0 3 * * *"
-
 const (
+	opsCleanupDefaultSchedule = "0 3 * * *"
+
 	opsCleanupDefaultBatchSize  = 1000
 	OpsCleanupDefaultBatchSize  = opsCleanupDefaultBatchSize
 	opsCleanupDefaultBatchPause = 200 * time.Millisecond
 	OpsCleanupDefaultBatchPause = opsCleanupDefaultBatchPause
+
+	opsCleanupJobName = "ops_cleanup"
+
+	opsCleanupLeaderLockKeyDefault = "ops:cleanup:leader"
+	opsCleanupLeaderLockTTLDefault = 30 * time.Minute
+)
+
+var (
+	ErrDatabaseMaintenanceBusy = infraerrors.Conflict("MAINTENANCE_BUSY", "another database maintenance task is running")
+
+	opsCleanupCronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 )
 
 // CleanupBackend 提供维护锁和分批清理操作。
@@ -35,23 +46,6 @@ type CleanupTargetResult struct {
 	Deleted, Batches int64
 	Throttled        time.Duration
 }
-
-func reportCleanupCompleted(o *Options, counts string) {
-	if o != nil && o.CleanupCompleted != nil {
-		o.CleanupCompleted(counts)
-	}
-}
-
-var ErrDatabaseMaintenanceBusy = infraerrors.Conflict("MAINTENANCE_BUSY", "another database maintenance task is running")
-
-const (
-	opsCleanupJobName = "ops_cleanup"
-
-	opsCleanupLeaderLockKeyDefault = "ops:cleanup:leader"
-	opsCleanupLeaderLockTTLDefault = 30 * time.Minute
-)
-
-var opsCleanupCronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 
 // OpsCleanupService periodically deletes old ops data to prevent unbounded DB growth.
 //
@@ -77,6 +71,12 @@ type OpsCleanupService struct {
 	effective CleanupOptions
 
 	warnNoRedisOnce sync.Once
+}
+
+func reportCleanupCompleted(o *Options, counts string) {
+	if o != nil && o.CleanupCompleted != nil {
+		o.CleanupCompleted(counts)
+	}
 }
 
 func NewOpsCleanupService(

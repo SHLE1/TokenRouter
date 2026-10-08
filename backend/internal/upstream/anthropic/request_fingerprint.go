@@ -19,15 +19,6 @@ import (
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
-// 预编译正则表达式（避免每次调用重新编译）
-var (
-	// 匹配 User-Agent 版本号: xxx/x.y.z
-	UserAgentVersionRegex = regexp.MustCompile(`/(\d+)\.(\d+)\.(\d+)`)
-
-	// 校验可写入提供商级持久指纹的 User-Agent 形态，版本号后只允许空白或结束。
-	FingerprintUserAgentPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+/\d+\.\d+\.\d+(\s|$)`)
-)
-
 const (
 	ClaudeCLIUserAgentProduct = "claude-cli"
 	// 限制持久化 User-Agent 长度，避免异常客户端把超长值写入提供商缓存。
@@ -38,42 +29,25 @@ const (
 	MaxClaudeCLIMajorVersionSkew = 2
 )
 
-// IsAcceptableFingerprintUserAgent 判断 User-Agent 是否适合作为提供商级持久身份。
-// 指纹只升不降且会随活跃请求续期，因此本地构建后缀或不可信高版本一旦写入，
-// 会长期覆盖同提供商的所有后续上游请求。
-func IsAcceptableFingerprintUserAgent(userAgent string) bool {
-	userAgent = strings.TrimSpace(userAgent)
-	if userAgent == "" || len(userAgent) > MaxFingerprintUserAgentLength {
-		return false
-	}
-	if !FingerprintUserAgentPattern.MatchString(userAgent) {
-		return false
-	}
-	// 其它产品只校验稳定形态，避免把 Claude CLI 的版本窗口误用于第三方客户端。
-	if ExtractProduct(userAgent) != ClaudeCLIUserAgentProduct {
-		return true
-	}
-	major, _, _, ok := ParseUserAgentVersion(userAgent)
-	if !ok {
-		return false
-	}
-	currentMajor, _, _, currentOK := ParseUserAgentVersion(ClaudeCLIUserAgentProduct + "/" + CLIVersion())
-	if !currentOK {
-		return true
-	}
-	return major <= currentMajor+MaxClaudeCLIMajorVersionSkew
-}
+var (
+	// 预编译正则表达式（避免每次调用重新编译）
+	// 匹配 User-Agent 版本号: xxx/x.y.z
+	UserAgentVersionRegex = regexp.MustCompile(`/(\d+)\.(\d+)\.(\d+)`)
 
-// 默认指纹值（当客户端未提供时使用）
-var DefaultFingerprint = Fingerprint{
-	UserAgent:               "claude-cli/" + CLIVersion() + " (external, cli)",
-	StainlessLang:           "js",
-	StainlessPackageVersion: "0.94.0",
-	StainlessOS:             "Linux",
-	StainlessArch:           "arm64",
-	StainlessRuntime:        "node",
-	StainlessRuntimeVersion: "v24.3.0",
-}
+	// 校验可写入提供商级持久指纹的 User-Agent 形态，版本号后只允许空白或结束。
+	FingerprintUserAgentPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+/\d+\.\d+\.\d+(\s|$)`)
+
+	// 默认指纹值（当客户端未提供时使用）
+	DefaultFingerprint = Fingerprint{
+		UserAgent:               "claude-cli/" + CLIVersion() + " (external, cli)",
+		StainlessLang:           "js",
+		StainlessPackageVersion: "0.94.0",
+		StainlessOS:             "Linux",
+		StainlessArch:           "arm64",
+		StainlessRuntime:        "node",
+		StainlessRuntimeVersion: "v24.3.0",
+	}
+)
 
 // Fingerprint represents provider fingerprint data
 type Fingerprint struct {
@@ -104,6 +78,32 @@ type FingerprintCache interface {
 // RequestFingerprint 管理OAuth提供商的请求身份指纹
 type RequestFingerprint struct {
 	cache FingerprintCache
+}
+
+// IsAcceptableFingerprintUserAgent 判断 User-Agent 是否适合作为提供商级持久身份。
+// 指纹只升不降且会随活跃请求续期，因此本地构建后缀或不可信高版本一旦写入，
+// 会长期覆盖同提供商的所有后续上游请求。
+func IsAcceptableFingerprintUserAgent(userAgent string) bool {
+	userAgent = strings.TrimSpace(userAgent)
+	if userAgent == "" || len(userAgent) > MaxFingerprintUserAgentLength {
+		return false
+	}
+	if !FingerprintUserAgentPattern.MatchString(userAgent) {
+		return false
+	}
+	// 其它产品只校验稳定形态，避免把 Claude CLI 的版本窗口误用于第三方客户端。
+	if ExtractProduct(userAgent) != ClaudeCLIUserAgentProduct {
+		return true
+	}
+	major, _, _, ok := ParseUserAgentVersion(userAgent)
+	if !ok {
+		return false
+	}
+	currentMajor, _, _, currentOK := ParseUserAgentVersion(ClaudeCLIUserAgentProduct + "/" + CLIVersion())
+	if !currentOK {
+		return true
+	}
+	return major <= currentMajor+MaxClaudeCLIMajorVersionSkew
 }
 
 // NewRequestFingerprint 创建新的RequestFingerprint

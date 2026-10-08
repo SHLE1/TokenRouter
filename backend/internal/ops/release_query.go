@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+const (
+	updateCacheTTL        = 1200
+	githubRepo            = "TokenFlux/TokenRouter"
+	maxRollbackVersions   = 3
+	rollbackFetchPageSize = 15
+)
+
 type ReleaseQueryClient interface {
 	FetchLatestRelease(context.Context, string) (*GitHubRelease, error)
 	FetchRecentReleases(context.Context, string, int) ([]*GitHubRelease, error)
@@ -20,17 +27,68 @@ type ReleaseQuery struct {
 	currentVersion, buildType string
 }
 
+type GitHubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	Size               int64  `json:"size"`
+}
+
+// RollbackVersion 描述系统允许回退到的正式版本。
+type RollbackVersion struct {
+	Version     string `json:"version"` // 不带 v 前缀，例如 0.1.146。
+	PublishedAt string `json:"published_at"`
+	HTMLURL     string `json:"html_url"`
+}
+
+// GitHubRelease represents GitHub API response
+type GitHubRelease struct {
+	TagName     string        `json:"tag_name"`
+	Name        string        `json:"name"`
+	Body        string        `json:"body"`
+	PublishedAt string        `json:"published_at"`
+	HTMLURL     string        `json:"html_url"`
+	Draft       bool          `json:"draft"`
+	Prerelease  bool          `json:"prerelease"`
+	Assets      []GitHubAsset `json:"assets"`
+}
+
+// Asset represents a release asset
+type Asset struct {
+	Name        string `json:"name"`
+	DownloadURL string `json:"download_url"`
+	Size        int64  `json:"size"`
+}
+
+// ReleaseInfo contains GitHub release details
+type ReleaseInfo struct {
+	Name        string  `json:"name"`
+	Body        string  `json:"body"`
+	PublishedAt string  `json:"published_at"`
+	HTMLURL     string  `json:"html_url"`
+	Assets      []Asset `json:"assets,omitempty"`
+}
+
+// UpdateInfo contains update information
+type UpdateInfo struct {
+	CurrentVersion string       `json:"current_version"`
+	LatestVersion  string       `json:"latest_version"`
+	HasUpdate      bool         `json:"has_update"`
+	ReleaseInfo    *ReleaseInfo `json:"release_info,omitempty"`
+	Cached         bool         `json:"cached"`
+	Warning        string       `json:"warning,omitempty"`
+	BuildType      string       `json:"build_type"` // "source" or "release"
+}
+
+// UpdateCache defines cache operations for update service
+type UpdateCache interface {
+	GetUpdateInfo(ctx context.Context) (string, error)
+	SetUpdateInfo(ctx context.Context, data string, ttl time.Duration) error
+}
+
 // @project-doc docs/operations/ops_monitoring_and_alerting.md#ops_release_and_maintenance
 func NewReleaseQuery(cache UpdateCache, client ReleaseQueryClient, version, buildType string) *ReleaseQuery {
 	return &ReleaseQuery{cache, client, version, buildType}
 }
-
-const (
-	updateCacheTTL        = 1200
-	githubRepo            = "TokenFlux/TokenRouter"
-	maxRollbackVersions   = 3
-	rollbackFetchPageSize = 15
-)
 
 func parseVersion(v string) [3]int {
 	v = strings.TrimPrefix(v, "v")
@@ -52,7 +110,7 @@ func compareVersions(current, latest string) int {
 	currentParts := parseVersion(current)
 	latestParts := parseVersion(latest)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if currentParts[i] < latestParts[i] {
 			return -1
 		}
@@ -262,62 +320,4 @@ func (s *ReleaseQuery) CheckUpdate(ctx context.Context, force bool) (*UpdateInfo
 	// Cache result
 	s.SaveToCache(ctx, info)
 	return info, nil
-}
-
-type GitHubAsset struct {
-	Name               string `json:"name"`
-	BrowserDownloadURL string `json:"browser_download_url"`
-	Size               int64  `json:"size"`
-}
-
-// RollbackVersion 描述系统允许回退到的正式版本。
-type RollbackVersion struct {
-	Version     string `json:"version"` // 不带 v 前缀，例如 0.1.146。
-	PublishedAt string `json:"published_at"`
-	HTMLURL     string `json:"html_url"`
-}
-
-// GitHubRelease represents GitHub API response
-type GitHubRelease struct {
-	TagName     string        `json:"tag_name"`
-	Name        string        `json:"name"`
-	Body        string        `json:"body"`
-	PublishedAt string        `json:"published_at"`
-	HTMLURL     string        `json:"html_url"`
-	Draft       bool          `json:"draft"`
-	Prerelease  bool          `json:"prerelease"`
-	Assets      []GitHubAsset `json:"assets"`
-}
-
-// Asset represents a release asset
-type Asset struct {
-	Name        string `json:"name"`
-	DownloadURL string `json:"download_url"`
-	Size        int64  `json:"size"`
-}
-
-// ReleaseInfo contains GitHub release details
-type ReleaseInfo struct {
-	Name        string  `json:"name"`
-	Body        string  `json:"body"`
-	PublishedAt string  `json:"published_at"`
-	HTMLURL     string  `json:"html_url"`
-	Assets      []Asset `json:"assets,omitempty"`
-}
-
-// UpdateInfo contains update information
-type UpdateInfo struct {
-	CurrentVersion string       `json:"current_version"`
-	LatestVersion  string       `json:"latest_version"`
-	HasUpdate      bool         `json:"has_update"`
-	ReleaseInfo    *ReleaseInfo `json:"release_info,omitempty"`
-	Cached         bool         `json:"cached"`
-	Warning        string       `json:"warning,omitempty"`
-	BuildType      string       `json:"build_type"` // "source" or "release"
-}
-
-// UpdateCache defines cache operations for update service
-type UpdateCache interface {
-	GetUpdateInfo(ctx context.Context) (string, error)
-	SetUpdateInfo(ctx context.Context, data string, ttl time.Duration) error
 }

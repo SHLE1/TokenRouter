@@ -13,8 +13,8 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// OpenAI OAuth Constants (from CRS project - Codex CLI client)
 const (
+	// OpenAI OAuth Constants (from CRS project - Codex CLI client)
 	// OAuth Client ID for OpenAI (Codex CLI official)
 	ClientID = "app_EMoamEEZ73f0CkXaXp7hrann"
 
@@ -29,12 +29,14 @@ const (
 	DefaultScopes = "openid profile email offline_access"
 	// RefreshScopes - scope for token refresh (without offline_access, aligned with CRS project)
 	RefreshScopes = "openid profile email"
-)
 
-const (
 	// OAuthPlatformOpenAI uses OpenAI Codex-compatible OAuth client.
 	OAuthPlatformOpenAI = "openai"
 )
+
+type TokenResponse = wire.OAuthTokenResponse
+
+type IDTokenClaims = wire.OAuthIDTokenClaims
 
 // GenerateRandomBytes generates cryptographically secure random bytes
 func GenerateRandomBytes(n int) ([]byte, error) {
@@ -100,10 +102,6 @@ func BuildAuthorizationURLForPlatform(state, codeChallenge, redirectURI, platfor
 func OAuthClientConfigByPlatform(platform string) (clientID string, codexFlow bool) {
 	return ClientID, true
 }
-
-type TokenResponse = wire.OAuthTokenResponse
-
-type IDTokenClaims = wire.OAuthIDTokenClaims
 
 // DecodeIDToken decodes the ID Token JWT payload without validating expiration.
 // Use this for best-effort extraction (e.g., during data import) where the token may be expired.

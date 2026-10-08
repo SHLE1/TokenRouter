@@ -31,6 +31,17 @@ type qoderCompatibleExecution struct {
 	keys    *apikey.APIKeyService
 }
 
+type qoderCompatibleSelection struct {
+	owner *qoderCompatibleExecution
+	value *gatewayprovider.SelectionResult
+}
+
+// qoderCompatibleTarget 保存单次调用的提供商，向 HTTP 层返回其快照。
+type qoderCompatibleTarget struct {
+	owner *qoderCompatibleExecution
+	value *gatewayprovider.ExecutionProvider
+}
+
 func (p *qoderCompatibleExecution) Select(ctx context.Context, id *int64, hash, model string, excluded map[int64]struct{}, userID int64) (gatewayhttp.QoderCompatibleSelection, error) {
 	value, err := p.choices.SelectProviderWithLoadAwareness(ctx, id, hash, model, excluded, "", userID)
 	if err != nil {
@@ -41,11 +52,6 @@ func (p *qoderCompatibleExecution) Select(ctx context.Context, id *int64, hash, 
 
 func (p *qoderCompatibleExecution) Plan(ctx context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 	return p.PlanKey(ctx, key, model)
-}
-
-type qoderCompatibleSelection struct {
-	owner *qoderCompatibleExecution
-	value *gatewayprovider.SelectionResult
 }
 
 func (s *qoderCompatibleSelection) Target() gatewayhttp.QoderCompatibleTarget {
@@ -63,12 +69,6 @@ func (s *qoderCompatibleSelection) Report(id int64, ok bool, result *forward.Mes
 }
 
 func (s *qoderCompatibleSelection) Switched() { s.owner.choices.RecordAdvancedProviderSwitch(s.value) }
-
-// qoderCompatibleTarget 保存单次调用的提供商，向 HTTP 层返回其快照。
-type qoderCompatibleTarget struct {
-	owner *qoderCompatibleExecution
-	value *gatewayprovider.ExecutionProvider
-}
 
 func (t *qoderCompatibleTarget) Snapshot() provider.ProviderSnapshot {
 	return gatewayprovider.ExecutionSnapshot(t.value)

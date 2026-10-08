@@ -6,6 +6,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const (
+	anthropicAPIKeyAuthSchemeExtraKey            = "anthropic_apikey_auth_scheme"
+	AnthropicAPIKeyAuthSchemeXAPIKey             = "x_api_key"
+	AnthropicAPIKeyAuthSchemeAuthorizationBearer = "authorization_bearer"
+)
+
 // GetAnthropicAPIKeyAuthScheme 返回 Anthropic API Key 提供商转发上游时使用的认证头方案。
 func (a *Record) GetAnthropicAPIKeyAuthScheme() string {
 	if a == nil || a.Type != capability.ProviderTypeAPIKey {
@@ -22,9 +28,3 @@ func (a *Record) GetAnthropicAPIKeyAuthScheme() string {
 		return AnthropicAPIKeyAuthSchemeXAPIKey
 	}
 }
-
-const (
-	anthropicAPIKeyAuthSchemeExtraKey            = "anthropic_apikey_auth_scheme"
-	AnthropicAPIKeyAuthSchemeXAPIKey             = "x_api_key"
-	AnthropicAPIKeyAuthSchemeAuthorizationBearer = "authorization_bearer"
-)

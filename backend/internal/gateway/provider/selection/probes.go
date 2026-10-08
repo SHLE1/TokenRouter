@@ -22,6 +22,11 @@ type ProviderTester interface {
 	RunTestBackgroundWithPromptAndUserAgent(context.Context, int64, string, string, string) (*provider.ScheduledTestResult, error)
 }
 
+// NewProbe 绑定平台选择器和提供商测试器。
+func NewProbe(test ProviderTester, generic *Generic, compatible *Compatible, gemini *Gemini) Probe {
+	return Probe{ProviderTest: test, gatewaySvc: generic, openAIGateway: compatible, geminiCompatSvc: gemini}
+}
+
 func (s Probe) Select(ctx context.Context, due routing.GroupAvailabilityProbeDueGroup, model string) (routing.GroupProbeTarget, error) {
 	provider, err := s.selectProbeProvider(ctx, due, model)
 	if err != nil {
@@ -54,9 +59,4 @@ func (s Probe) selectProbeProvider(ctx context.Context, due routing.GroupAvailab
 		return s.gatewaySvc.SelectProviderForModel(ctx, &groupID, "", modelID)
 	}
 	return nil, fmt.Errorf("provider selector not configured")
-}
-
-// NewProbe 绑定平台选择器和提供商测试器。
-func NewProbe(test ProviderTester, generic *Generic, compatible *Compatible, gemini *Gemini) Probe {
-	return Probe{ProviderTest: test, gatewaySvc: generic, openAIGateway: compatible, geminiCompatSvc: gemini}
 }

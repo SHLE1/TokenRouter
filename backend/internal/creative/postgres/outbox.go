@@ -13,6 +13,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 )
 
+var _ creative.CreativeRunOutboxRepository = (*creativeRunOutboxRepository)(nil)
+
 // creativeRunOutboxRepository 使用 PostgreSQL 原生 SQL 实现可恢复的创作台后台动作。
 type creativeRunOutboxRepository struct {
 	db *sql.DB
@@ -168,5 +170,3 @@ func newCreativeOutboxLeaseToken(workerID string) (string, error) {
 	}
 	return workerID + ":" + hex.EncodeToString(raw[:]), nil
 }
-
-var _ creative.CreativeRunOutboxRepository = (*creativeRunOutboxRepository)(nil)

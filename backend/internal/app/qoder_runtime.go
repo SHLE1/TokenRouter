@@ -22,21 +22,10 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
-
-// provideQoderRequestRefresh 为 Qoder 入站请求绑定共享的刷新协调器、提供商存储和会话缓存。
-func provideQoderRequestRefresh(store *providerpostgres.ProviderStore, tokens *provideradapter.QoderTokenProvider, coordinator *providercore.OAuthRefreshAPI, transport provideradapter.QoderTransport, profiles *egressprovider.TLSProfiles) *provideradapter.QoderRequestRefresh {
-	return &provideradapter.QoderRequestRefresh{Store: store, Tokens: tokens, Coordinator: coordinator, Transport: transport, Profiles: profiles}
-}
-
-// provideQoderRuntime 绑定共享的 token 源、传输池和提供商存储，Qoder 执行组件管理会话与执行器。
-func provideQoderRuntime(tokens *provideradapter.QoderTokenProvider, transport provideradapter.QoderTransport, profiles *egressprovider.TLSProfiles, store *providerpostgres.ProviderStore) *gatewayprovider.QoderRuntime {
-	return gatewayprovider.NewQoderRuntime(gatewayprovider.QoderRuntimeOptions{Tokens: tokens, Transport: transport, Profiles: profiles, Health: store})
-}
 
 // qoderRuntime 保存应用装配时绑定的共享依赖。
 type qoderRuntime struct {
@@ -48,6 +37,16 @@ type qoderRuntime struct {
 	Keys        *apikey.APIKeyService
 	Completions *completion.UsageRecordWorkerPool
 	Recorder    *completion.Recorder
+}
+
+// provideQoderRequestRefresh 为 Qoder 入站请求绑定共享的刷新协调器、提供商存储和会话缓存。
+func provideQoderRequestRefresh(store *providerpostgres.ProviderStore, tokens *provideradapter.QoderTokenProvider, coordinator *providercore.OAuthRefreshAPI, transport provideradapter.QoderTransport, profiles *egressprovider.TLSProfiles) *provideradapter.QoderRequestRefresh {
+	return &provideradapter.QoderRequestRefresh{Store: store, Tokens: tokens, Coordinator: coordinator, Transport: transport, Profiles: profiles}
+}
+
+// provideQoderRuntime 绑定共享的 token 源、传输池和提供商存储，Qoder 执行组件管理会话与执行器。
+func provideQoderRuntime(tokens *provideradapter.QoderTokenProvider, transport provideradapter.QoderTransport, profiles *egressprovider.TLSProfiles, store *providerpostgres.ProviderStore) *gatewayprovider.QoderRuntime {
+	return gatewayprovider.NewQoderRuntime(gatewayprovider.QoderRuntimeOptions{Tokens: tokens, Transport: transport, Profiles: profiles, Health: store})
 }
 
 func (b *qoderRuntime) Prepare(ctx context.Context, request gateway.Request) (gateway.Request, error) {
@@ -73,7 +72,7 @@ func (b *qoderRuntime) Select(ctx context.Context, request gateway.Request, excl
 	ctx = requeststate.WithRoutePlan(ctx, request.Route)
 	key := apikey.CopyAPIKey(request.Funding.Key)
 	plan := request.Route
-	mapping := routing.GroupMappingResult(plan.Mapping())
+	mapping := plan.Mapping()
 	body := request.AttemptBody
 	var project func(*gatewayprovider.SelectionResult, *gatewayprovider.ExecutionProvider, bool) *gateway.Selection
 	project = func(selection *gatewayprovider.SelectionResult, provider *gatewayprovider.ExecutionProvider, refresh bool) *gateway.Selection {

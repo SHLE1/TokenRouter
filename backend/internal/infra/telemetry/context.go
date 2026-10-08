@@ -1,8 +1,5 @@
 package telemetry
 
-// ContextKey 区分请求观测键与普通字符串键。
-type ContextKey string
-
 const (
 	RequestID              ContextKey = "ctx_request_id"
 	ClientRequestID        ContextKey = "ctx_client_request_id"
@@ -17,3 +14,6 @@ const (
 	Platform               ContextKey = "ctx_platform"
 	ProviderID             ContextKey = "ctx_provider_id"
 )
+
+// ContextKey 区分请求观测键与普通字符串键。
+type ContextKey string

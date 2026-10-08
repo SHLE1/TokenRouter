@@ -72,7 +72,7 @@ func TestOpenAIRequestContextLifetime(t *testing.T) {
 				response, err = openai.ExchangeHTTP(request, nil, openai.HTTPExchangeOptions{
 					StartedAt: time.Now(), FirstOutputTimeout: timeout, RequestContext: DetachUpstreamContext,
 					Build: func(ctx context.Context, _ []byte) (*http.Request, error) {
-						return http.NewRequestWithContext(ctx, "POST", server.URL, nil)
+						return http.NewRequestWithContext(ctx, http.MethodPost, server.URL, nil)
 					},
 					ApplyHeaders: func(http.Header) {}, Do: send, Latency: func(time.Duration) {},
 					HeaderTimeout: func() error { return context.DeadlineExceeded }, TransportError: func(err error) error { return err },

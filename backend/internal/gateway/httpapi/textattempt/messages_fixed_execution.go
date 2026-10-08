@@ -14,7 +14,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
@@ -43,11 +42,11 @@ func (r *Runtime) Open(ctx context.Context, in execution.Request, sink upstream.
 	output.HTTP.Request = output.HTTP.Request.WithContext(ctx)
 	switch in.Text.Kind {
 	case execution.TextGeminiMessages:
-		return &geminiMessageAttemptBridge{messageAttemptBridge: base, forwardModel: in.Text.GeminiModel, forwardBody: in.Text.GeminiBody, groupMapping: routing.GroupMappingResult(in.Route.Mapping())}, nil
+		return &geminiMessageAttemptBridge{messageAttemptBridge: base, forwardModel: in.Text.GeminiModel, forwardBody: in.Text.GeminiBody, groupMapping: in.Route.Mapping()}, nil
 	case execution.TextGenericResponses:
-		return &genericResponsesAttemptBridge{messageAttemptBridge: base, requestCtx: in.Text.SelectionContext, forwardBody: in.AttemptBody, groupMapping: routing.GroupMappingResult(in.Text.Mapping)}, nil
+		return &genericResponsesAttemptBridge{messageAttemptBridge: base, requestCtx: in.Text.SelectionContext, forwardBody: in.AttemptBody, groupMapping: in.Text.Mapping}, nil
 	case execution.TextGenericChat:
-		return &genericChatAttemptBridge{messageAttemptBridge: base, requestCtx: in.Text.SelectionContext, groupPlatform: in.Text.Platform, selectionSessionHash: in.Text.SelectionSessionHash, groupMapping: routing.GroupMappingResult(in.Text.Mapping)}, nil
+		return &genericChatAttemptBridge{messageAttemptBridge: base, requestCtx: in.Text.SelectionContext, groupPlatform: in.Text.Platform, selectionSessionHash: in.Text.SelectionSessionHash, groupMapping: in.Text.Mapping}, nil
 	case execution.TextNativeGemini:
 		return &nativeGeminiAttemptBridge{
 			messageAttemptBridge: base,
@@ -60,7 +59,7 @@ func (r *Runtime) Open(ctx context.Context, in execution.Request, sink upstream.
 			geminiPrefixHash:     in.Text.PrefixHash,
 			geminiSessionUUID:    in.Text.SessionUUID,
 			matchedDigestChain:   in.Text.MatchedDigestChain,
-			groupMapping:         routing.GroupMappingResult(in.Text.Mapping),
+			groupMapping:         in.Text.Mapping,
 			signatureState:       in.Text.SignatureState,
 		}, nil
 	}

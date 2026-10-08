@@ -21,6 +21,32 @@ type AntigravityModelLimitResult struct {
 	SwitchError  *antigravity.AntigravityProviderSwitchError // 提供商切换错误
 }
 
+// AntigravityErrorInput 保存本次错误的模型、粘性会话和报文信息。
+type AntigravityErrorInput struct {
+	Context          context.Context
+	Provider         *provider.Record
+	Prefix           string
+	Status           int
+	Headers          http.Header
+	Body             []byte
+	RequestedModel   string
+	OtherObservation HealthObservation
+	Thinking         *bool
+	Sticky           bool
+	ClearSticky      func()
+}
+
+// AntigravityErrorObserver 组合模型窗口和提供商健康状态接口。
+type AntigravityErrorObserver struct {
+	Health          *provider.AntigravityHealth
+	LogConfig       func() (bool, int)
+	TruncateString  func(string, int) string
+	ResetTime       func([]byte) *int64
+	DefaultDuration func() time.Duration
+	SetRateLimited  func(context.Context, int64, time.Time) error
+	Other           *UpstreamHealth
+}
+
 // handleModelRateLimit 在一般错误处理之前记录模型限流。
 // 仅处理 429/503，解析模型名和 retryDelay
 // - MODEL_CAPACITY_EXHAUSTED: 返回 Handled=true（实际重试由 handleSmartRetry 处理）
@@ -161,32 +187,6 @@ func (s *AntigravityErrorObserver) resolveResetTime(resetAt *int64, defaultDur t
 		return time.Unix(*resetAt, 0)
 	}
 	return time.Now().Add(defaultDur)
-}
-
-// AntigravityErrorInput 保存本次错误的模型、粘性会话和报文信息。
-type AntigravityErrorInput struct {
-	Context          context.Context
-	Provider         *provider.Record
-	Prefix           string
-	Status           int
-	Headers          http.Header
-	Body             []byte
-	RequestedModel   string
-	OtherObservation HealthObservation
-	Thinking         *bool
-	Sticky           bool
-	ClearSticky      func()
-}
-
-// AntigravityErrorObserver 组合模型窗口和提供商健康状态接口。
-type AntigravityErrorObserver struct {
-	Health          *provider.AntigravityHealth
-	LogConfig       func() (bool, int)
-	TruncateString  func(string, int) string
-	ResetTime       func([]byte) *int64
-	DefaultDuration func() time.Duration
-	SetRateLimited  func(context.Context, int64, time.Time) error
-	Other           *UpstreamHealth
 }
 
 // AntigravityFallbackDuration 保持配置分钟数及环境秒数覆盖的原优先级。

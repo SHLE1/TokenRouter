@@ -16,6 +16,25 @@ import (
 	geminicli "github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 )
 
+type mockGeminiOAuthClient struct {
+	exchangeCodeFunc func(ctx context.Context, oauthType, code, codeVerifier, redirectURI, proxyURL string) (*geminicli.TokenResponse, error)
+	refreshTokenFunc func(ctx context.Context, oauthType, refreshToken, proxyURL string) (*geminicli.TokenResponse, error)
+}
+
+type mockGeminiCodeAssistClient struct {
+	loadCodeAssistFunc func(ctx context.Context, accessToken, proxyURL string, req *geminicli.LoadCodeAssistRequest) (*geminicli.LoadCodeAssistResponse, error)
+	onboardUserFunc    func(ctx context.Context, accessToken, proxyURL string, req *geminicli.OnboardUserRequest) (*geminicli.OnboardUserResponse, error)
+}
+
+type mockGeminiProxyRepo struct {
+	getByIDFunc func(ctx context.Context, id int64) (*egress.Proxy, error)
+}
+
+// mockDriveClient implements geminicli.DriveClient for tests.
+type mockDriveClient struct {
+	getStorageQuotaFunc func(ctx context.Context, accessToken, proxyURL string) (*geminicli.DriveStorageInfo, error)
+}
+
 func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 	// NOTE: This test sets process env; it must not run in parallel.
 	// The built-in Gemini CLI client secret is not embedded in this repository.
@@ -82,7 +101,6 @@ func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -299,7 +317,6 @@ func TestGeminiOAuthService_GetOAuthConfig(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			svc := newGeminiAuthorizationForTest(nil, nil, nil, nil, tt.cfg)
@@ -973,11 +990,6 @@ func TestGeminiOAuthService_ExchangeCode_EmptyState(t *testing.T) {
 	}
 }
 
-type mockGeminiOAuthClient struct {
-	exchangeCodeFunc func(ctx context.Context, oauthType, code, codeVerifier, redirectURI, proxyURL string) (*geminicli.TokenResponse, error)
-	refreshTokenFunc func(ctx context.Context, oauthType, refreshToken, proxyURL string) (*geminicli.TokenResponse, error)
-}
-
 func (m *mockGeminiOAuthClient) ExchangeCode(ctx context.Context, oauthType, code, codeVerifier, redirectURI, proxyURL string) (*geminicli.TokenResponse, error) {
 	if m.exchangeCodeFunc != nil {
 		return m.exchangeCodeFunc(ctx, oauthType, code, codeVerifier, redirectURI, proxyURL)
@@ -992,11 +1004,6 @@ func (m *mockGeminiOAuthClient) RefreshToken(ctx context.Context, oauthType, ref
 	panic("RefreshToken not implemented")
 }
 
-type mockGeminiCodeAssistClient struct {
-	loadCodeAssistFunc func(ctx context.Context, accessToken, proxyURL string, req *geminicli.LoadCodeAssistRequest) (*geminicli.LoadCodeAssistResponse, error)
-	onboardUserFunc    func(ctx context.Context, accessToken, proxyURL string, req *geminicli.OnboardUserRequest) (*geminicli.OnboardUserResponse, error)
-}
-
 func (m *mockGeminiCodeAssistClient) LoadCodeAssist(ctx context.Context, accessToken, proxyURL string, req *geminicli.LoadCodeAssistRequest) (*geminicli.LoadCodeAssistResponse, error) {
 	if m.loadCodeAssistFunc != nil {
 		return m.loadCodeAssistFunc(ctx, accessToken, proxyURL, req)
@@ -1009,10 +1016,6 @@ func (m *mockGeminiCodeAssistClient) OnboardUser(ctx context.Context, accessToke
 		return m.onboardUserFunc(ctx, accessToken, proxyURL, req)
 	}
 	panic("OnboardUser not implemented")
-}
-
-type mockGeminiProxyRepo struct {
-	getByIDFunc func(ctx context.Context, id int64) (*egress.Proxy, error)
 }
 
 func (m *mockGeminiProxyRepo) Create(ctx context.Context, proxy *egress.Proxy) error {
@@ -1082,11 +1085,6 @@ func (m *mockGeminiProxyRepo) CountExpired(ctx context.Context) (int64, error) {
 
 func (m *mockGeminiProxyRepo) CountExpiringSoon(ctx context.Context, now time.Time) (int64, error) {
 	panic("not impl")
-}
-
-// mockDriveClient implements geminicli.DriveClient for tests.
-type mockDriveClient struct {
-	getStorageQuotaFunc func(ctx context.Context, accessToken, proxyURL string) (*geminicli.DriveStorageInfo, error)
 }
 
 func (m *mockDriveClient) GetStorageQuota(ctx context.Context, accessToken, proxyURL string) (*geminicli.DriveStorageInfo, error) {

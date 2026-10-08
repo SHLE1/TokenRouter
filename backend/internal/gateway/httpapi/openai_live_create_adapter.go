@@ -14,13 +14,20 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // liveCreatePorts 只连接原生选择器、模型轨迹和供应商单次创建能力。
 type liveCreatePorts struct {
 	service *OpenAILiveExecutor
+}
+
+// liveCreateTarget 保存本次选择取得的凭据，供后续执行使用。
+type liveCreateTarget struct {
+	service  *OpenAILiveExecutor
+	provider *gatewayprovider.ExecutionProvider
+	groupID  *int64
+	router   egress.TLSFingerprintRouterMatchResult
 }
 
 func (p *liveCreatePorts) PrepareAttestation(ctx context.Context) (string, string, error) {
@@ -52,7 +59,7 @@ func (p *liveCreatePorts) ModelTrace(ctx context.Context, groupID *int64, model,
 		requested = trace.ClientModel
 	}
 	plan := p.service.Routes.PlanRoute(ctx, nil, groupID, model)
-	mapping := routing.GroupMappingResult(plan.Mapping())
+	mapping := plan.Mapping()
 	return requested, mapping.BuildModelMappingChain(model, upstream)
 }
 func (p *liveCreatePorts) NewLeaseID() string { return scheduler.GenerateRequestID() }
@@ -64,14 +71,6 @@ func (p *liveCreatePorts) Observe(record *session.LiveCallRecord) {
 	p.service.Background("service/openai_live.go:CreateLiveCall", func() {
 		p.service.observeLiveCall(record)
 	})
-}
-
-// liveCreateTarget 保存本次选择取得的凭据，供后续执行使用。
-type liveCreateTarget struct {
-	service  *OpenAILiveExecutor
-	provider *gatewayprovider.ExecutionProvider
-	groupID  *int64
-	router   egress.TLSFingerprintRouterMatchResult
 }
 
 func (t *liveCreateTarget) ResolveModel(ctx context.Context, model string) (string, string, error) {

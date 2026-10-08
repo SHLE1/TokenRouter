@@ -27,18 +27,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// ResolveOpenAIMessagesProviderLayerModel 将通用分组映射结果规范化后交给提供商模型规则。
-func ResolveOpenAIMessagesProviderLayerModel(groupMappedModel string) string {
-	return strings.TrimSpace(groupMappedModel)
-}
-
-// ResolveOpenAIMessagesProviderLayerModelForRequest 登记规范化结果，供响应恢复和用量追踪使用。
-func ResolveOpenAIMessagesProviderLayerModelForRequest(ctx context.Context, groupMappedModel string) string {
-	model := ResolveOpenAIMessagesProviderLayerModel(groupMappedModel)
-	modeltrace.RegisterStage(ctx, model)
-	return model
-}
-
 // OpenAITextBindings 提供文本入口的资源和用例接口。
 type OpenAITextBindings struct {
 	ClientVersions      func(context.Context) (string, string)
@@ -58,6 +46,18 @@ type OpenAITextBindings struct {
 }
 
 type openAITextHTTPBackend struct{ bindings OpenAITextBindings }
+
+// ResolveOpenAIMessagesProviderLayerModel 将通用分组映射结果规范化后交给提供商模型规则。
+func ResolveOpenAIMessagesProviderLayerModel(groupMappedModel string) string {
+	return strings.TrimSpace(groupMappedModel)
+}
+
+// ResolveOpenAIMessagesProviderLayerModelForRequest 登记规范化结果，供响应恢复和用量追踪使用。
+func ResolveOpenAIMessagesProviderLayerModelForRequest(ctx context.Context, groupMappedModel string) string {
+	model := ResolveOpenAIMessagesProviderLayerModel(groupMappedModel)
+	modeltrace.RegisterStage(ctx, model)
+	return model
+}
 
 // NewBoundOpenAITextHandler 将资源、用例接口和执行器绑定到 HTTP 入口。
 func NewBoundOpenAITextHandler(options OpenAITextOptions, bindings OpenAITextBindings, prompt MessagesPrompt, executor execution.Executor) *OpenAITextHandler {

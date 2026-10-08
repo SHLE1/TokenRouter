@@ -20,6 +20,11 @@ import (
 // creativeDownloadRequests 使用 URL 校验器检查图片下载地址。
 type creativeDownloadRequests struct{}
 
+// creativeDownloadTransport 检查图片下载请求的传输方式和认证 Header。
+type creativeDownloadTransport struct {
+	do func(*http.Request, string, int64, int) (*http.Response, error)
+}
+
 func (creativeDownloadRequests) ValidateBaseURL(raw string) (string, error) {
 	return egress.ValidateURLFormat(raw, false)
 }
@@ -30,11 +35,6 @@ func (creativeDownloadRequests) ImagesURL(*ExecutionProvider, string) (string, e
 
 func (creativeDownloadRequests) TLSProfile(*ExecutionProvider, ...egress.TLSFingerprintRouterMatchResult) *tlsfingerprint.Profile {
 	panic("unexpected generation TLS lookup")
-}
-
-// creativeDownloadTransport 检查图片下载请求的传输方式和认证 Header。
-type creativeDownloadTransport struct {
-	do func(*http.Request, string, int64, int) (*http.Response, error)
 }
 
 func (t creativeDownloadTransport) Do(req *http.Request, proxy string, id int64, concurrency int) (*http.Response, error) {

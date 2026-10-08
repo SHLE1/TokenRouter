@@ -42,6 +42,14 @@ const (
 	openAIWSHTTPBridgeErrorBodyLimitBytes         = 64 * 1024
 )
 
+// openAIWSToolCallReplayCollector 收集上游输出里的工具调用上下文，供后续 bridge turn 重放。
+type openAIWSToolCallReplayCollector struct {
+	items    []json.RawMessage
+	seen     map[string]struct{}
+	allItems []json.RawMessage
+	allSeen  map[string]struct{}
+}
+
 func decodeOpenAIWSHTTPBridgeLoweredTools(raw json.RawMessage) []any {
 	if len(raw) == 0 {
 		return nil
@@ -254,14 +262,6 @@ func prepareOpenAIWSHTTPBridgeBody(provider *gatewayprovider.ExecutionProvider, 
 	gatewayprovider.DeleteOpenAIResponsesNoneReasoningEffortFromObject(gatewayprovider.ExecutionProtocolRecord(provider), body)
 	body["stream"] = true
 	return json.Marshal(body)
-}
-
-// openAIWSToolCallReplayCollector 收集上游输出里的工具调用上下文，供后续 bridge turn 重放。
-type openAIWSToolCallReplayCollector struct {
-	items    []json.RawMessage
-	seen     map[string]struct{}
-	allItems []json.RawMessage
-	allSeen  map[string]struct{}
 }
 
 // AddEvent 从上游事件中提取可重放的 function_call 项。

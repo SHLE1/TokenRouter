@@ -14,6 +14,12 @@ type identityCacheStub struct {
 	maskedSessionID string
 }
 
+type stubIdentityCache struct {
+	fingerprint *Fingerprint
+	setCalls    int
+	lastSet     *Fingerprint
+}
+
 func (s *identityCacheStub) GetFingerprint(_ context.Context, _ int64) (*Fingerprint, error) {
 	return nil, nil
 }
@@ -75,12 +81,6 @@ func TestIdentityService_RewriteUserIDWithMasking_PreservesTopLevelFieldOrder(t 
 
 func strconvQuote(v string) string {
 	return `"` + strings.ReplaceAll(strings.ReplaceAll(v, `\`, `\\`), `"`, `\"`) + `"`
-}
-
-type stubIdentityCache struct {
-	fingerprint *Fingerprint
-	setCalls    int
-	lastSet     *Fingerprint
 }
 
 func (s *stubIdentityCache) GetFingerprint(_ context.Context, _ int64) (*Fingerprint, error) {

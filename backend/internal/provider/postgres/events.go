@@ -7,15 +7,15 @@ import (
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
-// ProviderEvent 表达存储写入产生的技术变更，实际 outbox 名称与编码由装配提供。
-type ProviderEvent uint8
-
 const (
 	ProviderChanged ProviderEvent = iota
 	ProviderGroupsChanged
 	ProviderLastUsed
 	ProviderBulkChanged
 )
+
+// ProviderEvent 表达存储写入产生的技术变更，实际 outbox 名称与编码由装配提供。
+type ProviderEvent uint8
 
 // ProviderEvents 提供 outbox 编码、事件写入和提交后的缓存发布。
 type ProviderEvents interface {

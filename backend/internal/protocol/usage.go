@@ -6,6 +6,19 @@ type AudioUsage struct {
 	DurationOrUnits float64 // minutes / million-chars / hours
 }
 
+// TokenUsage 保存输入、输出和缓存 token 用量。
+type TokenUsage struct {
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	CacheCreation5mTokens    int // 5分钟缓存创建token（来自嵌套 cache_creation 对象）
+	CacheCreation1hTokens    int // 1小时缓存创建token（来自嵌套 cache_creation 对象）
+	ImageOutputTokens        int `json:"image_output_tokens,omitempty"`
+	// Speed 记录 Claude 实际返回的处理速度，"fast" 会映射到内部 priority 计费。
+	Speed string `json:"speed,omitempty"`
+}
+
 // ApplyCacheTTLOverride 将缓存创建用量归入指定的 TTL 类型。
 // target 为“1h”时归入 1h，其余值归入 5m。
 // TTL 分类发生变化时返回 true，用聚合值补齐 5m 明细时返回 false。
@@ -56,19 +69,6 @@ func IncludeIndependentReasoningTokens(input, output, total, reasoning int64) in
 		gap = reasoning
 	}
 	return output + gap
-}
-
-// TokenUsage 保存输入、输出和缓存 token 用量。
-type TokenUsage struct {
-	InputTokens              int `json:"input_tokens"`
-	OutputTokens             int `json:"output_tokens"`
-	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
-	CacheCreation5mTokens    int // 5分钟缓存创建token（来自嵌套 cache_creation 对象）
-	CacheCreation1hTokens    int // 1小时缓存创建token（来自嵌套 cache_creation 对象）
-	ImageOutputTokens        int `json:"image_output_tokens,omitempty"`
-	// Speed 记录 Claude 实际返回的处理速度，"fast" 会映射到内部 priority 计费。
-	Speed string `json:"speed,omitempty"`
 }
 
 // HasObservedTokens 判断是否观测到正数 token 用量。

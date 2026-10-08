@@ -26,7 +26,7 @@ func TestDefaultOpenAIProviderScheduler_ShouldEscapeStickyProvider_ThresholdBoun
 	require.InDelta(t, 0.16, errorRate, 1e-9)
 	require.InDelta(t, 15000, observedTTFT, 1e-9)
 
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		stats.Report(providerID, false, nil)
 	}
 	reason, errorRate, _, shouldEscape = ShouldEscapeSticky(stats, providerID, policy.StickyEscapeConfig{

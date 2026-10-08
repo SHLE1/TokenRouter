@@ -12,6 +12,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type userGroupRateRepoHotpathStub struct {
+	UserGroupRateRepository
+
+	rate  *float64
+	err   error
+	wait  <-chan struct{}
+	calls atomic.Int64
+}
+
+type userGroupRateResolverRepoStub struct {
+	UserGroupRateRepository
+
+	rate  *float64
+	err   error
+	calls int
+}
+
 func TestGetUserGroupRateMultiplier_UsesCacheAndSingleflight(t *testing.T) {
 	resetGatewayRateStatsForTest()
 
@@ -28,7 +45,7 @@ func TestGetUserGroupRateMultiplier_UsesCacheAndSingleflight(t *testing.T) {
 	start := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(concurrent)
-	for i := 0; i < concurrent; i++ {
+	for i := range concurrent {
 		go func(idx int) {
 			defer wg.Done()
 			<-start
@@ -155,15 +172,6 @@ func TestUserGroupRateResolverResolve_InvalidCacheEntryLoadsRepoAndCaches(t *tes
 	require.Equal(t, int64(0), fallback)
 }
 
-type userGroupRateRepoHotpathStub struct {
-	UserGroupRateRepository
-
-	rate  *float64
-	err   error
-	wait  <-chan struct{}
-	calls atomic.Int64
-}
-
 func (s *userGroupRateRepoHotpathStub) GetByUserAndGroup(ctx context.Context, userID, groupID int64) (*float64, error) {
 	s.calls.Add(1)
 	if s.wait != nil {
@@ -188,14 +196,6 @@ func resetGatewayRateStatsForTest() {
 // GroupRateCacheStats 读取分组倍率缓存的累计观测值。
 func GroupRateCacheStats() (int64, int64, int64, int64, int64) {
 	return groupRateMetrics.Hit.Load(), groupRateMetrics.Miss.Load(), groupRateMetrics.Load.Load(), groupRateMetrics.Shared.Load(), groupRateMetrics.Fallback.Load()
-}
-
-type userGroupRateResolverRepoStub struct {
-	UserGroupRateRepository
-
-	rate  *float64
-	err   error
-	calls int
 }
 
 func (s *userGroupRateResolverRepoStub) GetByUserAndGroup(ctx context.Context, userID, groupID int64) (*float64, error) {

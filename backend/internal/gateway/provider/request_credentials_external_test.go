@@ -38,6 +38,138 @@ type grokOAuthClientStub struct {
 	exchangeRedirectURI string
 }
 
+// credentialReadStore 提供凭据测试需要的提供商读取方法。
+type credentialReadStore struct {
+	gatewayprovider.ExecutionProviderStore
+	providersByID map[int64]*gatewayprovider.ExecutionProvider
+}
+
+// 占锁夹具调用 Apply，并在读取阶段阻塞。
+// 取消占锁操作后等待它退出，不执行任何条件写入。
+type (
+	credentialMutationHoldKey struct{}
+	credentialMutationHold    struct {
+		core    *providercore.GrokCredentialRecovery
+		id      int64
+		started chan struct{}
+		done    chan struct{}
+		cancel  context.CancelFunc
+		restore func()
+	}
+)
+
+type tokenRefreshProviderRepo struct {
+	credentialReadStore
+	updateCalls                  int
+	fullUpdateCalls              int
+	updateCredentialsCalls       int
+	setErrorCalls                int
+	clearTempCalls               int
+	setTempUnschedCalls          int
+	updateExtraCalls             int
+	lastErrorMessage             string
+	lastTempUnschedReason        string
+	lastExtraUpdates             map[string]any
+	lastProvider                 *gatewayprovider.ExecutionProvider
+	updateErr                    error
+	cancelOnUpdate               context.CancelFunc
+	conditionalErrorCalls        int
+	conditionalTempCalls         int
+	conditionalSuccessCalls      int
+	conditionalErrorErr          error
+	conditionalTempErr           error
+	conditionalSuccessErr        error
+	snapshotReads                bool
+	respectReadContext           bool
+	getByIDCalls                 int
+	durableReadDelay             time.Duration
+	mutateSchedulingOnSuccessCAS bool
+	reauthorizeOnErrorCAS        bool
+	reauthorizeOnTempCAS         bool
+	repairProxyOnErrorCAS        bool
+	repairProxyOnTempCAS         bool
+	setErrorErr                  error
+	setTempUnschedErr            error
+	beforeConditionalState       func()
+}
+
+type tokenRefresherStub struct {
+	credentials map[string]any
+	err         error
+	calls       int
+}
+
+// 为网关测试提供提供商记录和存储参与能力，刷新逻辑由提供商模块执行。
+type tokenSourceFixtureReader struct {
+	source gatewayprovider.ExecutionProviderStore
+}
+
+type grokTokenCacheForProviderTest struct {
+	token        string
+	setKey       string
+	setToken     string
+	setTTL       time.Duration
+	lockResult   bool
+	releaseCalls int
+	deletedKeys  []string
+	deleteErr    error
+	getCalls     int
+	mu           sync.Mutex
+}
+
+type grokCredentialPersistingRepo struct {
+	*tokenRefreshProviderRepo
+}
+
+type grokCredentialProxyRepoStub struct {
+	egress.ProxyRepository
+	proxy *egress.Proxy
+	err   error
+}
+
+type grokCredentialBlockingRepo struct {
+	*tokenRefreshProviderRepo
+	setErrorStarted chan struct{}
+	setTempStarted  chan struct{}
+	onceError       sync.Once
+	onceTemp        sync.Once
+}
+
+type grokCredentialCommitThenCancelRepo struct {
+	*tokenRefreshProviderRepo
+	returnErr error
+}
+
+type grokCredentialUncommittedDeadlineRepo struct {
+	*tokenRefreshProviderRepo
+}
+
+type grokCredentialBlockingCache struct {
+	providercore.AccessTokenCache
+	deleteStarted chan struct{}
+	releaseDelete chan struct{}
+	once          sync.Once
+	mu            sync.Mutex
+	deleted       bool
+}
+
+type grokCredentialSequencedRepo struct {
+	*tokenRefreshProviderRepo
+	mu      sync.Mutex
+	latest  *gatewayprovider.ExecutionProvider
+	getCall int
+}
+
+type grokCredentialRereadFailureRepo struct {
+	*tokenRefreshProviderRepo
+	provider *gatewayprovider.ExecutionProvider
+	err      error
+}
+
+type grokCredentialCountingRefresher struct {
+	refreshCalls int
+}
+
 func (s *grokOAuthClientStub) ExchangeCode(_ context.Context, _, _, redirectURI, _, _ string) (*xai.TokenResponse, error) {
 	s.exchangeCalls++
 	s.exchangeRedirectURI = redirectURI
@@ -66,12 +198,6 @@ func newGrokAuthorizationForTest(proxies egress.ProxyRepository, client provider
 func stopGrokAuthorizationForTest(t *testing.T, authorization *providercore.GrokAuthorization) {
 	t.Helper()
 	require.NoError(t, authorization.StopContext(context.Background()))
-}
-
-// credentialReadStore 提供凭据测试需要的提供商读取方法。
-type credentialReadStore struct {
-	gatewayprovider.ExecutionProviderStore
-	providersByID map[int64]*gatewayprovider.ExecutionProvider
 }
 
 func (s *credentialReadStore) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
@@ -117,20 +243,6 @@ func newRequestCredentialsFixture(store gatewayprovider.ExecutionProviderStore, 
 	return &gatewayhttp.RequestCredentialExecutor{Runtime: &gatewayprovider.RequestCredentials{Source: source, HasGrokTokenSource: tokens != nil, Recovery: recovery, Runtime: blocks}}
 }
 
-// 占锁夹具调用 Apply，并在读取阶段阻塞。
-// 取消占锁操作后等待它退出，不执行任何条件写入。
-type (
-	credentialMutationHoldKey struct{}
-	credentialMutationHold    struct {
-		core    *providercore.GrokCredentialRecovery
-		id      int64
-		started chan struct{}
-		done    chan struct{}
-		cancel  context.CancelFunc
-		restore func()
-	}
-)
-
 func newCredentialMutationHold(core *providercore.GrokCredentialRecovery, id int64) *credentialMutationHold {
 	return &credentialMutationHold{core: core, id: id, started: make(chan struct{}), done: make(chan struct{})}
 }
@@ -168,41 +280,6 @@ func (h *credentialMutationHold) Unlock() {
 	if h.restore != nil {
 		h.restore()
 	}
-}
-
-type tokenRefreshProviderRepo struct {
-	credentialReadStore
-	updateCalls                  int
-	fullUpdateCalls              int
-	updateCredentialsCalls       int
-	setErrorCalls                int
-	clearTempCalls               int
-	setTempUnschedCalls          int
-	updateExtraCalls             int
-	lastErrorMessage             string
-	lastTempUnschedReason        string
-	lastExtraUpdates             map[string]any
-	lastProvider                 *gatewayprovider.ExecutionProvider
-	updateErr                    error
-	cancelOnUpdate               context.CancelFunc
-	conditionalErrorCalls        int
-	conditionalTempCalls         int
-	conditionalSuccessCalls      int
-	conditionalErrorErr          error
-	conditionalTempErr           error
-	conditionalSuccessErr        error
-	snapshotReads                bool
-	respectReadContext           bool
-	getByIDCalls                 int
-	durableReadDelay             time.Duration
-	mutateSchedulingOnSuccessCAS bool
-	reauthorizeOnErrorCAS        bool
-	reauthorizeOnTempCAS         bool
-	repairProxyOnErrorCAS        bool
-	repairProxyOnTempCAS         bool
-	setErrorErr                  error
-	setTempUnschedErr            error
-	beforeConditionalState       func()
 }
 
 func (r *tokenRefreshProviderRepo) Update(ctx context.Context, provider *gatewayprovider.ExecutionProvider) error {
@@ -467,12 +544,6 @@ func (r *tokenRefreshProviderRepo) UpdateExtra(ctx context.Context, id int64, up
 	return nil
 }
 
-type tokenRefresherStub struct {
-	credentials map[string]any
-	err         error
-	calls       int
-}
-
 func (r *tokenRefresherStub) CanRefresh(provider *providercore.Record) bool {
 	return true
 }
@@ -500,11 +571,6 @@ func grokCredentialStoredSnapshot(value *gatewayprovider.ExecutionProvider) *gat
 		copy.Record.Credentials = map[string]any{}
 	}
 	return copy
-}
-
-// 为网关测试提供提供商记录和存储参与能力，刷新逻辑由提供商模块执行。
-type tokenSourceFixtureReader struct {
-	source gatewayprovider.ExecutionProviderStore
 }
 
 func (r tokenSourceFixtureReader) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
@@ -539,19 +605,6 @@ func tokenSourceFixtureRepository(repo gatewayprovider.ExecutionProviderStore) p
 		}{reader, grok}
 	}
 	return reader
-}
-
-type grokTokenCacheForProviderTest struct {
-	token        string
-	setKey       string
-	setToken     string
-	setTTL       time.Duration
-	lockResult   bool
-	releaseCalls int
-	deletedKeys  []string
-	deleteErr    error
-	getCalls     int
-	mu           sync.Mutex
 }
 
 func (c *grokTokenCacheForProviderTest) GetAccessToken(context.Context, string) (string, error) {
@@ -678,10 +731,6 @@ func newGrokCredentialRefreshForTest(repo gatewayprovider.ExecutionProviderStore
 	return providercore.NewOAuthRefreshAPI(tokenSourceFixtureRepository(repo), cache, providercore.RefreshOptions{Now: time.Now, Warn: slog.Warn, Info: slog.Info, Error: slog.Error, Platform: providercore.ProviderRefreshPlatformPolicy()})
 }
 
-type grokCredentialPersistingRepo struct {
-	*tokenRefreshProviderRepo
-}
-
 func (r *grokCredentialPersistingRepo) SetError(ctx context.Context, id int64, message string) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -697,31 +746,8 @@ func (r *grokCredentialPersistingRepo) SetError(ctx context.Context, id int64, m
 	return nil
 }
 
-type grokCredentialProxyRepoStub struct {
-	egress.ProxyRepository
-	proxy *egress.Proxy
-	err   error
-}
-
 func (r *grokCredentialProxyRepoStub) GetByID(context.Context, int64) (*egress.Proxy, error) {
 	return r.proxy, r.err
-}
-
-type grokCredentialBlockingRepo struct {
-	*tokenRefreshProviderRepo
-	setErrorStarted chan struct{}
-	setTempStarted  chan struct{}
-	onceError       sync.Once
-	onceTemp        sync.Once
-}
-
-type grokCredentialCommitThenCancelRepo struct {
-	*tokenRefreshProviderRepo
-	returnErr error
-}
-
-type grokCredentialUncommittedDeadlineRepo struct {
-	*tokenRefreshProviderRepo
 }
 
 func (r *grokCredentialUncommittedDeadlineRepo) SetGrokCredentialErrorIfMatch(
@@ -810,32 +836,6 @@ func (r *grokCredentialBlockingRepo) SetGrokCredentialTempUnschedulableIfMatch(
 	r.onceTemp.Do(func() { close(r.setTempStarted) })
 	<-ctx.Done()
 	return false, ctx.Err()
-}
-
-type grokCredentialBlockingCache struct {
-	providercore.AccessTokenCache
-	deleteStarted chan struct{}
-	releaseDelete chan struct{}
-	once          sync.Once
-	mu            sync.Mutex
-	deleted       bool
-}
-
-type grokCredentialSequencedRepo struct {
-	*tokenRefreshProviderRepo
-	mu      sync.Mutex
-	latest  *gatewayprovider.ExecutionProvider
-	getCall int
-}
-
-type grokCredentialRereadFailureRepo struct {
-	*tokenRefreshProviderRepo
-	provider *gatewayprovider.ExecutionProvider
-	err      error
-}
-
-type grokCredentialCountingRefresher struct {
-	refreshCalls int
 }
 
 func (r *grokCredentialCountingRefresher) CacheKey(provider *providercore.Record) string {
@@ -1923,7 +1923,7 @@ func TestGrokCredentialRuntimeRollbackOwnership(t *testing.T) {
 
 	t.Run("serialized tentative rollbacks leave no block", func(t *testing.T) {
 		svc := newRequestCredentialsFixture(nil, nil)
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			mu := newCredentialMutationHold(svc.Runtime.Recovery, provider.Record.ID)
 			require.NoError(t, mu.Lock(context.Background()))
 			rollback := svc.Runtime.Runtime.BlockRollback(provider.Record.ID, time.Now().Add(time.Minute), "tentative")

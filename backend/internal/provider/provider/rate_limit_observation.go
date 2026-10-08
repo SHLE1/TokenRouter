@@ -15,6 +15,14 @@ import (
 	openaiupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// RateLimitObserver 解析供应商限流响应并调用健康状态写入函数。
+type RateLimitObserver struct {
+	Health          *providercore.HealthService
+	Plans           providercore.OpenAIPlanWriter
+	RetryOpenAI     func(*providercore.Record, http.Header, []byte) bool
+	NextGeminiDaily func() *int64
+}
+
 // Observe429 处理429限流错误
 // 解析响应头获取重置时间，标记提供商为限流状态
 func (s *RateLimitObserver) Observe429(ctx context.Context, provider *providercore.Record, headers http.Header, responseBody []byte) {
@@ -138,14 +146,6 @@ func (s *RateLimitObserver) PersistCodexSnapshot(ctx context.Context, value *pro
 		return
 	}
 	s.Health.PersistCodexObservation(ctx, value, openaiupstream.ParseCodexRateLimitHeaders(headers))
-}
-
-// RateLimitObserver 解析供应商限流响应并调用健康状态写入函数。
-type RateLimitObserver struct {
-	Health          *providercore.HealthService
-	Plans           providercore.OpenAIPlanWriter
-	RetryOpenAI     func(*providercore.Record, http.Header, []byte) bool
-	NextGeminiDaily func() *int64
 }
 
 func (s *RateLimitObserver) observeCNQuota(ctx context.Context, value *providercore.Record, body []byte) bool {

@@ -23,6 +23,9 @@ type openAIWSSessionPreemptKey struct {
 
 type openAIWSSessionPreemptContextKey struct{}
 
+// 旧注册表保留零值构造能力；唯一所有者代次与取消表位于 gateway/ws。
+type openAIWSSessionPreemptRegistry struct{ gatewayws.PreemptRegistry }
+
 // BeginOpenAIWSIngressSessionPreemption keeps a persistent inbound WS session
 // registered across upstream retry attempts. Nested forwarding calls reuse the
 // registration so returning from one attempt cannot create a preemption gap.
@@ -73,9 +76,6 @@ func newOpenAIWSSessionPreemptKey(groupID, apiKeyID int64, sessionHash string) (
 	}
 	return openAIWSSessionPreemptKey{groupID: groupID, apiKeyID: apiKeyID, sessionHash: sessionHash}, true
 }
-
-// 旧注册表保留零值构造能力；唯一所有者代次与取消表位于 gateway/ws。
-type openAIWSSessionPreemptRegistry struct{ gatewayws.PreemptRegistry }
 
 func (r *openAIWSSessionPreemptRegistry) Begin(key openAIWSSessionPreemptKey, cancel func()) (func(), bool) {
 	if r == nil {

@@ -46,6 +46,8 @@ import (
 	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
+var handlerStructuredLogCaptureMu sync.Mutex
+
 type auxiliaryHTTPRecorder struct {
 	// checkContext 让传输替身按请求取消状态拒绝发送。
 	checkContext bool
@@ -60,36 +62,6 @@ type auxiliaryHTTPRecorder struct {
 	err       error
 
 	lastTLSProfile *tlsfingerprint.Profile
-}
-
-func (u *auxiliaryHTTPRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
-	if u.checkContext && req.Context().Err() != nil {
-		return nil, req.Context().Err()
-	}
-	u.lastReq = req
-	u.lastProxyURL = proxyURL
-	if req != nil && req.Body != nil {
-		b, _ := io.ReadAll(req.Body)
-		u.lastBody = b
-		u.bodies = append(u.bodies, append([]byte(nil), b...))
-		_ = req.Body.Close()
-		req.Body = io.NopCloser(bytes.NewReader(b))
-	}
-	u.requests = append(u.requests, req)
-	if u.err != nil {
-		return nil, u.err
-	}
-	if len(u.responses) > 0 {
-		resp := u.responses[0]
-		u.responses = u.responses[1:]
-		return resp, nil
-	}
-	return u.resp, nil
-}
-
-func (u *auxiliaryHTTPRecorder) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
-	u.lastTLSProfile = profile
-	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
 // grokModelStateProviderRepo 在测试中记录 Grok 模型级状态。
@@ -107,28 +79,6 @@ type grokModelRateLimitCall struct {
 	reason     string
 }
 
-// SetModelRateLimit 记录 Grok 模型级状态写入，供规范模型键回归测试断言。
-func (r *grokModelStateProviderRepo) SetModelRateLimit(_ context.Context, id int64, scope string, resetAt time.Time, reason ...string) error {
-	call := grokModelRateLimitCall{providerID: id, scope: scope, resetAt: resetAt}
-	if len(reason) > 0 {
-		call.reason = reason[0]
-	}
-	r.modelRateLimitCalls = append(r.modelRateLimitCalls, call)
-	return nil
-}
-
-// handleGrokProviderUpstreamError 保留测试中的布尔断言写法；生产代码统一使用完整决策。
-func (s *wsExecutionFixture) handleGrokProviderUpstreamError(
-	ctx context.Context,
-	provider *gatewayadapter.ExecutionProvider,
-	statusCode int,
-	headers http.Header,
-	responseBody []byte,
-	requestedModel ...string,
-) bool {
-	return gatewayadapter.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, statusCode, headers, responseBody, "", requestedModel...).StopScheduling
-}
-
 // auxiliaryFixtureInputs 提供辅助请求测试所需的依赖。
 type auxiliaryFixtureInputs struct {
 	allowHTTP     bool
@@ -138,29 +88,6 @@ type auxiliaryFixtureInputs struct {
 	credentials   *provider.OpenAIExecutionCredentials
 	observer      *provideradapter.UpstreamHealth
 	authorization *provider.OpenAIAuthorization
-}
-
-func newAuxiliaryFixture(v auxiliaryFixtureInputs) *gatewayhttp.OpenAIAuxiliary {
-	blocks := provider.NewRuntimeBlockState(time.Now)
-	models := provider.NewModelTransientState(0)
-	credentials := v.credentials
-	if credentials == nil {
-		credentials = &provider.OpenAIExecutionCredentials{}
-	}
-	if v.store != nil {
-		credentials.Parent = func(ctx context.Context, id int64) (*provider.Record, error) {
-			a, err := v.store.GetByID(ctx, id)
-			return gatewayadapter.ExecutionRecord(a), err
-		}
-	}
-	identity := gatewayadapter.NewExecutionAgentIdentity(&provider.OpenAITaskCoordinator{}, v.store, nil, nil)
-	turns := &gatewayhttp.CodexTurnStateHeaders{Origins: session.NewCodexTurnOrigins(time.Now), TTL: func() time.Duration { return time.Hour }}
-	requests := &gatewayhttp.OpenAIRequests{Options: gatewayhttp.OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{AllowInsecureHTTP: v.allowHTTP}}, Providers: v.store, Identity: identity, Credentials: credentials, Transport: v.transport, Profiles: v.profiles, Turns: turns, ClientPolicy: &provideradapter.OpenAIProbePolicy{Available: true, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent, Profiles: v.profiles}, Failure: &gatewayhttp.UpstreamTransportFailure{Health: &provideradapter.TransportHealth{Runtime: blocks}}}
-	grok := &provideradapter.GrokHealth{Store: v.store, Health: v.observer, Runtime: blocks, ModelTransient: models, NormalizeModel: func(value *provider.Record, model string) string {
-		return (gatewayadapter.ModelPolicy{Record: value}).NormalizeOpenAI(model)
-	}}
-	output := &gatewayhttp.OpenAIResponseOutput{Options: gatewayhttp.OpenAIResponseOptions{Configured: true, ReadLimit: 128 * 1024 * 1024}, Health: &provideradapter.OpenAIResponseHealth{Health: v.observer, Runtime: blocks, ModelTransient: models}, GrokHealth: grok, Headers: egress.CompileHeaderFilter(egress.ResponseHeaderOptions{})}
-	return &gatewayhttp.OpenAIAuxiliary{Requests: requests, Output: output, Authorization: v.authorization, CodexUsage: &provideradapter.CodexUsageObserver{Store: v.store, Throttle: provider.NewWriteThrottle(30 * time.Second)}}
 }
 
 // wsFixtureOptions 保存传输测试使用的选项。
@@ -193,6 +120,152 @@ type wsExecutionFixture struct {
 	Text      *gatewayhttp.OpenAITextExecutor
 	choices   *selection.Compatible
 	options   *wsFixtureOptions
+}
+
+type openAIWSCaptureDialer struct {
+	mu          sync.Mutex
+	conn        *openAIWSCaptureConn
+	lastHeaders http.Header
+	handshake   http.Header
+	dialCount   int
+}
+
+type openAIWSCaptureConn struct {
+	mu         sync.Mutex
+	readDelays []time.Duration
+	events     [][]byte
+	lastWrite  map[string]any
+	writes     []map[string]any
+	closed     bool
+}
+
+type openAIWSFakeConn struct {
+	mu      sync.Mutex
+	closed  bool
+	payload [][]byte
+}
+
+type httpUpstreamSequenceRecorder struct {
+	mu     sync.Mutex
+	bodies [][]byte
+	reqs   []*http.Request
+
+	responses []*http.Response
+	errs      []error
+	callCount int
+}
+
+type handlerInMemoryLogSink struct {
+	mu     sync.Mutex
+	events []*logging.LogEvent
+}
+
+type grokFixtureProviders struct {
+	gatewaytestkit.HealthStoreBase
+	providersByID map[int64]*gatewayadapter.ExecutionProvider
+	getByIDCalls  int
+}
+
+type grokQuotaProviderRepo struct {
+	*grokFixtureProviders
+	updates               map[int64]map[string]any
+	updateCalls           int
+	rateLimitedCalls      int
+	lastRateLimitedID     int64
+	lastRateLimitResetAt  time.Time
+	tempUnschedCalls      int
+	lastTempUnschedID     int64
+	lastTempUnschedUntil  time.Time
+	lastTempUnschedReason string
+	recoveryClearCalls    int
+	recoveryObservedAt    time.Time
+	recoveryObservedReset time.Time
+	recoveryClearResult   bool
+}
+
+type openAIStream403ProviderRepo struct {
+	gatewayadapter.ExecutionProviderStore
+
+	setErrorCalls int
+}
+
+type transientCooldownProviderRepo struct {
+	gatewayadapter.ExecutionProviderStore
+}
+
+func (u *auxiliaryHTTPRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
+	if u.checkContext && req.Context().Err() != nil {
+		return nil, req.Context().Err()
+	}
+	u.lastReq = req
+	u.lastProxyURL = proxyURL
+	if req != nil && req.Body != nil {
+		b, _ := io.ReadAll(req.Body)
+		u.lastBody = b
+		u.bodies = append(u.bodies, append([]byte(nil), b...))
+		_ = req.Body.Close()
+		req.Body = io.NopCloser(bytes.NewReader(b))
+	}
+	u.requests = append(u.requests, req)
+	if u.err != nil {
+		return nil, u.err
+	}
+	if len(u.responses) > 0 {
+		resp := u.responses[0]
+		u.responses = u.responses[1:]
+		return resp, nil
+	}
+	return u.resp, nil
+}
+
+func (u *auxiliaryHTTPRecorder) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
+	u.lastTLSProfile = profile
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
+}
+
+// SetModelRateLimit 记录 Grok 模型级状态写入，供规范模型键回归测试断言。
+func (r *grokModelStateProviderRepo) SetModelRateLimit(_ context.Context, id int64, scope string, resetAt time.Time, reason ...string) error {
+	call := grokModelRateLimitCall{providerID: id, scope: scope, resetAt: resetAt}
+	if len(reason) > 0 {
+		call.reason = reason[0]
+	}
+	r.modelRateLimitCalls = append(r.modelRateLimitCalls, call)
+	return nil
+}
+
+// handleGrokProviderUpstreamError 保留测试中的布尔断言写法；生产代码统一使用完整决策。
+func (s *wsExecutionFixture) handleGrokProviderUpstreamError(
+	ctx context.Context,
+	provider *gatewayadapter.ExecutionProvider,
+	statusCode int,
+	headers http.Header,
+	responseBody []byte,
+	requestedModel ...string,
+) bool {
+	return gatewayadapter.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, statusCode, headers, responseBody, "", requestedModel...).StopScheduling
+}
+
+func newAuxiliaryFixture(v auxiliaryFixtureInputs) *gatewayhttp.OpenAIAuxiliary {
+	blocks := provider.NewRuntimeBlockState(time.Now)
+	models := provider.NewModelTransientState(0)
+	credentials := v.credentials
+	if credentials == nil {
+		credentials = &provider.OpenAIExecutionCredentials{}
+	}
+	if v.store != nil {
+		credentials.Parent = func(ctx context.Context, id int64) (*provider.Record, error) {
+			a, err := v.store.GetByID(ctx, id)
+			return gatewayadapter.ExecutionRecord(a), err
+		}
+	}
+	identity := gatewayadapter.NewExecutionAgentIdentity(&provider.OpenAITaskCoordinator{}, v.store, nil, nil)
+	turns := &gatewayhttp.CodexTurnStateHeaders{Origins: session.NewCodexTurnOrigins(time.Now), TTL: func() time.Duration { return time.Hour }}
+	requests := &gatewayhttp.OpenAIRequests{Options: gatewayhttp.OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{AllowInsecureHTTP: v.allowHTTP}}, Providers: v.store, Identity: identity, Credentials: credentials, Transport: v.transport, Profiles: v.profiles, Turns: turns, ClientPolicy: &provideradapter.OpenAIProbePolicy{Available: true, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent, Profiles: v.profiles}, Failure: &gatewayhttp.UpstreamTransportFailure{Health: &provideradapter.TransportHealth{Runtime: blocks}}}
+	grok := &provideradapter.GrokHealth{Store: v.store, Health: v.observer, Runtime: blocks, ModelTransient: models, NormalizeModel: func(value *provider.Record, model string) string {
+		return (gatewayadapter.ModelPolicy{Record: value}).NormalizeOpenAI(model)
+	}}
+	output := &gatewayhttp.OpenAIResponseOutput{Options: gatewayhttp.OpenAIResponseOptions{Configured: true, ReadLimit: 128 * 1024 * 1024}, Health: &provideradapter.OpenAIResponseHealth{Health: v.observer, Runtime: blocks, ModelTransient: models}, GrokHealth: grok, Headers: egress.CompileHeaderFilter(egress.ResponseHeaderOptions{})}
+	return &gatewayhttp.OpenAIAuxiliary{Requests: requests, Output: output, Authorization: v.authorization, CodexUsage: &provideradapter.CodexUsageObserver{Store: v.store, Throttle: provider.NewWriteThrottle(30 * time.Second)}}
 }
 
 func wsFixturePoolOptions(options *wsFixtureOptions) *openaiws.WSPoolOptions {
@@ -347,14 +420,6 @@ func (s *wsExecutionFixture) ProxyResponsesWebSocketFromClient(ctx context.Conte
 	return s.OpenAIWebSocketExecutor.ProxyResponsesWebSocketFromClient(ctx, c, conn, &copy, token, first, hooks)
 }
 
-type openAIWSCaptureDialer struct {
-	mu          sync.Mutex
-	conn        *openAIWSCaptureConn
-	lastHeaders http.Header
-	handshake   http.Header
-	dialCount   int
-}
-
 func (d *openAIWSCaptureDialer) Dial(
 	ctx context.Context,
 	wsURL string,
@@ -378,15 +443,6 @@ func (d *openAIWSCaptureDialer) DialCount() int {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.dialCount
-}
-
-type openAIWSCaptureConn struct {
-	mu         sync.Mutex
-	readDelays []time.Duration
-	events     [][]byte
-	lastWrite  map[string]any
-	writes     []map[string]any
-	closed     bool
 }
 
 func (c *openAIWSCaptureConn) WriteJSON(ctx context.Context, value any) error {
@@ -484,12 +540,6 @@ func cloneMapStringAny(src map[string]any) map[string]any {
 	return dst
 }
 
-type openAIWSFakeConn struct {
-	mu      sync.Mutex
-	closed  bool
-	payload [][]byte
-}
-
 func (c *openAIWSFakeConn) WriteJSON(ctx context.Context, value any) error {
 	_ = ctx
 	c.mu.Lock()
@@ -522,16 +572,6 @@ func (c *openAIWSFakeConn) Close() error {
 	defer c.mu.Unlock()
 	c.closed = true
 	return nil
-}
-
-type httpUpstreamSequenceRecorder struct {
-	mu     sync.Mutex
-	bodies [][]byte
-	reqs   []*http.Request
-
-	responses []*http.Response
-	errs      []error
-	callCount int
 }
 
 func (u *httpUpstreamSequenceRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
@@ -571,11 +611,6 @@ func (s *wsExecutionFixture) claimOpenAIWSSessionPreemptOwner(ctx context.Contex
 
 func (s *wsExecutionFixture) releaseOpenAIWSSessionPreemptOwner(ctx context.Context, key openAIWSSessionPreemptKey, owner string) {
 	s.wsPreemption().Release(ctx, gatewayws.PreemptKey{GroupID: key.groupID, APIKeyID: key.apiKeyID, SessionHash: key.sessionHash}, owner)
-}
-
-type handlerInMemoryLogSink struct {
-	mu     sync.Mutex
-	events []*logging.LogEvent
 }
 
 func (s *handlerInMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
@@ -637,8 +672,6 @@ func (s *handlerInMemoryLogSink) FieldValueForMessage(message, field string) (an
 	return nil, false
 }
 
-var handlerStructuredLogCaptureMu sync.Mutex
-
 func (s *handlerInMemoryLogSink) ContainsMessage(substr string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -648,12 +681,6 @@ func (s *handlerInMemoryLogSink) ContainsMessage(substr string) bool {
 		}
 	}
 	return false
-}
-
-type grokFixtureProviders struct {
-	gatewaytestkit.HealthStoreBase
-	providersByID map[int64]*gatewayadapter.ExecutionProvider
-	getByIDCalls  int
 }
 
 func (r *grokFixtureProviders) GetByID(_ context.Context, id int64) (*gatewayadapter.ExecutionProvider, error) {
@@ -687,23 +714,6 @@ func captureHandlerStructuredLog(t *testing.T) (*handlerInMemoryLogSink, func())
 		logging.SetSink(nil)
 		handlerStructuredLogCaptureMu.Unlock()
 	}
-}
-
-type grokQuotaProviderRepo struct {
-	*grokFixtureProviders
-	updates               map[int64]map[string]any
-	updateCalls           int
-	rateLimitedCalls      int
-	lastRateLimitedID     int64
-	lastRateLimitResetAt  time.Time
-	tempUnschedCalls      int
-	lastTempUnschedID     int64
-	lastTempUnschedUntil  time.Time
-	lastTempUnschedReason string
-	recoveryClearCalls    int
-	recoveryObservedAt    time.Time
-	recoveryObservedReset time.Time
-	recoveryClearResult   bool
 }
 
 func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {
@@ -753,19 +763,9 @@ func (r *grokQuotaProviderRepo) SetTempUnschedulable(_ context.Context, id int64
 	return nil
 }
 
-type openAIStream403ProviderRepo struct {
-	gatewayadapter.ExecutionProviderStore
-
-	setErrorCalls int
-}
-
 func (r *openAIStream403ProviderRepo) SetError(context.Context, int64, string) error {
 	r.setErrorCalls++
 	return nil
-}
-
-type transientCooldownProviderRepo struct {
-	gatewayadapter.ExecutionProviderStore
 }
 
 func (transientCooldownProviderRepo) SetOverloaded(context.Context, int64, time.Time) error {

@@ -5,6 +5,17 @@ import (
 	"strings"
 )
 
+// InternalGeminiGenerationOptions 是平台已确定的生成约束，转换不识别模型名称。
+type InternalGeminiGenerationOptions struct {
+	DefaultOutputTokens    int
+	MaxOutputTokens        int
+	ReasoningModel         bool
+	StopSequences          []string
+	AdaptiveThinkingBudget int
+	ThinkingBudgetLimit    int
+	BudgetPadding          int
+}
+
 func InternalHasWebSearchTool(tools []ClaudeTool) bool {
 	for _, tool := range tools {
 		if InternalIsWebSearchTool(tool) {
@@ -87,7 +98,6 @@ func BuildInternalGeminiTools(tools []ClaudeTool) ([]GeminiToolDeclaration, []st
 			}
 			description = tool.Custom.Description
 			inputSchema = tool.Custom.InputSchema
-
 		} else {
 			// 标准格式: 从顶层字段获取
 			description = tool.Description
@@ -222,15 +232,4 @@ func EnsureMaxTokensGreaterThanBudget(maxTokens, budgetTokens, padding int) (int
 		return budgetTokens + padding, true
 	}
 	return maxTokens, false
-}
-
-// InternalGeminiGenerationOptions 是平台已确定的生成约束，转换不识别模型名称。
-type InternalGeminiGenerationOptions struct {
-	DefaultOutputTokens    int
-	MaxOutputTokens        int
-	ReasoningModel         bool
-	StopSequences          []string
-	AdaptiveThinkingBudget int
-	ThinkingBudgetLimit    int
-	BudgetPadding          int
 }

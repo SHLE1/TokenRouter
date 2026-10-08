@@ -15,6 +15,20 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 )
 
+// expiryChannelOrders 提供测试订单数据，过期运行时、渠道绑定和 HTTP 取消使用生产实现。
+type expiryChannelOrders struct {
+	payment.FulfillmentStore
+	nextPhase atomic.Int32
+}
+
+type expiryChannelInstances struct{ payment.BindingStore }
+
+type expiryHTTPProvider struct {
+	payment.Provider
+	client *http.Client
+	url    string
+}
+
 func TestPaymentExpiryStopCancelsChannelAndPreventsNextPhase(t *testing.T) {
 	entered := make(chan struct{})
 	cancelled := make(chan struct{})
@@ -48,12 +62,6 @@ func TestPaymentExpiryStopCancelsChannelAndPreventsNextPhase(t *testing.T) {
 	require.Zero(t, store.nextPhase.Load())
 }
 
-// expiryChannelOrders 提供测试订单数据，过期运行时、渠道绑定和 HTTP 取消使用生产实现。
-type expiryChannelOrders struct {
-	payment.FulfillmentStore
-	nextPhase atomic.Int32
-}
-
 func (s *expiryChannelOrders) PendingReconciliation(context.Context, time.Time, int) ([]*payment.Order, error) {
 	return []*payment.Order{{ID: 1, PaymentType: payment.TypeAlipay, OutTradeNo: "test-channel-cancel", Status: payment.OrderStatusPending}}, nil
 }
@@ -73,20 +81,12 @@ func (s *expiryChannelOrders) ExpiredPending(context.Context, time.Time) ([]*pay
 	return nil, nil
 }
 
-type expiryChannelInstances struct{ payment.BindingStore }
-
 func (expiryChannelInstances) ListInstances(context.Context, payment.InstanceFilter) ([]*payment.ProviderInstance, error) {
 	return nil, nil
 }
 
 func (expiryChannelInstances) CountEnabledInstances(context.Context, string) (int, error) {
 	return 0, nil
-}
-
-type expiryHTTPProvider struct {
-	payment.Provider
-	client *http.Client
-	url    string
 }
 
 func (expiryHTTPProvider) ProviderKey() string { return payment.TypeAlipay }

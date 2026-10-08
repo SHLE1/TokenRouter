@@ -17,14 +17,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/search/contract"
 )
 
-type (
-	SearchRequest  = contract.SearchRequest
-	SearchResponse = contract.SearchResponse
-	SearchResult   = contract.SearchResult
-	Provider       = contract.Provider
-	ProviderConfig = contract.ProviderConfig
-)
-
 const (
 	defaultMaxResults    = contract.DefaultMaxResults
 	proxyDialTimeout     = 3 * time.Second
@@ -32,6 +24,14 @@ const (
 	searchDataTimeout    = 60 * time.Second
 	searchRequestTimeout = searchDataTimeout + proxyDialTimeout
 	maxCachedClients     = 100
+)
+
+type (
+	SearchRequest  = contract.SearchRequest
+	SearchResponse = contract.SearchResponse
+	SearchResult   = contract.SearchResult
+	Provider       = contract.Provider
+	ProviderConfig = contract.ProviderConfig
 )
 
 type Executor struct {

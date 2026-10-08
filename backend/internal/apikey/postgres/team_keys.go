@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"time"
 
-	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/team"
 )
+
+// TeamKeys 拥有团队 Key 的 SQL 操作；成员事务必须显式传入同一连接。
+type TeamKeys struct{ db *sql.DB }
+
+func NewTeamKeys(db *sql.DB) *TeamKeys { return &TeamKeys{db: db} }
 
 func (r *TeamKeys) ListTeamKeyStrings(ctx context.Context, teamID int64) ([]string, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT key FROM api_keys WHERE team_id = $1 AND deleted_at IS NULL`, teamID)
@@ -137,11 +141,6 @@ func batchImageNullTimePtr(v sql.NullTime) *time.Time {
 	}
 	return &v.Time
 }
-
-// TeamKeys 拥有团队 Key 的 SQL 操作；成员事务必须显式传入同一连接。
-type TeamKeys struct{ db *sql.DB }
-
-func NewTeamKeys(db *sql.DB) *TeamKeys { return &TeamKeys{db: db} }
 
 // DisableMemberInTx 参与成员移除，不取得或结束事务。
 func (k *TeamKeys) DisableMemberInTx(ctx context.Context, tx *sql.Tx, teamID, userID int64, now time.Time) error {

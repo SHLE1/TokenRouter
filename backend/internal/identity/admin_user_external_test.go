@@ -25,6 +25,119 @@ type balanceUserRepoStub struct {
 	changes []identity.BalanceChange
 }
 
+type balanceRedeemRepoStub struct {
+	billing.RedeemCodeRepository
+	created []*billing.RedeemCode
+}
+
+type authCacheInvalidatorStub struct {
+	userIDs  []int64
+	groupIDs []int64
+	keys     []string
+}
+
+type adminRechargeAffiliateAccruerStub struct {
+	calls  []adminRechargeAffiliateAccrual
+	rebate float64
+	err    error
+}
+
+// adminRechargeAffiliateAccrual 记录测试中收到的返利计提参数。
+type adminRechargeAffiliateAccrual struct {
+	userID int64
+	amount float64
+}
+
+// rechargeSettingsFixture 使用推广设置读取器查询管理员充值返利开关。
+type rechargeSettingsFixture struct {
+	identity.AdminUserSettings
+	runtime *promotion.RuntimeSettings
+}
+
+type batchLimitsUserRepoStub struct {
+	identity.UserRepository
+	calls       int
+	userIDs     []int64
+	concurrency *int
+	rpmLimit    *int
+	affected    int
+	err         error
+}
+
+// batchLimitsInvalidator 记录批量操作成功后的认证缓存失效。
+type batchLimitsInvalidator struct{ userIDs []int64 }
+
+// adminCreationSettingsStore 按键读取测试设置，缺键时返回 ErrSettingNotFound。
+type adminCreationSettingsStore struct{ authSourceDefaultsRepoStub }
+
+// adminCreationSettings 组合认证运行设置和注册赠送设置读取器。
+type adminCreationSettings struct {
+	*identity.RuntimeSettings
+	*identity.GrantSettings
+}
+
+type userRepoStubForListUsers struct {
+	userRepoStub
+	users                 []identity.User
+	err                   error
+	listWithFiltersParams pagination.PaginationParams
+	lastUsedByUserID      map[int64]*time.Time
+	lastUsedErr           error
+}
+
+type userGroupRateRepoStubForListUsers struct {
+	batchCalls int
+	singleCall []int64
+
+	batchErr  error
+	batchData map[int64]map[int64]float64
+
+	singleErr  map[int64]error
+	singleData map[int64]map[int64]float64
+}
+
+// roleGuardUserRepoStub 在 rpmUserRepoStub 上提供管理员计数，检查最后一个管理员的降级限制。
+type roleGuardUserRepoStub struct {
+	*rpmUserRepoStub
+	adminTotal int64
+	listCalls  int
+}
+
+type rpmStatusUserRepoStub struct {
+	identity.UserRepository
+
+	user *identity.User
+}
+
+type rpmStatusAPIKeyRepoStub struct {
+	identity.AdminKeyReader
+	keys []identity.AdminKeySummary
+}
+
+type rpmStatusGroupRepoStub struct {
+	identity.AdminGroupReader
+
+	groups map[int64]*identity.AdminGroup
+}
+
+type rpmStatusRateRepoStub struct {
+	billing.UserGroupRateRepository
+	overrides map[int64]*int
+}
+
+type rpmStatusCacheStub struct {
+	scheduler.UserRPMCache
+	userUsed  int
+	groupUsed map[int64]int
+}
+
+// rpmUserRepoStub 使用 userRepoStub，在 Update 时复制入参以检查修改后的 RPMLimit。
+type rpmUserRepoStub struct {
+	*userRepoStub
+	lastUpdated *identity.User
+	lastFields  identity.UserUpdateFields
+}
+
 func (s *balanceUserRepoStub) AdjustBalance(ctx context.Context, id int64, delta float64) (identity.BalanceChange, error) {
 	return s.apply(func(current float64) float64 { return current + delta })
 }
@@ -50,11 +163,6 @@ func (s *balanceUserRepoStub) apply(next func(current float64) float64) (identit
 	return change, nil
 }
 
-type balanceRedeemRepoStub struct {
-	billing.RedeemCodeRepository
-	created []*billing.RedeemCode
-}
-
 func (s *balanceRedeemRepoStub) Create(ctx context.Context, code *billing.RedeemCode) error {
 	if code == nil {
 		return nil
@@ -62,24 +170,6 @@ func (s *balanceRedeemRepoStub) Create(ctx context.Context, code *billing.Redeem
 	clone := *code
 	s.created = append(s.created, &clone)
 	return nil
-}
-
-type authCacheInvalidatorStub struct {
-	userIDs  []int64
-	groupIDs []int64
-	keys     []string
-}
-
-type adminRechargeAffiliateAccruerStub struct {
-	calls  []adminRechargeAffiliateAccrual
-	rebate float64
-	err    error
-}
-
-// adminRechargeAffiliateAccrual 记录测试中收到的返利计提参数。
-type adminRechargeAffiliateAccrual struct {
-	userID int64
-	amount float64
 }
 
 func (s *adminRechargeAffiliateAccruerStub) AccrueInviteRebate(_ context.Context, userID int64, amount float64) (float64, error) {
@@ -248,12 +338,6 @@ func (*balanceRedeemRepoStub) CreateUsage(context.Context, *billing.RedeemCodeUs
 	return nil
 }
 
-// rechargeSettingsFixture 使用推广设置读取器查询管理员充值返利开关。
-type rechargeSettingsFixture struct {
-	identity.AdminUserSettings
-	runtime *promotion.RuntimeSettings
-}
-
 func (s rechargeSettingsFixture) IsAffiliateAdminRechargeEnabled(ctx context.Context) bool {
 	return s.runtime.IsAffiliateAdminRechargeEnabled(ctx)
 }
@@ -268,16 +352,6 @@ func newBalanceAdminForTest(users *balanceUserRepoStub, records *balanceRedeemRe
 		d.Affiliates = affiliate
 	}
 	return identity.NewUserAdmin(d)
-}
-
-type batchLimitsUserRepoStub struct {
-	identity.UserRepository
-	calls       int
-	userIDs     []int64
-	concurrency *int
-	rpmLimit    *int
-	affected    int
-	err         error
 }
 
 func (s *batchLimitsUserRepoStub) BatchUpdateLimits(_ context.Context, userIDs []int64, concurrency, rpmLimit *int) (int, error) {
@@ -348,9 +422,6 @@ func TestAdminServiceBatchUpdateLimitsRequiresAField(t *testing.T) {
 func pointerToInt(value int) *int {
 	return &value
 }
-
-// batchLimitsInvalidator 记录批量操作成功后的认证缓存失效。
-type batchLimitsInvalidator struct{ userIDs []int64 }
 
 func (s *batchLimitsInvalidator) InvalidateAuthCacheByUserID(_ context.Context, id int64) {
 	s.userIDs = append(s.userIDs, id)
@@ -535,21 +606,12 @@ func TestAdminService_CreateUser_AssignsDefaultSubscriptions(t *testing.T) {
 	require.Equal(t, int64(5), assigner.calls[0].PlanID)
 }
 
-// adminCreationSettingsStore 按键读取测试设置，缺键时返回 ErrSettingNotFound。
-type adminCreationSettingsStore struct{ authSourceDefaultsRepoStub }
-
 func (s *adminCreationSettingsStore) GetValue(_ context.Context, key string) (string, error) {
 	value, ok := s.values[key]
 	if !ok {
 		return "", settingscore.ErrSettingNotFound
 	}
 	return value, nil
-}
-
-// adminCreationSettings 组合认证运行设置和注册赠送设置读取器。
-type adminCreationSettings struct {
-	*identity.RuntimeSettings
-	*identity.GrantSettings
 }
 
 func newAdminCreationSettings(repo *adminCreationSettingsStore, opts identity.GrantSettingsOptions) *adminCreationSettings {
@@ -612,15 +674,6 @@ func TestAdminService_GetUserIncludeDeleted(t *testing.T) {
 	require.NotNil(t, got.DeletedAt)
 }
 
-type userRepoStubForListUsers struct {
-	userRepoStub
-	users                 []identity.User
-	err                   error
-	listWithFiltersParams pagination.PaginationParams
-	lastUsedByUserID      map[int64]*time.Time
-	lastUsedErr           error
-}
-
 func (s *userRepoStubForListUsers) ListWithFilters(_ context.Context, params pagination.PaginationParams, _ identity.UserListFilters) ([]identity.User, *pagination.PaginationResult, error) {
 	s.listWithFiltersParams = params
 	if s.err != nil {
@@ -653,17 +706,6 @@ func (s *userRepoStubForListUsers) GetLatestUsedAtByUserID(_ context.Context, us
 		return nil, s.lastUsedErr
 	}
 	return s.lastUsedByUserID[userID], nil
-}
-
-type userGroupRateRepoStubForListUsers struct {
-	batchCalls int
-	singleCall []int64
-
-	batchErr  error
-	batchData map[int64]map[int64]float64
-
-	singleErr  map[int64]error
-	singleData map[int64]map[int64]float64
 }
 
 func (s *userGroupRateRepoStubForListUsers) GetByUserIDs(_ context.Context, _ []int64) (map[int64]map[int64]float64, error) {
@@ -875,13 +917,6 @@ func TestAdminService_UpdateUser_InvalidRoleRejected(t *testing.T) {
 	require.Nil(t, repo.lastUpdated, "非法角色不应触发持久化")
 }
 
-// roleGuardUserRepoStub 在 rpmUserRepoStub 上提供管理员计数，检查最后一个管理员的降级限制。
-type roleGuardUserRepoStub struct {
-	*rpmUserRepoStub
-	adminTotal int64
-	listCalls  int
-}
-
 func (s *roleGuardUserRepoStub) ListWithFilters(_ context.Context, _ pagination.PaginationParams, _ identity.UserListFilters) ([]identity.User, *pagination.PaginationResult, error) {
 	s.listCalls++
 	return nil, &pagination.PaginationResult{Total: s.adminTotal}, nil
@@ -923,48 +958,20 @@ func TestAdminService_UpdateUser_PromoteDoesNotCountAdmins(t *testing.T) {
 	require.Equal(t, 0, repo.listCalls, "升级路径不应触发管理员计数")
 }
 
-type rpmStatusUserRepoStub struct {
-	identity.UserRepository
-
-	user *identity.User
-}
-
 func (s *rpmStatusUserRepoStub) GetByID(_ context.Context, _ int64) (*identity.User, error) {
 	return s.user, nil
-}
-
-type rpmStatusAPIKeyRepoStub struct {
-	identity.AdminKeyReader
-	keys []identity.AdminKeySummary
 }
 
 func (s *rpmStatusAPIKeyRepoStub) List(_ context.Context, _ int64, _, _ int, _, _ string) ([]identity.AdminKeySummary, int64, error) {
 	return s.keys, int64(len(s.keys)), nil
 }
 
-type rpmStatusGroupRepoStub struct {
-	identity.AdminGroupReader
-
-	groups map[int64]*identity.AdminGroup
-}
-
 func (s *rpmStatusGroupRepoStub) GetByIDLite(_ context.Context, id int64) (*identity.AdminGroup, error) {
 	return s.groups[id], nil
 }
 
-type rpmStatusRateRepoStub struct {
-	billing.UserGroupRateRepository
-	overrides map[int64]*int
-}
-
 func (s *rpmStatusRateRepoStub) GetRPMOverrideByUserAndGroup(_ context.Context, _, groupID int64) (*int, error) {
 	return s.overrides[groupID], nil
-}
-
-type rpmStatusCacheStub struct {
-	scheduler.UserRPMCache
-	userUsed  int
-	groupUsed map[int64]int
 }
 
 func (s *rpmStatusCacheStub) IncrementUserGroupRPM(context.Context, int64, int64) (int, error) {
@@ -1024,13 +1031,6 @@ func TestAdminService_GetUserRPMStatus_AggregatesUserAndGroupLimits(t *testing.T
 			{GroupID: groupTwoID, GroupName: "group-two", Used: 4, Limit: 7, Source: "override"},
 		},
 	}, status)
-}
-
-// rpmUserRepoStub 使用 userRepoStub，在 Update 时复制入参以检查修改后的 RPMLimit。
-type rpmUserRepoStub struct {
-	*userRepoStub
-	lastUpdated *identity.User
-	lastFields  identity.UserUpdateFields
 }
 
 func (s *rpmUserRepoStub) Update(_ context.Context, user *identity.User, fields identity.UserUpdateFields) error {

@@ -33,16 +33,26 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// grokMediaFixture 只装配媒体场景使用的固定依赖。
-func grokMediaFixture(transport httpclient.UpstreamTransport) *GrokExecutor {
-	return &GrokExecutor{Credentials: gatewaytestkit.RequestCredentials(nil, nil, nil, nil), Transport: transport, Output: &OpenAIResponseOutput{Options: OpenAIResponseOptions{ReadLimit: 128 * 1024 * 1024}}, Health: &provideradapter.GrokHealth{}, Routes: gatewayprovider.GrokRoutes{Validate: (egress.OperatorURLPolicy{}).Validate}, Failure: &UpstreamTransportFailure{}}
-}
-
 type grokMediaContentUpstreamStub struct {
 	request   *http.Request
 	requests  []*http.Request
 	response  *http.Response
 	responses []*http.Response
+}
+
+// grokPoolPolicyProviderRepo 记录 Grok 池模式错误策略产生的提供商状态写入。
+type grokPoolPolicyProviderRepo struct {
+	*grokQuotaProviderRepo
+	setErrorCalls            int
+	overloadedCalls          int
+	modelRateLimitCalls      int
+	lastModelRateLimitScope  string
+	lastModelRateLimitReason string
+}
+
+// grokMediaFixture 只装配媒体场景使用的固定依赖。
+func grokMediaFixture(transport httpclient.UpstreamTransport) *GrokExecutor {
+	return &GrokExecutor{Credentials: gatewaytestkit.RequestCredentials(nil, nil, nil, nil), Transport: transport, Output: &OpenAIResponseOutput{Options: OpenAIResponseOptions{ReadLimit: 128 * 1024 * 1024}}, Health: &provideradapter.GrokHealth{}, Routes: gatewayprovider.GrokRoutes{Validate: (egress.OperatorURLPolicy{}).Validate}, Failure: &UpstreamTransportFailure{}}
 }
 
 func (s *grokMediaContentUpstreamStub) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
@@ -1233,16 +1243,6 @@ func TestGrokMedia429FailoverPreservesRetryAfter(t *testing.T) {
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusTooManyRequests, failoverErr.StatusCode)
 	require.Equal(t, "45", http.Header(failoverErr.ResponseHeaders).Get("Retry-After"))
-}
-
-// grokPoolPolicyProviderRepo 记录 Grok 池模式错误策略产生的提供商状态写入。
-type grokPoolPolicyProviderRepo struct {
-	*grokQuotaProviderRepo
-	setErrorCalls            int
-	overloadedCalls          int
-	modelRateLimitCalls      int
-	lastModelRateLimitScope  string
-	lastModelRateLimitReason string
 }
 
 func (r *grokPoolPolicyProviderRepo) SetError(_ context.Context, _ int64, _ string) error {

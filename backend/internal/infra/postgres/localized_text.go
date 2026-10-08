@@ -4,8 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/lib/pq"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
 // LocalizedTextExpression 为聚合查询生成与内容解析器相同的原文和有效译文选择。

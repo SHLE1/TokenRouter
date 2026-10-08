@@ -24,6 +24,29 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+// HTTPUpstreamSuite HTTP 上游服务测试套件
+// 使用 testify/suite 组织测试，支持 SetupTest 初始化
+type HTTPUpstreamSuite struct {
+	suite.Suite
+	cfg *Options // 测试用配置
+}
+
+// roundTripFunc 用测试函数处理 HTTP 请求。
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+// testUpstreamPool 执行请求的客户端适配与结果通知。
+type testUpstreamPool struct {
+	transport http.RoundTripper
+}
+
+// upstreamClientView 记录执行请求时使用的客户端、代理和 TLS 配置。
+type upstreamClientView struct {
+	tlsProfile   *tlsfingerprint.Profile
+	client       *http.Client
+	proxyKey     string
+	protocolMode string
+}
+
 func TestHTTPUpstreamDoCanDisableRedirectsPerRequest(t *testing.T) {
 	var redirectedCalls atomic.Int64
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -513,13 +536,6 @@ func TestApplyGrokCLIProxyHeaders(t *testing.T) {
 		require.Empty(t, req.Header.Get("X-XAI-Token-Auth"))
 		require.Equal(t, "tokenrouter-grok/1.0", req.Header.Get("User-Agent"))
 	})
-}
-
-// HTTPUpstreamSuite HTTP 上游服务测试套件
-// 使用 testify/suite 组织测试，支持 SetupTest 初始化
-type HTTPUpstreamSuite struct {
-	suite.Suite
-	cfg *Options // 测试用配置
 }
 
 // SetupTest 每个测试用例执行前的初始化
@@ -1036,9 +1052,6 @@ func TestHTTPUpstreamPublicHostsOnlyPreservesExistingRedirectPolicy(t *testing.T
 	require.NotSame(t, base, client)
 }
 
-// roundTripFunc 用测试函数处理 HTTP 请求。
-type roundTripFunc func(*http.Request) (*http.Response, error)
-
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
@@ -1054,11 +1067,6 @@ func newLocalTestServer(tb testing.TB, handler http.Handler) *httptest.Server {
 	return httptest.NewServer(handler)
 }
 
-// testUpstreamPool 执行请求的客户端适配与结果通知。
-type testUpstreamPool struct {
-	transport http.RoundTripper
-}
-
 func (p testUpstreamPool) Do(req *http.Request, opts httpclient.UpstreamRequestOptions) (*http.Response, error) {
 	client := &http.Client{Transport: p.transport, CheckRedirect: opts.CheckRedirect}
 	if opts.PrepareClient != nil {
@@ -1069,14 +1077,6 @@ func (p testUpstreamPool) Do(req *http.Request, opts httpclient.UpstreamRequestO
 		opts.ObserveResult(err)
 	}
 	return resp, err
-}
-
-// upstreamClientView 记录执行请求时使用的客户端、代理和 TLS 配置。
-type upstreamClientView struct {
-	tlsProfile   *tlsfingerprint.Profile
-	client       *http.Client
-	proxyKey     string
-	protocolMode string
 }
 
 func (s *Client) getClientEntry(proxyURL string, providerID int64, concurrency int, profile upstreamcore.HTTPUpstreamProfile, _, _ bool) (*upstreamClientView, error) {
@@ -1116,7 +1116,7 @@ func (s *Client) inspectClient(
 		view.client = client
 		clone := *client
 		clone.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: http.NoBody, Request: req}, nil
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: http.NoBody, Request: req}, nil
 		})
 		return &clone
 	}

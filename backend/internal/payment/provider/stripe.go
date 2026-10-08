@@ -27,6 +27,14 @@ const (
 	stripeEventInvoiceFailed          = "invoice.payment_failed"
 )
 
+// Ensure interface compliance.
+var (
+	_ payment.Provider                 = (*Stripe)(nil)
+	_ payment.CancelableProvider       = (*Stripe)(nil)
+	_ payment.DocumentProvider         = (*Stripe)(nil)
+	_ payment.MerchantIdentityProvider = (*Stripe)(nil)
+)
+
 // Stripe implements the payment.CancelableProvider interface for Stripe payments.
 type Stripe struct {
 	instanceID string
@@ -936,11 +944,3 @@ func (s *Stripe) findInvoicePaymentIntentID(ctx context.Context, invoiceID strin
 	}
 	return "", nil
 }
-
-// Ensure interface compliance.
-var (
-	_ payment.Provider                 = (*Stripe)(nil)
-	_ payment.CancelableProvider       = (*Stripe)(nil)
-	_ payment.DocumentProvider         = (*Stripe)(nil)
-	_ payment.MerchantIdentityProvider = (*Stripe)(nil)
-)

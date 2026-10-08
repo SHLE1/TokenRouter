@@ -19,12 +19,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-type OpenAICompatProtocol int
-
 const (
 	OpenAICompatChatCompletions OpenAICompatProtocol = iota
 	OpenAICompatResponses
 )
+
+type OpenAICompatProtocol int
 
 func (s *ResponseAdapter) HandleChatCompletionsNonStreamingResponseFromGemini(
 	c *upstream.OutputContext,

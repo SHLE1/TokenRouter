@@ -13,6 +13,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
+type SessionLimitCacheSuite struct {
+	IntegrationRedisSuite
+	cache scheduler.SessionLimitCache
+}
+
 // TestSessionBatchAfterScriptFlush 检查 Redis 丢失脚本缓存后，批量读取仍返回已有的活动会话。
 func TestSessionBatchAfterScriptFlush(t *testing.T) {
 	ctx := context.Background()
@@ -33,11 +38,6 @@ func TestSessionBatchAfterScriptFlush(t *testing.T) {
 	count, err := cache.GetActiveSessionCount(ctx, 91001)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
-}
-
-type SessionLimitCacheSuite struct {
-	IntegrationRedisSuite
-	cache scheduler.SessionLimitCache
 }
 
 func (s *SessionLimitCacheSuite) SetupTest() {

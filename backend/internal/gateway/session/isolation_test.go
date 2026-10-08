@@ -11,6 +11,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type sessionIsolationCacheStub struct {
+	mu           sync.Mutex
+	owners       map[string]int64
+	ownerTTLs    map[string]time.Duration
+	setCalls     int
+	getCalls     int
+	refreshCalls int
+}
+
 func TestEnsureSessionIsolation_FirstBindRecordsOwnerEvenWhenTargetNotIsolated(t *testing.T) {
 	ctx := context.Background()
 	cache := &sessionIsolationCacheStub{}
@@ -73,7 +82,6 @@ func TestEnsureSessionIsolation_ConcurrentFirstBindAllowsSingleOwner(t *testing.
 	start := make(chan struct{})
 	results := make(chan error, 2)
 	for _, groupID := range []int64{11, 22} {
-		groupID := groupID
 		go func() {
 			<-start
 			results <- EnsureIsolation(ctx, cache, IsolationInput{GroupID: groupID, Enabled: true, UserID: 7, Source: SessionIsolationSourceOpenAI, Hash: "session-a", TTL: time.Minute})
@@ -99,15 +107,6 @@ func TestEnsureSessionIsolation_ConcurrentFirstBindAllowsSingleOwner(t *testing.
 	require.Equal(t, 1, successes)
 	require.Equal(t, 1, conflicts)
 	require.Contains(t, []int64{11, 22}, cache.ownerGroupID(7, SessionIsolationSourceOpenAI, "session-a"))
-}
-
-type sessionIsolationCacheStub struct {
-	mu           sync.Mutex
-	owners       map[string]int64
-	ownerTTLs    map[string]time.Duration
-	setCalls     int
-	getCalls     int
-	refreshCalls int
 }
 
 func (c *sessionIsolationCacheStub) ownerKey(userID int64, source, sessionHash string) string {

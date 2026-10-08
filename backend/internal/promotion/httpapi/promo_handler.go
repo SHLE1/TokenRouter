@@ -17,13 +17,6 @@ type PromoHandler struct {
 	promoService *promotion.PromoService
 }
 
-// NewPromoHandler creates a new admin promo handler
-func NewPromoHandler(promoService *promotion.PromoService) *PromoHandler {
-	return &PromoHandler{
-		promoService: promoService,
-	}
-}
-
 // CreatePromoCodeRequest represents create promo code request
 type CreatePromoCodeRequest struct {
 	Code        string  `json:"code"`                                  // 可选，为空则自动生成
@@ -41,6 +34,13 @@ type UpdatePromoCodeRequest struct {
 	Status      *string  `json:"status" binding:"omitempty,oneof=active disabled"`
 	ExpiresAt   *int64   `json:"expires_at"`
 	Notes       *string  `json:"notes"`
+}
+
+// NewPromoHandler creates a new admin promo handler
+func NewPromoHandler(promoService *promotion.PromoService) *PromoHandler {
+	return &PromoHandler{
+		promoService: promoService,
+	}
 }
 
 // List handles listing all promo codes with pagination

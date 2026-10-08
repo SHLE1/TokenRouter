@@ -11,6 +11,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
 
+const postgresParameterBatchSize = 50000
+
 // ProviderStoreOptions 提供数据转换、事件写入和时钟配置。
 type ProviderStoreOptions struct {
 	Events         ProviderEvents
@@ -46,8 +48,6 @@ func (r *ProviderStore) observe(message string, args ...any) {
 func (r *ProviderStore) publish(ctx context.Context, exec postgresinfra.Executor, id int64, groups []int64) error {
 	return r.enqueue(ctx, exec, ProviderChanged, &id, nil, r.groupPayload(groups))
 }
-
-const postgresParameterBatchSize = 50000
 
 func normalizeJSONMap(value map[string]any) map[string]any {
 	if value == nil {

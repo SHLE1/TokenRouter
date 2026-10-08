@@ -18,17 +18,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/app/bootstrap"
 )
 
-// NewProviderTestsForTest 供集成测试调用提供商测试组件的应用构造函数。
-var NewProviderTestsForTest = provideProviderTests
-
-// 健康状态集成测试使用应用构造函数。
 var (
+	// NewProviderTestsForTest 供集成测试调用提供商测试组件的应用构造函数。
+	NewProviderTestsForTest = provideProviderTests
+
+	// 健康状态集成测试使用应用构造函数。
 	NewProviderHealthRuntimeForTest = provideProviderHealthRuntime
 	NewUpstreamHealthForTest        = provideUpstreamHealth
-)
 
-// NewProviderStoreForTest 为集成测试绑定提供商存储配置和事件写入函数。
-var NewProviderStoreForTest = provideProviderStore
+	// NewProviderStoreForTest 为集成测试绑定提供商存储配置和事件写入函数。
+	NewProviderStoreForTest = provideProviderStore
+)
 
 type databaseFixture struct {
 	db     *sql.DB

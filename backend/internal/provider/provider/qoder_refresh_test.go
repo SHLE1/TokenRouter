@@ -19,6 +19,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type qoderRefreshHTTPUpstreamStub struct {
+	proxyURL            string
+	providerID          int64
+	providerConcurrency int
+}
+
 func TestQoderTokenRefresherNeedsRefreshWhenExpiresAtWithinWindow(t *testing.T) {
 	refresher := NewQoderTokenRefresher(QoderRefreshOptions{})
 	expiresAt := time.Now().Add(time.Minute).Format(time.RFC3339)
@@ -333,12 +339,6 @@ func TestQoderTokenRefresherUsesProviderDoer(t *testing.T) {
 	require.Equal(t, "http://proxy.example.com:8080", upstream.proxyURL)
 	require.Equal(t, int64(108), upstream.providerID)
 	require.Equal(t, 4, upstream.providerConcurrency)
-}
-
-type qoderRefreshHTTPUpstreamStub struct {
-	proxyURL            string
-	providerID          int64
-	providerConcurrency int
 }
 
 func (s *qoderRefreshHTTPUpstreamStub) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {

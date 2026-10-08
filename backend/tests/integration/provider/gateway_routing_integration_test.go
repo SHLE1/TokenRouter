@@ -6,15 +6,14 @@ import (
 	"context"
 	"testing"
 
-	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-	routing "github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/stretchr/testify/suite"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
-	"github.com/stretchr/testify/suite"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
+	routing "github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // GatewayRoutingSuite 测试网关路由相关的数据库查询

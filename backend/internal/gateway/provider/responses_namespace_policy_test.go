@@ -164,7 +164,7 @@ func TestStripOpenAIResponsesInputNamespaces(t *testing.T) {
 
 	stripped, err := protocolbridge.StripOpenAIResponsesInputNamespaces(body, false)
 	require.NoError(t, err)
-	for index := 0; index < 8; index++ {
+	for index := range 8 {
 		require.False(t, gjson.GetBytes(stripped, "input."+strconv.Itoa(index)+".namespace").Exists())
 	}
 	require.Equal(t, "nested", gjson.GetBytes(stripped, "input.0.content.namespace").String())
@@ -234,7 +234,7 @@ func TestStripOpenAIResponsesInputNamespacesKeepsToolCallNamespaces(t *testing.T
 
 	strippedAll, err := protocolbridge.StripOpenAIResponsesInputNamespaces(body, false)
 	require.NoError(t, err)
-	for index := 0; index < 8; index++ {
+	for index := range 8 {
 		require.False(t, gjson.GetBytes(strippedAll, "input."+strconv.Itoa(index)+".namespace").Exists())
 	}
 }

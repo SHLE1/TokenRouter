@@ -12,6 +12,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+const (
+	SettingKeyProviderQuotaNotifyEnabled = "provider_quota_notify_enabled"
+	SettingKeyProviderQuotaNotifyEmails  = "provider_quota_notify_emails"
+)
+
 // AdminSettings 明确区分提供商健康阈值和通知目的地。
 type AdminSettings struct {
 	ProviderQuotaNotifyEnabled   bool            `json:"provider_quota_notify_enabled"`
@@ -19,10 +24,12 @@ type AdminSettings struct {
 	ProviderSchedulingThresholds map[string]int  `json:"provider_scheduling_thresholds"`
 }
 
-const (
-	SettingKeyProviderQuotaNotifyEnabled = "provider_quota_notify_enabled"
-	SettingKeyProviderQuotaNotifyEmails  = "provider_quota_notify_emails"
-)
+// AdminReadSettings 保存综合管理页展示的提供商设置。
+type AdminReadSettings struct {
+	ProviderQuotaNotifyEmails    []contact.Entry
+	ProviderQuotaNotifyEnabled   bool
+	ProviderSchedulingThresholds map[string]int
+}
 
 // PrepareAdminSettings 准备管理设置的写入值，邮箱按设置格式序列化，nil 阈值按缺省值处理。
 func PrepareAdminSettings(value AdminSettings) (map[string]string, error) {
@@ -39,13 +46,6 @@ func PrepareAdminSettings(value AdminSettings) (map[string]string, error) {
 		values[SettingKeyProviderSchedulingThresholds] = string(raw)
 	}
 	return values, nil
-}
-
-// AdminReadSettings 保存综合管理页展示的提供商设置。
-type AdminReadSettings struct {
-	ProviderQuotaNotifyEmails    []contact.Entry
-	ProviderQuotaNotifyEnabled   bool
-	ProviderSchedulingThresholds map[string]int
 }
 
 // ReadAdminSettings 从同一批持久化数据解析展示值，并处理字段缺省值。

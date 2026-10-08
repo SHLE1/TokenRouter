@@ -110,7 +110,7 @@ func TestGrokResponsesExecutePreservesPartialObservation(t *testing.T) {
 			},
 
 			Do: func(*http.Request) (*http.Response, error) {
-				return &http.Response{StatusCode: 200, Header: make(http.Header), Body: &voiceBody{ReadCloser: io.NopCloser(strings.NewReader("")), closed: &closed}}, nil
+				return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: &voiceBody{ReadCloser: io.NopCloser(strings.NewReader("")), closed: &closed}}, nil
 			},
 
 			ReadError: func(*http.Response) []byte { return nil },

@@ -16,6 +16,9 @@ import (
 	openaierrors "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// OpenAICompactSessionSeedKey 是 HTTP 请求中存放会话种子的键。
+const OpenAICompactSessionSeedKey = "openai_compact_session_seed"
+
 // IsOpenAIResponsesCompactPath 识别旧 compact 端点及其允许转发的子路径。
 func IsOpenAIResponsesCompactPath(c *gin.Context) bool {
 	suffix := strings.TrimSpace(OpenAIResponsesRequestPathSuffix(c))
@@ -39,9 +42,6 @@ func ResolveOpenAICompactSessionID(c *gin.Context) string {
 	}
 	return uuid.NewString()
 }
-
-// OpenAICompactSessionSeedKey 是 HTTP 请求中存放会话种子的键。
-const OpenAICompactSessionSeedKey = "openai_compact_session_seed"
 
 // IsBareOpenAIResponsesPath 仅匹配裸 /responses 端点（无 /compact 等子路径），
 // body-signal 提升在裸 Responses 路径上执行，/responses/{id}/... 子路径按自身类型处理。

@@ -11,41 +11,41 @@ import (
 // maxRedactDepth 限制递归深度以防止栈溢出
 const maxRedactDepth = 32
 
-var defaultSensitiveKeys = map[string]struct{}{
-	"authorization_code": {},
-	"code":               {},
-	"code_verifier":      {},
-	"access_token":       {},
-	"refresh_token":      {},
-	"id_token":           {},
-	"client_secret":      {},
-	"password":           {},
-}
-
-var defaultSensitiveKeyList = []string{
-	"authorization_code",
-	"code",
-	"code_verifier",
-	"access_token",
-	"refresh_token",
-	"id_token",
-	"client_secret",
-	"password",
-}
-
-type textRedactPatterns struct {
-	reJSONLike  *regexp.Regexp
-	reQueryLike *regexp.Regexp
-	rePlain     *regexp.Regexp
-}
-
 var (
+	defaultSensitiveKeys = map[string]struct{}{
+		"authorization_code": {},
+		"code":               {},
+		"code_verifier":      {},
+		"access_token":       {},
+		"refresh_token":      {},
+		"id_token":           {},
+		"client_secret":      {},
+		"password":           {},
+	}
+
+	defaultSensitiveKeyList = []string{
+		"authorization_code",
+		"code",
+		"code_verifier",
+		"access_token",
+		"refresh_token",
+		"id_token",
+		"client_secret",
+		"password",
+	}
+
 	reGOCSPX = regexp.MustCompile(`GOCSPX-[0-9A-Za-z_-]{24,}`)
 	reAIza   = regexp.MustCompile(`AIza[0-9A-Za-z_-]{35}`)
 
 	defaultTextRedactPatterns = compileTextRedactPatterns(nil)
 	extraTextPatternCache     sync.Map // map[string]*textRedactPatterns
 )
+
+type textRedactPatterns struct {
+	reJSONLike  *regexp.Regexp
+	reQueryLike *regexp.Regexp
+	rePlain     *regexp.Regexp
+}
 
 func RedactMap(input map[string]any, extraKeys ...string) map[string]any {
 	if input == nil {

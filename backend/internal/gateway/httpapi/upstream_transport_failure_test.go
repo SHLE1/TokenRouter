@@ -29,6 +29,13 @@ type openAITransportProviderRepoStub struct {
 	tempUnschedCalls []tempUnschedCall
 }
 
+// 传输错误测试使用的最小状态写入观测。
+type tempUnschedCall struct {
+	providerID int64
+	until      time.Time
+	reason     string
+}
+
 // TestClassifyUpstreamTransportError 验证传输错误按持久性分类。
 // 持久错误摘除提供商并告警，瞬时错误切换提供商，当前提供商保持可调度。
 func TestClassifyUpstreamTransportError(t *testing.T) {
@@ -250,13 +257,6 @@ func TestHandleOpenAIProviderUpstreamError_RecordsOllamaActivityOnly(t *testing.
 	require.True(t, ok, "Ollama Cloud non-2xx must schedule last_used activity")
 	_, ok = activity.Load(int64(505))
 	require.False(t, ok, "non-Ollama non-2xx must not schedule Ollama activity")
-}
-
-// 传输错误测试使用的最小状态写入观测。
-type tempUnschedCall struct {
-	providerID int64
-	until      time.Time
-	reason     string
 }
 
 // transportHealthFixture 为传输健康测试提供共享运行状态和 Deferred。

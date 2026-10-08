@@ -46,7 +46,7 @@ func TestSanitizeGrokResponsesModelInputStripsOnlyNonPairCallIDs(t *testing.T) {
 		NewID: uuid.NewString,
 	}).SanitizeGrokResponsesModelInput(body)
 	require.NoError(t, err)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		require.False(t, gjson.GetBytes(patched, "input."+strconv.Itoa(i)+".call_id").Exists())
 	}
 	require.Equal(t, "keep_function", gjson.GetBytes(patched, "input.3.call_id").String())

@@ -14,6 +14,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/search"
 )
 
+type managerFixture struct {
+	*search.Manager
+	*Executor
+}
+
 func TestManager_SearchWithBestProvider_UsesFirstAvailable(t *testing.T) {
 	srvBrave := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		resp := braveResponse{}
@@ -23,7 +28,7 @@ func TestManager_SearchWithBestProvider_UsesFirstAvailable(t *testing.T) {
 	defer srvBrave.Close()
 
 	origURL := *braveSearchURL
-	u, _ := http.NewRequest("GET", srvBrave.URL, nil)
+	u, _ := http.NewRequest(http.MethodGet, srvBrave.URL, nil)
 	*braveSearchURL = *u.URL
 	defer func() { *braveSearchURL = origURL }()
 
@@ -50,7 +55,7 @@ func TestManager_SearchWithBestProvider_NilRedis(t *testing.T) {
 	defer srv.Close()
 
 	origURL := *braveSearchURL
-	u, _ := http.NewRequest("GET", srv.URL, nil)
+	u, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
 	*braveSearchURL = *u.URL
 	defer func() { *braveSearchURL = origURL }()
 
@@ -62,11 +67,6 @@ func TestManager_SearchWithBestProvider_NilRedis(t *testing.T) {
 	resp, _, err := m.SearchWithBestProvider(context.Background(), SearchRequest{Query: "test"})
 	require.NoError(t, err)
 	require.Len(t, resp.Results, 1)
-}
-
-type managerFixture struct {
-	*search.Manager
-	*Executor
 }
 
 func NewManager(configs []ProviderConfig, _ any) *managerFixture {

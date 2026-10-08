@@ -23,6 +23,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const openAIResponsesRejectedFieldRetryBudgetContextKey = "openai_responses_rejected_field_retry_budget"
+
 type openAIPassthroughExecutionAdapter struct {
 	*openAIMessagesExecutionAdapter
 }
@@ -311,8 +313,6 @@ func openAIRequestGroup(c *gin.Context) *routing.Group {
 	}
 	return key.Group
 }
-
-const openAIResponsesRejectedFieldRetryBudgetContextKey = "openai_responses_rejected_field_retry_budget"
 
 // openAIResponsesRejectedFieldRetryStateForRequest 为一次提供商尝试创建报文去重状态。
 // 各次尝试共享入站请求的重试预算。

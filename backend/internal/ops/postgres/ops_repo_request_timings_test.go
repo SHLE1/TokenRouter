@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/ops"
 )
+
+var _ ops.OpsRepository = (*Store)(nil)
 
 func TestOpsRepositoryListRequestTimings(t *testing.T) {
 	db, mock := newSQLMock(t)
@@ -37,5 +40,3 @@ func TestOpsRepositoryListRequestTimingsEmptyInput(t *testing.T) {
 	require.Empty(t, got)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
-
-var _ ops.OpsRepository = (*Store)(nil)

@@ -24,17 +24,17 @@ type executionSink struct {
 	events []upstream.OutputEvent
 }
 
+type executionBody struct {
+	io.ReadCloser
+	closed *atomic.Int32
+}
+
 func (s *executionSink) Begin(upstream.OutputHead) error { return nil }
 func (s *executionSink) Emit(event upstream.OutputEvent) error {
 	event.Data = bytes.Clone(event.Data)
 	s.events = append(s.events, event)
 	_, _ = s.body.Write(event.Data)
 	return nil
-}
-
-type executionBody struct {
-	io.ReadCloser
-	closed *atomic.Int32
 }
 
 func (b *executionBody) Close() error { b.closed.Add(1); return b.ReadCloser.Close() }

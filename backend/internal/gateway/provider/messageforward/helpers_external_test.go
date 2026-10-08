@@ -12,14 +12,17 @@ import (
 
 const defaultMaxLineSize = 500 * 1024 * 1024
 
-func newPartialHealthFixture() *provideradapter.UpstreamHealth {
-	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Options: provider.HealthOptions{}})
-}
-
 type streamReadCloser struct {
 	payload []byte
 	sent    bool
 	err     error
+}
+
+// init 在测试进程加载时设置 Gin 测试模式。
+func init() { gin.SetMode(gin.TestMode) }
+
+func newPartialHealthFixture() *provideradapter.UpstreamHealth {
+	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Options: provider.HealthOptions{}})
 }
 
 func (r *streamReadCloser) Read(p []byte) (int, error) {
@@ -35,6 +38,3 @@ func (r *streamReadCloser) Read(p []byte) (int, error) {
 }
 
 func (r *streamReadCloser) Close() error { return nil }
-
-// init 在测试进程加载时设置 Gin 测试模式。
-func init() { gin.SetMode(gin.TestMode) }

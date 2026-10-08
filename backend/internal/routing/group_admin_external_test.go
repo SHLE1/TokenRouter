@@ -25,6 +25,54 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+type groupRepoStub struct {
+	affectedUserIDs []int64
+	deleteErr       error
+	deleteCalls     []int64
+}
+
+type deleteGroupAPIKeyRepoStub struct {
+	keys         []string
+	listErr      error
+	listGroupIDs []int64
+}
+
+// groupModelsListProviderRepoStub 返回候选模型测试中的可调度提供商。
+type groupModelsListProviderRepoStub struct {
+	routing.GroupProviders
+	providers     []provider.Record
+	calledGroupID int64
+}
+
+// authCacheInvalidatorStub 记录管理操作提交后的缓存失效调用。
+type authCacheInvalidatorStub struct {
+	groupIDs []int64
+	keys     []string
+}
+
+type groupRepoStubForFallbackCycle struct {
+	groups map[int64]*routing.Group
+}
+
+type groupRepoStubForInvalidRequestFallback struct {
+	groups  map[int64]*routing.Group
+	created *routing.Group
+	updated *routing.Group
+}
+
+// groupPlatformRepoStub 为 UpdateGroup 提供读取和更新方法，其余方法来自内嵌接口。
+type groupPlatformRepoStub struct {
+	routing.GroupRepository
+
+	group     *routing.Group
+	updated   *routing.Group
+	updateErr error
+}
+
+type pricingConfigCacheInvalidatorSpy struct {
+	calls int
+}
+
 func TestAdminService_DeleteGroup_Success(t *testing.T) {
 	repo := &groupRepoStub{affectedUserIDs: []int64{11, 12}}
 	svc := newGroupAdminForTest(repo, nil, nil)
@@ -1557,12 +1605,6 @@ func TestGroupProtocolLegacyPatchDoesNotHideInvalidInput(t *testing.T) {
 	}
 }
 
-type groupRepoStub struct {
-	affectedUserIDs []int64
-	deleteErr       error
-	deleteCalls     []int64
-}
-
 func (s *groupRepoStub) Create(ctx context.Context, group *routing.Group) error {
 	panic("unexpected Create call")
 }
@@ -1632,25 +1674,12 @@ func (s *groupRepoStub) UpdateSortOrders(ctx context.Context, updates []routing.
 	return nil
 }
 
-type deleteGroupAPIKeyRepoStub struct {
-	keys         []string
-	listErr      error
-	listGroupIDs []int64
-}
-
 func (s *deleteGroupAPIKeyRepoStub) ListKeysByGroupID(ctx context.Context, groupID int64) ([]string, error) {
 	s.listGroupIDs = append(s.listGroupIDs, groupID)
 	if s.listErr != nil {
 		return nil, s.listErr
 	}
 	return s.keys, nil
-}
-
-// groupModelsListProviderRepoStub 返回候选模型测试中的可调度提供商。
-type groupModelsListProviderRepoStub struct {
-	routing.GroupProviders
-	providers     []provider.Record
-	calledGroupID int64
 }
 
 func (s *groupModelsListProviderRepoStub) ListSchedulableByGroupID(_ context.Context, groupID int64) ([]routing.CatalogueProvider, error) {
@@ -1667,12 +1696,6 @@ func (s *groupModelsListProviderRepoStub) ListSchedulableByGroupID(_ context.Con
 // groupAdvancedSchedulerOverrideTestPointer 为可选的调度参数生成指针。
 func groupAdvancedSchedulerOverrideTestPointer[T any](value T) *T { return &value }
 
-// authCacheInvalidatorStub 记录管理操作提交后的缓存失效调用。
-type authCacheInvalidatorStub struct {
-	groupIDs []int64
-	keys     []string
-}
-
 func (s *authCacheInvalidatorStub) InvalidateAuthCacheByGroupID(_ context.Context, id int64) {
 	s.groupIDs = append(s.groupIDs, id)
 }
@@ -1683,10 +1706,6 @@ func (s *authCacheInvalidatorStub) InvalidateAuthCacheByKey(_ context.Context, k
 
 func ptrGroupClientProtocols(value []protocol.ProtocolID) *[]protocol.ProtocolID {
 	return &value
-}
-
-type groupRepoStubForFallbackCycle struct {
-	groups map[int64]*routing.Group
 }
 
 func (s *groupRepoStubForFallbackCycle) Create(_ context.Context, _ *routing.Group) error {
@@ -1760,12 +1779,6 @@ func (s *groupRepoStubForFallbackCycle) UpdateSortOrders(_ context.Context, _ []
 	return nil
 }
 
-type groupRepoStubForInvalidRequestFallback struct {
-	groups  map[int64]*routing.Group
-	created *routing.Group
-	updated *routing.Group
-}
-
 func (s *groupRepoStubForInvalidRequestFallback) Create(_ context.Context, g *routing.Group) error {
 	s.created = g
 	return nil
@@ -1805,7 +1818,6 @@ func (s *groupRepoStubForInvalidRequestFallback) ListWithFilters(_ context.Conte
 	}
 	var last *routing.Group
 	for _, group := range s.groups {
-		group := group
 		if last == nil || group.SortOrder > last.SortOrder {
 			last = group
 		}
@@ -1852,15 +1864,6 @@ func (s *groupRepoStubForInvalidRequestFallback) UpdateSortOrders(_ context.Cont
 	return nil
 }
 
-// groupPlatformRepoStub 为 UpdateGroup 提供读取和更新方法，其余方法来自内嵌接口。
-type groupPlatformRepoStub struct {
-	routing.GroupRepository
-
-	group     *routing.Group
-	updated   *routing.Group
-	updateErr error
-}
-
 func (r *groupPlatformRepoStub) GetByID(_ context.Context, _ int64) (*routing.Group, error) {
 	cloned := *r.group
 	return &cloned, nil
@@ -1872,10 +1875,6 @@ func (r *groupPlatformRepoStub) Update(_ context.Context, group *routing.Group) 
 	}
 	r.updated = group
 	return nil
-}
-
-type pricingConfigCacheInvalidatorSpy struct {
-	calls int
 }
 
 func (s *pricingConfigCacheInvalidatorSpy) InvalidateCache() { s.calls++ }

@@ -54,6 +54,82 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage/httpapi/ports"
 )
 
+// 编译期检查测试存储是否实现业务仓储接口。
+var (
+	_ identity.UserRepository            = (*stubUserRepo)(nil)
+	_ apikey.APIKeyRepository            = (*stubApiKeyRepo)(nil)
+	_ apikey.APIKeyCache                 = (*stubApiKeyCache)(nil)
+	_ routing.GroupRepository            = (*stubGroupRepo)(nil)
+	_ billing.UserSubscriptionRepository = (*stubUserSubscriptionRepo)(nil)
+	_ usagecore.UsageLogRepository       = (*stubUsageLogRepo)(nil)
+	_ settingscore.Repository            = (*stubSettingRepo)(nil)
+)
+
+type contractDeps struct {
+	now         time.Time
+	router      http.Handler
+	cfg         *config.Config
+	apiKeyRepo  *stubApiKeyRepo
+	groupRepo   *stubGroupRepo
+	userSubRepo *stubUserSubscriptionRepo
+	usageRepo   *stubUsageLogRepo
+	settingRepo *stubSettingRepo
+	redeemRepo  *stubRedeemCodeRepo
+}
+
+type stubUserRepo struct {
+	users map[int64]*identity.User
+}
+
+type stubApiKeyCache struct{}
+
+type stubGroupRepo struct {
+	active []routing.Group
+}
+
+type stubProviderRepo struct {
+	bulkUpdateIDs []int64
+}
+
+type stubRedeemCodeRepo struct {
+	byUser map[int64][]billing.RedeemCode
+}
+
+type stubUserSubscriptionRepo struct {
+	byUser       map[int64][]billing.UserSubscription
+	activeByUser map[int64][]billing.UserSubscription
+	byID         map[int64]billing.UserSubscription
+}
+
+type stubApiKeyRepo struct {
+	now time.Time
+
+	nextID    int64
+	byID      map[int64]*apikey.APIKey
+	byKey     map[string]*apikey.APIKey
+	createErr error
+}
+
+type stubUsageLogRepo struct {
+	userLogs map[int64][]usagecore.UsageLog
+}
+
+type stubSettingRepo struct {
+	all map[string]string
+}
+
+// contractProviderBulkStore 将批量写入转交测试存储，提供商规则由 Admin 执行。
+type contractProviderBulkStore struct {
+	providercore.AdminStore
+	source *stubProviderRepo
+}
+
+// contractSubscriptionGroups 读取分组并返回订阅套餐需要的分组名称。
+type contractSubscriptionGroups struct{ source routing.GroupRepository }
+
+// contractRedeemUsers 为兑换接口测试提供用户资料和余额。
+type contractRedeemUsers struct{ source identity.UserRepository }
+
 func TestAPIContracts(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -1758,18 +1834,6 @@ func TestAPIContracts(t *testing.T) {
 	}
 }
 
-type contractDeps struct {
-	now         time.Time
-	router      http.Handler
-	cfg         *config.Config
-	apiKeyRepo  *stubApiKeyRepo
-	groupRepo   *stubGroupRepo
-	userSubRepo *stubUserSubscriptionRepo
-	usageRepo   *stubUsageLogRepo
-	settingRepo *stubSettingRepo
-	redeemRepo  *stubRedeemCodeRepo
-}
-
 func newContractDeps(t *testing.T, setup func(*testing.T, *contractDeps)) *contractDeps {
 	t.Helper()
 
@@ -1926,10 +1990,6 @@ func doRequest(t *testing.T, router http.Handler, method, path, body string, hea
 }
 
 func ptr[T any](v T) *T { return &v }
-
-type stubUserRepo struct {
-	users map[int64]*identity.User
-}
 
 func (r *stubUserRepo) Create(ctx context.Context, user *identity.User) error {
 	return errors.New("not implemented")
@@ -2096,8 +2156,6 @@ func (r *stubUserRepo) GetByIDIncludeDeleted(ctx context.Context, id int64) (*id
 	panic("unexpected GetByIDIncludeDeleted call")
 }
 
-type stubApiKeyCache struct{}
-
 func (stubApiKeyCache) GetCreateAttemptCount(ctx context.Context, userID int64) (int, error) {
 	return 0, nil
 }
@@ -2136,10 +2194,6 @@ func (stubApiKeyCache) PublishAuthCacheInvalidation(ctx context.Context, cacheKe
 
 func (stubApiKeyCache) SubscribeAuthCacheInvalidation(ctx context.Context, handler func(cacheKey string)) error {
 	return nil
-}
-
-type stubGroupRepo struct {
-	active []routing.Group
 }
 
 func (r *stubGroupRepo) SetActive(groups []routing.Group) {
@@ -2223,10 +2277,6 @@ func (stubGroupRepo) FindByDuplicateOperationID(ctx context.Context, operationID
 
 func (stubGroupRepo) CreateFromSource(ctx context.Context, group *routing.Group, sourceGroupID int64) error {
 	return errors.New("not implemented")
-}
-
-type stubProviderRepo struct {
-	bulkUpdateIDs []int64
 }
 
 func (s *stubProviderRepo) Create(ctx context.Context, provider *gatewayprovider.ExecutionProvider) error {
@@ -2426,10 +2476,6 @@ func (s *stubProviderRepo) RevertProxyFallback(ctx context.Context, providerID i
 	return nil
 }
 
-type stubRedeemCodeRepo struct {
-	byUser map[int64][]billing.RedeemCode
-}
-
 func (r *stubRedeemCodeRepo) SetByUser(userID int64, codes []billing.RedeemCode) {
 	if r.byUser == nil {
 		r.byUser = make(map[int64][]billing.RedeemCode)
@@ -2504,12 +2550,6 @@ func (r *stubRedeemCodeRepo) ListByUserPaginated(ctx context.Context, userID int
 
 func (stubRedeemCodeRepo) SumPositiveBalanceByUser(ctx context.Context, userID int64) (float64, error) {
 	return 0, errors.New("not implemented")
-}
-
-type stubUserSubscriptionRepo struct {
-	byUser       map[int64][]billing.UserSubscription
-	activeByUser map[int64][]billing.UserSubscription
-	byID         map[int64]billing.UserSubscription
 }
 
 func (r *stubUserSubscriptionRepo) SetByUserID(userID int64, subs []billing.UserSubscription) {
@@ -2686,15 +2726,6 @@ func (stubUserSubscriptionRepo) IncrementUsage(ctx context.Context, id int64, co
 
 func (stubUserSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
 	return 0, errors.New("not implemented")
-}
-
-type stubApiKeyRepo struct {
-	now time.Time
-
-	nextID    int64
-	byID      map[int64]*apikey.APIKey
-	byKey     map[string]*apikey.APIKey
-	createErr error
 }
 
 func newStubApiKeyRepo(now time.Time) *stubApiKeyRepo {
@@ -2946,10 +2977,6 @@ func (r *stubApiKeyRepo) ResetRateLimitWindows(ctx context.Context, id int64) er
 
 func (r *stubApiKeyRepo) GetRateLimitData(ctx context.Context, id int64) (*apikey.APIKeyRateLimitData, error) {
 	return nil, nil
-}
-
-type stubUsageLogRepo struct {
-	userLogs map[int64][]usagecore.UsageLog
 }
 
 func newStubUsageLogRepo() *stubUsageLogRepo {
@@ -3250,10 +3277,6 @@ func (r *stubUsageLogRepo) GetAllGroupUsageSummary(ctx context.Context, todaySta
 	return nil, errors.New("not implemented")
 }
 
-type stubSettingRepo struct {
-	all map[string]string
-}
-
 func newStubSettingRepo() *stubSettingRepo {
 	return &stubSettingRepo{all: make(map[string]string)}
 }
@@ -3342,29 +3365,9 @@ func paginationResult(total int64, params pagination.PaginationParams) *paginati
 	}
 }
 
-// 编译期检查测试存储是否实现业务仓储接口。
-var (
-	_ identity.UserRepository            = (*stubUserRepo)(nil)
-	_ apikey.APIKeyRepository            = (*stubApiKeyRepo)(nil)
-	_ apikey.APIKeyCache                 = (*stubApiKeyCache)(nil)
-	_ routing.GroupRepository            = (*stubGroupRepo)(nil)
-	_ billing.UserSubscriptionRepository = (*stubUserSubscriptionRepo)(nil)
-	_ usagecore.UsageLogRepository       = (*stubUsageLogRepo)(nil)
-	_ settingscore.Repository            = (*stubSettingRepo)(nil)
-)
-
-// contractProviderBulkStore 将批量写入转交测试存储，提供商规则由 Admin 执行。
-type contractProviderBulkStore struct {
-	providercore.AdminStore
-	source *stubProviderRepo
-}
-
 func (s contractProviderBulkStore) BulkUpdate(ctx context.Context, ids []int64, updates providercore.ProviderBulkUpdate) (int64, error) {
 	return s.source.BulkUpdate(ctx, ids, updates)
 }
-
-// contractSubscriptionGroups 读取分组并返回订阅套餐需要的分组名称。
-type contractSubscriptionGroups struct{ source routing.GroupRepository }
 
 func (p contractSubscriptionGroups) GetByIDLite(ctx context.Context, id int64) (*billing.SubscriptionPlanGroup, error) {
 	if p.source == nil {
@@ -3376,9 +3379,6 @@ func (p contractSubscriptionGroups) GetByIDLite(ctx context.Context, id int64) (
 	}
 	return &billing.SubscriptionPlanGroup{ID: v.ID, Name: v.Name}, nil
 }
-
-// contractRedeemUsers 为兑换接口测试提供用户资料和余额。
-type contractRedeemUsers struct{ source identity.UserRepository }
 
 func (p contractRedeemUsers) GetByID(ctx context.Context, id int64) (*billing.UserSummary, error) {
 	v, err := p.source.GetByID(ctx, id)

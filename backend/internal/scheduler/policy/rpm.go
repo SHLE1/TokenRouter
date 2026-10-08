@@ -1,13 +1,13 @@
 package policy
 
-// RPMAllowance 表示允许请求、仅允许粘性请求或拒绝请求三种状态。
-type RPMAllowance int
-
 const (
 	RPMAllowed RPMAllowance = iota
 	RPMStickyOnly
 	RPMBlocked
 )
+
+// RPMAllowance 表示允许请求、仅允许粘性请求或拒绝请求三种状态。
+type RPMAllowance int
 
 // CheckRPM 在计数达到 base 时限制为粘性请求，达到 base+buffer 时拒绝请求。
 // sticky_exempt 策略在超过 base 后仍允许粘性请求。

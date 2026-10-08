@@ -22,6 +22,51 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 )
 
+// LiveAPIKey 是 HTTP 准入使用的只读 Key 数据。
+type LiveAPIKey struct {
+	ID           int64
+	UserID       int64
+	TeamID       *int64
+	GroupID      *int64
+	Group        *LiveGroup
+	ModelMapping map[string]string
+}
+type LiveGroup struct {
+	AllowLive bool
+}
+type LiveSubject struct {
+	UserID      int64
+	Concurrency int
+}
+type LiveSubscription struct{ ID int64 }
+
+// LiveHTTPPorts 将认证、审核和资金准入绑定到应用唯一实例。
+// 异步执行接收会话记录的快照。
+type LiveHTTPPorts interface {
+	APIKey(*gin.Context) (*LiveAPIKey, bool)
+	Subject(*gin.Context) (LiveSubject, bool)
+	Subscription(*gin.Context) (*LiveSubscription, bool)
+	Redirect(context.Context, *LiveAPIKey, string) (context.Context, string)
+	Moderate(*gin.Context, *LiveAPIKey, LiveSubject, string, string, []byte) bool
+	CheckBilling(*gin.Context) bool
+	TryAcquireUserSlot(context.Context, int64, int) (func(), bool, error)
+	InboundEndpoint(*gin.Context) string
+	Create(context.Context, *session.LiveCallRequest, session.LiveCallIdentity, int) (*gatewaylive.Created, error)
+	Lookup(context.Context, string, session.LiveCallIdentity) (*session.LiveCallRecord, error)
+	Proxy(context.Context, *session.LiveCallRecord, *coderws.Conn) error
+	Error(*gin.Context, int, string, string)
+	PolicyDenied(*gin.Context)
+	UpstreamStatus(error) int
+}
+
+// LiveHandler 独占 SDP、JSON、WebSocket 升级及错误响应。
+type LiveHandler struct {
+	RequestLifetime
+	ports LiveHTTPPorts
+}
+
+func NewLiveHandler(ports LiveHTTPPorts) *LiveHandler { return &LiveHandler{ports: ports} }
+
 // Live 创建 ChatGPT Frameless Live 会话并返回 SDP 应答。
 func (h *LiveHandler) Live(c *gin.Context) {
 	done, accepted := h.BeginRequest(c, "openai")
@@ -238,51 +283,6 @@ func liveEnabledForAPIKey(apiKey *LiveAPIKey) bool {
 		apiKey.Group != nil &&
 		apiKey.Group.AllowLive
 }
-
-// LiveAPIKey 是 HTTP 准入使用的只读 Key 数据。
-type LiveAPIKey struct {
-	ID           int64
-	UserID       int64
-	TeamID       *int64
-	GroupID      *int64
-	Group        *LiveGroup
-	ModelMapping map[string]string
-}
-type LiveGroup struct {
-	AllowLive bool
-}
-type LiveSubject struct {
-	UserID      int64
-	Concurrency int
-}
-type LiveSubscription struct{ ID int64 }
-
-// LiveHTTPPorts 将认证、审核和资金准入绑定到应用唯一实例。
-// 异步执行接收会话记录的快照。
-type LiveHTTPPorts interface {
-	APIKey(*gin.Context) (*LiveAPIKey, bool)
-	Subject(*gin.Context) (LiveSubject, bool)
-	Subscription(*gin.Context) (*LiveSubscription, bool)
-	Redirect(context.Context, *LiveAPIKey, string) (context.Context, string)
-	Moderate(*gin.Context, *LiveAPIKey, LiveSubject, string, string, []byte) bool
-	CheckBilling(*gin.Context) bool
-	TryAcquireUserSlot(context.Context, int64, int) (func(), bool, error)
-	InboundEndpoint(*gin.Context) string
-	Create(context.Context, *session.LiveCallRequest, session.LiveCallIdentity, int) (*gatewaylive.Created, error)
-	Lookup(context.Context, string, session.LiveCallIdentity) (*session.LiveCallRecord, error)
-	Proxy(context.Context, *session.LiveCallRecord, *coderws.Conn) error
-	Error(*gin.Context, int, string, string)
-	PolicyDenied(*gin.Context)
-	UpstreamStatus(error) int
-}
-
-// LiveHandler 独占 SDP、JSON、WebSocket 升级及错误响应。
-type LiveHandler struct {
-	RequestLifetime
-	ports LiveHTTPPorts
-}
-
-func NewLiveHandler(ports LiveHTTPPorts) *LiveHandler { return &LiveHandler{ports: ports} }
 
 // cloneLiveModelMapping 复制模型映射，输入为空时返回空映射。
 func cloneLiveModelMapping(mapping map[string]string) map[string]string {

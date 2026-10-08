@@ -7,12 +7,36 @@ import (
 	"strings"
 )
 
+// responsesToolCallItemIDPrefixes 列出与 Responses 工具调用类型绑定的 ID 前缀。
+var responsesToolCallItemIDPrefixes = []string{"fc_", "ctc_", "tsc_"}
+
 // ResponsesClientToolMapping 记录原生 Responses 请求发送到仅理解 function 工具的
 // 上游前所做的可逆降级映射。
 type ResponsesClientToolMapping struct {
 	CustomTools    map[string]bool
 	ToolSearch     bool
 	NamespaceTools map[string]ResponsesNamespaceName
+}
+
+// ResponsesClientToolStreamRestorer 还原客户端工具的流式生命周期。
+// 它故意保持状态，因为 custom 工具需要缓冲 function 参数，直到上游标记调用完成。
+type ResponsesClientToolStreamRestorer struct {
+	adapter  ResponsesClientToolMapping
+	nextSeq  int
+	seenSeq  bool
+	calls    map[string]*responsesClientToolStreamCall
+	byOutput map[int]*responsesClientToolStreamCall
+}
+
+type responsesClientToolStreamCall struct {
+	kind string
+	name string
+	// callID/itemID 保留上游原值用于匹配后续事件；clientItemID 仅用于发给客户端。
+	callID       string
+	itemID       string
+	clientItemID string
+	outputIdx    int
+	arguments    strings.Builder
 }
 
 // AdaptResponsesClientTools 将 req 中 Codex 客户端专用工具降级为普通 function 工具。
@@ -285,9 +309,6 @@ func normalizeLoweredFunctionItemID(item map[string]any) {
 	delete(item, "id")
 }
 
-// responsesToolCallItemIDPrefixes 列出与 Responses 工具调用类型绑定的 ID 前缀。
-var responsesToolCallItemIDPrefixes = []string{"fc_", "ctc_", "tsc_"}
-
 func responsesToolCallItemIDPrefix(itemType string) string {
 	switch itemType {
 	case "custom_tool_call":
@@ -469,7 +490,7 @@ func restoreClientToolValue(value any, adapter *ResponsesClientToolMapping) bool
 				typed["type"] = "tool_search_call"
 				retypeResponsesToolCallItemID(typed, "tool_search_call")
 				typed["execution"] = "client"
-				typed["arguments"] = json.RawMessage(toolSearchCallArgumentsJSON(rawObjectString(typed["arguments"])))
+				typed["arguments"] = toolSearchCallArgumentsJSON(rawObjectString(typed["arguments"]))
 				delete(typed, "name")
 				delete(typed, "namespace")
 				changed = true
@@ -480,27 +501,6 @@ func restoreClientToolValue(value any, adapter *ResponsesClientToolMapping) bool
 		}
 	}
 	return changed
-}
-
-// ResponsesClientToolStreamRestorer 还原客户端工具的流式生命周期。
-// 它故意保持状态，因为 custom 工具需要缓冲 function 参数，直到上游标记调用完成。
-type ResponsesClientToolStreamRestorer struct {
-	adapter  ResponsesClientToolMapping
-	nextSeq  int
-	seenSeq  bool
-	calls    map[string]*responsesClientToolStreamCall
-	byOutput map[int]*responsesClientToolStreamCall
-}
-
-type responsesClientToolStreamCall struct {
-	kind string
-	name string
-	// callID/itemID 保留上游原值用于匹配后续事件；clientItemID 仅用于发给客户端。
-	callID       string
-	itemID       string
-	clientItemID string
-	outputIdx    int
-	arguments    strings.Builder
 }
 
 func NewResponsesClientToolStreamRestorer(mapping ResponsesClientToolMapping) *ResponsesClientToolStreamRestorer {

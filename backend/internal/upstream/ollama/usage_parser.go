@@ -23,6 +23,9 @@ var (
 
 	ollamaFiveHourUsageAliases = []string{"session usage", "5 hour usage", "5-hour usage", "5h usage", "5 hour limit", "5-hour limit"}
 	ollamaSevenDayUsageAliases = []string{"weekly usage", "7 day usage", "7-day usage", "7d usage", "weekly limit", "7 day limit"}
+
+	// ErrUnauthorizedHTML 表示用量页面返回了登录表单。
+	ErrUnauthorizedHTML = errors.New("settings HTML is a sign-in page")
 )
 
 func ParseOllamaCloudUsageHTML(body []byte) (*usageview.OllamaCloudUsageData, error) {
@@ -456,6 +459,3 @@ func containsAny(value string, candidates ...string) bool {
 	}
 	return false
 }
-
-// ErrUnauthorizedHTML 表示用量页面返回了登录表单。
-var ErrUnauthorizedHTML = errors.New("settings HTML is a sign-in page")

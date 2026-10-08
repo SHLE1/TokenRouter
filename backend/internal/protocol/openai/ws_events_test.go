@@ -9,6 +9,16 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+var (
+	benchmarkWSParseStringSink string
+
+	benchmarkWSParseMapSink map[string]any
+
+	// 基准保留响应 ID 和响应对象的存在状态。
+	benchmarkOpenAIWSStringSink string
+	benchmarkOpenAIWSBoolSink   bool
+)
+
 func TestParseOpenAIWSEventEnvelope(t *testing.T) {
 	eventType, responseID, response := ParseWSEventEnvelope([]byte(`{"type":"response.completed","response":{"id":"resp_1","model":"gpt-5.1"}}`))
 	require.Equal(t, "response.completed", eventType)
@@ -83,7 +93,7 @@ func BenchmarkWSIngressPayloadParseLegacy(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		eventType, model, promptCacheKey, previousResponseID, payload, err := legacyParseWSIngressPayload(raw)
 		if err == nil {
 			benchmarkWSParseStringSink = eventType + model + promptCacheKey + previousResponseID
@@ -97,7 +107,7 @@ func BenchmarkWSIngressPayloadParseOptimized(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		eventType, model, promptCacheKey, previousResponseID, payload, err := optimizedParseWSIngressPayload(raw)
 		if err == nil {
 			benchmarkWSParseStringSink = eventType + model + promptCacheKey + previousResponseID
@@ -105,10 +115,6 @@ func BenchmarkWSIngressPayloadParseOptimized(b *testing.B) {
 		}
 	}
 }
-
-var benchmarkWSParseStringSink string
-
-var benchmarkWSParseMapSink map[string]any
 
 func benchmarkWSIngressPayloadBytes() []byte {
 	return []byte(`{"type":"response.create","model":"gpt-5.3-codex","prompt_cache_key":"cache_bench","previous_response_id":"resp_prev_bench","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}]}`)
@@ -154,15 +160,9 @@ func BenchmarkOpenAIWSEventEnvelopeParse(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, responseID, response := ParseWSEventEnvelope(event)
 		benchmarkOpenAIWSStringSink = responseID
 		benchmarkOpenAIWSBoolSink = response.Exists()
 	}
 }
-
-// 基准保留响应 ID 和响应对象的存在状态。
-var (
-	benchmarkOpenAIWSStringSink string
-	benchmarkOpenAIWSBoolSink   bool
-)

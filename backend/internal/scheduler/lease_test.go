@@ -174,7 +174,7 @@ func TestWrapReleaseOnDone_ConcurrentCalls(t *testing.T) {
 	})
 
 	const numGoroutines = 10
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go release()
 	}
 
@@ -191,7 +191,7 @@ func BenchmarkWrapReleaseOnDone(b *testing.B) {
 	defer cancel()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		release := WrapRelease(ctx, ReleaseOnCancel, func() {})
 		release()
 	}

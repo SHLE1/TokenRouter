@@ -32,6 +32,20 @@ type identityVerificationDelivery struct {
 	challenges *identity.EmailChallenges
 }
 
+// identityHTTP 组合身份认证和微信支付授权的 HTTP 处理器。
+type identityHTTP struct {
+	*identityhttp.AuthenticationHandler
+	*paymenthttp.WeChatPaymentHandler
+}
+
+// identityHTTPSettings 在请求期间读取认证设置，并按各字段规则处理缺省值和读取错误。
+type identityHTTPSettings struct {
+	*identityAuthSettings
+	*admission.BackendMode
+	public    *site.PublicService
+	composite *composite.Runtime
+}
+
 func (d identityVerificationDelivery) SendNotifyVerification(ctx context.Context, n identity.NotifyVerificationNotice) error {
 	return d.mail.SendNotifyVerification(ctx, n.UserID, n.Email, n.Code, n.Locale, n.SiteName)
 }
@@ -47,20 +61,6 @@ func providePromotionUserHTTP(s *promotion.AffiliateService) *promotionhttp.User
 // GenerateVerifyCode 调用身份模块生成验证码，再交给投递流程。
 func (d identityVerificationDelivery) GenerateVerifyCode() (string, error) {
 	return d.challenges.GenerateVerifyCode()
-}
-
-// identityHTTP 组合身份认证和微信支付授权的 HTTP 处理器。
-type identityHTTP struct {
-	*identityhttp.AuthenticationHandler
-	*paymenthttp.WeChatPaymentHandler
-}
-
-// identityHTTPSettings 在请求期间读取认证设置，并按各字段规则处理缺省值和读取错误。
-type identityHTTPSettings struct {
-	*identityAuthSettings
-	*admission.BackendMode
-	public    *site.PublicService
-	composite *composite.Runtime
 }
 
 func (s identityHTTPSettings) ReadBackendMode(ctx context.Context) bool {

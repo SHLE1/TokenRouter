@@ -18,6 +18,51 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type openAIQuotaWorkflowStub struct {
+	resetResult *openai.OpenAIQuotaResetResult
+	resetErr    error
+	queryResult *openai.OpenAIQuotaUsage
+	queryErr    error
+	cacheErr    error
+
+	resetCalls          int
+	queryCalls          int
+	cacheCalls          int
+	cacheCreditsCalls   int
+	cachePostResetCalls int
+	queryCtxErr         error
+	cacheCtxErr         error
+}
+
+type openAIProviderStateRecovererStub struct {
+	err         error
+	calls       int
+	providerID  int64
+	lastOptions providercore.ProviderRecoveryOptions
+	lastCtxErr  error
+}
+
+type openAIResetAdminServiceStub struct {
+	OpenAIAdminOperations
+	provider *providercore.Record
+	err      error
+	calls    int
+}
+
+type openAIQuotaResetEnvelope struct {
+	Data OpenAIQuotaResetResponse `json:"data"`
+}
+
+type openAIQuotaRefreshEnvelope struct {
+	Data OpenAIQuotaRefreshResponse `json:"data"`
+}
+
+// openAIShadowFixture 返回影子创建结果或测试指定的错误。
+type openAIShadowFixture struct {
+	OpenAIAdminOperations
+	createSparkShadowErr error
+}
+
 func TestOpenAIResetQuotaRecoversProviderBeforeRefreshingCache(t *testing.T) {
 	quota := successfulOpenAIQuotaWorkflowStub()
 	recoverer := &openAIProviderStateRecovererStub{}
@@ -219,22 +264,6 @@ func TestCreateShadow_BadBody(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-type openAIQuotaWorkflowStub struct {
-	resetResult *openai.OpenAIQuotaResetResult
-	resetErr    error
-	queryResult *openai.OpenAIQuotaUsage
-	queryErr    error
-	cacheErr    error
-
-	resetCalls          int
-	queryCalls          int
-	cacheCalls          int
-	cacheCreditsCalls   int
-	cachePostResetCalls int
-	queryCtxErr         error
-	cacheCtxErr         error
-}
-
 func (s *openAIQuotaWorkflowStub) ResetCredit(context.Context, int64) (*openai.OpenAIQuotaResetResult, error) {
 	s.resetCalls++
 	return s.resetResult, s.resetErr
@@ -260,14 +289,6 @@ func (s *openAIQuotaWorkflowStub) CachePostResetSnapshot(ctx context.Context, _ 
 	return s.cacheErr
 }
 
-type openAIProviderStateRecovererStub struct {
-	err         error
-	calls       int
-	providerID  int64
-	lastOptions providercore.ProviderRecoveryOptions
-	lastCtxErr  error
-}
-
 func (s *openAIProviderStateRecovererStub) RecoverProviderState(ctx context.Context, providerID int64, options providercore.ProviderRecoveryOptions) (*providercore.SuccessfulTestRecovery, error) {
 	s.calls++
 	s.providerID = providerID
@@ -276,24 +297,9 @@ func (s *openAIProviderStateRecovererStub) RecoverProviderState(ctx context.Cont
 	return &providercore.SuccessfulTestRecovery{}, s.err
 }
 
-type openAIResetAdminServiceStub struct {
-	OpenAIAdminOperations
-	provider *providercore.Record
-	err      error
-	calls    int
-}
-
 func (s *openAIResetAdminServiceStub) GetProvider(context.Context, int64) (*providercore.Record, error) {
 	s.calls++
 	return s.provider, s.err
-}
-
-type openAIQuotaResetEnvelope struct {
-	Data OpenAIQuotaResetResponse `json:"data"`
-}
-
-type openAIQuotaRefreshEnvelope struct {
-	Data OpenAIQuotaRefreshResponse `json:"data"`
 }
 
 func performOpenAIQuotaResetRequest(t *testing.T, handler *OpenAIOAuthHandler, ctx context.Context) (int, openAIQuotaResetEnvelope) {
@@ -369,10 +375,4 @@ func (s *openAIShadowFixture) CreateShadow(ctx context.Context, parentID int64, 
 		Credentials:      map[string]any{},
 		Extra:            map[string]any{},
 	}, nil
-}
-
-// openAIShadowFixture 返回影子创建结果或测试指定的错误。
-type openAIShadowFixture struct {
-	OpenAIAdminOperations
-	createSparkShadowErr error
 }

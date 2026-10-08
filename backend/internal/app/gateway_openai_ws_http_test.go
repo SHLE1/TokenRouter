@@ -50,6 +50,58 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+type openAIResponsesWSUsageLogCase struct {
+	firstPayload string
+	userAgent    *string
+	groupMapping map[string]string
+}
+
+type openAIResponsesWSUsageLogResult struct {
+	log                  *usage.UsageLog
+	upstreamFirstPayload []byte
+}
+
+type openAIWSUsageHandlerProviderRepoStub struct {
+	gatewayprovider.ExecutionProviderStore
+
+	provider gatewayprovider.ExecutionProvider
+}
+
+type openAIWSUsageHandlerUsageLogRepoStub struct {
+	usage.UsageLogRepository
+	created chan *usage.UsageLog
+}
+
+type openAIWSUsageHandlerPricingConfigRepoStub struct {
+	routing.PricingConfigRepository
+	modelConfigs   []routingtestkit.Configuration
+	groupPlatforms map[int64]string
+}
+
+type openAIWSPassthroughHandlerHarness struct {
+	clientConn     *coderws.Conn
+	handlerDone    <-chan struct{}
+	moderationRepo *contentModerationHandlerTestRepo
+	gatewayCache   session.GatewayCache
+	apiKey         *apikey.APIKey
+	keys           *wsTurnKeys
+	groups         *wsTurnGroups
+}
+
+// wsTurnKeys 保存当前认证记录，连接另持有认证时取得的快照。
+type wsTurnKeys struct {
+	apikey.APIKeyRepository
+	mu  sync.Mutex
+	key *apikey.APIKey
+}
+
+// wsTurnGroups 按快照返回分组许可，供长连接测试在轮次之间撤销协议。
+type wsTurnGroups struct {
+	routing.GroupRepository
+	mu    sync.Mutex
+	group routing.Group
+}
+
 func TestResponsesWebSocketCredentialFailoverLoop(t *testing.T) {
 	dial := func(t *testing.T, router *gin.Engine) (*coderws.Conn, func()) {
 		t.Helper()
@@ -688,23 +740,6 @@ func newOpenAIWSHandlerTestServer(t *testing.T, h *gatewayHTTPEndpointsFixture, 
 	return httptest.NewServer(router)
 }
 
-type openAIResponsesWSUsageLogCase struct {
-	firstPayload string
-	userAgent    *string
-	groupMapping map[string]string
-}
-
-type openAIResponsesWSUsageLogResult struct {
-	log                  *usage.UsageLog
-	upstreamFirstPayload []byte
-}
-
-type openAIWSUsageHandlerProviderRepoStub struct {
-	gatewayprovider.ExecutionProviderStore
-
-	provider gatewayprovider.ExecutionProvider
-}
-
 func (s *openAIWSUsageHandlerProviderRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	if platform != "" && s.provider.Record.Platform != platform {
 		return nil, nil
@@ -724,22 +759,11 @@ func (s *openAIWSUsageHandlerProviderRepoStub) GetByID(ctx context.Context, id i
 	return &provider, nil
 }
 
-type openAIWSUsageHandlerUsageLogRepoStub struct {
-	usage.UsageLogRepository
-	created chan *usage.UsageLog
-}
-
 func (s *openAIWSUsageHandlerUsageLogRepoStub) Create(ctx context.Context, log *usage.UsageLog) (bool, error) {
 	if s.created != nil {
 		s.created <- log
 	}
 	return true, nil
-}
-
-type openAIWSUsageHandlerPricingConfigRepoStub struct {
-	routing.PricingConfigRepository
-	modelConfigs   []routingtestkit.Configuration
-	groupPlatforms map[int64]string
 }
 
 func (s *openAIWSUsageHandlerPricingConfigRepoStub) ListAll(ctx context.Context) ([]routingtestkit.Configuration, error) {
@@ -1387,23 +1411,6 @@ func testStringPtr(v string) *string {
 	return &v
 }
 
-type openAIWSPassthroughHandlerHarness struct {
-	clientConn     *coderws.Conn
-	handlerDone    <-chan struct{}
-	moderationRepo *contentModerationHandlerTestRepo
-	gatewayCache   session.GatewayCache
-	apiKey         *apikey.APIKey
-	keys           *wsTurnKeys
-	groups         *wsTurnGroups
-}
-
-// wsTurnKeys 保存当前认证记录，连接另持有认证时取得的快照。
-type wsTurnKeys struct {
-	apikey.APIKeyRepository
-	mu  sync.Mutex
-	key *apikey.APIKey
-}
-
 func (r *wsTurnKeys) GetByKeyForAuth(context.Context, string) (*apikey.APIKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -1417,13 +1424,6 @@ func (r *wsTurnKeys) remove() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.key = nil
-}
-
-// wsTurnGroups 按快照返回分组许可，供长连接测试在轮次之间撤销协议。
-type wsTurnGroups struct {
-	routing.GroupRepository
-	mu    sync.Mutex
-	group routing.Group
 }
 
 func (r *wsTurnGroups) GetByIDLite(context.Context, int64) (*routing.Group, error) {

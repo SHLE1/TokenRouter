@@ -72,7 +72,6 @@ func (h *ManualCredentialExchange) Refresh(ctx context.Context, provider *Record
 		if tokenInfo.ProjectIDMissing {
 			return newCredentials, true, nil
 		}
-
 	} else if provider.Platform == capability.PlatformGrok {
 		if h.Grok == nil {
 			return nil, false, errors.New("grok OAuth service is not configured")

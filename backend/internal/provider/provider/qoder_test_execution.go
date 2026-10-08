@@ -27,6 +27,20 @@ type qoderProviderTestOAuthClient interface {
 	GetUserInfo(ctx context.Context, token string) (*qoder.UserInfo, error)
 }
 
+// QoderProviderTest 只拥有本次提供商测试的供应商交换，会话缓存由外部唯一实例提供。
+type QoderProviderTest struct {
+	Sessions     qoderProviderTestSessionProvider
+	Client       qoder.StreamClient
+	UserInfo     qoderProviderTestOAuthClient
+	Transport    QoderTransport
+	Profiles     *egressadapter.TLSProfiles
+	RewriteModel func([]byte, string) []byte
+}
+
+type qoderTestClientWithDoer interface {
+	StreamRequestContextWithDoer(context.Context, *qoder.SessionContext, string, []byte, map[string]string, qoder.RequestDoer) (*http.Response, error)
+}
+
 func (s *QoderProviderTest) Execute(c *TestRun, value *providercore.Record, modelID string, prompt string) error {
 	if value.Type != capability.ProviderTypeCosy {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Unsupported provider type: %s", value.Type))
@@ -182,20 +196,6 @@ func (s *QoderProviderTest) getQoderUserInfoForProvider(ctx context.Context, val
 		return &info, nil
 	}
 	return qoder.NewOAuthClientForProfile(profile, nil).GetUserInfo(ctx, token)
-}
-
-// QoderProviderTest 只拥有本次提供商测试的供应商交换，会话缓存由外部唯一实例提供。
-type QoderProviderTest struct {
-	Sessions     qoderProviderTestSessionProvider
-	Client       qoder.StreamClient
-	UserInfo     qoderProviderTestOAuthClient
-	Transport    QoderTransport
-	Profiles     *egressadapter.TLSProfiles
-	RewriteModel func([]byte, string) []byte
-}
-
-type qoderTestClientWithDoer interface {
-	StreamRequestContextWithDoer(context.Context, *qoder.SessionContext, string, []byte, map[string]string, qoder.RequestDoer) (*http.Response, error)
 }
 
 func qoderTestProfile(value *providercore.Record) (qoder.Profile, error) {

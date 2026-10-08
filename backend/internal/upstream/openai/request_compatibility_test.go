@@ -9,6 +9,9 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// benchmarkIntSink 记录空Base64图片候选的命中次数。
+var benchmarkIntSink int
+
 // TestSanitizeOpenAICrossModeFailoverReasoning_DropsWholeEncryptedItem 验证跨模式故障转移时删除完整的加密推理项。
 func TestSanitizeOpenAICrossModeFailoverReasoning_DropsWholeEncryptedItem(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.1","input":[` +
@@ -216,7 +219,7 @@ func BenchmarkOpenAIResponses_LargeInputEmptyBase64Guard(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				if OpenAIRequestBodyMayContainEmptyBase64InputImage(body) {
 					benchmarkIntSink++
 				}
@@ -258,6 +261,3 @@ func buildLargeOpenAIResponsesBody(targetBytes int) []byte {
 	_, _ = builder.WriteString(`],"tools":[{"type":"function","name":"lookup","parameters":{"type":"object","properties":{"query":{"type":"string"}}}}]}`)
 	return []byte(builder.String())
 }
-
-// benchmarkIntSink 记录空Base64图片候选的命中次数。
-var benchmarkIntSink int

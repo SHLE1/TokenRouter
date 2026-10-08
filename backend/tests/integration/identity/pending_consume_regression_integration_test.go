@@ -11,11 +11,12 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 )
 
 // TestPendingTransactionConsumesOnce 两个独立 PostgreSQL 事务读到未消费会话后竞争提交。

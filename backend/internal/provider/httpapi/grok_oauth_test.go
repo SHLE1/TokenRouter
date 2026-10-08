@@ -25,6 +25,42 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+type grokQuotaHandlerProviderRepo struct {
+	providercore.GrokRateLimitWriter
+	provider *providercore.Record
+	updates  map[int64]map[string]any
+	mu       sync.Mutex
+}
+
+type grokQuotaHandlerUpstream struct {
+	mu       sync.Mutex
+	requests []*http.Request
+	bodies   [][]byte
+}
+
+type grokOAuthReconcilerStub struct {
+	input  providercore.GrokOAuthReconcileInput
+	calls  int
+	result *providercore.GrokOAuthReconcileResult
+	err    error
+}
+
+type grokOAuthHandlerClient struct{}
+
+type grokImportOAuthClientStub struct{}
+
+type grokImportProbeStub struct {
+	mu           sync.Mutex
+	calls        map[int64]int
+	failures     map[int64]error
+	active       int
+	maxActive    int
+	deadlineSeen bool
+	block        <-chan struct{}
+	started      chan int64
+	done         chan int64
+}
+
 func TestGrokOAuthHandlerQueryQuotaProbesUpstream(t *testing.T) {
 	repo := &grokQuotaHandlerProviderRepo{provider: &providercore.Record{
 		ID:          42,
@@ -283,18 +319,11 @@ func TestGrokSSOBatchImportKeepsCreatedProvidersWhenOneAutomaticProbeFails(t *te
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Contains(t, recorder.Body.String(), `"created"`)
 	require.NotContains(t, recorder.Body.String(), `GROK_TEST_PROBE_FAILED`)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		awaitGrokProbeSignal(t, prober.done)
 	}
 	calls, _, _ := prober.snapshot()
 	require.Equal(t, map[int64]int{501: 1, 502: 1, 503: 1}, calls)
-}
-
-type grokQuotaHandlerProviderRepo struct {
-	providercore.GrokRateLimitWriter
-	provider *providercore.Record
-	updates  map[int64]map[string]any
-	mu       sync.Mutex
 }
 
 func (r *grokQuotaHandlerProviderRepo) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
@@ -312,19 +341,6 @@ func (r *grokQuotaHandlerProviderRepo) UpdateExtra(_ context.Context, id int64, 
 	}
 	r.updates[id] = updates
 	return nil
-}
-
-type grokQuotaHandlerUpstream struct {
-	mu       sync.Mutex
-	requests []*http.Request
-	bodies   [][]byte
-}
-
-type grokOAuthReconcilerStub struct {
-	input  providercore.GrokOAuthReconcileInput
-	calls  int
-	result *providercore.GrokOAuthReconcileResult
-	err    error
 }
 
 func (s *grokOAuthReconcilerStub) ReconcileGrokOAuth(_ context.Context, input providercore.GrokOAuthReconcileInput) (*providercore.GrokOAuthReconcileResult, error) {
@@ -369,8 +385,6 @@ func (u *grokQuotaHandlerUpstream) DoWithTLS(
 	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
-type grokOAuthHandlerClient struct{}
-
 func (c *grokOAuthHandlerClient) ExchangeCode(context.Context, string, string, string, string, string) (*xai.TokenResponse, error) {
 	return nil, errors.New("unexpected exchange")
 }
@@ -402,8 +416,6 @@ func stopGrokAuthorizationForTest(t *testing.T, authorization *providercore.Grok
 	require.NoError(t, authorization.StopContext(context.Background()))
 }
 
-type grokImportOAuthClientStub struct{}
-
 func (grokImportOAuthClientStub) ExchangeCode(context.Context, string, string, string, string, string) (*xai.TokenResponse, error) {
 	return &xai.TokenResponse{AccessToken: "access-token", RefreshToken: "refresh-token", ExpiresIn: 3600}, nil
 }
@@ -418,18 +430,6 @@ func (grokImportOAuthClientStub) LoginWithPassword(context.Context, string, stri
 
 func (grokImportOAuthClientStub) ConvertSSOToBuild(context.Context, string, string) (*xai.TokenResponse, error) {
 	return &xai.TokenResponse{AccessToken: "access-token", RefreshToken: "refresh-token", ExpiresIn: 3600}, nil
-}
-
-type grokImportProbeStub struct {
-	mu           sync.Mutex
-	calls        map[int64]int
-	failures     map[int64]error
-	active       int
-	maxActive    int
-	deadlineSeen bool
-	block        <-chan struct{}
-	started      chan int64
-	done         chan int64
 }
 
 func newGrokImportProbeStub(buffer int) *grokImportProbeStub {

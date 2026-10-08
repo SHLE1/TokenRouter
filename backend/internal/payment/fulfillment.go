@@ -13,11 +13,23 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+const (
+	// RedeemActionCreate: code does not exist — create it, then redeem.
+	RedeemActionCreate RedeemAction = iota
+	// RedeemActionRedeem: code exists but is unused — skip creation, redeem only.
+	RedeemActionRedeem
+	// RedeemActionSkipCompleted: code exists and is already used — skip to mark completed.
+	RedeemActionSkipCompleted
+
+	FulfillmentLeaseDuration = 5 * time.Minute
+)
+
 // ErrOrderNotFound 表示支付回调引用的 out_trade_no 在本地订单表中不存在。
 // Webhook 处理器会把它当成终态错误处理，返回 2xx 避免支付平台持续重试。
 var ErrOrderNotFound = errors.New("payment order not found")
 
-const FulfillmentLeaseDuration = 5 * time.Minute
+// RedeemAction represents the idempotency decision for balance fulfillment.
+type RedeemAction int
 
 func (s *Fulfillment) HandlePaymentNotification(ctx context.Context, n *PaymentNotification, pk string) error {
 	if n == nil {
@@ -166,7 +178,7 @@ func (s *Fulfillment) MarkPaymentProcessing(ctx context.Context, o *Order, trade
 }
 
 func (s *Fulfillment) MarkPaymentFailed(ctx context.Context, o *Order, tradeNo, pk string) error {
-	for attempts := 0; attempts < 3; attempts++ {
+	for range 3 {
 		previousStatus := o.Status
 		if previousStatus != OrderStatusPending && previousStatus != OrderStatusProcessing {
 			return nil
@@ -215,7 +227,7 @@ func ExpectedNotificationProviderKey(registry *Registry, orderPaymentType string
 		return key
 	}
 	if registry != nil {
-		if key := strings.TrimSpace(registry.GetProviderKey(PaymentType(orderPaymentType))); key != "" {
+		if key := strings.TrimSpace(registry.GetProviderKey(orderPaymentType)); key != "" {
 			return key
 		}
 	}
@@ -228,7 +240,7 @@ func (s *Fulfillment) ToPaid(ctx context.Context, o *Order, tradeNo string, paid
 		strings.HasPrefix(strings.TrimSpace(o.PaymentTradeNo), "pi_") {
 		tradeNo = o.PaymentTradeNo
 	}
-	for attempts := 0; attempts < 5; attempts++ {
+	for range 5 {
 		previousStatus := o.Status
 		switch previousStatus {
 		case OrderStatusPending, OrderStatusProcessing, OrderStatusExpired, OrderStatusCancelled:
@@ -355,18 +367,6 @@ func (s *Fulfillment) AcquirePaymentFulfillmentLease(ctx context.Context, o *Ord
 	}
 	return &FulfillmentLease{Version: claimed.UpdatedAt}, nil
 }
-
-// RedeemAction represents the idempotency decision for balance fulfillment.
-type RedeemAction int
-
-const (
-	// RedeemActionCreate: code does not exist — create it, then redeem.
-	RedeemActionCreate RedeemAction = iota
-	// RedeemActionRedeem: code exists but is unused — skip creation, redeem only.
-	RedeemActionRedeem
-	// RedeemActionSkipCompleted: code exists and is already used — skip to mark completed.
-	RedeemActionSkipCompleted
-)
 
 // ResolveRedeemAction decides the idempotency action based on an existing redeem code lookup.
 // existing is the result of GetByCode; lookupErr is the error from that call.

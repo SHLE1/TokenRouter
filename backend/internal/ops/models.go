@@ -43,73 +43,6 @@ type OpsRequestTiming struct {
 	UpstreamWroteRequestError      bool   `json:"upstream_wrote_request_error,omitempty"`
 }
 
-// OpsRequestTimingFromExtra 从系统日志的 Extra 中提取请求阶段耗时。
-func OpsRequestTimingFromExtra(extra map[string]any) *OpsRequestTiming {
-	if len(extra) == 0 {
-		return nil
-	}
-	timing := &OpsRequestTiming{
-		RequestContentLength:           timingInt64Ptr(extra["request_content_length"]),
-		ProviderSlotAcquiredMs:         timingInt64Ptr(extra["provider_slot_acquired_ms"]),
-		UpstreamGetConnMs:              timingInt64Ptr(extra["upstream_get_conn_ms"]),
-		UpstreamGotConnMs:              timingInt64Ptr(extra["upstream_got_conn_ms"]),
-		UpstreamWroteRequestMs:         timingInt64Ptr(extra["upstream_wrote_request_ms"]),
-		UpstreamFirstResponseByteMs:    timingInt64Ptr(extra["upstream_first_response_byte_ms"]),
-		UpstreamFirstSSEDataMs:         timingInt64Ptr(extra["upstream_first_sse_data_ms"]),
-		FirstVisibleOutputMs:           timingInt64Ptr(extra["first_visible_output_ms"]),
-		FirstDownstreamFlushMs:         timingInt64Ptr(extra["first_downstream_flush_ms"]),
-		UpstreamGetConnCount:           timingInt64Ptr(extra["upstream_get_conn_count"]),
-		UpstreamGotConnCount:           timingInt64Ptr(extra["upstream_got_conn_count"]),
-		UpstreamAttemptCount:           timingInt64Ptr(extra["upstream_attempt_count"]),
-		UpstreamFirstResponseByteCount: timingInt64Ptr(extra["upstream_first_response_byte_count"]),
-	}
-	if value, ok := extra["upstream_connection_reused"].(bool); ok {
-		timing.UpstreamConnectionReused = value
-	}
-	if value, ok := extra["upstream_wrote_request_error"].(bool); ok {
-		timing.UpstreamWroteRequestError = value
-	}
-	if timing.RequestContentLength == nil && timing.ProviderSlotAcquiredMs == nil && timing.UpstreamGetConnMs == nil &&
-		timing.UpstreamGotConnMs == nil && timing.UpstreamWroteRequestMs == nil && timing.UpstreamFirstResponseByteMs == nil &&
-		timing.UpstreamFirstSSEDataMs == nil && timing.FirstVisibleOutputMs == nil && timing.FirstDownstreamFlushMs == nil &&
-		timing.UpstreamGetConnCount == nil && timing.UpstreamGotConnCount == nil && timing.UpstreamAttemptCount == nil &&
-		timing.UpstreamFirstResponseByteCount == nil && !timing.UpstreamConnectionReused && !timing.UpstreamWroteRequestError {
-		return nil
-	}
-	return timing
-}
-
-// timingInt64Ptr 解析 JSON 数字并保留零值；零毫秒是有效的“立即发生”阶段。
-func timingInt64Ptr(value any) *int64 {
-	var parsed int64
-	switch v := value.(type) {
-	case int:
-		parsed = int64(v)
-	case int64:
-		parsed = v
-	case float64:
-		parsed = int64(v)
-	case json.Number:
-		if n, err := v.Int64(); err == nil {
-			parsed = n
-		} else {
-			return nil
-		}
-	case string:
-		if n, err := json.Number(strings.TrimSpace(v)).Int64(); err == nil {
-			parsed = n
-		} else {
-			return nil
-		}
-	default:
-		return nil
-	}
-	if parsed < 0 {
-		return nil
-	}
-	return &parsed
-}
-
 type OpsErrorLog struct {
 	ID        int64     `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -250,15 +183,82 @@ type OpsErrorLogFilter struct {
 	SortOrder string
 }
 
-// SetSort 将原始排序参数归一化后写入过滤器，供管理端和用户端错误列表共用。
-func (f *OpsErrorLogFilter) SetSort(sortBy, sortOrder string) {
-	f.SortBy = strings.TrimSpace(sortBy)
-	f.SortOrder = strings.TrimSpace(sortOrder)
-}
-
 type OpsErrorLogList struct {
 	Errors   []*OpsErrorLog `json:"errors"`
 	Total    int            `json:"total"`
 	Page     int            `json:"page"`
 	PageSize int            `json:"page_size"`
+}
+
+// OpsRequestTimingFromExtra 从系统日志的 Extra 中提取请求阶段耗时。
+func OpsRequestTimingFromExtra(extra map[string]any) *OpsRequestTiming {
+	if len(extra) == 0 {
+		return nil
+	}
+	timing := &OpsRequestTiming{
+		RequestContentLength:           timingInt64Ptr(extra["request_content_length"]),
+		ProviderSlotAcquiredMs:         timingInt64Ptr(extra["provider_slot_acquired_ms"]),
+		UpstreamGetConnMs:              timingInt64Ptr(extra["upstream_get_conn_ms"]),
+		UpstreamGotConnMs:              timingInt64Ptr(extra["upstream_got_conn_ms"]),
+		UpstreamWroteRequestMs:         timingInt64Ptr(extra["upstream_wrote_request_ms"]),
+		UpstreamFirstResponseByteMs:    timingInt64Ptr(extra["upstream_first_response_byte_ms"]),
+		UpstreamFirstSSEDataMs:         timingInt64Ptr(extra["upstream_first_sse_data_ms"]),
+		FirstVisibleOutputMs:           timingInt64Ptr(extra["first_visible_output_ms"]),
+		FirstDownstreamFlushMs:         timingInt64Ptr(extra["first_downstream_flush_ms"]),
+		UpstreamGetConnCount:           timingInt64Ptr(extra["upstream_get_conn_count"]),
+		UpstreamGotConnCount:           timingInt64Ptr(extra["upstream_got_conn_count"]),
+		UpstreamAttemptCount:           timingInt64Ptr(extra["upstream_attempt_count"]),
+		UpstreamFirstResponseByteCount: timingInt64Ptr(extra["upstream_first_response_byte_count"]),
+	}
+	if value, ok := extra["upstream_connection_reused"].(bool); ok {
+		timing.UpstreamConnectionReused = value
+	}
+	if value, ok := extra["upstream_wrote_request_error"].(bool); ok {
+		timing.UpstreamWroteRequestError = value
+	}
+	if timing.RequestContentLength == nil && timing.ProviderSlotAcquiredMs == nil && timing.UpstreamGetConnMs == nil &&
+		timing.UpstreamGotConnMs == nil && timing.UpstreamWroteRequestMs == nil && timing.UpstreamFirstResponseByteMs == nil &&
+		timing.UpstreamFirstSSEDataMs == nil && timing.FirstVisibleOutputMs == nil && timing.FirstDownstreamFlushMs == nil &&
+		timing.UpstreamGetConnCount == nil && timing.UpstreamGotConnCount == nil && timing.UpstreamAttemptCount == nil &&
+		timing.UpstreamFirstResponseByteCount == nil && !timing.UpstreamConnectionReused && !timing.UpstreamWroteRequestError {
+		return nil
+	}
+	return timing
+}
+
+// timingInt64Ptr 解析 JSON 数字并保留零值；零毫秒是有效的“立即发生”阶段。
+func timingInt64Ptr(value any) *int64 {
+	var parsed int64
+	switch v := value.(type) {
+	case int:
+		parsed = int64(v)
+	case int64:
+		parsed = v
+	case float64:
+		parsed = int64(v)
+	case json.Number:
+		if n, err := v.Int64(); err == nil {
+			parsed = n
+		} else {
+			return nil
+		}
+	case string:
+		if n, err := json.Number(strings.TrimSpace(v)).Int64(); err == nil {
+			parsed = n
+		} else {
+			return nil
+		}
+	default:
+		return nil
+	}
+	if parsed < 0 {
+		return nil
+	}
+	return &parsed
+}
+
+// SetSort 将原始排序参数归一化后写入过滤器，供管理端和用户端错误列表共用。
+func (f *OpsErrorLogFilter) SetSort(sortBy, sortOrder string) {
+	f.SortBy = strings.TrimSpace(sortBy)
+	f.SortOrder = strings.TrimSpace(sortOrder)
 }

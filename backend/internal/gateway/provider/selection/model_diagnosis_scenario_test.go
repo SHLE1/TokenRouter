@@ -21,6 +21,9 @@ import (
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
+// selectionAvailabilityFixture 筛选候选并返回模型诊断需要的记录。
+type selectionAvailabilityFixture struct{ *mockProviderRepoForPlatform }
+
 // newBedrockRoutingTestProvider 用虚构凭据构造测试用可调度提供商。
 func newBedrockRoutingTestProvider(id int64, region string, forceGlobal bool) gatewayprovider.ExecutionProvider {
 	provider := gatewayprovider.ExecutionProvider{
@@ -96,9 +99,6 @@ func TestBedrockRegionRouting_SchedulerAndDiagnosisAgree(t *testing.T) {
 		}
 	}
 }
-
-// selectionAvailabilityFixture 筛选候选并返回模型诊断需要的记录。
-type selectionAvailabilityFixture struct{ *mockProviderRepoForPlatform }
 
 func (s selectionAvailabilityFixture) ListModelAvailabilityCandidates(ctx context.Context, group *int64, platforms []string, all bool) ([]providercore.Record, error) {
 	values, err := s.availabilityRecords(ctx, group, platforms, all)

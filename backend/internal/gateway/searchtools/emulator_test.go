@@ -20,34 +20,16 @@ type searchStub struct {
 	events  *[]string
 }
 
-func (s *searchStub) SearchWithBestProvider(_ context.Context, r contract.SearchRequest) (*contract.SearchResponse, string, error) {
-	s.calls++
-	s.request = r
-	if s.events != nil {
-		*s.events = append(*s.events, "search")
-	}
-	return &contract.SearchResponse{Query: r.Query, Results: []contract.SearchResult{{URL: "https://example.test/page", Title: "title", Snippet: "snippet"}}}, "brave", s.err
-}
-
 type sourceStub struct{ searcher Searcher }
-
-func (s sourceStub) Current() Searcher { return s.searcher }
 
 type settingStub struct {
 	enabled bool
 	calls   int
 }
 
-func (s *settingStub) IsWebSearchEmulationEnabled(context.Context) bool { s.calls++; return s.enabled }
-
 type pricingConfigStub struct {
 	calls   int
 	enabled bool
-}
-
-func (s *pricingConfigStub) Enabled(context.Context, int64, string) (bool, error) {
-	s.calls++
-	return s.enabled, nil
 }
 
 type outputStub struct {
@@ -57,6 +39,24 @@ type outputStub struct {
 	failAt  int
 	flushes int
 	started bool
+}
+
+func (s *searchStub) SearchWithBestProvider(_ context.Context, r contract.SearchRequest) (*contract.SearchResponse, string, error) {
+	s.calls++
+	s.request = r
+	if s.events != nil {
+		*s.events = append(*s.events, "search")
+	}
+	return &contract.SearchResponse{Query: r.Query, Results: []contract.SearchResult{{URL: "https://example.test/page", Title: "title", Snippet: "snippet"}}}, "brave", s.err
+}
+
+func (s sourceStub) Current() Searcher { return s.searcher }
+
+func (s *settingStub) IsWebSearchEmulationEnabled(context.Context) bool { s.calls++; return s.enabled }
+
+func (s *pricingConfigStub) Enabled(context.Context, int64, string) (bool, error) {
+	s.calls++
+	return s.enabled, nil
 }
 
 func (o *outputStub) StartStream() { o.started = true }

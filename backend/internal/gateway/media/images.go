@@ -9,44 +9,14 @@ import (
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-type ImageCapability = providercore.OpenAIImagesCapability
-
 const (
 	ImageCapabilityBasic  ImageCapability = "images-basic"
 	ImageCapabilityNative ImageCapability = "images-native"
 )
 
+type ImageCapability = providercore.OpenAIImagesCapability
+
 type ImageUpload = upstreamcore.ImageUpload
-
-// ParseImageRequest 解析图片请求，validateModel 决定是否同时校验模型。
-func ParseImageRequest(endpoint, contentType string, body []byte, validateModel bool) (*ImageRequest, error) {
-	value, err := upstreamcore.ParseImageRequest(endpoint, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req := &ImageRequest{}
-	ApplyNativeImageRequest(req, value)
-	req.SizeTier = NormalizeImageSizeTier(req.Size)
-	req.RequiredCapability = ClassifyImageCapability(req)
-	if validateModel {
-		if err := req.ValidateRoutingModel(req.Model); err != nil {
-			return nil, err
-		}
-	}
-	return req, nil
-}
-
-// ImageExecutionPath 根据提供商类型选择 API Key 或 OAuth 执行方式。
-func ImageExecutionPath(providerType string) (bool, error) {
-	switch providerType {
-	case "apikey":
-		return false, nil
-	case "oauth", "setup-token":
-		return true, nil
-	default:
-		return false, fmt.Errorf("unsupported provider type: %s", providerType)
-	}
-}
 
 type ImageRequest struct {
 	Endpoint           string
@@ -78,6 +48,36 @@ type ImageRequest struct {
 	MaskUpload         *ImageUpload
 	Body               []byte
 	BodyHash           string `json:"-"`
+}
+
+// ParseImageRequest 解析图片请求，validateModel 决定是否同时校验模型。
+func ParseImageRequest(endpoint, contentType string, body []byte, validateModel bool) (*ImageRequest, error) {
+	value, err := upstreamcore.ParseImageRequest(endpoint, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req := &ImageRequest{}
+	ApplyNativeImageRequest(req, value)
+	req.SizeTier = NormalizeImageSizeTier(req.Size)
+	req.RequiredCapability = ClassifyImageCapability(req)
+	if validateModel {
+		if err := req.ValidateRoutingModel(req.Model); err != nil {
+			return nil, err
+		}
+	}
+	return req, nil
+}
+
+// ImageExecutionPath 根据提供商类型选择 API Key 或 OAuth 执行方式。
+func ImageExecutionPath(providerType string) (bool, error) {
+	switch providerType {
+	case "apikey":
+		return false, nil
+	case "oauth", "setup-token":
+		return true, nil
+	default:
+		return false, fmt.Errorf("unsupported provider type: %s", providerType)
+	}
 }
 
 func (r *ImageRequest) ModerationBody() []byte {

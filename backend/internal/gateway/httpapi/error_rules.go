@@ -14,11 +14,6 @@ type ErrorPassthroughHandler struct {
 	service *errorpolicy.ErrorPassthroughService
 }
 
-// NewErrorPassthroughHandler 创建错误透传规则处理器
-func NewErrorPassthroughHandler(service *errorpolicy.ErrorPassthroughService) *ErrorPassthroughHandler {
-	return &ErrorPassthroughHandler{service: service}
-}
-
 // CreateErrorPassthroughRuleRequest 创建规则请求
 type CreateErrorPassthroughRuleRequest struct {
 	Name            string   `json:"name" binding:"required"`
@@ -51,6 +46,11 @@ type UpdateErrorPassthroughRuleRequest struct {
 	CustomMessage   *string  `json:"custom_message"`
 	SkipMonitoring  *bool    `json:"skip_monitoring"`
 	Description     *string  `json:"description"`
+}
+
+// NewErrorPassthroughHandler 创建错误透传规则处理器
+func NewErrorPassthroughHandler(service *errorpolicy.ErrorPassthroughService) *ErrorPassthroughHandler {
+	return &ErrorPassthroughHandler{service: service}
 }
 
 // List 获取所有规则

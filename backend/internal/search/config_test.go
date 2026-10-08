@@ -13,6 +13,21 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+// configFixture 控制配置回源与保存的交错，并可注入写入失败。
+type configFixture struct {
+	mu        sync.Mutex
+	raw       string
+	fail      error
+	firstRead atomic.Bool
+	entered   chan struct{}
+	release   chan struct{}
+}
+
+type configProxyFixture struct {
+	first            atomic.Bool
+	entered, release chan struct{}
+}
+
 func TestValidateWebSearchConfig_Nil(t *testing.T) {
 	require.NoError(t, ValidateConfig(nil))
 }
@@ -386,16 +401,6 @@ func TestConsecutiveSavesKeepLastPublication(t *testing.T) {
 // searchQuotaFixture 返回额度值的指针。
 func searchQuotaFixture(v int64) *int64 { return &v }
 
-// configFixture 控制配置回源与保存的交错，并可注入写入失败。
-type configFixture struct {
-	mu        sync.Mutex
-	raw       string
-	fail      error
-	firstRead atomic.Bool
-	entered   chan struct{}
-	release   chan struct{}
-}
-
 func (r *configFixture) GetValue(_ context.Context, _ string) (string, error) {
 	r.mu.Lock()
 	raw := r.raw
@@ -418,11 +423,6 @@ func (r *configFixture) Set(_ context.Context, _, value string) error {
 	}
 	r.raw = value
 	return nil
-}
-
-type configProxyFixture struct {
-	first            atomic.Bool
-	entered, release chan struct{}
 }
 
 func (p *configProxyFixture) URLs(context.Context, []int64) (map[int64]string, error) {

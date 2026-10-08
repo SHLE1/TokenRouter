@@ -19,6 +19,35 @@ type ModelChain struct {
 	BillingModelSource                                                 string
 }
 
+// PlanInput 包含最终分组、请求模型和客户端协议。
+type PlanInput struct {
+	GroupID        *int64
+	RequestedModel string
+	GroupMapping   GroupMappingResult
+	Group          *Group
+	ClientProtocol capability.ProtocolID
+}
+
+// RoutePlan 保存本次分组和协议策略，候选解析时确定提供商及其模型映射。
+// 私有字段保存一次尝试使用的协议回退表。
+type RoutePlan struct {
+	models         ModelChain
+	groupID        int64
+	schedulerType  GroupSchedulerType
+	clientProtocol capability.ProtocolID
+	allowed        []capability.ProtocolID
+	fallbacks      map[capability.ProtocolID][]capability.ProtocolID
+}
+
+// CandidatePlan 是单个候选的本次路由结果。
+type CandidatePlan struct {
+	Models           ModelChain
+	ProviderID       int64
+	GroupID          int64
+	ClientProtocol   capability.ProtocolID
+	UpstreamProtocol capability.ProtocolID
+}
+
 // Mapping 从路由计划返回本次模型映射、白名单阶段和计费元数据。
 func (p RoutePlan) Mapping() GroupMappingResult {
 	return GroupMappingResult{
@@ -40,26 +69,6 @@ func (p CandidatePlan) ResolveModel(snapshot provider.ProviderSnapshot, requeste
 	mapped, matched := snapshot.ModelPolicy.Resolve(requested)
 	p.Models.ProviderMappedModel = mapped
 	return p, matched
-}
-
-// PlanInput 包含最终分组、请求模型和客户端协议。
-type PlanInput struct {
-	GroupID        *int64
-	RequestedModel string
-	GroupMapping   GroupMappingResult
-	Group          *Group
-	ClientProtocol capability.ProtocolID
-}
-
-// RoutePlan 保存本次分组和协议策略，候选解析时确定提供商及其模型映射。
-// 私有字段保存一次尝试使用的协议回退表。
-type RoutePlan struct {
-	models         ModelChain
-	groupID        int64
-	schedulerType  GroupSchedulerType
-	clientProtocol capability.ProtocolID
-	allowed        []capability.ProtocolID
-	fallbacks      map[capability.ProtocolID][]capability.ProtocolID
 }
 
 // Plan 复制已通过入口准入的分组数据，构造请求路由计划。
@@ -88,15 +97,6 @@ func Plan(input PlanInput) RoutePlan {
 		plan.groupID = *input.GroupID
 	}
 	return plan
-}
-
-// CandidatePlan 是单个候选的本次路由结果。
-type CandidatePlan struct {
-	Models           ModelChain
-	ProviderID       int64
-	GroupID          int64
-	ClientProtocol   capability.ProtocolID
-	UpstreamProtocol capability.ProtocolID
 }
 
 // ResolveCandidate 优先选择提供商直接支持的协议，其次尝试单步转换，每次候选刷新或数据库复核时重新调用。

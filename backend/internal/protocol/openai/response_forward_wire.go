@@ -313,10 +313,10 @@ func OpenAIUsageFromGJSON(value gjson.Result) (ForwardUsage, bool) {
 	}
 	// xAI 可能将 reasoning_tokens 与可见输出 token 分开返回；按 total_tokens
 	// 与推理字段的差额判断独立部分，OpenAI 标准 completion_tokens 已包含推理细节。
-	reasoningTokens := max(int(FirstPositiveGJSONInt(
+	reasoningTokens := max(FirstPositiveGJSONInt(
 		value.Get("completion_tokens_details.reasoning_tokens"),
 		value.Get("output_tokens_details.reasoning_tokens"),
-	)), 0)
+	), 0)
 	if reasoningTokens > 0 {
 		outputTokens = protocol.IncludeIndependentReasoningTokens(
 			inputTokens, outputTokens, value.Get("total_tokens").Int(), int64(reasoningTokens),

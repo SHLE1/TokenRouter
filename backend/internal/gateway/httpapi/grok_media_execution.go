@@ -27,6 +27,20 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+type grokMediaUsageMetadata struct {
+	ResponseID           string
+	Usage                openai.ForwardUsage
+	Model                string
+	BillingModel         string
+	ImageCount           int
+	ImageSize            string
+	ImageInputSize       string
+	ImageOutputSizes     []string
+	VideoCount           int
+	VideoResolution      string
+	VideoDurationSeconds int
+}
+
 // xAI 异步视频状态的官方成功结构如下（docs.x.ai Video Generation）：
 //
 //	示例：{"status":"done","model":"grok-imagine-video-1.5","video":{"url":"...","duration":8,"respect_moderation":true}}
@@ -338,20 +352,6 @@ func normalizeGrokMediaForwardBody(endpoint grok.GrokMediaEndpoint, body []byte,
 
 func sanitizeGrokMediaForwardBody(endpoint grok.GrokMediaEndpoint, body []byte, contentType string) ([]byte, string, error) {
 	return gatewayprovider.GrokMediaCodec().SanitizeGrokMediaForwardBody(endpoint, body, contentType)
-}
-
-type grokMediaUsageMetadata struct {
-	ResponseID           string
-	Usage                openai.ForwardUsage
-	Model                string
-	BillingModel         string
-	ImageCount           int
-	ImageSize            string
-	ImageInputSize       string
-	ImageOutputSizes     []string
-	VideoCount           int
-	VideoResolution      string
-	VideoDurationSeconds int
 }
 
 func grokMediaUsageFromResponse(endpoint grok.GrokMediaEndpoint, requestInfo grok.GrokMediaRequestInfo, responseBody []byte) grokMediaUsageMetadata {

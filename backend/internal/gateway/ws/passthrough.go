@@ -11,10 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // Run 执行双向 relay，按轮处理策略检查、完成和失败。

@@ -20,8 +20,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logevent"
 )
 
-type Level = zapcore.Level
-
 const (
 	LevelDebug = zapcore.DebugLevel
 	LevelInfo  = zapcore.InfoLevel
@@ -31,13 +29,9 @@ const (
 
 	// OpsSystemLogSkipField 让事件保留在标准日志中，同时阻止 Ops 数据库日志接收器索引该事件。
 	OpsSystemLogSkipField = logevent.OpsSystemLogSkipField
+
+	loggerContextKey contextKey = "ctx_logger"
 )
-
-type Sink interface {
-	WriteLogEvent(event *LogEvent)
-}
-
-type LogEvent = logevent.LogEvent
 
 var (
 	mu            sync.RWMutex
@@ -50,9 +44,28 @@ var (
 	bootstrapOnce sync.Once
 )
 
+type Level = zapcore.Level
+
+type Sink interface {
+	WriteLogEvent(event *LogEvent)
+}
+
+type LogEvent = logevent.LogEvent
+
 type sinkState struct {
 	sink Sink
 }
+
+type sinkCore struct {
+	core   zapcore.Core
+	fields []zapcore.Field
+}
+
+type stdLogBridge struct {
+	logger *zap.Logger
+}
+
+type contextKey string
 
 func InitBootstrap() {
 	bootstrapOnce.Do(func() {
@@ -285,11 +298,6 @@ func buildFileCore(enc zapcore.Encoder, atomic zap.AtomicLevel, options InitOpti
 	return zapcore.NewCore(enc, zapcore.AddSync(lj), atomic), filePath, nil
 }
 
-type sinkCore struct {
-	core   zapcore.Core
-	fields []zapcore.Field
-}
-
 func newSinkCore() *sinkCore {
 	return &sinkCore{}
 }
@@ -351,10 +359,6 @@ func (s *sinkCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
 
 func (s *sinkCore) Sync() error {
 	return s.core.Sync()
-}
-
-type stdLogBridge struct {
-	logger *zap.Logger
 }
 
 func newStdLogBridge(l *zap.Logger) io.Writer {
@@ -450,10 +454,6 @@ func LegacyPrintf(component, format string, args ...any) {
 		l.Info(msg, zap.Bool("legacy_printf", true))
 	}
 }
-
-type contextKey string
-
-const loggerContextKey contextKey = "ctx_logger"
 
 func IntoContext(ctx context.Context, l *zap.Logger) context.Context {
 	if ctx == nil {

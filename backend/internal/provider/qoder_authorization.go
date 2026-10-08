@@ -69,6 +69,13 @@ type QoderAuthorizationStore[F any] struct {
 	stopCh   chan struct{}
 }
 
+type QoderAuthorization[F any] struct {
+	Store    *QoderAuthorizationStore[F]
+	Prepare  func(context.Context, string, *int64) (string, *QoderAuthorizationSession[F], *QoderAuthURLResult, error)
+	Complete func(context.Context, F) (*QoderTokenInfo, bool, error)
+	activity operationActivity
+}
+
 func NewQoderAuthorizationStore[F any]() *QoderAuthorizationStore[F] {
 	store := &QoderAuthorizationStore[F]{
 		sessions: make(map[string]*QoderAuthorizationSession[F]),
@@ -188,13 +195,6 @@ func (s *QoderAuthorizationStore[F]) cleanup() {
 			s.mu.Unlock()
 		}
 	}
-}
-
-type QoderAuthorization[F any] struct {
-	Store    *QoderAuthorizationStore[F]
-	Prepare  func(context.Context, string, *int64) (string, *QoderAuthorizationSession[F], *QoderAuthURLResult, error)
-	Complete func(context.Context, F) (*QoderTokenInfo, bool, error)
-	activity operationActivity
 }
 
 func (s *QoderAuthorization[F]) GenerateAuthURLForSite(ctx context.Context, site string, proxyID *int64) (*QoderAuthURLResult, error) {

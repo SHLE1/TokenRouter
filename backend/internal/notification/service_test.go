@@ -14,6 +14,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
+type localeDelivery struct {
+	language, subject, body string
+	count                   int
+}
+
 func TestBuildVerifyCodeEmailBody_EscapesSiteName(t *testing.T) {
 	t.Run("escapes_script_injection", func(t *testing.T) {
 		body := renderIdentityBody(t, NotificationEmailEventAuthVerifyCode, "123456", `</h1><script>alert(1)</script><h1>`)
@@ -626,11 +631,6 @@ func renderIdentityBody(t *testing.T, event, value, siteName string) string {
 	rendered, err := RenderNotificationEmail(event, template.Subject, template.HTML, map[string]string{"site_name": siteName, "verification_code": value, "reset_url": value, "expires_in_minutes": "15"}, nil)
 	assert.NoError(t, err)
 	return rendered.HTML
-}
-
-type localeDelivery struct {
-	language, subject, body string
-	count                   int
 }
 
 func (s *localeDelivery) SendEmail(ctx context.Context, _, subject, body string) error {

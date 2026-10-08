@@ -19,6 +19,34 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+const (
+	hotReloadCatalogJSON = `{"providers":{"openai":{"models":{"remote-model":{"cost":{"input":1,"output":2}}}}}}`
+
+	fallbackOriginFixture = `{"providers":{
+	"anthropic":{"models":{
+		"claude-opus-4-6":{"cost":{"input":5,"output":25}},
+		"claude-opus-4-6-20260101":{"cost":{"input":6,"output":30}}
+	}},
+	"openai":{"models":{"gpt-5.4":{"cost":{"input":2.5,"output":15}}}},
+	"relay":{"models":{
+		"claude-opus-4-6":{"cost":{"input":1,"output":2}},
+		"claude-opus-4-6-discount":{"cost":{"input":0,"output":0}},
+		"gpt-5.4":{"cost":{"input":1,"output":3}}
+	}}
+}}`
+)
+
+var structuredLogCaptureMu sync.Mutex
+
+type inMemoryLogSink struct {
+	mu     sync.Mutex
+	events []*logging.LogEvent
+}
+
+type stubCatalogRemoteClient struct{ body string }
+
+type lifecyclePricingRemote struct{ calls atomic.Int64 }
+
 func TestParsePricingData_WarnsOrphanCacheTierFields(t *testing.T) {
 	logSink, restore := captureStructuredLog(t)
 	defer restore()
@@ -332,7 +360,7 @@ func TestCatalogLookupModalityFieldCompatibility(t *testing.T) {
 	for model, want := range map[string][]string{
 		"legacy-input": {"text", "audio", "video"}, "primary-input": {"text"}, "video-flag": {"text", "video"},
 	} {
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			input, output := svc.GetModelModalities(model)
 			require.Equal(t, want, input)
 			require.Equal(t, []string{"text"}, output)
@@ -485,7 +513,7 @@ func TestCatalogService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
 		"gpt-5.4":       {InputCostPerToken: 2.5e-6},
 	}})
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		for _, alias := range []string{"gpt-5.6"} {
 			pricing := pricingSvc.GetModelPricing(alias)
 			require.NotNil(t, pricing)
@@ -1341,13 +1369,6 @@ func setPricingFixtureRemote(service *Service, remote RemoteClient) {
 	service.remoteClient = remote
 }
 
-var structuredLogCaptureMu sync.Mutex
-
-type inMemoryLogSink struct {
-	mu     sync.Mutex
-	events []*logging.LogEvent
-}
-
 func (s *inMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
 	if event == nil {
 		return
@@ -1426,8 +1447,6 @@ func catalogLookupTestPricing(input float64, modalities ...string) *billingprici
 	}
 }
 
-const hotReloadCatalogJSON = `{"providers":{"openai":{"models":{"remote-model":{"cost":{"input":1,"output":2}}}}}}`
-
 func hotReloadModelJSON(name string, input, output float64) string {
 	return `"` + name + `": {"provider": "test", "mode": "chat",
 		"input_cost_per_token": ` + formatFloat(input) + `, "output_cost_per_token": ` + formatFloat(output) + `}`
@@ -1453,28 +1472,11 @@ func newHotReloadCatalog(t *testing.T, fallbackJSON string) *Service {
 	return svc
 }
 
-type stubCatalogRemoteClient struct{ body string }
-
 func (c stubCatalogRemoteClient) FetchCatalog(context.Context, string, string) ([]byte, string, bool, error) {
 	return []byte(c.body), "", false, nil
 }
-
-type lifecyclePricingRemote struct{ calls atomic.Int64 }
 
 func (r *lifecyclePricingRemote) FetchCatalog(context.Context, string, string) ([]byte, string, bool, error) {
 	r.calls.Add(1)
 	return []byte(hotReloadCatalogJSON), "", false, nil
 }
-
-const fallbackOriginFixture = `{"providers":{
-	"anthropic":{"models":{
-		"claude-opus-4-6":{"cost":{"input":5,"output":25}},
-		"claude-opus-4-6-20260101":{"cost":{"input":6,"output":30}}
-	}},
-	"openai":{"models":{"gpt-5.4":{"cost":{"input":2.5,"output":15}}}},
-	"relay":{"models":{
-		"claude-opus-4-6":{"cost":{"input":1,"output":2}},
-		"claude-opus-4-6-discount":{"cost":{"input":0,"output":0}},
-		"gpt-5.4":{"cost":{"input":1,"output":3}}
-	}}
-}}`

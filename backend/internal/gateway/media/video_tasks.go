@@ -28,6 +28,30 @@ type VideoTasks struct {
 	options VideoOptions
 }
 
+// GrokVideoPendingBilling 是创建任务时保存的快照，用于状态轮询首次发现已完成视频地址时计费。
+// 状态响应可能省略模型或时长，此时先回退到该快照，再回退到默认值。
+type GrokVideoPendingBilling struct {
+	Model                string `json:"model"`
+	BillingModel         string `json:"billing_model,omitempty"`
+	UpstreamModel        string `json:"upstream_model,omitempty"`
+	VideoResolution      string `json:"video_resolution,omitempty"`
+	VideoDurationSeconds int    `json:"video_duration_seconds,omitempty"`
+	OriginalModel        string `json:"original_model,omitempty"`
+	// CreatedAt 是网关接受异步创建请求的 UTC 时间，格式为 RFC3339Nano。
+	// duration_ms 从该时刻计至首次观测到 done 和 video.url，观测可来自状态轮询或内容下载。
+	CreatedAt string `json:"created_at,omitempty"`
+}
+
+// VideoBinding 保存认证快照中的分组关系。
+type VideoBinding struct {
+	GroupID int64
+	Present bool
+}
+type VideoOwner struct {
+	GroupID, ProviderID int64
+	BindingIndex        int
+}
+
 func NewVideoTasks(owners session.GatewayCache, billing session.GrokVideoBillingCache, options VideoOptions) *VideoTasks {
 	return &VideoTasks{owners: owners, billing: billing, options: options}
 }
@@ -49,20 +73,6 @@ func derefGroupID(id *int64) int64 {
 		return 0
 	}
 	return *id
-}
-
-// GrokVideoPendingBilling 是创建任务时保存的快照，用于状态轮询首次发现已完成视频地址时计费。
-// 状态响应可能省略模型或时长，此时先回退到该快照，再回退到默认值。
-type GrokVideoPendingBilling struct {
-	Model                string `json:"model"`
-	BillingModel         string `json:"billing_model,omitempty"`
-	UpstreamModel        string `json:"upstream_model,omitempty"`
-	VideoResolution      string `json:"video_resolution,omitempty"`
-	VideoDurationSeconds int    `json:"video_duration_seconds,omitempty"`
-	OriginalModel        string `json:"original_model,omitempty"`
-	// CreatedAt 是网关接受异步创建请求的 UTC 时间，格式为 RFC3339Nano。
-	// duration_ms 从该时刻计至首次观测到 done 和 video.url，观测可来自状态轮询或内容下载。
-	CreatedAt string `json:"created_at,omitempty"`
 }
 
 func GrokMediaVideoRequestSessionHash(requestID string, userID, apiKeyID int64) string {
@@ -325,16 +335,6 @@ func (s *VideoTasks) TrackCreated(ctx context.Context, groupID *int64, taskID st
 			videoNotice(observer, VideoNotice{Kind: "store_failed", TaskID: taskID, ProviderID: providerID, Err: retryErr})
 		}
 	}
-}
-
-// VideoBinding 保存认证快照中的分组关系。
-type VideoBinding struct {
-	GroupID int64
-	Present bool
-}
-type VideoOwner struct {
-	GroupID, ProviderID int64
-	BindingIndex        int
 }
 
 // ResolveCompositeVideo 先读取创建时归属，再兼容历史任务的当前映射扫描顺序。

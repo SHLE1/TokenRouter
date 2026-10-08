@@ -23,6 +23,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+type pausedState struct {
+	*AggregationStore
+	reads            atomic.Int32
+	entered, release chan struct{}
+}
+
+type canceledCleanup struct {
+	usage.UsageCleanupRepository
+	taskID, operator int64
+	observed         chan struct{}
+	once             sync.Once
+}
+
+type repairStore struct {
+	*AggregationStore
+	done chan error
+}
+
 func TestAuditClearTraceFailureRollsBack(t *testing.T) {
 	ctx := context.Background()
 	repo := auditpg.NewAuditLogRepository(integrationDB)
@@ -111,7 +129,7 @@ func TestCanceledPartialCleanupRepairsCommittedData(t *testing.T) {
 	repo := NewUsageLogRepositoryWithSQL(client, integrationDB, timezone.NewCalendar(time.Local))
 	defer repo.StopUsageBatchers()
 	now := time.Now().UTC().Add(-72 * time.Hour)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, e := repo.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, ProviderID: provider.ID, Model: "lifecycle-test", TotalCost: 1, ActualCost: 1, CreatedAt: now})
 		require.NoError(t, e)
 	}
@@ -151,12 +169,6 @@ func TestCanceledPartialCleanupRepairsCommittedData(t *testing.T) {
 	require.Equal(t, float64(7), balance.Balance, "deleting analytics must not refund money")
 }
 
-type pausedState struct {
-	*AggregationStore
-	reads            atomic.Int32
-	entered, release chan struct{}
-}
-
 func (r *pausedState) GetUsageAnalyticsAggregationState(ctx context.Context) (*usage.UsageAnalyticsAggregationState, error) {
 	v, e := r.AggregationStore.GetUsageAnalyticsAggregationState(ctx)
 	if r.reads.Add(1) == 1 {
@@ -164,13 +176,6 @@ func (r *pausedState) GetUsageAnalyticsAggregationState(ctx context.Context) (*u
 		<-r.release
 	}
 	return v, e
-}
-
-type canceledCleanup struct {
-	usage.UsageCleanupRepository
-	taskID, operator int64
-	observed         chan struct{}
-	once             sync.Once
 }
 
 func (r *canceledCleanup) CreateTask(ctx context.Context, t *usage.UsageCleanupTask) error {
@@ -193,11 +198,6 @@ func (r *canceledCleanup) GetTaskStatus(ctx context.Context, id int64) (string, 
 		r.once.Do(func() { close(r.observed) })
 	}
 	return v, e
-}
-
-type repairStore struct {
-	*AggregationStore
-	done chan error
 }
 
 func (r *repairStore) RecomputeUsageAnalyticsRange(ctx context.Context, start, end time.Time) error {

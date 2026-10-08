@@ -21,6 +21,61 @@ import (
 	upstreamkimi "github.com/TokenFlux/TokenRouter/internal/upstream/kimi"
 )
 
+// 替身记录健康字段写入。
+type errorPolicyRepoStub struct {
+	providercore.HealthStore
+	tempCalls, setErrCalls int
+	modelRateLimitCalls    []int64
+}
+
+type modelNotFoundRateLimitCall struct {
+	providerID int64
+	scope      string
+	resetAt    time.Time
+	reason     string
+}
+
+type modelNotFoundProviderRepoStub struct {
+	providercore.HealthStore
+	tempCalls           int
+	modelRateLimitCalls []modelNotFoundRateLimitCall
+	modelRateLimitErr   error
+}
+
+type overloadProviderRepoStub struct {
+	providercore.HealthStore
+	overloadCalls   int
+	errorCalls      int
+	lastOverloadID  int64
+	lastOverloadEnd time.Time
+}
+
+type errSettingRepo struct {
+	cooldownSettingsStore
+	readErr error
+}
+
+type unauthorizedHealthStore struct {
+	providercore.HealthStore
+	providersByID          map[int64]*providercore.Record
+	setErrorCalls          int
+	tempCalls              int
+	updateCredentialsCalls int
+	updateExtraCalls       int
+	lastCredentials        map[string]any
+	lastExtraUpdates       map[string]any
+	lastErrorMsg           string
+	lastTempUntil          time.Time
+	lastTempReason         string
+	lastErrorID            int64
+	lastTempID             int64
+}
+
+type unauthorizedTokenRecorder struct {
+	providers []*providercore.Record
+	err       error
+}
+
 func TestIsCNProviderConcurrencyLimit403_ExactClassification(t *testing.T) {
 	kimi := &providercore.Record{Platform: capability.PlatformKimi}
 
@@ -1481,13 +1536,6 @@ func TestRateLimitService_HandleUpstreamError_OAuth401NoRefreshTokenSetsError(t 
 	})
 }
 
-// 替身记录健康字段写入。
-type errorPolicyRepoStub struct {
-	providercore.HealthStore
-	tempCalls, setErrCalls int
-	modelRateLimitCalls    []int64
-}
-
 func (r *errorPolicyRepoStub) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
 	r.tempCalls++
 	return nil
@@ -1505,20 +1553,6 @@ func (r *errorPolicyRepoStub) SetModelRateLimit(_ context.Context, id int64, _ s
 
 func newErrorPolicyObserver(repo *errorPolicyRepoStub) *UpstreamHealth {
 	return &UpstreamHealth{Core: providercore.NewHealthService(repo, nil, providercore.HealthOptions{})}
-}
-
-type modelNotFoundRateLimitCall struct {
-	providerID int64
-	scope      string
-	resetAt    time.Time
-	reason     string
-}
-
-type modelNotFoundProviderRepoStub struct {
-	providercore.HealthStore
-	tempCalls           int
-	modelRateLimitCalls []modelNotFoundRateLimitCall
-	modelRateLimitErr   error
 }
 
 func (r *modelNotFoundProviderRepoStub) SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error {
@@ -1590,14 +1624,6 @@ func healthTestObservation(ctx context.Context, status int, headers http.Header,
 	return input
 }
 
-type overloadProviderRepoStub struct {
-	providercore.HealthStore
-	overloadCalls   int
-	errorCalls      int
-	lastOverloadID  int64
-	lastOverloadEnd time.Time
-}
-
 func (r *overloadProviderRepoStub) SetError(_ context.Context, _ int64, _ string) error {
 	r.errorCalls++
 	return nil
@@ -1615,11 +1641,6 @@ func newOverloadObserver(repo providercore.HealthStore, options providercore.Hea
 	return &UpstreamHealth{Core: providercore.NewHealthService(repo, nil, options)}
 }
 
-type errSettingRepo struct {
-	cooldownSettingsStore
-	readErr error
-}
-
 func (s *errSettingRepo) GetValue(context.Context, string) (string, error) { return "", s.readErr }
 
 // newSessionWindowService 为会话窗口测试装配存储和限流恢复组件。
@@ -1635,22 +1656,6 @@ func newUnauthorizedObserver(repo *unauthorizedHealthStore, invalidator *unautho
 		options.InvalidateUnauthorizedToken = invalidator.InvalidateToken
 	}
 	return &UpstreamHealth{Core: providercore.NewHealthService(repo, nil, options)}
-}
-
-type unauthorizedHealthStore struct {
-	providercore.HealthStore
-	providersByID          map[int64]*providercore.Record
-	setErrorCalls          int
-	tempCalls              int
-	updateCredentialsCalls int
-	updateExtraCalls       int
-	lastCredentials        map[string]any
-	lastExtraUpdates       map[string]any
-	lastErrorMsg           string
-	lastTempUntil          time.Time
-	lastTempReason         string
-	lastErrorID            int64
-	lastTempID             int64
 }
 
 func (s *unauthorizedHealthStore) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
@@ -1686,11 +1691,6 @@ func (s *unauthorizedHealthStore) UpdateCredentials(_ context.Context, _ int64, 
 
 func (*unauthorizedHealthStore) UpdateSessionWindow(context.Context, int64, *time.Time, *time.Time, string) error {
 	panic("unexpected window update")
-}
-
-type unauthorizedTokenRecorder struct {
-	providers []*providercore.Record
-	err       error
 }
 
 func (s *unauthorizedTokenRecorder) InvalidateToken(_ context.Context, value *providercore.Record) error {

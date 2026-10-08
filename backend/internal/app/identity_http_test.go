@@ -23,6 +23,26 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
+type userHandlerRepoStub struct {
+	user       *identitycore.User
+	identities []identitycore.UserAuthIdentityRecord
+	unbound    []string
+}
+
+type userHandlerEmailCacheStub struct {
+	data *identitycore.VerificationCodeData
+}
+
+// userHandlerSettingRepoStub 通过 GetValue 开启测试中的邮箱换绑设置。
+type userHandlerSettingRepoStub struct {
+	settings.Repository
+	values map[string]string
+}
+
+type userHandlerRefreshTokenCacheStub struct {
+	revokedUserIDs []int64
+}
+
 func TestAuthHandlerGetCurrentUserReturnsProfileCompatibilityFields(t *testing.T) {
 	verifiedAt := time.Date(2026, 4, 20, 8, 30, 0, 0, time.UTC)
 	repo := &userHandlerRepoStub{
@@ -161,12 +181,6 @@ func newUserBindingAuth(users identitycore.UserRepository, refresh identitycore.
 func newUserBindingSettings(repo settings.Repository, cfg *config.Config) *identityAuthSettings {
 	store := settings.New(repo)
 	return provideIdentityAuthSettings(provideIdentitySettings(store), provideGrantSettings(store, cfg, nil), provideSiteDisplay(store, cfg), provideOAuthSettings(store, cfg), providePromotionSettings(store))
-}
-
-type userHandlerRepoStub struct {
-	user       *identitycore.User
-	identities []identitycore.UserAuthIdentityRecord
-	unbound    []string
 }
 
 func (s *userHandlerRepoStub) Create(context.Context, *identitycore.User) error { return nil }
@@ -622,22 +636,8 @@ func TestUserHandlerGetProfileDoesNotInferEditedProfileSourcesWithoutMatchingIde
 	require.NotContains(t, resp.Data, "profile_sources")
 }
 
-type userHandlerEmailCacheStub struct {
-	data *identitycore.VerificationCodeData
-}
-
-// userHandlerSettingRepoStub 通过 GetValue 开启测试中的邮箱换绑设置。
-type userHandlerSettingRepoStub struct {
-	settings.Repository
-	values map[string]string
-}
-
 func (s *userHandlerSettingRepoStub) GetValue(_ context.Context, key string) (string, error) {
 	return s.values[key], nil
-}
-
-type userHandlerRefreshTokenCacheStub struct {
-	revokedUserIDs []int64
 }
 
 func (s *userHandlerRefreshTokenCacheStub) StoreRefreshToken(context.Context, string, *identitycore.RefreshTokenData, time.Duration) error {

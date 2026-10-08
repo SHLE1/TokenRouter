@@ -11,13 +11,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-var ErrRedeemCodeExists = apperror.Conflict("REDEEM_CODE_EXISTS", "redeem code already exists")
+const (
+	redeemMaxErrorsPerHour = 20
 
-var ErrRedeemCodeNotFound = apperror.NotFound("REDEEM_CODE_NOT_FOUND", "redeem code not found")
-
-var ErrRedeemCodeUsed = apperror.Conflict("REDEEM_CODE_USED", "redeem code already used")
+	redeemLockDuration = 10 * time.Second // 锁超时时间，防止死锁
+)
 
 var (
+	ErrRedeemCodeExists = apperror.Conflict("REDEEM_CODE_EXISTS", "redeem code already exists")
+
+	ErrRedeemCodeNotFound = apperror.NotFound("REDEEM_CODE_NOT_FOUND", "redeem code not found")
+
+	ErrRedeemCodeUsed = apperror.Conflict("REDEEM_CODE_USED", "redeem code already used")
+
 	ErrRedeemPaymentRequired               = apperror.Forbidden("REDEEM_PAYMENT_REQUIRED", "a successful payment is required to redeem this code")
 	ErrRedeemPaymentRequirementUnsupported = apperror.BadRequest("REDEEM_PAYMENT_REQUIREMENT_UNSUPPORTED", "invitation codes cannot require a payment")
 	ErrRedeemCodeExpired                   = apperror.BadRequest("REDEEM_CODE_EXPIRED", "redeem code has expired")
@@ -25,20 +31,13 @@ var (
 	ErrRedeemCodeAlreadyUsed               = apperror.Conflict("REDEEM_CODE_ALREADY_USED", "you have already used this redeem code")
 	ErrRedeemRateLimited                   = apperror.TooManyRequests("REDEEM_RATE_LIMITED", "too many failed attempts, please try again later")
 	ErrRedeemCodeLocked                    = apperror.Conflict("REDEEM_CODE_LOCKED", "redeem code is being processed, please try again")
-)
 
-const (
-	redeemMaxErrorsPerHour = 20
-
-	redeemLockDuration = 10 * time.Second // 锁超时时间，防止死锁
+	// 以下错误表示仓储缺少原子调整余额或并发额度的能力。
+	ErrRedeemBalanceUnsupported     = errors.New("user repository does not support atomic redeem balance adjustments")
+	ErrRedeemConcurrencyUnsupported = errors.New("user repository does not support atomic redeem concurrency adjustments")
 )
 
 type ctxKeySkipRedeemAffiliate struct{}
-
-// ContextSkipRedeemAffiliate 返回跳过兑换层返利的上下文，支付订单会在订单层做带审计去重的返利。
-func ContextSkipRedeemAffiliate(ctx context.Context) context.Context {
-	return context.WithValue(ctx, ctxKeySkipRedeemAffiliate{}, true)
-}
 
 // RedeemTransactions 隐藏兑换权益与 usage/次数提交的数据库事务。
 type RedeemTransactions interface {
@@ -74,6 +73,11 @@ type RedeemService struct {
 	authCacheInvalidator RedeemAuthInvalidator
 	affiliateService     RedeemAffiliate
 	runtime              RedeemRuntime
+}
+
+// ContextSkipRedeemAffiliate 返回跳过兑换层返利的上下文，支付订单会在订单层做带审计去重的返利。
+func ContextSkipRedeemAffiliate(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ctxKeySkipRedeemAffiliate{}, true)
 }
 
 func NewRedeemService(repo RedeemCodeRepository, users BalanceReader, subs *SubscriptionService, cache RedeemCache, eligibility *Eligibility, transactions RedeemTransactions, auth RedeemAuthInvalidator, affiliate RedeemAffiliate, runtime RedeemRuntime) *RedeemService {
@@ -503,12 +507,6 @@ func (s *RedeemService) GetUserHistory(ctx context.Context, userID int64, page, 
 	}
 	return codes, result.Total, nil
 }
-
-// 以下错误表示仓储缺少原子调整余额或并发额度的能力。
-var (
-	ErrRedeemBalanceUnsupported     = errors.New("user repository does not support atomic redeem balance adjustments")
-	ErrRedeemConcurrencyUnsupported = errors.New("user repository does not support atomic redeem concurrency adjustments")
-)
 
 func (s *RedeemService) runBackground(name string, fn func()) {
 	if s.runtime.Background == nil {

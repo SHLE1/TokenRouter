@@ -29,10 +29,6 @@ type StickyStats struct {
 	dualWriteTotal    atomic.Int64
 }
 
-func (s *StickyStats) Snapshot() (int64, int64, int64) {
-	return s.readFallbackTotal.Load(), s.readFallbackHit.Load(), s.dualWriteTotal.Load()
-}
-
 type StickyOptions struct {
 	Prefix          string
 	ReadLegacy      bool
@@ -45,6 +41,10 @@ type StickySession struct {
 	cache   StickyCache
 	options StickyOptions
 	stats   *StickyStats
+}
+
+func (s *StickyStats) Snapshot() (int64, int64, int64) {
+	return s.readFallbackTotal.Load(), s.readFallbackHit.Load(), s.dualWriteTotal.Load()
 }
 
 func NewStickySession(cache StickyCache, options StickyOptions, stats *StickyStats) *StickySession {

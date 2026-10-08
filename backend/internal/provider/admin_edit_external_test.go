@@ -55,6 +55,39 @@ type providerRepoStubForBulkUpdate struct {
 	}
 }
 
+// bulkGroupsFixture 保留批量绑定验证所需的分组存在性读取。
+type bulkGroupsFixture struct {
+	routing.GroupRepository
+	group *routing.Group
+}
+
+type updateProviderCredsRepoStub struct {
+	providercore.AdminStore
+	provider    *providercore.Record
+	updateCalls int
+}
+
+type deprecatedProviderExtraRepoStub struct {
+	providercore.AdminStore
+	provider            *providercore.Record
+	updateExtraCalls    int
+	lastExtraUpdates    map[string]any
+	bulkUpdateCalls     int
+	lastBulkExtraUpdate map[string]any
+}
+
+type ollamaManagedExtraUpdateRepo struct {
+	providercore.AdminStore
+	provider *providercore.Record
+	updated  *providercore.Record
+}
+
+type updateProviderOveragesRepoStub struct {
+	providercore.AdminStore
+	provider    *providercore.Record
+	updateCalls int
+}
+
 func (s *providerRepoStubForBulkUpdate) BulkUpdate(_ context.Context, ids []int64, updates providercore.ProviderBulkUpdate) (int64, error) {
 	s.bulkUpdateIDs = append([]int64{}, ids...)
 	s.lastBulkUpdate = updates
@@ -436,12 +469,6 @@ func TestAdminServiceBulkUpdateProviders_ResolvesIDsFromFilters(t *testing.T) {
 	require.Equal(t, []int64{7, 11}, result.SuccessIDs)
 }
 
-// bulkGroupsFixture 保留批量绑定验证所需的分组存在性读取。
-type bulkGroupsFixture struct {
-	routing.GroupRepository
-	group *routing.Group
-}
-
 func (s *bulkGroupsFixture) GetByID(context.Context, int64) (*routing.Group, error) {
 	return routing.CloneGroup(s.group), nil
 }
@@ -488,12 +515,6 @@ func TestCNProviderBulkProtocolValidationBeforeWrite(t *testing.T) {
 	for _, provider := range repo.providers {
 		require.Equal(t, providercore.APIProtocolAdaptive, provider.Credentials["api_protocol"])
 	}
-}
-
-type updateProviderCredsRepoStub struct {
-	providercore.AdminStore
-	provider    *providercore.Record
-	updateCalls int
 }
 
 func (r *updateProviderCredsRepoStub) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
@@ -595,15 +616,6 @@ func TestUpdateProvider_EmptyCredentialsSkipsUpdate(t *testing.T) {
 
 	require.Equal(t, "rt-existing", repo.provider.Credentials["refresh_token"], "空 credentials 不应触碰已有 token")
 	require.Equal(t, "renamed", repo.provider.Name)
-}
-
-type deprecatedProviderExtraRepoStub struct {
-	providercore.AdminStore
-	provider            *providercore.Record
-	updateExtraCalls    int
-	lastExtraUpdates    map[string]any
-	bulkUpdateCalls     int
-	lastBulkExtraUpdate map[string]any
 }
 
 func (r *deprecatedProviderExtraRepoStub) GetByID(_ context.Context, _ int64) (*providercore.Record, error) {
@@ -855,12 +867,6 @@ func TestAdminUpdatePreservesOllamaManagedExtra(t *testing.T) {
 	require.Contains(t, requestedExtra, providercore.OllamaCloudUsageSessionExtraKey)
 }
 
-type ollamaManagedExtraUpdateRepo struct {
-	providercore.AdminStore
-	provider *providercore.Record
-	updated  *providercore.Record
-}
-
 func (r *ollamaManagedExtraUpdateRepo) GetByID(_ context.Context, _ int64) (*providercore.Record, error) {
 	return providercore.CloneRecord(r.provider), nil
 }
@@ -932,12 +938,6 @@ func TestUpdateProviderDeprecatedProbeOnlyPreservesConfiguration(t *testing.T) {
 	require.Equal(t, "force_on", updated.Extra[providercore.OpenAINativeCompactionV2ModeExtraKey])
 	require.Equal(t, true, updated.Extra["keep"])
 	require.NotContains(t, updated.Extra, "openai_responses_supported")
-}
-
-type updateProviderOveragesRepoStub struct {
-	providercore.AdminStore
-	provider    *providercore.Record
-	updateCalls int
 }
 
 func (r *updateProviderOveragesRepoStub) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {

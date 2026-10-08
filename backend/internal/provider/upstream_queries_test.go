@@ -15,17 +15,17 @@ type usageQueryReader struct {
 	reads atomic.Int32
 }
 
-func (r *usageQueryReader) GetByID(context.Context, int64) (*Record, error) {
-	r.reads.Add(1)
-	return CloneRecord(r.value), nil
-}
-
 type usageQueryExecution struct {
 	started   chan struct{}
 	cancelled chan struct{}
 	release   chan struct{}
 	ignore    bool
 	calls     atomic.Int32
+}
+
+func (r *usageQueryReader) GetByID(context.Context, int64) (*Record, error) {
+	r.reads.Add(1)
+	return CloneRecord(r.value), nil
 }
 
 func (*usageQueryExecution) Available() bool { return true }

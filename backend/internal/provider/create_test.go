@@ -13,6 +13,12 @@ type createSnapshotStore struct {
 	privacyWrites int
 }
 
+// 此处检查创建结果的指针，HTTP 和使用方测试覆盖模型数据转换。
+type deprecatedCreateStore struct {
+	AdminStore
+	createdProvider *Record
+}
+
 func (s *createSnapshotStore) Create(_ context.Context, value *Record) error {
 	value.ID = 1
 	return nil
@@ -58,12 +64,6 @@ func TestAdminServiceCreateProviderDiscardsDeprecatedLongContextBillingExtra(t *
 	require.Same(t, provider, repo.createdProvider)
 	require.NotContains(t, provider.Extra, "openai_long_context_billing_enabled")
 	require.Equal(t, true, provider.Extra["preserved"])
-}
-
-// 此处检查创建结果的指针，HTTP 和使用方测试覆盖模型数据转换。
-type deprecatedCreateStore struct {
-	AdminStore
-	createdProvider *Record
 }
 
 func (s *deprecatedCreateStore) Create(_ context.Context, value *Record) error {

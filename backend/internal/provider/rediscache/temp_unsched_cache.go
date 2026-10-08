@@ -6,15 +6,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-const tempUnschedPrefix = "temp_unsched:provider:"
+const (
+	tempUnschedPrefix = "temp_unsched:provider:"
 
-const openAIAPIKeyHealthFailurePrefix = "openai_apikey_health:"
+	openAIAPIKeyHealthFailurePrefix = "openai_apikey_health:"
+)
 
-var openAIAPIKeyHealthFailureScript = redis.NewScript(`
+var (
+	openAIAPIKeyHealthFailureScript = redis.NewScript(`
 	local key = KEYS[1]
 	local sequence_key = key .. ':sequence'
 	local now = redis.call('TIME')
@@ -36,7 +40,7 @@ var openAIAPIKeyHealthFailureScript = redis.NewScript(`
 	return {count, 0}
 `)
 
-var tempUnschedSetScript = redis.NewScript(`
+	tempUnschedSetScript = redis.NewScript(`
 	local key = KEYS[1]
 	local new_until = tonumber(ARGV[1])
 	local new_value = ARGV[2]
@@ -56,6 +60,7 @@ var tempUnschedSetScript = redis.NewScript(`
 	redis.call('SET', key, new_value, 'EX', new_ttl)
 	return 1
 `)
+)
 
 type tempUnschedCache struct {
 	rdb *redis.Client

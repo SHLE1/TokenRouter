@@ -8,10 +8,10 @@ import (
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 )
 
+var _ gatewayws.ClientSocket = WSClientFrames{}
+
 // WSClientFrames 转换网络库的帧和关闭枚举。
 type WSClientFrames struct{ Conn *coderws.Conn }
-
-var _ gatewayws.ClientSocket = WSClientFrames{}
 
 func (c WSClientFrames) Read(ctx context.Context) (int, []byte, error) {
 	typ, body, err := c.Conn.Read(ctx)

@@ -21,6 +21,9 @@ import (
 	servermiddleware "github.com/TokenFlux/TokenRouter/internal/server/middleware"
 )
 
+// 兼容路径测试使用备份 HTTP 适配器的 ID 校验。
+var requireCanonicalBackupID = backuphttp.RequireCanonicalBackupID
+
 // TestProtocolCatalogHTTPContract 检查管理员目录的认证和审计顺序，以及 HTTP 使用注入数据的独立副本。
 func TestProtocolCatalogHTTPContract(t *testing.T) {
 	endpoints := testEndpoints()
@@ -256,9 +259,6 @@ func TestRetiredAdminStatisticsNativeRoutes(t *testing.T) {
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/admin/redeem-codes/stats", nil))
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
 }
-
-// 兼容路径测试使用备份 HTTP 适配器的 ID 校验。
-var requireCanonicalBackupID = backuphttp.RequireCanonicalBackupID
 
 func TestOpsAdminRoutesRequireAdminAuthentication(t *testing.T) {
 	router := gin.New()

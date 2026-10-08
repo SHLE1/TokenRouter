@@ -6,9 +6,6 @@ import (
 	"time"
 )
 
-// ErrorPolicyResult 表示错误策略检查的结果
-type ErrorPolicyResult int
-
 const (
 	ErrorPolicyNone            ErrorPolicyResult = iota // 未命中任何策略，继续默认逻辑
 	ErrorPolicyCustomSkipped                            // 自定义错误码开启但未命中，返回通用错误
@@ -16,6 +13,9 @@ const (
 	ErrorPolicyTempUnscheduled                          // 临时不可调度规则命中
 	ErrorPolicyPoolBypassed                             // 池模式跳过默认本地状态，继续响应分类
 )
+
+// ErrorPolicyResult 表示错误策略检查的结果
+type ErrorPolicyResult int
 
 // UpstreamErrorDecision 汇总配置的错误策略和默认的提供商状态处理结果。
 // 网关必须使用 Policy 区分池模式绕过与自定义错误码未命中，不能只依赖 StopScheduling。

@@ -4,6 +4,7 @@ package app
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"sort"
@@ -74,7 +75,6 @@ func TestNativeRouteInventory(t *testing.T) {
 		}{route.Method, route.Path, append([]string(nil), chain...)})
 		require.NoError(t, err)
 		t.Logf("TEST_ROUTE_CHAIN %s", encoded)
-
 	}
 	sort.Strings(expected)
 	sort.Strings(actual)
@@ -82,7 +82,7 @@ func TestNativeRouteInventory(t *testing.T) {
 	// 已下线的管理路由返回 404，调用脚本需要使用当前接口。
 	for _, legacy := range []string{"/api/v1/admin/accounts", "/api/v1/admin/accounts/1", "/api/v1/admin/openai/accounts/1/quota"} {
 		rec := httptest.NewRecorder()
-		r.ServeHTTP(rec, httptest.NewRequest("GET", legacy, nil))
+		r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, legacy, nil))
 		require.Equal(t, 404, rec.Code, legacy)
 	}
 }

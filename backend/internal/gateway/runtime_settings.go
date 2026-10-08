@@ -16,11 +16,21 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// 网关策略设置使用以下持久化键。
 const (
+	// 网关策略设置使用以下持久化键。
 	SettingKeyBetaPolicySettings       = "beta_policy_settings"
 	SettingKeyOpenAIFastPolicySettings = "openai_fast_policy_settings"
 	SettingKeyRectifierSettings        = "rectifier_settings"
+
+	// Beta 操作和值域与已有管理协议保持一致。
+	BetaPolicyActionPass   = "pass"   // 透传，不做任何处理
+	BetaPolicyActionFilter = "filter" // 过滤，从 beta header 中移除该 token
+	BetaPolicyActionBlock  = "block"  // 拦截，直接返回错误
+
+	BetaPolicyScopeAll     = "all"     // 所有提供商类型
+	BetaPolicyScopeOAuth   = "oauth"   // 仅 OAuth 提供商
+	BetaPolicyScopeAPIKey  = "apikey"  // 仅 API Key 提供商
+	BetaPolicyScopeBedrock = "bedrock" // 仅 AWS Bedrock 提供商
 )
 
 // OpenAIFastPolicySettings 使用 tierpolicy 的 Fast 策略类型。
@@ -51,15 +61,6 @@ type RuntimeSettings struct {
 	defaultBeta                 func() *BetaPolicySettings
 }
 
-// NewRuntimeSettings 构造不回源；默认规则工厂由静态装配提供。
-func NewRuntimeSettings(repo RuntimeSettingsStore, notFound error, betaDefaults func() *BetaPolicySettings, clientOptions ...ClientSettingsOptions) *RuntimeSettings {
-	value := &RuntimeSettings{settingRepo: repo, notFound: notFound, defaultBeta: betaDefaults}
-	if len(clientOptions) > 0 {
-		value.clientOptions = clientOptions[0]
-	}
-	return value
-}
-
 // RectifierSettings 由网关拥有请求策略值。
 type RectifierSettings struct {
 	Enabled                  bool     `json:"enabled"`                    // 总开关
@@ -67,15 +68,6 @@ type RectifierSettings struct {
 	ThinkingBudgetEnabled    bool     `json:"thinking_budget_enabled"`    // Thinking Budget 整流
 	APIKeySignatureEnabled   bool     `json:"apikey_signature_enabled"`   // API Key 签名整流开关
 	APIKeySignaturePatterns  []string `json:"apikey_signature_patterns"`  // API Key 自定义匹配关键词
-}
-
-// DefaultRectifierSettings 默认开启思考签名和预算整流。
-func DefaultRectifierSettings() *RectifierSettings {
-	return &RectifierSettings{
-		Enabled:                  true,
-		ThinkingSignatureEnabled: true,
-		ThinkingBudgetEnabled:    true,
-	}
 }
 
 // BetaPolicyRule 描述 beta token 的动作、适用提供商类型和模型范围。
@@ -94,17 +86,23 @@ type BetaPolicySettings struct {
 	Rules []BetaPolicyRule `json:"rules"`
 }
 
-// Beta 操作和值域与已有管理协议保持一致。
-const (
-	BetaPolicyActionPass   = "pass"   // 透传，不做任何处理
-	BetaPolicyActionFilter = "filter" // 过滤，从 beta header 中移除该 token
-	BetaPolicyActionBlock  = "block"  // 拦截，直接返回错误
+// NewRuntimeSettings 构造不回源；默认规则工厂由静态装配提供。
+func NewRuntimeSettings(repo RuntimeSettingsStore, notFound error, betaDefaults func() *BetaPolicySettings, clientOptions ...ClientSettingsOptions) *RuntimeSettings {
+	value := &RuntimeSettings{settingRepo: repo, notFound: notFound, defaultBeta: betaDefaults}
+	if len(clientOptions) > 0 {
+		value.clientOptions = clientOptions[0]
+	}
+	return value
+}
 
-	BetaPolicyScopeAll     = "all"     // 所有提供商类型
-	BetaPolicyScopeOAuth   = "oauth"   // 仅 OAuth 提供商
-	BetaPolicyScopeAPIKey  = "apikey"  // 仅 API Key 提供商
-	BetaPolicyScopeBedrock = "bedrock" // 仅 AWS Bedrock 提供商
-)
+// DefaultRectifierSettings 默认开启思考签名和预算整流。
+func DefaultRectifierSettings() *RectifierSettings {
+	return &RectifierSettings{
+		Enabled:                  true,
+		ThinkingSignatureEnabled: true,
+		ThinkingBudgetEnabled:    true,
+	}
+}
 
 // GetRectifierSettings 读取整流设置，缺失、空值或 JSON 无效时返回默认设置。
 func (s *RuntimeSettings) GetRectifierSettings(ctx context.Context) (*RectifierSettings, error) {

@@ -7,16 +7,6 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// Error definitions for user attribute operations
-var (
-	ErrAttributeDefinitionNotFound = infraerrors.NotFound("ATTRIBUTE_DEFINITION_NOT_FOUND", "attribute definition not found")
-	ErrAttributeKeyExists          = infraerrors.Conflict("ATTRIBUTE_KEY_EXISTS", "attribute key already exists")
-	ErrInvalidAttributeType        = infraerrors.BadRequest("INVALID_ATTRIBUTE_TYPE", "invalid attribute type")
-)
-
-// UserAttributeType represents supported attribute types
-type UserAttributeType string
-
 const (
 	AttributeTypeText        UserAttributeType = "text"
 	AttributeTypeTextarea    UserAttributeType = "textarea"
@@ -27,6 +17,16 @@ const (
 	AttributeTypeSelect      UserAttributeType = "select"
 	AttributeTypeMultiSelect UserAttributeType = "multi_select"
 )
+
+// Error definitions for user attribute operations
+var (
+	ErrAttributeDefinitionNotFound = infraerrors.NotFound("ATTRIBUTE_DEFINITION_NOT_FOUND", "attribute definition not found")
+	ErrAttributeKeyExists          = infraerrors.Conflict("ATTRIBUTE_KEY_EXISTS", "attribute key already exists")
+	ErrInvalidAttributeType        = infraerrors.BadRequest("INVALID_ATTRIBUTE_TYPE", "invalid attribute type")
+)
+
+// UserAttributeType represents supported attribute types
+type UserAttributeType string
 
 // UserAttributeOption represents a select option for select/multi_select types
 type UserAttributeOption struct {

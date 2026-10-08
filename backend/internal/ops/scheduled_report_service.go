@@ -26,7 +26,12 @@ const (
 	opsScheduledReportTickInterval = 1 * time.Minute
 )
 
-var opsScheduledReportCronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+var (
+	opsScheduledReportCronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+
+	// notificationEmailOpsSummaryPlaceholders 列出报告摘要模板变量。
+	notificationEmailOpsSummaryPlaceholders = contract.SummaryPlaceholders()
+)
 
 type OpsScheduledReportService struct {
 	opsService   *OpsService
@@ -45,6 +50,29 @@ type OpsScheduledReportService struct {
 	stopCtx   context.Context
 	stop      context.CancelFunc
 	wg        sync.WaitGroup
+}
+
+type opsScheduledReport struct {
+	Name       string
+	ReportType string
+	Schedule   string
+	Enabled    bool
+
+	TimeRange time.Duration
+
+	Recipients []string
+
+	ErrorDigestMinCount              int
+	ProviderHealthErrorRateThreshold float64
+
+	LastRunAt *time.Time
+	NextRunAt time.Time
+}
+
+// opsScheduledReportContent 同时保留兼容旧模板的 HTML 和结构化摘要指标。
+type opsScheduledReportContent struct {
+	html     string
+	overview *OpsDashboardOverview
 }
 
 func NewOpsScheduledReportService(
@@ -189,29 +217,6 @@ func (s *OpsScheduledReportService) runOnce() {
 
 	result := truncateString(fmt.Sprintf("reports=%d due=%d send_attempts=%d", reportsTotal, reportsDue, sentAttempts), 2048)
 	s.recordHeartbeatSuccess(runAt, time.Since(startedAt), result)
-}
-
-type opsScheduledReport struct {
-	Name       string
-	ReportType string
-	Schedule   string
-	Enabled    bool
-
-	TimeRange time.Duration
-
-	Recipients []string
-
-	ErrorDigestMinCount              int
-	ProviderHealthErrorRateThreshold float64
-
-	LastRunAt *time.Time
-	NextRunAt time.Time
-}
-
-// opsScheduledReportContent 同时保留兼容旧模板的 HTML 和结构化摘要指标。
-type opsScheduledReportContent struct {
-	html     string
-	overview *OpsDashboardOverview
 }
 
 func (s *OpsScheduledReportService) listScheduledReports(ctx context.Context, now time.Time) []*opsScheduledReport {
@@ -534,7 +539,7 @@ func formatOpsReportInteger(value int64) string {
 	builder.Grow(len(raw) + (len(raw)-start-1)/3)
 	_, _ = builder.WriteString(raw[:start])
 	digitLen := len(raw) - start
-	for offset := 0; offset < digitLen; offset++ {
+	for offset := range digitLen {
 		if offset > 0 && (digitLen-offset)%3 == 0 {
 			_ = builder.WriteByte(',')
 		}
@@ -921,6 +926,3 @@ func normalizeEmails(in []string) []string {
 	}
 	return out
 }
-
-// notificationEmailOpsSummaryPlaceholders 列出报告摘要模板变量。
-var notificationEmailOpsSummaryPlaceholders = contract.SummaryPlaceholders()

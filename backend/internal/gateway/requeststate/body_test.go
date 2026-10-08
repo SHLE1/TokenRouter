@@ -491,7 +491,7 @@ func BenchmarkParseGatewayRequest_Old_Small(b *testing.B) {
 	data := buildSmallJSON()
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = parseGatewayRequestOld(data, "")
 	}
 }
@@ -500,7 +500,7 @@ func BenchmarkParseGatewayRequest_New_Small(b *testing.B) {
 	data := buildSmallJSON()
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = ParseGatewayRequest(NewRequestBodyRef(data), "")
 	}
 }
@@ -509,7 +509,7 @@ func BenchmarkParseGatewayRequest_Old_Large(b *testing.B) {
 	data := buildLargeJSON()
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = parseGatewayRequestOld(data, "")
 	}
 }
@@ -518,7 +518,7 @@ func BenchmarkParseGatewayRequest_New_Large(b *testing.B) {
 	data := buildLargeJSON()
 	b.SetBytes(int64(len(data)))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = ParseGatewayRequest(NewRequestBodyRef(data), "")
 	}
 }
@@ -625,7 +625,7 @@ func buildLargeJSON() []byte {
 	b := []byte(`{"model":"claude-sonnet-4-5","stream":true,"max_tokens":8192,"metadata":{"user_id":"user-xyz789"},"system":[{"type":"text","text":"You are a detailed assistant.","cache_control":{"type":"ephemeral"}}],"messages":[`)
 
 	msgCount := 200
-	for i := 0; i < msgCount; i++ {
+	for i := range msgCount {
 		if i > 0 {
 			b = append(b, ',')
 		}
@@ -647,7 +647,7 @@ func BenchmarkParseGatewayRequest_LargeAnthropicMessages(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				parsed, err := ParseGatewayRequest(NewRequestBodyRef(body), capability.PlatformAnthropic)
 				if err != nil {
 					b.Fatalf("解析 Anthropic 请求失败: %v", err)
@@ -666,7 +666,7 @@ func BenchmarkParseGatewayRequest_LargeGeminiContents(b *testing.B) {
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				parsed, err := ParseGatewayRequest(NewRequestBodyRef(body), capability.PlatformGemini)
 				if err != nil {
 					b.Fatalf("解析 Gemini 请求失败: %v", err)

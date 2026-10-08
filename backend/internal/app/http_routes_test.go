@@ -29,6 +29,24 @@ import (
 	usagehttp "github.com/TokenFlux/TokenRouter/internal/usage/httpapi"
 )
 
+const (
+	groupClientProtocolErrorAnthropic = gatewayhttp.GroupClientProtocolErrorAnthropic
+	groupClientProtocolErrorOpenAI    = gatewayhttp.GroupClientProtocolErrorOpenAI
+	groupClientProtocolErrorGoogle    = gatewayhttp.GroupClientProtocolErrorGoogle
+)
+
+var (
+	routeProtocol = gatewayhttp.RouteProtocol
+
+	// 测试中的协议检查使用无状态适配函数，每次读取当前请求数据。
+	testRouteGuards                      = gatewayhttp.NewRouteGuards(legacyRouteMiddleware(nil, nil, nil, nil, nil, &config.Config{}))
+	requireGroupClientProtocol           = testRouteGuards.RequireGroupClientProtocol
+	extendedRouteProtocol                = gatewayhttp.ExtendedRouteProtocol
+	requireGeminiGenerateContentProtocol = testRouteGuards.RequireGeminiGenerateContentProtocol
+)
+
+type groupClientProtocolErrorFormat = gatewayhttp.GroupClientProtocolErrorFormat
+
 func TestAuthRoutesRateLimitFailCloseWhenRedisUnavailable(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:         "127.0.0.1:1",
@@ -793,24 +811,6 @@ func TestProtocolRouteAliases(t *testing.T) {
 	// Compact 通过 Responses 准入检查前先校验完整路径。
 	require.Empty(t, extendedRouteProtocol(http.MethodPost, "/v1/responses/compact"))
 }
-
-type groupClientProtocolErrorFormat = gatewayhttp.GroupClientProtocolErrorFormat
-
-const (
-	groupClientProtocolErrorAnthropic = gatewayhttp.GroupClientProtocolErrorAnthropic
-	groupClientProtocolErrorOpenAI    = gatewayhttp.GroupClientProtocolErrorOpenAI
-	groupClientProtocolErrorGoogle    = gatewayhttp.GroupClientProtocolErrorGoogle
-)
-
-var routeProtocol = gatewayhttp.RouteProtocol
-
-// 测试中的协议检查使用无状态适配函数，每次读取当前请求数据。
-var (
-	testRouteGuards                      = gatewayhttp.NewRouteGuards(legacyRouteMiddleware(nil, nil, nil, nil, nil, &config.Config{}))
-	requireGroupClientProtocol           = testRouteGuards.RequireGroupClientProtocol
-	extendedRouteProtocol                = gatewayhttp.ExtendedRouteProtocol
-	requireGeminiGenerateContentProtocol = testRouteGuards.RequireGeminiGenerateContentProtocol
-)
 
 // TestRemovedFeatureRoutesReturnNotFound 检查下线功能的用户端和管理端路径返回 404。
 func TestRemovedFeatureRoutesReturnNotFound(t *testing.T) {

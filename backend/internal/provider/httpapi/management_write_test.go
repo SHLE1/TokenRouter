@@ -23,6 +23,35 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type duplicateProviderAdminServiceStub struct {
+	ProviderManagement
+	provider     *providercore.Record
+	calls        int
+	recoverCalls int
+	providerID   int64
+	actorScope   string
+	operationKey string
+	recoverScope string
+	recoverKey   string
+	recoverErr   error
+	created      bool
+}
+
+type blockingDuplicateAdminServiceStub struct {
+	ProviderManagement
+	provider     *providercore.Record
+	started      chan struct{}
+	release      chan struct{}
+	calls        atomic.Int32
+	recoverCalls atomic.Int32
+	recoverErr   error
+}
+
+type failOnceMarkSucceededRepo struct {
+	*idempotencytest.MemoryStore
+	failNext bool
+}
+
 func TestProviderCreateWithoutAutomaticGrokProbeServiceStillSucceeds(t *testing.T) {
 	source := newGrokImportAdminService()
 	presenter := NewRuntimePresenter(providercore.NewRuntimeStatusReader(providercore.RuntimeStatusOptions{}), source, nil)
@@ -285,35 +314,6 @@ func TestProviderHandler_Create_AnthropicAPIKeyPassthroughExtraForwarded(t *test
 	require.Equal(t, "apikey", created.Type)
 	require.NotNil(t, created.Extra)
 	require.Equal(t, true, created.Extra["anthropic_passthrough"])
-}
-
-type duplicateProviderAdminServiceStub struct {
-	ProviderManagement
-	provider     *providercore.Record
-	calls        int
-	recoverCalls int
-	providerID   int64
-	actorScope   string
-	operationKey string
-	recoverScope string
-	recoverKey   string
-	recoverErr   error
-	created      bool
-}
-
-type blockingDuplicateAdminServiceStub struct {
-	ProviderManagement
-	provider     *providercore.Record
-	started      chan struct{}
-	release      chan struct{}
-	calls        atomic.Int32
-	recoverCalls atomic.Int32
-	recoverErr   error
-}
-
-type failOnceMarkSucceededRepo struct {
-	*idempotencytest.MemoryStore
-	failNext bool
 }
 
 func (r *failOnceMarkSucceededRepo) MarkSucceeded(ctx context.Context, id int64, responseStatus int, responseBody string, expiresAt time.Time) error {

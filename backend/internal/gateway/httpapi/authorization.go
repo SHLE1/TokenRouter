@@ -16,6 +16,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 )
 
+// AuthorizationSubscriptions 保留同一权益实例的读取、校验与窗口维护。
+type AuthorizationSubscriptions interface {
+	admission.SubscriptionReader
+	admission.SubscriptionValidator
+}
+
+// APIKeyAuthorizationOptions 提供入口选项、观测接口和请求上下文数据。
+type APIKeyAuthorizationOptions struct {
+	Authentication keyhttp.AuthenticationOptions
+	BindLegacyKey  func(*gin.Context, *apikey.APIKey)
+}
+
 // APIKeyIDFromContext 读取已认证主体的 Key ID，缺失或类型不匹配时返回零。
 func APIKeyIDFromContext(c *gin.Context) int64 {
 	if c == nil {
@@ -30,18 +42,6 @@ func APIKeyIDFromContext(c *gin.Context) int64 {
 		return 0
 	}
 	return apiKey.ID
-}
-
-// AuthorizationSubscriptions 保留同一权益实例的读取、校验与窗口维护。
-type AuthorizationSubscriptions interface {
-	admission.SubscriptionReader
-	admission.SubscriptionValidator
-}
-
-// APIKeyAuthorizationOptions 提供入口选项、观测接口和请求上下文数据。
-type APIKeyAuthorizationOptions struct {
-	Authentication keyhttp.AuthenticationOptions
-	BindLegacyKey  func(*gin.Context, *apikey.APIKey)
 }
 
 func (o APIKeyAuthorizationOptions) loaded(c *gin.Context, k *apikey.APIKey) {

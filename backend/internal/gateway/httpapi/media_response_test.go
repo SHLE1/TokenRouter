@@ -13,12 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type mediaReadFailure struct{}
+
 // TestMediaContentResponsePreservesRangeAndCommit 验证 HTTP 下载头按白名单转发，响应体写入前设置提交标记。
 func TestMediaContentResponsePreservesRangeAndCommit(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	committed := false
-	response := &http.Response{StatusCode: 206, Header: http.Header{"Content-Range": []string{"bytes 0-3/20"}, "X-Secret": []string{"hidden"}}, ContentLength: 4, Body: io.NopCloser(strings.NewReader("data"))}
+	response := &http.Response{StatusCode: http.StatusPartialContent, Header: http.Header{"Content-Range": []string{"bytes 0-3/20"}, "X-Secret": []string{"hidden"}}, ContentLength: 4, Body: io.NopCloser(strings.NewReader("data"))}
 	require.NoError(t, WriteGrokMediaContentResponse(c, response, func() { committed = true }))
 	require.True(t, committed)
 	require.Equal(t, 206, recorder.Code)
@@ -29,13 +31,11 @@ func TestMediaContentResponsePreservesRangeAndCommit(t *testing.T) {
 	require.Empty(t, recorder.Header().Get("X-Secret"))
 }
 
-type mediaReadFailure struct{}
-
 func (mediaReadFailure) Read([]byte) (int, error) { return 0, errors.New("download failed") }
 func (mediaReadFailure) Close() error             { return nil }
 func TestMediaContentReadFailureRemainsVisible(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	err := WriteGrokMediaContentResponse(c, &http.Response{StatusCode: 200, ContentLength: -1, Header: make(http.Header), Body: mediaReadFailure{}}, nil)
+	err := WriteGrokMediaContentResponse(c, &http.Response{StatusCode: http.StatusOK, ContentLength: -1, Header: make(http.Header), Body: mediaReadFailure{}}, nil)
 	require.ErrorContains(t, err, "download failed")
 }
 

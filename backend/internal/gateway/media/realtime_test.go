@@ -17,14 +17,6 @@ type mediaFrameStub struct {
 	order  *[]string
 }
 
-func (f *mediaFrameStub) ReadFrame(context.Context) (upstream.FrameKind, []byte, error) {
-	return upstream.FrameText, nil, context.Canceled
-}
-
-func (f *mediaFrameStub) WriteFrame(context.Context, upstream.FrameKind, []byte) error { return nil }
-
-func (f *mediaFrameStub) Close() error { f.closed++; *f.order = append(*f.order, "close"); return nil }
-
 type realtimePortsStub struct {
 	selected, released, opened, failed int
 	denyWait                           bool
@@ -34,6 +26,14 @@ type realtimePortsStub struct {
 	order                              []string
 	deadline                           time.Duration
 }
+
+func (f *mediaFrameStub) ReadFrame(context.Context) (upstream.FrameKind, []byte, error) {
+	return upstream.FrameText, nil, context.Canceled
+}
+
+func (f *mediaFrameStub) WriteFrame(context.Context, upstream.FrameKind, []byte) error { return nil }
+
+func (f *mediaFrameStub) Close() error { f.closed++; *f.order = append(*f.order, "close"); return nil }
 
 func (p *realtimePortsStub) SelectRealtime(_ context.Context, _ map[int64]struct{}) (provider.ProviderSnapshot, bool, error) {
 	p.selected++

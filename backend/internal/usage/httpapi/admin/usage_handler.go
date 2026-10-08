@@ -32,6 +32,22 @@ type UsageHandler struct {
 	opsService     ports.Timings
 }
 
+// CreateUsageCleanupTaskRequest represents cleanup task creation request
+type CreateUsageCleanupTaskRequest struct {
+	StartDate   string  `json:"start_date"`
+	EndDate     string  `json:"end_date"`
+	UserID      *int64  `json:"user_id"`
+	APIKeyID    *int64  `json:"api_key_id"`
+	ProviderID  *int64  `json:"provider_id"`
+	GroupID     *int64  `json:"group_id"`
+	TeamID      *int64  `json:"team_id"`
+	Model       *string `json:"model"`
+	RequestType *string `json:"request_type"`
+	Stream      *bool   `json:"stream"`
+	BillingType *int8   `json:"billing_type"`
+	Timezone    string  `json:"timezone"`
+}
+
 // NewUsageHandler creates a new admin usage handler
 func NewUsageHandler(
 	usageService *usage.UsageService,
@@ -49,22 +65,6 @@ func NewUsageHandler(
 		cleanupService: cleanupService,
 		opsService:     opsService,
 	}
-}
-
-// CreateUsageCleanupTaskRequest represents cleanup task creation request
-type CreateUsageCleanupTaskRequest struct {
-	StartDate   string  `json:"start_date"`
-	EndDate     string  `json:"end_date"`
-	UserID      *int64  `json:"user_id"`
-	APIKeyID    *int64  `json:"api_key_id"`
-	ProviderID  *int64  `json:"provider_id"`
-	GroupID     *int64  `json:"group_id"`
-	TeamID      *int64  `json:"team_id"`
-	Model       *string `json:"model"`
-	RequestType *string `json:"request_type"`
-	Stream      *bool   `json:"stream"`
-	BillingType *int8   `json:"billing_type"`
-	Timezone    string  `json:"timezone"`
 }
 
 // List handles listing all usage records with filters

@@ -31,6 +31,32 @@ import (
 	usagecore "github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// openAILadderCatalogJSON 提供带 above_272k 绝对价格的测试目录，解析层将其转换为计费阈值和倍率。
+const openAILadderCatalogJSON = `{
+	"gpt-5.4": {"provider": "openai", "mode": "chat", "fast_multiplier": 2, "flex_multiplier": 0.5,
+		"input_cost_per_token": 2.5e-06, "output_cost_per_token": 1.5e-05,
+		"cache_read_input_token_cost": 2.5e-07, "cache_creation_input_token_cost": 2.5e-06,
+		"input_cost_per_token_above_272k_tokens": 5e-06,
+		"output_cost_per_token_above_272k_tokens": 2.25e-05,
+		"cache_read_input_token_cost_above_272k_tokens": 5e-07},
+	"gpt-5.5-pro": {"provider": "openai", "mode": "chat",
+		"input_cost_per_token": 3e-05, "output_cost_per_token": 1.8e-04,
+		"input_cost_per_token_above_272k_tokens": 6e-05,
+		"output_cost_per_token_above_272k_tokens": 2.7e-04}
+}`
+
+// modelCatalogFixture 构造尚未启动的模型目录，供测试使用。
+type modelCatalogFixture struct {
+	pricingData map[string]*pricing.CatalogModelPricing
+}
+
+type configuredPrices struct {
+	base     *billing.PriceResolver
+	groupID  int64
+	settings pricing.BillingSettings
+	cards    []routing.ModelPricingEntry
+}
+
 func TestGatewayServiceRecordUsage_BillingUsesDetachedContext(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: false, Err: context.DeadlineExceeded}
 	userRepo := &completiontestkit.UserStore{}
@@ -4258,30 +4284,11 @@ func testMediaModelPricing(mode routing.BillingMode, prices map[string]*float64)
 	return []routing.ModelPricingEntry{card}
 }
 
-// modelCatalogFixture 构造尚未启动的模型目录，供测试使用。
-type modelCatalogFixture struct {
-	pricingData map[string]*pricing.CatalogModelPricing
-}
-
 func newModelCatalogFixture(fixture modelCatalogFixture) *provider.Service {
 	return provider.NewServiceFromSnapshot(provider.Options{
 		ModelLookupCandidates: modelidentity.CandidatesFactory,
 	}, nil, provider.Snapshot{Data: fixture.pricingData})
 }
-
-// openAILadderCatalogJSON 提供带 above_272k 绝对价格的测试目录，解析层将其转换为计费阈值和倍率。
-const openAILadderCatalogJSON = `{
-	"gpt-5.4": {"provider": "openai", "mode": "chat", "fast_multiplier": 2, "flex_multiplier": 0.5,
-		"input_cost_per_token": 2.5e-06, "output_cost_per_token": 1.5e-05,
-		"cache_read_input_token_cost": 2.5e-07, "cache_creation_input_token_cost": 2.5e-06,
-		"input_cost_per_token_above_272k_tokens": 5e-06,
-		"output_cost_per_token_above_272k_tokens": 2.25e-05,
-		"cache_read_input_token_cost_above_272k_tokens": 5e-07},
-	"gpt-5.5-pro": {"provider": "openai", "mode": "chat",
-		"input_cost_per_token": 3e-05, "output_cost_per_token": 1.8e-04,
-		"input_cost_per_token_above_272k_tokens": 6e-05,
-		"output_cost_per_token_above_272k_tokens": 2.7e-04}
-}`
 
 // newStubCatalogFromJSON 通过与生产相同的解析路径创建价格目录 stub。
 func newStubCatalogFromJSON(t *testing.T, body string) *provider.Service {
@@ -4300,13 +4307,6 @@ func configureBillingGroup(svc *completiontestkit.Recording, group *routing.Grou
 	source := configuredPrices{base: svc.Dependencies.Prices, groupID: group.ID, settings: settings, cards: cards}
 	svc.Dependencies.Prices = billing.NewPriceResolver(source, svc.Dependencies.Calculator, nil, nil)
 	return group
-}
-
-type configuredPrices struct {
-	base     *billing.PriceResolver
-	groupID  int64
-	settings pricing.BillingSettings
-	cards    []routing.ModelPricingEntry
 }
 
 func (s configuredPrices) GetEffectiveBillingSettings(ctx context.Context, id int64) pricing.BillingSettings {

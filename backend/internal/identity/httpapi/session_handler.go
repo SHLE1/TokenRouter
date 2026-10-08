@@ -51,27 +51,6 @@ type SessionHandler struct {
 	options       SessionHTTPOptions
 }
 
-func NewSessionHandler(auth *identity.AuthService, users *identity.UserService, settings SessionHTTPSettings, redeems InvitationReader, totp *identity.TotpService, pending *identity.PendingFlow, options SessionHTTPOptions) *SessionHandler {
-	return &SessionHandler{auth, users, settings, redeems, totp, pending, options}
-}
-
-func (h *SessionHandler) respondWithTokenPair(c *gin.Context, u *identity.User) {
-	RespondWithTokenPair(c, h.authService, u)
-}
-
-func (h *SessionHandler) auditActor(c *gin.Context, id int64, email string) {
-	if h.options.AuditActor != nil {
-		h.options.AuditActor(c, id, email)
-	}
-}
-
-func (h *SessionHandler) isBackendModeEnabled(ctx context.Context) bool {
-	if h == nil || h.options.BackendMode == nil {
-		return false
-	}
-	return h.options.BackendMode(ctx)
-}
-
 // RegisterRequest represents the registration request payload
 type RegisterRequest struct {
 	Email                 string `json:"email" binding:"required,email"`
@@ -106,6 +85,117 @@ type LoginRequest struct {
 	TurnstileToken        string `json:"turnstile_token"`
 	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`
 	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
+}
+
+// TotpLoginResponse represents the response when 2FA is required
+type TotpLoginResponse struct {
+	Requires2FA     bool   `json:"requires_2fa"`
+	TempToken       string `json:"temp_token,omitempty"`
+	UserEmailMasked string `json:"user_email_masked,omitempty"`
+}
+
+// Login2FARequest represents the 2FA login request
+type Login2FARequest struct {
+	TempToken string `json:"temp_token" binding:"required"`
+	TotpCode  string `json:"totp_code" binding:"required,len=6"`
+}
+
+// ValidatePromoCodeRequest 验证优惠码请求
+type ValidatePromoCodeRequest struct {
+	Code string `json:"code" binding:"required"`
+}
+
+// ValidatePromoCodeResponse 验证优惠码响应
+type ValidatePromoCodeResponse struct {
+	Valid       bool    `json:"valid"`
+	BonusAmount float64 `json:"bonus_amount,omitempty"`
+	ErrorCode   string  `json:"error_code,omitempty"`
+	Message     string  `json:"message,omitempty"`
+}
+
+// ValidateInvitationCodeRequest 验证邀请码请求
+type ValidateInvitationCodeRequest struct {
+	Code string `json:"code" binding:"required"`
+}
+
+// ValidateInvitationCodeResponse 验证邀请码响应
+type ValidateInvitationCodeResponse struct {
+	Valid     bool   `json:"valid"`
+	ErrorCode string `json:"error_code,omitempty"`
+}
+
+// ForgotPasswordRequest 忘记密码请求
+type ForgotPasswordRequest struct {
+	Email                 string `json:"email" binding:"required,email"`
+	TurnstileToken        string `json:"turnstile_token"`
+	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`
+	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
+}
+
+// ForgotPasswordResponse 忘记密码响应
+type ForgotPasswordResponse struct {
+	Message string `json:"message"`
+}
+
+// ResetPasswordRequest 重置密码请求
+type ResetPasswordRequest struct {
+	Email       string `json:"email" binding:"required,email"`
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+// ResetPasswordResponse 重置密码响应
+type ResetPasswordResponse struct {
+	Message string `json:"message"`
+}
+
+// RefreshTokenRequest 刷新Token请求
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+// RefreshTokenResponse 刷新Token响应
+type RefreshTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"` // Access Token有效期（秒）
+	TokenType    string `json:"token_type"`
+}
+
+// LogoutRequest 登出请求
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token,omitempty"` // 可选：撤销指定的Refresh Token
+}
+
+// LogoutResponse 登出响应
+type LogoutResponse struct {
+	Message string `json:"message"`
+}
+
+// RevokeAllSessionsResponse 撤销所有会话响应
+type RevokeAllSessionsResponse struct {
+	Message string `json:"message"`
+}
+
+func NewSessionHandler(auth *identity.AuthService, users *identity.UserService, settings SessionHTTPSettings, redeems InvitationReader, totp *identity.TotpService, pending *identity.PendingFlow, options SessionHTTPOptions) *SessionHandler {
+	return &SessionHandler{auth, users, settings, redeems, totp, pending, options}
+}
+
+func (h *SessionHandler) respondWithTokenPair(c *gin.Context, u *identity.User) {
+	RespondWithTokenPair(c, h.authService, u)
+}
+
+func (h *SessionHandler) auditActor(c *gin.Context, id int64, email string) {
+	if h.options.AuditActor != nil {
+		h.options.AuditActor(c, id, email)
+	}
+}
+
+func (h *SessionHandler) isBackendModeEnabled(ctx context.Context) bool {
+	if h == nil || h.options.BackendMode == nil {
+		return false
+	}
+	return h.options.BackendMode(ctx)
 }
 
 func captchaProof(turnstileToken, tencentTicket, tencentRandstr string) identity.CaptchaProof {
@@ -238,19 +328,6 @@ func (h *SessionHandler) Login(c *gin.Context) {
 	h.respondWithTokenPair(c, user)
 }
 
-// TotpLoginResponse represents the response when 2FA is required
-type TotpLoginResponse struct {
-	Requires2FA     bool   `json:"requires_2fa"`
-	TempToken       string `json:"temp_token,omitempty"`
-	UserEmailMasked string `json:"user_email_masked,omitempty"`
-}
-
-// Login2FARequest represents the 2FA login request
-type Login2FARequest struct {
-	TempToken string `json:"temp_token" binding:"required"`
-	TotpCode  string `json:"totp_code" binding:"required,len=6"`
-}
-
 // Login2FA completes the login with 2FA verification
 // POST /api/v1/auth/login/2fa
 func (h *SessionHandler) Login2FA(c *gin.Context) {
@@ -360,19 +437,6 @@ func (h *SessionHandler) GetCurrentUser(c *gin.Context) {
 	response.Success(c, UserProfileResponseFromService(user, identities))
 }
 
-// ValidatePromoCodeRequest 验证优惠码请求
-type ValidatePromoCodeRequest struct {
-	Code string `json:"code" binding:"required"`
-}
-
-// ValidatePromoCodeResponse 验证优惠码响应
-type ValidatePromoCodeResponse struct {
-	Valid       bool    `json:"valid"`
-	BonusAmount float64 `json:"bonus_amount,omitempty"`
-	ErrorCode   string  `json:"error_code,omitempty"`
-	Message     string  `json:"message,omitempty"`
-}
-
 // ValidatePromoCode 验证优惠码（公开接口，注册前调用）
 // POST /api/v1/auth/validate-promo-code
 func (h *SessionHandler) ValidatePromoCode(c *gin.Context) {
@@ -393,17 +457,6 @@ func (h *SessionHandler) ValidatePromoCode(c *gin.Context) {
 
 	preview := h.options.PreviewPromotion(c.Request.Context(), req.Code)
 	response.Success(c, ValidatePromoCodeResponse{Valid: preview.Valid, BonusAmount: preview.BonusAmount, ErrorCode: preview.ErrorCode})
-}
-
-// ValidateInvitationCodeRequest 验证邀请码请求
-type ValidateInvitationCodeRequest struct {
-	Code string `json:"code" binding:"required"`
-}
-
-// ValidateInvitationCodeResponse 验证邀请码响应
-type ValidateInvitationCodeResponse struct {
-	Valid     bool   `json:"valid"`
-	ErrorCode string `json:"error_code,omitempty"`
 }
 
 // ValidateInvitationCode 验证邀请码（公开接口，注册前调用）
@@ -456,19 +509,6 @@ func (h *SessionHandler) ValidateInvitationCode(c *gin.Context) {
 	})
 }
 
-// ForgotPasswordRequest 忘记密码请求
-type ForgotPasswordRequest struct {
-	Email                 string `json:"email" binding:"required,email"`
-	TurnstileToken        string `json:"turnstile_token"`
-	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`
-	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
-}
-
-// ForgotPasswordResponse 忘记密码响应
-type ForgotPasswordResponse struct {
-	Message string `json:"message"`
-}
-
 // ForgotPassword 请求密码重置
 // POST /api/v1/auth/forgot-password
 func (h *SessionHandler) ForgotPassword(c *gin.Context) {
@@ -503,18 +543,6 @@ func (h *SessionHandler) ForgotPassword(c *gin.Context) {
 	})
 }
 
-// ResetPasswordRequest 重置密码请求
-type ResetPasswordRequest struct {
-	Email       string `json:"email" binding:"required,email"`
-	Token       string `json:"token" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
-}
-
-// ResetPasswordResponse 重置密码响应
-type ResetPasswordResponse struct {
-	Message string `json:"message"`
-}
-
 // ResetPassword 重置密码
 // POST /api/v1/auth/reset-password
 func (h *SessionHandler) ResetPassword(c *gin.Context) {
@@ -533,19 +561,6 @@ func (h *SessionHandler) ResetPassword(c *gin.Context) {
 	response.Success(c, ResetPasswordResponse{
 		Message: "Your password has been reset successfully. You can now log in with your new password.",
 	})
-}
-
-// RefreshTokenRequest 刷新Token请求
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-// RefreshTokenResponse 刷新Token响应
-type RefreshTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"` // Access Token有效期（秒）
-	TokenType    string `json:"token_type"`
 }
 
 // RefreshToken 刷新Token
@@ -577,16 +592,6 @@ func (h *SessionHandler) RefreshToken(c *gin.Context) {
 	})
 }
 
-// LogoutRequest 登出请求
-type LogoutRequest struct {
-	RefreshToken string `json:"refresh_token,omitempty"` // 可选：撤销指定的Refresh Token
-}
-
-// LogoutResponse 登出响应
-type LogoutResponse struct {
-	Message string `json:"message"`
-}
-
 // Logout 用户登出
 // POST /api/v1/auth/logout
 func (h *SessionHandler) Logout(c *gin.Context) {
@@ -608,11 +613,6 @@ func (h *SessionHandler) Logout(c *gin.Context) {
 	response.Success(c, LogoutResponse{
 		Message: "Logged out successfully",
 	})
-}
-
-// RevokeAllSessionsResponse 撤销所有会话响应
-type RevokeAllSessionsResponse struct {
-	Message string `json:"message"`
 }
 
 // RevokeAllSessions 撤销当前用户的所有会话

@@ -56,6 +56,15 @@ type RedeemCodeBatchUpdateFields struct {
 	PlanID  *int64
 }
 
+type RedeemCodeBatchUpdateInput struct {
+	IDs    []int64
+	Fields RedeemCodeBatchUpdateFields
+}
+
+type RedeemCodeBatchUpdateResult struct {
+	Updated int64 `json:"updated"`
+}
+
 func (f RedeemCodeBatchUpdateFields) HasChanges() bool {
 	return f.Status != nil ||
 		f.ExpiresAt.Set ||
@@ -72,13 +81,4 @@ func (f RedeemCodeBatchUpdateFields) HasCoreFieldChanges() bool {
 
 func (f RedeemCodeBatchUpdateFields) TouchesUsedSensitiveFields() bool {
 	return f.Status != nil || f.ExpiresAt.Set
-}
-
-type RedeemCodeBatchUpdateInput struct {
-	IDs    []int64
-	Fields RedeemCodeBatchUpdateFields
-}
-
-type RedeemCodeBatchUpdateResult struct {
-	Updated int64 `json:"updated"`
 }

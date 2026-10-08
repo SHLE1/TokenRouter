@@ -18,6 +18,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+const (
+	taskAllowanceReserve taskAllowanceOperation = iota
+	taskAllowanceCapture
+	taskAllowanceRelease
+)
+
 type SettlementStore struct {
 	db              *sql.DB
 	calendar        timezone.Calendar
@@ -27,6 +33,38 @@ type SettlementStore struct {
 
 // ProviderQuotaOutbox 在提供商额度跨阈值时参与同一 SQL 事务，写入调度事件。
 type ProviderQuotaOutbox func(context.Context, *sql.Tx, int64) error
+
+type taskAllowanceOperation int
+
+type usageBillingSubscriptionRow struct {
+	ID                          int64
+	PlanID                      int64
+	StartsAt                    time.Time
+	ExpiresAt                   time.Time
+	DailyWindowStart            sql.NullTime
+	WeeklyWindowStart           sql.NullTime
+	MonthlyWindowStart          sql.NullTime
+	DailyLimitUSD               sql.NullFloat64
+	WeeklyLimitUSD              sql.NullFloat64
+	MonthlyLimitUSD             sql.NullFloat64
+	DailyUsageUSD               float64
+	WeeklyUsageUSD              float64
+	MonthlyUsageUSD             float64
+	PlanGroupIDsRaw             []byte
+	PlanGroupRateMultipliersRaw []byte
+}
+
+// TaskProjection 在计费事务中写入任务的资金分配和额度预占状态。
+//
+// @project-doc docs/domains/routing_and_billing.md#usage_settlement
+type TaskProjection interface {
+	SaveReservation(context.Context, float64, []billing.BillingAllocation, float64, float64) error
+	SetAllowanceReserved(context.Context, bool) error
+}
+type (
+	TaskProjectionFactory   func(*sql.Tx, billing.TaskReference) TaskProjection
+	TaskProjectionFactories map[billing.TaskScope]TaskProjectionFactory
+)
 
 // NewSettlementStore 构造唯一闭合资金存储，不启动后台任务。
 func NewSettlementStore(sqlDB *sql.DB, calendar timezone.Calendar, outbox ProviderQuotaOutbox, factories ...TaskProjectionFactories) *SettlementStore {
@@ -297,14 +335,6 @@ func (r *SettlementStore) Release(ctx context.Context, cmd *billing.TaskFundsCom
 		return releaseUsageBillingTaskBilling(ctx, tx, cmd)
 	})
 }
-
-type taskAllowanceOperation int
-
-const (
-	taskAllowanceReserve taskAllowanceOperation = iota
-	taskAllowanceCapture
-	taskAllowanceRelease
-)
 
 func (r *SettlementStore) applyTaskBalanceHold(
 	ctx context.Context,
@@ -788,24 +818,6 @@ func (r *SettlementStore) incrementUsageBillingTeamMember(ctx context.Context, t
 	}
 	// 请求在途期间成员可能退出或成为 Owner；付款快照仍需完成，只跳过已失效的成员限额计数。
 	return nil
-}
-
-type usageBillingSubscriptionRow struct {
-	ID                          int64
-	PlanID                      int64
-	StartsAt                    time.Time
-	ExpiresAt                   time.Time
-	DailyWindowStart            sql.NullTime
-	WeeklyWindowStart           sql.NullTime
-	MonthlyWindowStart          sql.NullTime
-	DailyLimitUSD               sql.NullFloat64
-	WeeklyLimitUSD              sql.NullFloat64
-	MonthlyLimitUSD             sql.NullFloat64
-	DailyUsageUSD               float64
-	WeeklyUsageUSD              float64
-	MonthlyUsageUSD             float64
-	PlanGroupIDsRaw             []byte
-	PlanGroupRateMultipliersRaw []byte
 }
 
 func usageBillingSubscriptionRowToService(userID int64, row usageBillingSubscriptionRow) *billing.UserSubscription {
@@ -1636,15 +1648,3 @@ func incrementUsageBillingProviderQuota(ctx context.Context, tx *sql.Tx, provide
 func settlementSubscriptionSnapshot(row usageBillingSubscriptionRow) billing.SettlementSubscription {
 	return billing.SettlementSubscription{ID: row.ID, PlanID: row.PlanID, StartsAt: row.StartsAt, ExpiresAt: row.ExpiresAt, DailyWindowStart: usageBillingNullableTimePtr(row.DailyWindowStart), WeeklyWindowStart: usageBillingNullableTimePtr(row.WeeklyWindowStart), MonthlyWindowStart: usageBillingNullableTimePtr(row.MonthlyWindowStart), DailyLimitUSD: usageBillingNullableFloat64Ptr(row.DailyLimitUSD), WeeklyLimitUSD: usageBillingNullableFloat64Ptr(row.WeeklyLimitUSD), MonthlyLimitUSD: usageBillingNullableFloat64Ptr(row.MonthlyLimitUSD), DailyUsageUSD: row.DailyUsageUSD, WeeklyUsageUSD: row.WeeklyUsageUSD, MonthlyUsageUSD: row.MonthlyUsageUSD, PlanGroupRateMultipliers: parseInt64Float64JSONMap(row.PlanGroupRateMultipliersRaw)}
 }
-
-// TaskProjection 在计费事务中写入任务的资金分配和额度预占状态。
-//
-// @project-doc docs/domains/routing_and_billing.md#usage_settlement
-type TaskProjection interface {
-	SaveReservation(context.Context, float64, []billing.BillingAllocation, float64, float64) error
-	SetAllowanceReserved(context.Context, bool) error
-}
-type (
-	TaskProjectionFactory   func(*sql.Tx, billing.TaskReference) TaskProjection
-	TaskProjectionFactories map[billing.TaskScope]TaskProjectionFactory
-)

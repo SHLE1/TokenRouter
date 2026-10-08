@@ -61,12 +61,35 @@ type Bindings struct {
 	Relay           func(context.Context, *gin.Context, *coderws.Conn, *gatewayprovider.ExecutionProvider, string, []byte, *gatewayws.OpenAIIngressHooks) error
 }
 
+type openAIWSHTTPBackend struct{ bindings Bindings }
+
+// openAIWSEntryAdapter 的每个方法仅接入一个已有能力，主循环与 turn 回调在 gateway/ws。
+type openAIWSEntryAdapter struct {
+	bindings     Bindings
+	c            *gin.Context
+	call         ResponsesWSCall
+	key          *apikey.APIKey
+	requestKey   *apikey.APIKey
+	subject      authctx.AuthSubject
+	subscription *billing.UserSubscription
+	log          *zap.Logger
+}
+
+// openAIWSEntryTarget 向 WS 流程提供所选提供商的逐步执行接口。
+type openAIWSEntryTarget struct {
+	root      *openAIWSEntryAdapter
+	provider  *gatewayprovider.ExecutionProvider
+	selection *gatewayprovider.SelectionResult
+	token     string
+}
+
+// wsEntryLogger 只持有日志句柄，后台完成回调不保留 HTTP 请求对象。
+type wsEntryLogger struct{ log *zap.Logger }
+
 // New 将 HTTP 升级接口与 WS 用例绑定。
 func New(options ResponsesWSOptions, b Bindings) *ResponsesWSHandler {
 	return NewResponsesWSHandler(options, openAIWSHTTPBackend{bindings: b}, b.Common.Support.Concurrency)
 }
-
-type openAIWSHTTPBackend struct{ bindings Bindings }
 
 func (p openAIWSHTTPBackend) Access(c *gin.Context) (*gatewayws.EntryKey, bool) {
 	key, ok := keyhttp.GetAPIKeyFromContext(c)
@@ -116,18 +139,6 @@ func (p openAIWSHTTPBackend) Entry(c *gin.Context, call ResponsesWSCall) gateway
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
 	subject, _ := authctx.GetAuthSubjectFromContext(c)
 	return &openAIWSEntryAdapter{bindings: p.bindings, c: c, call: call, key: key, subject: subject, log: call.Logger}
-}
-
-// openAIWSEntryAdapter 的每个方法仅接入一个已有能力，主循环与 turn 回调在 gateway/ws。
-type openAIWSEntryAdapter struct {
-	bindings     Bindings
-	c            *gin.Context
-	call         ResponsesWSCall
-	key          *apikey.APIKey
-	requestKey   *apikey.APIKey
-	subject      authctx.AuthSubject
-	subscription *billing.UserSubscription
-	log          *zap.Logger
 }
 
 func (p *openAIWSEntryAdapter) Logger() gatewayws.EntryLogger { return wsEntryLogger{p.log} }
@@ -200,7 +211,7 @@ func (p *openAIWSEntryAdapter) Plan(ctx context.Context, model string) (context.
 }
 
 func (p *openAIWSEntryAdapter) ImageIntent(model string, body []byte, mapping routing.GroupMappingResult) ([]byte, string, bool) {
-	return gatewayhttp.GroupMappedImageIntent("/v1/responses", model, body, routing.GroupMappingResult(mapping), p.Platform(), p.bindings.Common.Forward.ReplaceModelInBody)
+	return gatewayhttp.GroupMappedImageIntent("/v1/responses", model, body, mapping, p.Platform(), p.bindings.Common.Forward.ReplaceModelInBody)
 }
 
 func (p *openAIWSEntryAdapter) ExplicitImage(model string, body []byte) bool {
@@ -429,14 +440,6 @@ func (p *openAIWSEntryAdapter) SubmitCompletion(result *gatewayws.ForwardResult,
 	p.bindings.Common.Support.Submission.SubmitImages(p.c, images, task)
 }
 
-// openAIWSEntryTarget 向 WS 流程提供所选提供商的逐步执行接口。
-type openAIWSEntryTarget struct {
-	root      *openAIWSEntryAdapter
-	provider  *gatewayprovider.ExecutionProvider
-	selection *gatewayprovider.SelectionResult
-	token     string
-}
-
 func (t *openAIWSEntryTarget) MappedModel(model string) string {
 	return gatewayprovider.ExecutionModelPolicy(t.provider).Mapped(model)
 }
@@ -546,9 +549,6 @@ func (t *openAIWSEntryTarget) LogFailure(err error) {
 	fields = openaiattempt.AppendOpenAIProviderProxyLogFields(fields, t.provider)
 	t.root.log.Warn("openai.websocket_proxy_failed", fields...)
 }
-
-// wsEntryLogger 只持有日志句柄，后台完成回调不保留 HTTP 请求对象。
-type wsEntryLogger struct{ log *zap.Logger }
 
 func wsEntryLogFields(fields []gatewayws.EntryField) []zap.Field {
 	out := make([]zap.Field, 0, len(fields))

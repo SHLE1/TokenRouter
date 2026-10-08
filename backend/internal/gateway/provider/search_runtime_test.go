@@ -17,10 +17,23 @@ import (
 	searchprovider "github.com/TokenFlux/TokenRouter/internal/search/provider"
 )
 
+var (
+	// webSearchToolBody 包含一个 web_search 工具。
+	webSearchToolBody = []byte(`{"tools":[{"type":"web_search"}],"messages":[{"role":"user","content":"test"}]}`)
+
+	// nonWebSearchToolBody 包含普通请求输入。
+	nonWebSearchToolBody = []byte(`{"tools":[{"type":"text_editor"}],"messages":[{"role":"user","content":"test"}]}`)
+)
+
 // searchSettingRows 返回测试保存的 JSON 配置。
 type searchSettingRows struct {
 	search.ConfigRepository
 	data string
+}
+
+type searchPricingConfigRows struct {
+	routing.PricingConfigRepository
+	pricingConfigs []testkit.Configuration
 }
 
 func (r searchSettingRows) GetValue(context.Context, string) (string, error) { return r.data, nil }
@@ -29,11 +42,6 @@ func newSearchSettingsFixture(enabled bool, registry *search.Registry) *search.C
 	value := &search.WebSearchEmulationConfig{Enabled: enabled, Providers: []search.WebSearchProviderConfig{{Type: "brave", APIKey: "sk-test"}}}
 	data, _ := json.Marshal(value)
 	return search.NewConfigService(searchSettingRows{data: string(data)}, nil, nil, registry)
-}
-
-type searchPricingConfigRows struct {
-	routing.PricingConfigRepository
-	pricingConfigs []testkit.Configuration
 }
 
 func (r searchPricingConfigRows) ListAll(context.Context) ([]testkit.Configuration, error) {
@@ -49,12 +57,6 @@ func newPricingConfigServiceWithCache(groupID int64, ch *testkit.Configuration) 
 	value.GroupIDs = []int64{groupID}
 	return testkit.NewPricingConfigService(searchPricingConfigRows{pricingConfigs: []testkit.Configuration{*value}}, nil, routing.PricingConfigOptions{Now: time.Now})
 }
-
-// webSearchToolBody 包含一个 web_search 工具。
-var webSearchToolBody = []byte(`{"tools":[{"type":"web_search"}],"messages":[{"role":"user","content":"test"}]}`)
-
-// nonWebSearchToolBody 包含普通请求输入。
-var nonWebSearchToolBody = []byte(`{"tools":[{"type":"text_editor"}],"messages":[{"role":"user","content":"test"}]}`)
 
 // newSearchProviderPolicy 为指定搜索模拟模式创建测试提供商。
 func newSearchProviderPolicy(mode string) *searchtools.ProviderPolicy {

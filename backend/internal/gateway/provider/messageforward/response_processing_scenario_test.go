@@ -43,6 +43,10 @@ type nonJSONTempUnschedProviderRepo struct {
 	modelReason         string
 }
 
+type failWriteResponseWriter struct {
+	gin.ResponseWriter
+}
+
 func (r *nonJSONTempUnschedProviderRepo) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, reason string) error {
 	r.tempUnschedCalls++
 	r.tempReason = reason
@@ -258,7 +262,7 @@ func TestAnthropicPriorHeartbeatPreservesReadFailureBoundary(t *testing.T) {
 	_, err := c.Writer.Write([]byte(": ping\n\n"))
 	require.NoError(t, err)
 	c.Writer.Flush()
-	resp := &http.Response{StatusCode: 200, Header: http.Header{}, Body: &streamReadCloser{err: io.ErrUnexpectedEOF}}
+	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: &streamReadCloser{err: io.ErrUnexpectedEOF}}
 	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	require.Error(t, err)
 	require.NotNil(t, result)
@@ -266,10 +270,6 @@ func TestAnthropicPriorHeartbeatPreservesReadFailureBoundary(t *testing.T) {
 	require.False(t, errors.As(err, &failover))
 	require.Contains(t, rec.Body.String(), "stream_read_error")
 	require.Equal(t, "prior", c.Writer.Header().Get("X-Fixture"))
-}
-
-type failWriteResponseWriter struct {
-	gin.ResponseWriter
 }
 
 func (w *failWriteResponseWriter) Write(data []byte) (int, error) {

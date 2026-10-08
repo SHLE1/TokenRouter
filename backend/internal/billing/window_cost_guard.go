@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var sharedWindowCostMetrics WindowCostMetrics
+
 type WindowCostCache interface {
 	// 缓存提供商当前 5 小时窗口的标准费用，减少数据库聚合查询。
 	// Key 格式为 window_cost:provider:{providerID}。
@@ -46,10 +48,6 @@ type WindowCostBatchSource interface {
 
 type WindowCostMetrics struct{ Hit, Miss, BatchSQL, Fallback, Errors atomic.Int64 }
 
-var sharedWindowCostMetrics WindowCostMetrics
-
-func SharedWindowCostMetrics() *WindowCostMetrics { return &sharedWindowCostMetrics }
-
 type WindowCostGuardOptions struct {
 	Now   func() time.Time
 	Log   func(string, ...any)
@@ -67,11 +65,13 @@ type WindowCostGuard struct {
 	stats  *WindowCostMetrics
 }
 
+type windowCostPrefetchKey struct{}
+
+func SharedWindowCostMetrics() *WindowCostMetrics { return &sharedWindowCostMetrics }
+
 func NewWindowCostGuard(cache WindowCostCache, source WindowCostSource, options WindowCostGuardOptions) *WindowCostGuard {
 	return &WindowCostGuard{cache: cache, source: source, now: options.Now, log: options.Log, debug: options.Debug, stats: options.Stats}
 }
-
-type windowCostPrefetchKey struct{}
 
 func WithPrefetchedWindowCosts(ctx context.Context, costs map[int64]float64) context.Context {
 	return context.WithValue(ctx, windowCostPrefetchKey{}, maps.Clone(costs))

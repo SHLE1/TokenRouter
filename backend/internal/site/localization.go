@@ -16,10 +16,10 @@ const (
 	SettingKeyDefaultLocale = "default_locale"
 )
 
+var siteTextKeys = []string{"site_name", "site_title", "site_subtitle", "contact_info", "doc_url", "home_content", "purchase_subscription_url", "footer_text"}
+
 // LocalizedTexts 按独立字段保存站点文案，译文缺失时各自选择原文。
 type LocalizedTexts = locale.TextUpdates
-
-var siteTextKeys = []string{"site_name", "site_title", "site_subtitle", "contact_info", "doc_url", "home_content", "purchase_subscription_url", "footer_text"}
 
 // ParseLocalizedTexts 从已保存内容构建编辑值，缺少的字段取现有原文。
 func ParseLocalizedTexts(values map[string]string) LocalizedTexts {

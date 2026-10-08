@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+const (
+	TempUnschedBodyMaxBytes = 64 << 10
+
+	TempUnschedMessageMaxBytes = 2048
+)
+
 // HealthStore 提供各项独立的健康状态写入操作。
 type HealthStore interface {
 	GetByID(context.Context, int64) (*Record, error)
@@ -47,6 +53,12 @@ type HealthService struct {
 	options             HealthOptions
 }
 
+type TempUnschedulableRuleMatch struct {
+	Rule           TempUnschedulableRule
+	RuleIndex      int
+	MatchedKeyword string
+}
+
 func NewHealthService(store HealthStore, cache TempUnschedCache, options HealthOptions) *HealthService {
 	if options.Now == nil {
 		options.Now = time.Now
@@ -74,16 +86,6 @@ func firstRequestedModel(values []string) string {
 		return ""
 	}
 	return strings.TrimSpace(values[0])
-}
-
-const TempUnschedBodyMaxBytes = 64 << 10
-
-const TempUnschedMessageMaxBytes = 2048
-
-type TempUnschedulableRuleMatch struct {
-	Rule           TempUnschedulableRule
-	RuleIndex      int
-	MatchedKeyword string
 }
 
 func MatchTempUnschedulableRules(provider *Record, statusCode int, responseBody []byte) []TempUnschedulableRuleMatch {

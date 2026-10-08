@@ -10,9 +10,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// 入站和上游端点路径常量，供路径规范化与推导使用。新增 API 路径时在此登记。
-
 const (
+	// 入站和上游端点路径常量，供路径规范化与推导使用。新增 API 路径时在此登记。
+
 	EndpointMessages             = "/v1/messages"
 	EndpointChatCompletions      = "/v1/chat/completions"
 	EndpointEmbeddings           = "/v1/embeddings"
@@ -27,13 +27,11 @@ const (
 	EndpointVideosExtensions     = "/v1/videos/extensions"
 	EndpointVideos               = "/v1/videos"
 	EndpointGeminiModels         = "/v1beta/models"
-)
 
-// EndpointAntigravityGenerateContent 是 Antigravity 原生流式生成端点。
-const EndpointAntigravityGenerateContent = "/v1internal:streamGenerateContent"
+	// EndpointAntigravityGenerateContent 是 Antigravity 原生流式生成端点。
+	EndpointAntigravityGenerateContent = "/v1internal:streamGenerateContent"
 
-// gin.Context keys used by the middleware and helpers below.
-const (
+	// gin.Context keys used by the middleware and helpers below.
 	ctxKeyInboundEndpoint        = "_gateway_inbound_endpoint"
 	ctxKeyActualUpstreamEndpoint = "_gateway_actual_upstream_endpoint"
 )

@@ -19,9 +19,6 @@ type PolicyBlocked struct {
 	Cause   error
 }
 
-func (e *PolicyBlocked) Error() string { return e.Message }
-func (e *PolicyBlocked) Unwrap() error { return e.Cause }
-
 // DialResult 保存单次拨号的观测结果。
 type DialResult struct {
 	PreparationError bool
@@ -95,3 +92,6 @@ type PassthroughSession struct {
 	Port       PassthroughPort
 	Hooks      *PassthroughHooks
 }
+
+func (e *PolicyBlocked) Error() string { return e.Message }
+func (e *PolicyBlocked) Unwrap() error { return e.Cause }

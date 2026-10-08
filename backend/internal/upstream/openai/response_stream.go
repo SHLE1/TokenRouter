@@ -19,13 +19,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-type StreamTime string
-
 const (
 	StreamTimeFlush   StreamTime = "first_downstream_flush"
 	StreamTimeVisible StreamTime = "first_visible_output"
 	StreamTimeData    StreamTime = "first_sse_data"
 )
+
+type StreamTime string
 
 type CyberObservation struct {
 	Code           string

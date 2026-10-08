@@ -28,20 +28,6 @@ type RateLimiter struct {
 	prefix  string
 }
 
-// NewRateLimiter 接受计数能力，HTTP 层不构造数据库客户端。
-func NewRateLimiter(allower FixedWindowAllower) *RateLimiter {
-	return &RateLimiter{allower: allower, prefix: "rate_limit:"}
-}
-
-// Allow 保留面板调用方的结果形状，错误时继续返回零值。
-func (r *RateLimiter) Allow(ctx context.Context, key string, limit int, window time.Duration) (AllowResult, error) {
-	allowed, count, retry, err := r.allower.Allow(ctx, key, limit, window)
-	if err != nil {
-		return AllowResult{}, err
-	}
-	return AllowResult{Allowed: allowed, Count: count, RetryAfter: retry}, nil
-}
-
 // RateLimitFailureMode Redis 故障策略
 type RateLimitFailureMode int
 
@@ -58,6 +44,20 @@ type AllowResult struct {
 	Count int64
 	// RetryAfter 超限时距窗口重置的剩余时间（尽力而为；PTTL 不可用时回退为完整窗口）
 	RetryAfter time.Duration
+}
+
+// NewRateLimiter 接受计数能力，HTTP 层不构造数据库客户端。
+func NewRateLimiter(allower FixedWindowAllower) *RateLimiter {
+	return &RateLimiter{allower: allower, prefix: "rate_limit:"}
+}
+
+// Allow 保留面板调用方的结果形状，错误时继续返回零值。
+func (r *RateLimiter) Allow(ctx context.Context, key string, limit int, window time.Duration) (AllowResult, error) {
+	allowed, count, retry, err := r.allower.Allow(ctx, key, limit, window)
+	if err != nil {
+		return AllowResult{}, err
+	}
+	return AllowResult{Allowed: allowed, Count: count, RetryAfter: retry}, nil
 }
 
 // clientIPForRateLimit 返回 IP 维度限流使用的客户端地址。

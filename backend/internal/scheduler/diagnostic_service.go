@@ -82,8 +82,6 @@ type (
 	}
 )
 
-func (g *DiagnosticGroup) UsesAdvancedScheduler() bool { return g != nil && g.Advanced }
-
 type DiagnosticSource interface {
 	GetProvider(context.Context, int64) (*DiagnosticProvider, error)
 	GetGroup(context.Context, int64) (*DiagnosticGroup, error)
@@ -106,6 +104,24 @@ type DiagnosticService struct {
 	ports              DiagnosticPorts
 	now                func() time.Time
 }
+
+type diagnosticPolicyOutcome struct {
+	forcedProviderID       int64
+	previousResponseState  string
+	sessionStickyState     string
+	stickyEscapeReason     string
+	subscriptionPoolActive bool
+}
+
+type diagnosticTopKSelection struct {
+	minimumScore     float64
+	weightSum        float64
+	weights          map[int64]float64
+	probabilities    map[int64]float64
+	forcedProviderID int64
+}
+
+func (g *DiagnosticGroup) UsesAdvancedScheduler() bool { return g != nil && g.Advanced }
 
 func NewDiagnosticService(source DiagnosticSource, concurrency *ConcurrencyService, ports DiagnosticPorts) *DiagnosticService {
 	return &DiagnosticService{source: source, concurrencyService: concurrency, ports: ports, now: ports.Now}
@@ -603,14 +619,6 @@ func diagnosticSubscriptionPriorityPool(
 	return subscriptionProviders, deferred, true
 }
 
-type diagnosticPolicyOutcome struct {
-	forcedProviderID       int64
-	previousResponseState  string
-	sessionStickyState     string
-	stickyEscapeReason     string
-	subscriptionPoolActive bool
-}
-
 func diagnosticHardStickyPolicyOutcome(
 	providers []*DiagnosticProvider,
 	group *DiagnosticGroup,
@@ -669,14 +677,6 @@ func diagnosticHardStickyPolicyOutcome(
 	outcome.sessionStickyState = "forced_first"
 	outcome.forcedProviderID = request.StickyProviderID
 	return outcome
-}
-
-type diagnosticTopKSelection struct {
-	minimumScore     float64
-	weightSum        float64
-	weights          map[int64]float64
-	probabilities    map[int64]float64
-	forcedProviderID int64
 }
 
 func diagnosticSelectionStats(topK []CandidateScore, forcedProviderID int64) diagnosticTopKSelection {

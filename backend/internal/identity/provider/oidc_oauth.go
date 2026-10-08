@@ -57,6 +57,12 @@ type OidcJWK struct {
 	Y   string `json:"y"`
 }
 
+// OIDCClient 交换授权码、读取用户资料，并按配置的算法列表校验 ID Token。
+type OIDCClient struct{}
+
+// OIDCOptions 是 identity.OIDCOAuthOptions 的类型别名。
+type OIDCOptions = identity.OIDCOAuthOptions
+
 func OidcExchangeCode(
 	ctx context.Context,
 	cfg OIDCOptions,
@@ -474,9 +480,6 @@ func ContainsString(values []string, target string) bool {
 	return false
 }
 
-// OIDCClient 交换授权码、读取用户资料，并按配置的算法列表校验 ID Token。
-type OIDCClient struct{}
-
 func (OIDCClient) ExchangeCode(ctx context.Context, c OIDCOptions, code, redirect, verifier string) (*OidcTokenResponse, error) {
 	return OidcExchangeCode(ctx, c, code, redirect, verifier)
 }
@@ -492,6 +495,3 @@ func (OIDCClient) ValidateIDToken(ctx context.Context, c OIDCOptions, token, non
 	}
 	return &identity.OIDCVerifiedClaims{Issuer: v.Issuer, Subject: v.Subject, Email: v.Email, PreferredUsername: v.PreferredUsername, Name: v.Name, EmailVerified: v.EmailVerified}, e
 }
-
-// OIDCOptions 是 identity.OIDCOAuthOptions 的类型别名。
-type OIDCOptions = identity.OIDCOAuthOptions

@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	middleware2 "github.com/TokenFlux/TokenRouter/internal/server/middleware"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"golang.org/x/net/http2"
+
+	middleware2 "github.com/TokenFlux/TokenRouter/internal/server/middleware"
 )
 
 // ProviderSet 提供服务器层的依赖

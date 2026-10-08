@@ -1,6 +1,7 @@
 package httpapi_test
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -46,7 +47,7 @@ func TestSessionBindingContextFollowsForwardedIPSwitch(t *testing.T) {
 			})
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "/t", nil)
+			req := httptest.NewRequest(http.MethodGet, "/t", nil)
 			req.RemoteAddr = "127.0.0.1:54321"
 			req.Header.Set("X-Real-IP", "1.2.3.4")
 			req.Header.Set("User-Agent", "test-agent")
@@ -78,7 +79,7 @@ func TestSessionBindingContextSnapshotsForwardedModeAndHeaders(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/t", nil)
+	req := httptest.NewRequest(http.MethodGet, "/t", nil)
 	req.RemoteAddr = "9.9.9.9:12345"
 	req.Header.Set("X-Initial-IP", "1.2.3.4")
 	req.Header.Set("X-Changed-IP", "4.4.4.4")
@@ -105,7 +106,7 @@ func TestSessionBindingContextBoundsPersistedUserAgent(t *testing.T) {
 		c.Status(200)
 	})
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/t", nil)
+	req := httptest.NewRequest(http.MethodGet, "/t", nil)
 	req.Header.Set("User-Agent", strings.Repeat("u", 2048))
 	r.ServeHTTP(w, req)
 	require.Equal(t, 200, w.Code)
@@ -121,7 +122,7 @@ func TestSecurityClientIPFallsBackWithoutInjectedBinding(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/t", nil)
+	req := httptest.NewRequest(http.MethodGet, "/t", nil)
 	req.RemoteAddr = "9.9.9.9:12345"
 	req.Header.Set("X-Real-IP", "1.2.3.4")
 	r.ServeHTTP(w, req)
@@ -147,7 +148,7 @@ func TestRequestSessionBindingPrefersInjectedBinding(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/t", nil)
+	req := httptest.NewRequest(http.MethodGet, "/t", nil)
 	req.RemoteAddr = "127.0.0.1:54321"
 	req.Header.Set("X-Real-IP", "1.2.3.4")
 	req.Header.Set("User-Agent", "test-agent")

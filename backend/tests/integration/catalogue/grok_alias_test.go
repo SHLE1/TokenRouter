@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	catalogtest "github.com/TokenFlux/TokenRouter/internal/modelcatalog/testkit"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/stretchr/testify/require"
 )
 
 // TestGrokRequestableModelsExcludeBuiltinAliases 统一目录提供具体型号，提供商配置可以加入自定义别名。

@@ -26,38 +26,32 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// WeChat Pay constants.
 const (
+	// WeChat Pay constants.
 	wxpayCurrency   = "CNY"
 	wxpayH5Type     = "Wap"
 	wxpayResultPath = "/payment/result"
-)
 
-const (
 	wxpayMetadataAppID      = "appid"
 	wxpayMetadataMerchantID = "mchid"
 	wxpayMetadataCurrency   = "currency"
 	wxpayMetadataTradeState = "trade_state"
-)
 
-// WeChat Pay create-payment modes.
-const (
+	// WeChat Pay create-payment modes.
 	wxpayModeNative = "native"
 	wxpayModeH5     = "h5"
 	wxpayModeJSAPI  = "jsapi"
-)
 
-// WeChat Pay trade states.
-const (
+	// WeChat Pay trade states.
 	wxpayTradeStateSuccess  = "SUCCESS"
 	wxpayTradeStateRefund   = "REFUND"
 	wxpayTradeStateClosed   = "CLOSED"
 	wxpayTradeStatePayError = "PAYERROR"
-)
 
-// WeChat Pay notification event types.
-const (
+	// WeChat Pay notification event types.
 	wxpayEventTransactionSuccess = "TRANSACTION.SUCCESS"
+
+	wxpayAPIv3KeyLength = 32
 )
 
 var (
@@ -70,6 +64,9 @@ var (
 	wxpayJSAPIPrepayWithRequestPayment = func(ctx context.Context, svc jsapi.JsapiApiService, req jsapi.PrepayRequest) (*jsapi.PrepayWithRequestPaymentResponse, *core.APIResult, error) {
 		return svc.PrepayWithRequestPayment(ctx, req)
 	}
+
+	_ payment.Provider           = (*Wxpay)(nil)
+	_ payment.CancelableProvider = (*Wxpay)(nil)
 )
 
 type Wxpay struct {
@@ -79,8 +76,6 @@ type Wxpay struct {
 	coreClient    *core.Client
 	notifyHandler *notify.Handler
 }
-
-const wxpayAPIv3KeyLength = 32
 
 func NewWxpay(instanceID string, config map[string]string) (*Wxpay, error) {
 	// All fields are required. Platform-certificate mode is intentionally unsupported —
@@ -557,8 +552,3 @@ func (w *Wxpay) CancelPayment(ctx context.Context, tradeNo string) error {
 	}
 	return nil
 }
-
-var (
-	_ payment.Provider           = (*Wxpay)(nil)
-	_ payment.CancelableProvider = (*Wxpay)(nil)
-)

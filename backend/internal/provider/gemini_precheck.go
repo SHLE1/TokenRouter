@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const geminiPrecheckCacheTTL = time.Minute
+
 // GeminiQuotaUsageReader 读取提供商配额预检所需的本地模型用量，SQL 查询由 usage 存储适配器执行。
 type GeminiQuotaUsageReader interface {
 	GetModelUsage(context.Context, int64, time.Time, time.Time) ([]GeminiModelUsage, error)
@@ -25,6 +27,16 @@ type GeminiPrecheck struct {
 	usageCache         map[int64]*geminiUsageCacheEntry
 }
 
+type geminiUsageCacheEntry struct {
+	windowStart time.Time
+	cachedAt    time.Time
+	totals      GeminiUsageTotals
+}
+
+type GeminiUsageTotalsBatchReader interface {
+	GetGeminiUsageTotalsBatch(ctx context.Context, providerIDs []int64, startTime, endTime time.Time) (map[int64]GeminiUsageTotals, error)
+}
+
 func NewGeminiPrecheck(policy *GeminiQuotaService, usage GeminiQuotaUsageReader, options GeminiPrecheckOptions) *GeminiPrecheck {
 	if options.Now == nil {
 		options.Now = time.Now
@@ -37,18 +49,6 @@ func NewGeminiPrecheck(policy *GeminiQuotaService, usage GeminiQuotaUsageReader,
 	}
 	return &GeminiPrecheck{geminiQuotaService: policy, usageRepo: usage, options: options, usageCache: make(map[int64]*geminiUsageCacheEntry)}
 }
-
-type geminiUsageCacheEntry struct {
-	windowStart time.Time
-	cachedAt    time.Time
-	totals      GeminiUsageTotals
-}
-
-type GeminiUsageTotalsBatchReader interface {
-	GetGeminiUsageTotalsBatch(ctx context.Context, providerIDs []int64, startTime, endTime time.Time) (map[int64]GeminiUsageTotals, error)
-}
-
-const geminiPrecheckCacheTTL = time.Minute
 
 // PreCheckUsage 在派发前执行原本地配额预检。
 // 返回 false 表示当前提供商应被跳过。

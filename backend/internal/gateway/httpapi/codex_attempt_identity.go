@@ -11,15 +11,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const (
+	codexIdentityStateKey    = "openai_codex_provider_identity_source"
+	codexFingerprintStateKey = "codex_fingerprint_ids"
+)
+
 // 两个 HTTP 状态通过 Gin 同步写入各自的键。
 type (
 	codexIdentityState    struct{ source *provider.Record }
 	codexFingerprintState struct{ ids *openai.FingerprintIDs }
-)
-
-const (
-	codexIdentityStateKey    = "openai_codex_provider_identity_source"
-	codexFingerprintStateKey = "codex_fingerprint_ids"
 )
 
 // PrepareCodexIdentity 每个所选 attempt 重读影子资格，覆盖上次身份；命名空间仍延迟计算。

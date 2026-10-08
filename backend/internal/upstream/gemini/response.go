@@ -38,6 +38,11 @@ type (
 	}
 )
 
+type NativeStreamResult struct {
+	Usage        *upstream.TokenUsage
+	FirstTokenMs *int
+}
+
 func (s *ResponseAdapter) HandleNonStreamingResponse(c *upstream.OutputContext, resp *http.Response, originalModel string) (*upstream.TokenUsage, error) {
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if err != nil {
@@ -324,11 +329,6 @@ func MergeCollectedGeminiParts(response map[string]any, collectedParts []any) ma
 	result["candidates"] = candidates
 
 	return result
-}
-
-type NativeStreamResult struct {
-	Usage        *upstream.TokenUsage
-	FirstTokenMs *int
 }
 
 func (s *ResponseAdapter) HandleNativeNonStreamingResponse(c *upstream.OutputContext, resp *http.Response, isOAuth bool) (*upstream.TokenUsage, error) {

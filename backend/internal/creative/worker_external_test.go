@@ -161,7 +161,7 @@ func TestCreativeWorkerImageResultFailure(t *testing.T) {
 			runID := "crun_image_result_failure"
 			seedCreativeRun(f, runID, true)
 			f.exec.err = creative.CreativeImageResultError(code, "creative image result failed")
-			for i := 0; i < 2; i++ {
+			for range 2 {
 				result, err := f.worker.Process(context.Background(), runID)
 				require.NoError(t, err)
 				require.True(t, result.Terminal)

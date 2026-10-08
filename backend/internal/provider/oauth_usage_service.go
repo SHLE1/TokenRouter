@@ -10,6 +10,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var ErrOAuthUsageStopped = errors.New("oauth provider usage is stopped")
+
 type OAuthUsageReader interface {
 	GetByID(context.Context, int64) (*Record, error)
 	GetByIDs(context.Context, []int64) ([]*Record, error)
@@ -39,7 +41,17 @@ type OAuthUsageService struct {
 	activity     operationActivity
 }
 
-var ErrOAuthUsageStopped = errors.New("oauth provider usage is stopped")
+// oauthAPIFlightResult 连同负缓存保存来源，原提供商 key 的等待者不能消费另一身份结果。
+type oauthAPIFlightResult struct {
+	Response *ClaudeUsageResponse
+	Err      error
+	Identity string
+}
+
+// UsageSessionWindowWriter 保留窗口列的独立提交，并比较查询前身份及原窗口。
+type UsageSessionWindowWriter interface {
+	UpdateUsageSessionWindowEndIfUnchanged(context.Context, UsageObservationVersion, *time.Time, time.Time) (bool, error)
+}
 
 func NewOAuthUsageService(reader OAuthUsageReader, cache *OAuthUsageCache, stats *LocalUsageStatistics, options OAuthUsageOptions) *OAuthUsageService {
 	if options.Now == nil {
@@ -477,16 +489,4 @@ func (s *OAuthUsageService) recoverProviderError(ctx context.Context, value *Rec
 		value.Status = StatusActive
 		value.ErrorMessage = ""
 	}
-}
-
-// oauthAPIFlightResult 连同负缓存保存来源，原提供商 key 的等待者不能消费另一身份结果。
-type oauthAPIFlightResult struct {
-	Response *ClaudeUsageResponse
-	Err      error
-	Identity string
-}
-
-// UsageSessionWindowWriter 保留窗口列的独立提交，并比较查询前身份及原窗口。
-type UsageSessionWindowWriter interface {
-	UpdateUsageSessionWindowEndIfUnchanged(context.Context, UsageObservationVersion, *time.Time, time.Time) (bool, error)
 }

@@ -10,6 +10,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+var (
+	ErrProviderNotFound      = billing.ErrProviderNotFound
+	ErrProviderNilInput      = apperror.BadRequest("PROVIDER_NIL_INPUT", "provider input cannot be nil")
+	ErrProviderNotInFallback = apperror.BadRequest("PROVIDER_NOT_IN_FALLBACK", "provider is not in proxy fallback state")
+)
+
 // ListProviders 按筛选条件分页查询提供商，并返回总数。
 func (s *Admin) ListProviders(ctx context.Context, page, pageSize int, platform, providerType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]Record, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
@@ -120,9 +126,3 @@ func (s *Admin) ResetProviderQuota(ctx context.Context, id int64) error {
 	}
 	return s.options.Quotas.ResetQuotaUsedAndClearRateLimitCooldown(ctx, id)
 }
-
-var (
-	ErrProviderNotFound      = billing.ErrProviderNotFound
-	ErrProviderNilInput      = apperror.BadRequest("PROVIDER_NIL_INPUT", "provider input cannot be nil")
-	ErrProviderNotInFallback = apperror.BadRequest("PROVIDER_NOT_IN_FALLBACK", "provider is not in proxy fallback state")
-)

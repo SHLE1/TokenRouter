@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
@@ -43,7 +44,7 @@ func TestTaskHTTPActivityTimeoutRetainsStorage(t *testing.T) {
 	completed := make(chan struct{})
 	go func() {
 		defer close(completed)
-		router.ServeHTTP(response, httptest.NewRequest("GET", "/tasks/task", nil))
+		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/tasks/task", nil))
 	}()
 	<-calls.entered
 	var workerStopped, redisClosed atomic.Bool
@@ -57,7 +58,7 @@ func TestTaskHTTPActivityTimeoutRetainsStorage(t *testing.T) {
 	require.False(t, workerStopped.Load())
 	require.False(t, redisClosed.Load())
 	rejected := httptest.NewRecorder()
-	router.ServeHTTP(rejected, httptest.NewRequest("GET", "/tasks/next", nil))
+	router.ServeHTTP(rejected, httptest.NewRequest(http.MethodGet, "/tasks/next", nil))
 	require.Equal(t, 503, rejected.Code)
 	require.Contains(t, rejected.Body.String(), "TASKS_STOPPED")
 	require.Equal(t, int64(1), calls.calls.Load())

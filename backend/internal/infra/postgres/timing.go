@@ -15,6 +15,24 @@ type serverTimingConnector struct {
 	base driver.Connector
 }
 
+type serverTimingConn struct {
+	driver.Conn
+}
+
+type serverTimingStmt struct {
+	driver.Stmt
+}
+
+type serverTimingRows struct {
+	driver.Rows
+	ctx context.Context
+}
+
+type serverTimingTx struct {
+	driver.Tx
+	ctx context.Context
+}
+
 func NewTimingConnector(base driver.Connector) driver.Connector {
 	return &serverTimingConnector{base: base}
 }
@@ -31,10 +49,6 @@ func (c *serverTimingConnector) Connect(ctx context.Context) (driver.Conn, error
 
 func (c *serverTimingConnector) Driver() driver.Driver {
 	return c.base.Driver()
-}
-
-type serverTimingConn struct {
-	driver.Conn
 }
 
 func (c *serverTimingConn) Prepare(query string) (driver.Stmt, error) {
@@ -147,10 +161,6 @@ func (c *serverTimingConn) CheckNamedValue(value *driver.NamedValue) error {
 	return driver.ErrSkip
 }
 
-type serverTimingStmt struct {
-	driver.Stmt
-}
-
 func (s *serverTimingStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	startedAt := time.Now()
 	var (
@@ -210,11 +220,6 @@ func namedValues(args []driver.NamedValue) ([]driver.Value, error) {
 		values[i] = arg.Value
 	}
 	return values, nil
-}
-
-type serverTimingRows struct {
-	driver.Rows
-	ctx context.Context
 }
 
 func newServerTimingRows(ctx context.Context, rows driver.Rows) *serverTimingRows {
@@ -286,11 +291,6 @@ func (r *serverTimingRows) ColumnTypePrecisionScale(index int) (int64, int64, bo
 		return rows.ColumnTypePrecisionScale(index)
 	}
 	return 0, 0, false
-}
-
-type serverTimingTx struct {
-	driver.Tx
-	ctx context.Context
 }
 
 func (t *serverTimingTx) Commit() error {

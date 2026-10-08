@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
@@ -272,7 +273,7 @@ func TestOpenAIGatewayHandlerSubmitUsageRecordTask_PreservesRequestIDs(t *testin
 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	req := httptest.NewRequest("POST", "/v1/chat/completions", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
 	ctx := context.WithValue(req.Context(), telemetry.RequestID, "req-123")
 	ctx = context.WithValue(ctx, telemetry.ClientRequestID, "client-456")
 	c.Request = req.WithContext(ctx)
@@ -298,7 +299,7 @@ func TestGatewayHandlerSubmitUsageRecordTask_PreservesRequestIDs(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	req := httptest.NewRequest("POST", "/v1/messages", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	ctx := context.WithValue(req.Context(), telemetry.RequestID, "req-gateway")
 	ctx = context.WithValue(ctx, telemetry.ClientRequestID, "client-gateway")
 	c.Request = req.WithContext(ctx)

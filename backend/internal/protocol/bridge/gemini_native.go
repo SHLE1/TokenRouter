@@ -14,6 +14,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
+// NativeGeminiUsage 保存从 Gemini 响应解析出的 token 用量。
+type NativeGeminiUsage struct{ InputTokens, OutputTokens, CacheReadInputTokens, ImageOutputTokens int }
+
+// NativeGeminiOptions 保存调用方选择的签名策略。
+type NativeGeminiOptions struct{ DummyThoughtSignature string }
+
+// NativeGeminiRuntime 接收调用方提供的消息和工具 ID 生成函数。
+type NativeGeminiRuntime struct {
+	MessageID func() string
+	RandomHex func(int) string
+}
+
 func NativeConvertGeminiToClaudeMessage(runtime NativeGeminiRuntime, geminiResp map[string]any, originalModel string, rawData []byte, includeInlineData bool) (map[string]any, *NativeGeminiUsage) {
 	usage := NativeExtractGeminiUsage(rawData)
 	if usage == nil {
@@ -781,18 +793,6 @@ func NativeConvertClaudeGenerationConfig(req map[string]any) map[string]any {
 		return nil
 	}
 	return out
-}
-
-// NativeGeminiUsage 保存从 Gemini 响应解析出的 token 用量。
-type NativeGeminiUsage struct{ InputTokens, OutputTokens, CacheReadInputTokens, ImageOutputTokens int }
-
-// NativeGeminiOptions 保存调用方选择的签名策略。
-type NativeGeminiOptions struct{ DummyThoughtSignature string }
-
-// NativeGeminiRuntime 接收调用方提供的消息和工具 ID 生成函数。
-type NativeGeminiRuntime struct {
-	MessageID func() string
-	RandomHex func(int) string
 }
 
 // NativePickGeminiCollectResult 优先返回包含内容分片的响应，否则返回最后一个响应。

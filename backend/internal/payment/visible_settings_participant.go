@@ -19,6 +19,14 @@ type VisibleMethodSettings struct {
 	PaymentVisibleMethodWxpayEnabled  bool   `json:"payment_visible_method_wxpay_enabled"`
 }
 
+// AdminReadSettings 包含支付方式的展示开关和来源。
+type AdminReadSettings struct {
+	PaymentVisibleMethodAlipayEnabled bool
+	PaymentVisibleMethodAlipaySource  string
+	PaymentVisibleMethodWxpayEnabled  bool
+	PaymentVisibleMethodWxpaySource   string
+}
+
 // PrepareVisibleMethodSettings 校验支付方式来源并生成待保存的设置值。
 func PrepareVisibleMethodSettings(value *VisibleMethodSettings) (map[string]string, error) {
 	var err error
@@ -64,14 +72,6 @@ func VisibleSettingsParticipant() settings.Participant {
 		}
 		return settings.PreparedChange{Values: values}, nil
 	}}
-}
-
-// AdminReadSettings 包含支付方式的展示开关和来源。
-type AdminReadSettings struct {
-	PaymentVisibleMethodAlipayEnabled bool
-	PaymentVisibleMethodAlipaySource  string
-	PaymentVisibleMethodWxpayEnabled  bool
-	PaymentVisibleMethodWxpaySource   string
 }
 
 // ReadAdminSettings 从传入的设置值解析支付方式的展示开关和来源。

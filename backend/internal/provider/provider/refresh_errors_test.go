@@ -24,6 +24,161 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+// 返回旧交换失败之前，模拟管理员已经持久化一份新凭据。
+type oldFailureRefresher struct {
+	row     *providercore.Record
+	failure error
+}
+
+type failureBlocker struct{ calls int }
+
+type grokReconcileRepo struct {
+	mu                      sync.Mutex
+	providers               []providercore.Record
+	requests                []providercore.OAuthRefreshPageOptions
+	setErrorIDs             []int64
+	updatedCredIDs          []int64
+	setErrorMessage         []string
+	getByIDOverrides        map[int64]providercore.Record
+	pageOverride            *providercore.OAuthRefreshCandidatePage
+	reauthorizeOnCAS        bool
+	reauthorizeOnRefreshCAS bool
+	conditionalCalls        int
+}
+
+type reconcileInvalidator struct {
+	mu  sync.Mutex
+	ids []int64
+	err error
+}
+
+type reconcileRuntimeBlocker struct {
+	mu      sync.Mutex
+	blocked []int64
+	cleared []int64
+}
+
+type tokenCacheInvalidatorStub struct {
+	calls        int
+	err          error
+	ctxErr       error
+	lastProvider *providercore.Record
+}
+
+type tokenRefreshRuntimeBlocker struct {
+	blockCalls int
+	clearCalls int
+}
+
+type tokenRefreshSchedulerCache struct {
+	setProviderCalls int
+	ctxErr           error
+	lastProvider     *providercore.Record
+}
+
+type tempUnschedCacheStub struct {
+	deleteCalls int
+	setCalls    int
+	lastState   *providercore.TempUnschedState
+}
+
+// mockTokenCacheForRefreshAPI 用于 Path A 测试的 GeminiTokenCache mock
+type mockTokenCacheForRefreshAPI struct {
+	lockResult   bool
+	lockErr      error
+	releaseCalls int
+	deleteCalls  int
+	deleteCtxErr error
+}
+
+// alwaysFreshRefresherStub 二次检查时认为不需要刷新（模拟已被其他路径刷新）
+type alwaysFreshRefresherStub struct{}
+
+// refreshAttemptFixture 为刷新测试装配尝试、清理和熔断组件。
+type refreshAttemptFixture struct {
+	Attempts providercore.RefreshAttempts
+	Post     *providercore.RefreshPostActions
+}
+
+type poolHealthProviderRepo struct {
+	mu                   sync.Mutex
+	pages                map[int64][]providercore.Record
+	requests             []providercore.OAuthRefreshPageOptions
+	updatedCredentialIDs []int64
+	setErrorCalls        int
+	setTempUnschedCalls  int
+	getByIDErr           error
+}
+
+type poolHealthRefresher struct {
+	err            error
+	delay          time.Duration
+	startDelays    []time.Duration
+	ignoreContext  bool
+	cancel         context.CancelFunc
+	newCredentials map[string]any
+	calls          atomic.Int64
+	active         atomic.Int64
+	maxActive      atomic.Int64
+	startMu        sync.Mutex
+	startTimes     []time.Time
+}
+
+type countingRefreshAttemptGate struct {
+	calls atomic.Int64
+}
+
+type rejectedRefreshAttemptGate struct {
+	err error
+}
+
+type poolHealthTokenCacheStub struct {
+	providercore.AccessTokenCache
+}
+
+type tripBeforeRateAdmissionGate struct {
+	state *providercore.RefreshProviderState
+}
+
+type breakerTripProviderRepo struct {
+	*productionPathRateRepo
+	setErrorCalls atomic.Int64
+	setTempCalls  atomic.Int64
+}
+
+type productionPathRateRepo struct {
+	mu        sync.Mutex
+	providers map[int64]*providercore.Record
+}
+
+type productionPathRefreshStart struct {
+	providerID int64
+	at         time.Time
+}
+
+type productionPathRateExecutor struct {
+	firstStarted chan struct{}
+	releaseFirst chan struct{}
+	calls        atomic.Int64
+	startMu      sync.Mutex
+	starts       []productionPathRefreshStart
+}
+
+type tokenRefreshCandidateRepo struct {
+	mu                    sync.Mutex
+	providers             []providercore.Record
+	updatedCredentialIDs  []int64
+	setErrorCalls         int
+	setTempUnschedCalls   int
+	clearTempCalls        int
+	lastTempUnschedReason string
+	listActiveCalls       int
+}
+
+type tokenRefreshTestRefresher struct {
+	err error
+}
+
 func TestBackgroundFailureCannotBlockNewCredentials(t *testing.T) {
 	for _, engine := range []string{"fallback", "unified"} {
 		for _, platform := range []string{capability.PlatformAnthropic, capability.PlatformOpenAI, capability.PlatformGemini, capability.PlatformAntigravity, capability.PlatformQoder} {
@@ -1607,7 +1762,7 @@ func TestTokenRefreshService_ProviderConcurrencyGateIsSharedAcrossBackgroundAndC
 		<-start
 		runtime.ScanCycle(context.Background())
 	}()
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		go func() {
 			defer wg.Done()
 			<-start
@@ -1660,7 +1815,7 @@ func TestTokenRefreshService_SaturatedProviderPreservesConcurrencyAndActualQPSSt
 	start := make(chan struct{})
 	errorsCh := make(chan error, attemptCount)
 	var wg sync.WaitGroup
-	for i := 0; i < attemptCount; i++ {
+	for i := range attemptCount {
 		provider := grokPoolProvider(int64(i + 1))
 		state := providercore.NewRefreshProviderState(sharedRateGate, sharedPoolGate, svc.Tuning.FailureThreshold(), IsNonRetryableRefreshError)
 		wg.Add(1)
@@ -1748,7 +1903,7 @@ func TestTokenRefreshService_ProductionPathRatesOnlyActualRefreshAfterSameProvid
 	close(executor.releaseFirst)
 
 	skipped := 0
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		err := <-errorsCh
 		if errors.Is(err, providercore.ErrRefreshSkipped) {
 			skipped++
@@ -2129,12 +2284,6 @@ func TestTokenRefreshService_RefreshFailureDoesNotCallPrivacy(t *testing.T) {
 	}
 }
 
-// 返回旧交换失败之前，模拟管理员已经持久化一份新凭据。
-type oldFailureRefresher struct {
-	row     *providercore.Record
-	failure error
-}
-
 func (*oldFailureRefresher) CanRefresh(*providercore.Record) bool { return true }
 
 func (*oldFailureRefresher) NeedsRefresh(*providercore.Record, time.Duration) bool { return true }
@@ -2145,8 +2294,6 @@ func (r *oldFailureRefresher) Refresh(context.Context, *providercore.Record) (ma
 	r.row.Credentials = map[string]any{"access_token": "fresh-admin-fixture", "refresh_token": "fresh-refresh-fixture"}
 	return nil, r.failure
 }
-
-type failureBlocker struct{ calls int }
 
 func (b *failureBlocker) PrepareRefreshFailure(int64) func(providercore.RefreshFailureNotice) {
 	return func(providercore.RefreshFailureNotice) { b.calls++ }
@@ -2236,20 +2383,6 @@ func (r *tokenRefreshCandidateRepo) ApplyOAuthRefreshFailure(ctx context.Context
 		r.lastTempUnschedReason = failure.Message
 	}
 	return true, nil
-}
-
-type grokReconcileRepo struct {
-	mu                      sync.Mutex
-	providers               []providercore.Record
-	requests                []providercore.OAuthRefreshPageOptions
-	setErrorIDs             []int64
-	updatedCredIDs          []int64
-	setErrorMessage         []string
-	getByIDOverrides        map[int64]providercore.Record
-	pageOverride            *providercore.OAuthRefreshCandidatePage
-	reauthorizeOnCAS        bool
-	reauthorizeOnRefreshCAS bool
-	conditionalCalls        int
 }
 
 func (r *grokReconcileRepo) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
@@ -2469,18 +2602,6 @@ func (r *grokReconcileRepo) snapshot() ([]providercore.OAuthRefreshPageOptions, 
 	return append([]providercore.OAuthRefreshPageOptions(nil), r.requests...), append([]int64(nil), r.setErrorIDs...), append([]int64(nil), r.updatedCredIDs...), append([]string(nil), r.setErrorMessage...)
 }
 
-type reconcileInvalidator struct {
-	mu  sync.Mutex
-	ids []int64
-	err error
-}
-
-type reconcileRuntimeBlocker struct {
-	mu      sync.Mutex
-	blocked []int64
-	cleared []int64
-}
-
 func (b *reconcileRuntimeBlocker) BlockProviderScheduling(provider *providercore.Record, _ time.Time, _ string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -2597,18 +2718,6 @@ func grokReconcileFixtures() []providercore.Record {
 	}
 }
 
-type tokenCacheInvalidatorStub struct {
-	calls        int
-	err          error
-	ctxErr       error
-	lastProvider *providercore.Record
-}
-
-type tokenRefreshRuntimeBlocker struct {
-	blockCalls int
-	clearCalls int
-}
-
 func (b *tokenRefreshRuntimeBlocker) BlockProviderScheduling(*providercore.Record, time.Time, string) {
 	b.blockCalls++
 }
@@ -2624,23 +2733,11 @@ func (s *tokenCacheInvalidatorStub) InvalidateToken(ctx context.Context, provide
 	return s.err
 }
 
-type tokenRefreshSchedulerCache struct {
-	setProviderCalls int
-	ctxErr           error
-	lastProvider     *providercore.Record
-}
-
 func (s *tokenRefreshSchedulerCache) SetProvider(ctx context.Context, provider *providercore.Record) error {
 	s.setProviderCalls++
 	s.ctxErr = ctx.Err()
 	s.lastProvider = providercore.CloneRecord(provider)
 	return nil
-}
-
-type tempUnschedCacheStub struct {
-	deleteCalls int
-	setCalls    int
-	lastState   *providercore.TempUnschedState
 }
 
 func (s *tempUnschedCacheStub) SetTempUnsched(ctx context.Context, providerID int64, state *providercore.TempUnschedState) error {
@@ -2656,15 +2753,6 @@ func (s *tempUnschedCacheStub) GetTempUnsched(ctx context.Context, providerID in
 func (s *tempUnschedCacheStub) DeleteTempUnsched(ctx context.Context, providerID int64) error {
 	s.deleteCalls++
 	return nil
-}
-
-// mockTokenCacheForRefreshAPI 用于 Path A 测试的 GeminiTokenCache mock
-type mockTokenCacheForRefreshAPI struct {
-	lockResult   bool
-	lockErr      error
-	releaseCalls int
-	deleteCalls  int
-	deleteCtxErr error
 }
 
 func (m *mockTokenCacheForRefreshAPI) GetAccessToken(_ context.Context, _ string) (string, error) {
@@ -2713,9 +2801,6 @@ func buildPathAService(repo *tokenRefreshProviderRepo, cache providercore.Access
 	return service, refresher
 }
 
-// alwaysFreshRefresherStub 二次检查时认为不需要刷新（模拟已被其他路径刷新）
-type alwaysFreshRefresherStub struct{}
-
 func (r *alwaysFreshRefresherStub) CanRefresh(_ *providercore.Record) bool { return true }
 
 func (r *alwaysFreshRefresherStub) NeedsRefresh(_ *providercore.Record, _ time.Duration) bool {
@@ -2728,12 +2813,6 @@ func (r *alwaysFreshRefresherStub) Refresh(_ context.Context, _ *providercore.Re
 
 func (r *alwaysFreshRefresherStub) CacheKey(provider *providercore.Record) string {
 	return "test:fresh:" + provider.Platform
-}
-
-// refreshAttemptFixture 为刷新测试装配尝试、清理和熔断组件。
-type refreshAttemptFixture struct {
-	Attempts providercore.RefreshAttempts
-	Post     *providercore.RefreshPostActions
 }
 
 func newRefreshAttemptFixture(repo *tokenRefreshProviderRepo, tuning *providercore.RefreshTuning, invalidator providercore.TokenCacheInvalidator, scheduler *tokenRefreshSchedulerCache, cooldown providercore.TempUnschedCache) *refreshAttemptFixture {
@@ -2794,16 +2873,6 @@ func (r *tokenRefreshCandidateRepo) ClearRefreshCooldownIfUnchanged(_ context.Co
 
 func (b *tokenRefreshRuntimeBlocker) PrepareRefreshFailure(int64) func(providercore.RefreshFailureNotice) {
 	return func(providercore.RefreshFailureNotice) { b.blockCalls++ }
-}
-
-type poolHealthProviderRepo struct {
-	mu                   sync.Mutex
-	pages                map[int64][]providercore.Record
-	requests             []providercore.OAuthRefreshPageOptions
-	updatedCredentialIDs []int64
-	setErrorCalls        int
-	setTempUnschedCalls  int
-	getByIDErr           error
 }
 
 func (r *poolHealthProviderRepo) GetByID(_ context.Context, _ int64) (*providercore.Record, error) {
@@ -2883,36 +2952,6 @@ func (r *poolHealthProviderRepo) snapshot() ([]providercore.OAuthRefreshPageOpti
 	return append([]providercore.OAuthRefreshPageOptions(nil), r.requests...), append([]int64(nil), r.updatedCredentialIDs...), r.setErrorCalls, r.setTempUnschedCalls
 }
 
-type poolHealthRefresher struct {
-	err            error
-	delay          time.Duration
-	startDelays    []time.Duration
-	ignoreContext  bool
-	cancel         context.CancelFunc
-	newCredentials map[string]any
-	calls          atomic.Int64
-	active         atomic.Int64
-	maxActive      atomic.Int64
-	startMu        sync.Mutex
-	startTimes     []time.Time
-}
-
-type countingRefreshAttemptGate struct {
-	calls atomic.Int64
-}
-
-type rejectedRefreshAttemptGate struct {
-	err error
-}
-
-type poolHealthTokenCacheStub struct {
-	providercore.AccessTokenCache
-}
-
-type tripBeforeRateAdmissionGate struct {
-	state *providercore.RefreshProviderState
-}
-
 func (g *tripBeforeRateAdmissionGate) Acquire(ctx context.Context) (func(), error) {
 	release, err := g.state.Acquire(ctx)
 	if err != nil {
@@ -2924,12 +2963,6 @@ func (g *tripBeforeRateAdmissionGate) Acquire(ctx context.Context) (func(), erro
 
 func (g *tripBeforeRateAdmissionGate) AcquireRate(ctx context.Context) (func(), error) {
 	return g.state.AcquireRate(ctx)
-}
-
-type breakerTripProviderRepo struct {
-	*productionPathRateRepo
-	setErrorCalls atomic.Int64
-	setTempCalls  atomic.Int64
 }
 
 func (r *breakerTripProviderRepo) SetGrokOAuthRefreshErrorIfCredentialsUnchanged(context.Context, int64, map[string]any, *int64, string) (bool, error) {
@@ -2944,11 +2977,6 @@ func (r *breakerTripProviderRepo) SetGrokOAuthRefreshTempUnschedulableIfCredenti
 
 func (g *rejectedRefreshAttemptGate) Acquire(context.Context) (func(), error) {
 	return nil, g.err
-}
-
-type productionPathRateRepo struct {
-	mu        sync.Mutex
-	providers map[int64]*providercore.Record
 }
 
 func (r *productionPathRateRepo) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
@@ -2988,19 +3016,6 @@ func (r *productionPathRateRepo) UpdateGrokOAuthCredentialsIfUnchanged(
 	}
 	provider.Credentials = maps.Clone(credentials)
 	return true, nil
-}
-
-type productionPathRefreshStart struct {
-	providerID int64
-	at         time.Time
-}
-
-type productionPathRateExecutor struct {
-	firstStarted chan struct{}
-	releaseFirst chan struct{}
-	calls        atomic.Int64
-	startMu      sync.Mutex
-	starts       []productionPathRefreshStart
 }
 
 func (e *productionPathRateExecutor) CacheKey(provider *providercore.Record) string {
@@ -3135,17 +3150,6 @@ func newPoolHealthService(repo *poolHealthProviderRepo, refresher *poolHealthRef
 	}
 }
 
-type tokenRefreshCandidateRepo struct {
-	mu                    sync.Mutex
-	providers             []providercore.Record
-	updatedCredentialIDs  []int64
-	setErrorCalls         int
-	setTempUnschedCalls   int
-	clearTempCalls        int
-	lastTempUnschedReason string
-	listActiveCalls       int
-}
-
 func (r *tokenRefreshCandidateRepo) ListActive(context.Context) ([]providercore.Record, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -3226,10 +3230,6 @@ func (r *tokenRefreshCandidateRepo) ClearTempUnschedulable(context.Context, int6
 	defer r.mu.Unlock()
 	r.clearTempCalls++
 	return nil
-}
-
-type tokenRefreshTestRefresher struct {
-	err error
 }
 
 func (r *tokenRefreshTestRefresher) CanRefresh(*providercore.Record) bool { return true }

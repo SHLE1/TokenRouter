@@ -12,6 +12,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const (
+	openAINativeCompactionV2Key = "openai_native_compaction_v2"
+
+	openAIRemoteCompactionV2Feature = "remote_compaction_v2"
+)
+
 // CompactFallbackErrorResponse 将压缩恢复信号转换为 HTTP 错误。
 func CompactFallbackErrorResponse(resp *http.Response, signal *compact.Failure) (*http.Response, []byte) {
 	headers := make(http.Header)
@@ -72,7 +78,3 @@ func ApplyOpenAICodexBetaFeatures(c *gin.Context, oauthLike bool, h http.Header)
 	}
 	h.Set("x-codex-beta-features", openAIRemoteCompactionV2Feature)
 }
-
-const openAINativeCompactionV2Key = "openai_native_compaction_v2"
-
-const openAIRemoteCompactionV2Feature = "remote_compaction_v2"

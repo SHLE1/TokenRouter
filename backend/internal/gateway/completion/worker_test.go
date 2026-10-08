@@ -212,7 +212,7 @@ func TestUsageRecordWorkerPool_AutoScaleUpAndDown(t *testing.T) {
 	block := make(chan struct{})
 
 	// 填满运行槽位 + 队列，触发扩容阈值。
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		require.Equal(t, UsageRecordSubmitModeEnqueued, pool.Submit(func(ctx context.Context) {
 			<-block
 		}))
@@ -254,7 +254,7 @@ func TestUsageRecordWorkerPool_AutoScaleDownRequiresLowRunningUtilization(t *tes
 	t.Cleanup(pool.Stop)
 
 	block := make(chan struct{})
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		require.Equal(t, UsageRecordSubmitModeEnqueued, pool.Submit(func(ctx context.Context) {
 			<-block
 		}))
@@ -311,7 +311,7 @@ func TestUsageRecordWorkerPool_AutoScaleDisabledKeepsFixedConcurrency(t *testing
 	require.Equal(t, 2, pool.Stats().MaxConcurrency)
 
 	block := make(chan struct{})
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		require.Equal(t, UsageRecordSubmitModeEnqueued, pool.Submit(func(ctx context.Context) {
 			<-block
 		}))

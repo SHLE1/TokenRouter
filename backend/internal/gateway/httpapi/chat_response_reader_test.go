@@ -22,6 +22,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type openAICompatBufferedReadErrorCloser struct{ err error }
+
 func TestHandleChatStreamingResponse_SilentRefusalReasoningSummaryExempt(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -96,8 +98,6 @@ func TestHandleChatStreamingResponse_ClassifiesHTTP2ReadError(t *testing.T) {
 	require.NotContains(t, message, "stream ID")
 	require.NotContains(t, message, "INTERNAL_ERROR")
 }
-
-type openAICompatBufferedReadErrorCloser struct{ err error }
 
 func (r *openAICompatBufferedReadErrorCloser) Read([]byte) (int, error) { return 0, r.err }
 

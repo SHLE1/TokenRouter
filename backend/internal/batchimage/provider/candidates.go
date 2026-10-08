@@ -25,6 +25,8 @@ type Candidates struct {
 	ObserveModel func(context.Context, string)
 }
 
+type candidateRules struct{ *provider.Record }
+
 func (r *Candidates) GetByID(ctx context.Context, id int64) (*batchimage.Candidate, error) {
 	value, err := r.Source.GetByID(ctx, id)
 	return r.Project(value), err
@@ -76,8 +78,6 @@ func (r *Candidates) Project(value *provider.Record) *batchimage.Candidate {
 	}
 	return result
 }
-
-type candidateRules struct{ *provider.Record }
 
 func (r candidateRules) GetModelMapping() map[string]string {
 	return provider.ResolveModelMapping(r.Record, provideradapter.ModelDefaults())

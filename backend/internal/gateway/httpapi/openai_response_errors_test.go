@@ -27,6 +27,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const openAIInvalidFunctionParametersBody = `{"error":{` +
+	`"message":"Invalid schema for function 'automation_update': expected an object.",` +
+	`"type":"invalid_request_error",` +
+	`"param":"input[8].tools[1].tools[2].parameters",` +
+	`"code":"invalid_function_parameters"}}`
+
+type panicOnReadCloser struct{}
+
 func TestOpenAIHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -238,12 +246,6 @@ func TestOpenAIHandleErrorResponse_SetsResponseCommitted(t *testing.T) {
 	assert.True(t, IsResponseCommitted(c), "OpenAI non-failover path must mark response committed")
 }
 
-const openAIInvalidFunctionParametersBody = `{"error":{` +
-	`"message":"Invalid schema for function 'automation_update': expected an object.",` +
-	`"type":"invalid_request_error",` +
-	`"param":"input[8].tools[1].tools[2].parameters",` +
-	`"code":"invalid_function_parameters"}}`
-
 func newOpenAIUpstreamClientErrorResponse(statusCode int, body string) *http.Response {
 	return &http.Response{
 		StatusCode: statusCode,
@@ -443,8 +445,6 @@ func TestOpenAIUpstreamErrorBodyReadLimitForConfig_RespectsDiagnosticLimit(t *te
 
 	require.Equal(t, int64(output.Options.LogUpstreamErrorBodyMaxBytes), output.errorBodyReadLimit())
 }
-
-type panicOnReadCloser struct{}
 
 func (panicOnReadCloser) Read(_ []byte) (int, error) {
 	panic("response body should not be reread")

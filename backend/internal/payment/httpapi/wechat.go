@@ -18,6 +18,16 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
+const (
+	WechatPaymentOAuthFrontendCB  = "/auth/wechat/payment/callback"
+	WechatPaymentOAuthDefaultTo   = "/purchase"
+	WechatPaymentOAuthScope       = "wechat_payment_oauth_scope"
+	WechatPaymentOAuthContextName = "wechat_payment_oauth_context"
+	WechatPaymentOAuthRedirect    = "wechat_payment_oauth_redirect"
+	WechatPaymentOAuthStateName   = "wechat_payment_oauth_state"
+	WechatPaymentOAuthCookiePath  = "/api/v1/auth/oauth/wechat/payment"
+)
+
 // WeChatPaymentHTTPOptions 仅提供支付授权所需的配置和令牌能力，避免构造完整认证图。
 type WeChatPaymentHTTPOptions struct {
 	Config      func(context.Context, string, *gin.Context) (identitycore.WeChatOAuthOptions, error)
@@ -27,6 +37,18 @@ type WeChatPaymentHTTPOptions struct {
 	Exchange    func(context.Context, identitycore.WeChatOAuthOptions, string) (WeChatPaymentToken, error)
 }
 type WeChatPaymentHandler struct{ options WeChatPaymentHTTPOptions }
+
+type WeChatPaymentToken struct {
+	OpenID string
+	Scope  string
+}
+
+type WechatPaymentOAuthContext struct {
+	PaymentType string `json:"payment_type"`
+	Amount      string `json:"amount,omitempty"`
+	OrderType   string `json:"order_type,omitempty"`
+	PlanID      int64  `json:"plan_id,omitempty"`
+}
 
 func NewWeChatPaymentHandler(options WeChatPaymentHTTPOptions) *WeChatPaymentHandler {
 	return &WeChatPaymentHandler{options}
@@ -184,28 +206,6 @@ func ClearWeChatPaymentCookies(c *gin.Context) {
 	WechatPaymentClearCookie(c, WechatPaymentOAuthRedirect, secureCookie)
 	WechatPaymentClearCookie(c, WechatPaymentOAuthContextName, secureCookie)
 	WechatPaymentClearCookie(c, WechatPaymentOAuthScope, secureCookie)
-}
-
-type WeChatPaymentToken struct {
-	OpenID string
-	Scope  string
-}
-
-const (
-	WechatPaymentOAuthFrontendCB  = "/auth/wechat/payment/callback"
-	WechatPaymentOAuthDefaultTo   = "/purchase"
-	WechatPaymentOAuthScope       = "wechat_payment_oauth_scope"
-	WechatPaymentOAuthContextName = "wechat_payment_oauth_context"
-	WechatPaymentOAuthRedirect    = "wechat_payment_oauth_redirect"
-	WechatPaymentOAuthStateName   = "wechat_payment_oauth_state"
-	WechatPaymentOAuthCookiePath  = "/api/v1/auth/oauth/wechat/payment"
-)
-
-type WechatPaymentOAuthContext struct {
-	PaymentType string `json:"payment_type"`
-	Amount      string `json:"amount,omitempty"`
-	OrderType   string `json:"order_type,omitempty"`
-	PlanID      int64  `json:"plan_id,omitempty"`
 }
 
 func NormalizeWeChatPaymentType(raw string) string {

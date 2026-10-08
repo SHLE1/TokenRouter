@@ -9,6 +9,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+// sparkShadowAllowedCredentialKeys 是 spark 影子提供商唯一可写的凭据键集合(仅模型映射)。
+// 凭据校验与清理共用此列表。
+var sparkShadowAllowedCredentialKeys = map[string]struct{}{
+	"model_mapping":         {},
+	"compact_model_mapping": {},
+}
+
 // ResolveCredentialRecord 解析影子提供商到其母提供商，用于凭据/Token 透传。
 // - 普通提供商（非影子）：直接返回自身。
 // - 影子提供商：通过 repo 取母提供商，校验母提供商存在且为 OpenAI OAuth 类型，否则返回错误。
@@ -181,13 +188,6 @@ func (s *Admin) ValidateGroupIDs(ctx context.Context, ids []int64) error {
 		return errors.New("group repository not configured")
 	}
 	return s.options.Groups.ValidateGroups(ctx, ids)
-}
-
-// sparkShadowAllowedCredentialKeys 是 spark 影子提供商唯一可写的凭据键集合(仅模型映射)。
-// 凭据校验与清理共用此列表。
-var sparkShadowAllowedCredentialKeys = map[string]struct{}{
-	"model_mapping":         {},
-	"compact_model_mapping": {},
 }
 
 func IsAllowedSparkShadowCredentialsUpdate(credentials map[string]any) bool {

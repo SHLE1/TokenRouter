@@ -345,7 +345,7 @@ func TestNormalizeHeaderOverrideCredentials(t *testing.T) {
 
 	t.Run("rejects too many entries", func(t *testing.T) {
 		entries := make(map[string]any, 64+1)
-		for i := 0; i <= 64; i++ {
+		for i := range 65 {
 			entries["x-h-"+string(rune('a'+i%26))+string(rune('a'+(i/26)%26))+string(rune('a'+(i/676)%26))] = "v"
 		}
 		err := egress.NormalizeHeaderOverrideCredentials(map[string]any{

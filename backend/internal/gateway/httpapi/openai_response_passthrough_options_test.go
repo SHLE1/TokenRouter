@@ -32,6 +32,12 @@ import (
 	responseupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type passthroughFlushTestErrorBody struct {
+	payload []byte
+	err     error
+	sent    bool
+}
+
 // TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput 验证透传提取使用 raw compaction item 补充空终态 output。
 func TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput(t *testing.T) {
 	svc := newCompactBridgeTestService()
@@ -85,12 +91,6 @@ func TestHandleNonStreamingResponsePassthrough_CompactClientStreamBridgesToSSE(t
 	require.Equal(t, "resp_compact_pt", gjson.Get(events[1][1], "response.id").String())
 	require.NotNil(t, result.Usage)
 	require.Equal(t, 7, result.Usage.InputTokens)
-}
-
-type passthroughFlushTestErrorBody struct {
-	payload []byte
-	err     error
-	sent    bool
 }
 
 func (r *passthroughFlushTestErrorBody) Read(p []byte) (int, error) {

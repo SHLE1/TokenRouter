@@ -42,6 +42,14 @@ type StreamOptions struct {
 	Failover            func([]byte) error
 }
 
+type StreamReadFailure struct{ Body []byte }
+
+// StreamErrorEventError 表示上游 SSE 流体内出现 event:error 帧。
+// RawData 保留该事件 data: 行的原始内容，供上层写入 failover body 和 Ops 日志。
+type StreamErrorEventError struct {
+	RawData string
+}
+
 func (o StreamOptions) override(ctx context.Context) (string, bool) {
 	if o.OverrideCache == nil {
 		return "", false
@@ -55,8 +63,6 @@ func (o StreamOptions) failover(body []byte) error {
 	}
 	return &StreamReadFailure{Body: body}
 }
-
-type StreamReadFailure struct{ Body []byte }
 
 func (e *StreamReadFailure) Error() string { return "upstream error: 502 (failover)" }
 func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.OutputContext, options StreamOptions, startTime time.Time, originalModel, mappedModel string, mimicClaudeCode bool) (*StreamResult, error) {
@@ -521,12 +527,6 @@ func StreamEventIsTerminal(eventName, data string) bool {
 		return true
 	}
 	return gjson.Get(trimmed, "type").String() == "message_stop"
-}
-
-// StreamErrorEventError 表示上游 SSE 流体内出现 event:error 帧。
-// RawData 保留该事件 data: 行的原始内容，供上层写入 failover body 和 Ops 日志。
-type StreamErrorEventError struct {
-	RawData string
 }
 
 func (e *StreamErrorEventError) Error() string { return "have error in stream" }

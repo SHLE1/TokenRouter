@@ -24,10 +24,6 @@ type RedeemAdmin struct {
 	now            func() time.Time
 }
 
-func NewRedeemAdmin(repo RedeemCodeRepository, transactions RedeemAdminTransactions, now func() time.Time) *RedeemAdmin {
-	return &RedeemAdmin{redeemCodeRepo: repo, transactions: transactions, now: now}
-}
-
 type GenerateRedeemCodesInput struct {
 	RequiresPayment bool // 领取前要求用户有成功付款记录
 	Code            string
@@ -46,6 +42,10 @@ type UpdateRedeemCodeInput struct {
 	ExpiresAt       *time.Time
 	ExpiresAtSet    bool
 	PlanID          *int64 // 订阅类型专用：关联的套餐ID
+}
+
+func NewRedeemAdmin(repo RedeemCodeRepository, transactions RedeemAdminTransactions, now func() time.Time) *RedeemAdmin {
+	return &RedeemAdmin{redeemCodeRepo: repo, transactions: transactions, now: now}
 }
 
 // ListRedeemCodes 按筛选条件分页查询兑换码，并返回总数。
@@ -98,7 +98,7 @@ func (s *RedeemAdmin) GenerateRedeemCodes(ctx context.Context, input *GenerateRe
 	}
 
 	codes := make([]RedeemCode, 0, input.Count)
-	for i := 0; i < input.Count; i++ {
+	for range input.Count {
 		codeValue := customCode
 		if codeValue == "" {
 			generatedCode, err := GenerateRedeemCode()

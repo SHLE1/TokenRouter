@@ -20,6 +20,10 @@ import (
 // contextTestClient 在进入推理后检查传给供应商的取消信号。
 type contextTestClient struct{ check func(context.Context) error }
 
+type modelTestClient struct{}
+
+type modelTestSink struct{ bytes.Buffer }
+
 func (c contextTestClient) StreamRequestContext(ctx context.Context, _ *SessionContext, _ string, _ []byte, _ map[string]string) (*http.Response, error) {
 	return nil, c.check(ctx)
 }
@@ -60,14 +64,10 @@ func TestStreamExecutionInternalAbort(t *testing.T) {
 	}
 }
 
-type modelTestClient struct{}
-
 func (modelTestClient) StreamRequestContext(context.Context, *SessionContext, string, []byte, map[string]string) (*http.Response, error) {
 	body, _ := json.Marshal(QoderSSEWrapper{Body: `{"choices":[{"delta":{"content":"hello"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1}}`})
-	return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("data: " + string(body) + "\n\ndata: [DONE]\n\n"))}, nil
+	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("data: " + string(body) + "\n\ndata: [DONE]\n\n"))}, nil
 }
-
-type modelTestSink struct{ bytes.Buffer }
 
 func (*modelTestSink) Begin(upstream.OutputHead) error { return nil }
 

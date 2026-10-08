@@ -17,6 +17,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
+var structuredLogCaptureMu sync.Mutex
+
+type inMemoryLogSink struct {
+	mu     sync.Mutex
+	events []*logging.LogEvent
+}
+
 // TestHandleNativeNonStreamingResponse_FeedsImageCounter 验证端到端守住接线：/v1beta/models/{model}:generateContent 的非流式响应体
 // 必须真的喂进计数器，否则上面的单测全绿而线上依然记 $0。
 func TestHandleNativeNonStreamingResponse_FeedsImageCounter(t *testing.T) {
@@ -69,13 +76,6 @@ func TestGeminiHandleNativeNonStreamingResponse_DebugDisabledDoesNotEmitHeaderLo
 	require.NotNil(t, usage)
 	require.NotEmpty(t, w.Body.Bytes())
 	require.False(t, logSink.ContainsMessage("[GeminiAPI]"), "debug 关闭时不应输出 Gemini 响应头日志")
-}
-
-var structuredLogCaptureMu sync.Mutex
-
-type inMemoryLogSink struct {
-	mu     sync.Mutex
-	events []*logging.LogEvent
 }
 
 func (s *inMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {

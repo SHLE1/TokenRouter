@@ -15,6 +15,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+const (
+	BatchImageSettlementRetryDelay = time.Minute
+	BatchImageSettlementMaxRetries = 5
+	BatchImageCostEpsilon          = 0.00000001
+)
+
 type Settlement struct {
 	Now            func() time.Time
 	Repo           BatchImageRepository
@@ -24,12 +30,6 @@ type Settlement struct {
 	InvalidateAuth func(context.Context, int64)
 	Retention      time.Duration
 	Observe        func(string, ...any)
-}
-
-func (s *Settlement) warn(event string, values ...any) {
-	if s.Observe != nil {
-		s.Observe(event, values...)
-	}
 }
 
 type BatchImageSettlementResult struct {
@@ -43,6 +43,12 @@ type BatchImageSettlementResult struct {
 	BalanceAmountUSD      float64
 	BillingAllocations    []billing.BillingAllocation
 	AlreadySettled        bool
+}
+
+func (s *Settlement) warn(event string, values ...any) {
+	if s.Observe != nil {
+		s.Observe(event, values...)
+	}
 }
 
 func (s *Settlement) Settle(ctx context.Context, batchID string) (*BatchImageSettlementResult, error) {
@@ -354,12 +360,6 @@ func (r *BatchImageSettlementResult) String() string {
 	return fmt.Sprintf("batch_id=%s success=%d fail=%d actual_cost=%0.10f already_settled=%t",
 		r.BatchID, r.SuccessCount, r.FailCount, r.ActualCost, r.AlreadySettled)
 }
-
-const (
-	BatchImageSettlementRetryDelay = time.Minute
-	BatchImageSettlementMaxRetries = 5
-	BatchImageCostEpsilon          = 0.00000001
-)
 
 func optionalTrimmedStringPtr(raw string) *string {
 	v := strings.TrimSpace(raw)

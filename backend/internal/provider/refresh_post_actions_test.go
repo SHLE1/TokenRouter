@@ -12,6 +12,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 迟到的成功后置动作不能清除管理员已经更新的凭据与临时停调。
+type refreshSuccessCooldownRepo struct {
+	current *Record
+	clears  int
+}
+
+// 清理完成后发布的快照包含已提交的健康状态。
+type refreshSuccessScheduler struct {
+	last *Record
+}
+
 func cooldownPostActions(repo *refreshSuccessCooldownRepo) *RefreshPostActions {
 	return &RefreshPostActions{
 		Now: time.Now, Info: slog.Info, Warn: slog.Warn, Debug: slog.Debug, ClearBlock: func(int64) {}, NeedsReauth: GrokNeedsReauth,
@@ -27,12 +38,6 @@ func (r *refreshSuccessCooldownRepo) ClearRefreshCooldownIfUnchanged(ctx context
 		return false, nil
 	}
 	return true, r.ClearTempUnschedulable(ctx, v.ID)
-}
-
-// 迟到的成功后置动作不能清除管理员已经更新的凭据与临时停调。
-type refreshSuccessCooldownRepo struct {
-	current *Record
-	clears  int
 }
 
 func (r *refreshSuccessCooldownRepo) ClearTempUnschedulable(context.Context, int64) error {
@@ -54,11 +59,6 @@ func TestRefreshSuccessCannotClearNewAdministratorCooldown(t *testing.T) {
 	require.Zero(t, repo.clears)
 	require.NotNil(t, current.TempUnschedulableUntil)
 	require.Equal(t, "new cooldown", current.TempUnschedulableReason)
-}
-
-// 清理完成后发布的快照包含已提交的健康状态。
-type refreshSuccessScheduler struct {
-	last *Record
 }
 
 func (s *refreshSuccessScheduler) SetProvider(_ context.Context, v *Record) error {

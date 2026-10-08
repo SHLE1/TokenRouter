@@ -7,6 +7,20 @@ import (
 	"time"
 )
 
+type Queries struct {
+	Now            func() time.Time
+	Repo           CreativeRunRepository
+	TransientStore CreativeTransientStore
+	Enabled        func(context.Context) bool
+	Observe        func(string, ...any)
+}
+
+// CreativeOutputContent 是输出内容的返回结构。
+type CreativeOutputContent struct {
+	Content     []byte
+	ContentType string
+}
+
 func (s *Public) queries() *Queries {
 	return &Queries{Now: s.Now, Repo: s.Repo, TransientStore: s.TransientStore, Enabled: s.Enabled, Observe: s.Observe}
 }
@@ -25,14 +39,6 @@ func (s *Public) GetOutputContent(ctx context.Context, scope CreativeRunScope, i
 
 func (s *Public) AckOutput(ctx context.Context, scope CreativeRunScope, id string, index int) error {
 	return s.queries().AckOutput(ctx, scope, id, index)
-}
-
-type Queries struct {
-	Now            func() time.Time
-	Repo           CreativeRunRepository
-	TransientStore CreativeTransientStore
-	Enabled        func(context.Context) bool
-	Observe        func(string, ...any)
 }
 
 func (s *Queries) warn(event string, values ...any) {
@@ -110,12 +116,6 @@ func (s *Queries) ListRuns(ctx context.Context, scope CreativeRunScope, filter C
 		data = append(data, CreativeRunToPublic(run, outputs))
 	}
 	return &CreativeListRunsResponse{Data: data, HasMore: len(data) == filter.Limit}, nil
-}
-
-// CreativeOutputContent 是输出内容的返回结构。
-type CreativeOutputContent struct {
-	Content     []byte
-	ContentType string
 }
 
 // GetOutputContent 校验所有权与输出状态后从临时存储读取图片字节。

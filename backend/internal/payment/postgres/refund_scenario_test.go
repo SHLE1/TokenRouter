@@ -23,6 +23,22 @@ import (
 	sqlitetest "github.com/TokenFlux/TokenRouter/internal/testutil/sqlite"
 )
 
+// refundBalanceFixture 为退款测试提供余额扣除和补偿函数，订单与事务由 RefundStore 处理。
+type refundBalanceFixture struct {
+	payment.RefundRights
+	user                  *payment.RefundUser
+	updateBalanceFn       func(context.Context, int64, float64) error
+	deductBalanceFn       func(context.Context, int64, float64) error
+	deductBalanceResultFn func(context.Context, int64, float64) (float64, error)
+}
+
+type refundProviderTestDouble struct{}
+
+type refundQueryProviderTestDouble struct {
+	refundProviderTestDouble
+	refundResponse *payment.RefundResponse
+}
+
 func TestValidateRefundRequestRejectsLegacyGuessedProviderInstance(t *testing.T) {
 	ctx := context.Background()
 	client := sqlitetest.NewClient(t)
@@ -601,15 +617,6 @@ func TestQueryAndFinalizeRefundUnsupportedProviderReturnsClearError(t *testing.T
 	require.Equal(t, "REFUND_QUERY_UNSUPPORTED", apperror.Reason(err))
 }
 
-// refundBalanceFixture 为退款测试提供余额扣除和补偿函数，订单与事务由 RefundStore 处理。
-type refundBalanceFixture struct {
-	payment.RefundRights
-	user                  *payment.RefundUser
-	updateBalanceFn       func(context.Context, int64, float64) error
-	deductBalanceFn       func(context.Context, int64, float64) error
-	deductBalanceResultFn func(context.Context, int64, float64) (float64, error)
-}
-
 func (f *refundBalanceFixture) DeductBalance(ctx context.Context, id int64, amount float64) (float64, error) {
 	if f.deductBalanceResultFn != nil {
 		return f.deductBalanceResultFn(ctx, id, amount)
@@ -716,8 +723,6 @@ func createPendingRefundOrderForTest(t *testing.T, ctx context.Context, client *
 	return order
 }
 
-type refundProviderTestDouble struct{}
-
 func (refundProviderTestDouble) Name() string { return "refund-test" }
 
 func (refundProviderTestDouble) ProviderKey() string {
@@ -742,11 +747,6 @@ func (refundProviderTestDouble) VerifyNotification(context.Context, string, map[
 
 func (refundProviderTestDouble) Refund(context.Context, payment.RefundRequest) (*payment.RefundResponse, error) {
 	return nil, nil
-}
-
-type refundQueryProviderTestDouble struct {
-	refundProviderTestDouble
-	refundResponse *payment.RefundResponse
 }
 
 func (p *refundQueryProviderTestDouble) QueryRefund(context.Context, payment.RefundQueryRequest) (*payment.RefundResponse, error) {

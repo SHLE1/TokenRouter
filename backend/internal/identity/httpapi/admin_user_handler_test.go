@@ -21,6 +21,53 @@ import (
 	routingdto "github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 )
 
+// adminUserFixture 提供身份管理测试的用户操作和 Key 列表。
+type adminUserFixture struct {
+	UserAdministration
+	users                []identity.User
+	apiKeys              []apikey.APIKey
+	getUserErr           error
+	boundAuthIdentityFor int64
+	boundAuthIdentity    *identity.AdminBindAuthIdentityInput
+	lastListUsers        struct {
+		page, pageSize, calls int
+		filters               identity.UserListFilters
+		sortBy, sortOrder     string
+	}
+}
+
+// adminUserStub 提供用户列表、查询和写入的测试数据。
+type adminUserStub struct {
+	UserAdministration
+	users         []identity.User
+	lastListUsers struct {
+		page, pageSize, calls int
+		filters               identity.UserListFilters
+		sortBy, sortOrder     string
+	}
+}
+
+type batchLimitsAdminServiceStub struct {
+	*adminUserStub
+	calls []batchLimitsAdminServiceCall
+}
+
+type batchLimitsAdminServiceCall struct {
+	userIDs     []int64
+	concurrency *int
+	rpmLimit    *int
+}
+
+type getByIDAdminStub struct {
+	UserAdministration
+}
+
+// listUsersFilterStub 记录 ListUsers 收到的筛选条件，其他方法由 adminUserStub 提供。
+type listUsersFilterStub struct {
+	UserAdministration
+	captured identity.UserListFilters
+}
+
 func TestTruncateSearchByRune(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -71,7 +118,7 @@ func TestTruncateSearchByRune(t *testing.T) {
 func TestTruncateSearchByRune_PreservesMultibyte(t *testing.T) {
 	// 101 个中文字符按 rune 截断到 100 个，结果仍为有效 UTF-8。
 	input := ""
-	for i := 0; i < 101; i++ {
+	for range 101 {
 		input += "中"
 	}
 	result := captureTruncatedAdminSearch(t, input, 100)
@@ -84,10 +131,10 @@ func TestTruncateSearchByRune_PreservesMultibyte(t *testing.T) {
 func TestTruncateSearchByRune_MixedASCIIAndMultibyte(t *testing.T) {
 	// 50 个 ASCII + 51 个中文 = 101 个 rune
 	input := ""
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		input += "a"
 	}
-	for i := 0; i < 51; i++ {
+	for range 51 {
 		input += "中"
 	}
 	result := captureTruncatedAdminSearch(t, input, 100)
@@ -587,21 +634,6 @@ func (s *adminUserFixture) BindUserAuthIdentity(ctx context.Context, userID int6
 	return result, nil
 }
 
-// adminUserFixture 提供身份管理测试的用户操作和 Key 列表。
-type adminUserFixture struct {
-	UserAdministration
-	users                []identity.User
-	apiKeys              []apikey.APIKey
-	getUserErr           error
-	boundAuthIdentityFor int64
-	boundAuthIdentity    *identity.AdminBindAuthIdentityInput
-	lastListUsers        struct {
-		page, pageSize, calls int
-		filters               identity.UserListFilters
-		sortBy, sortOrder     string
-	}
-}
-
 func newAdminUserFixture() *adminUserFixture {
 	now := time.Now().UTC()
 	return &adminUserFixture{users: []identity.User{{ID: 1, Email: "user@example.com", Role: identity.RoleUser, Status: identity.StatusActive, CreatedAt: now, UpdatedAt: now}}, apiKeys: []apikey.APIKey{{ID: 10, UserID: 1, Key: "sk-test", Name: "test", Status: apikey.StatusActive, CreatedAt: now, UpdatedAt: now}}}
@@ -635,17 +667,6 @@ func setupAdminRouter() (*gin.Engine, *adminUserFixture) {
 	router.GET("/api/v1/admin/users/:id/usage", userHandler.GetUserUsage)
 
 	return router, adminSvc
-}
-
-// adminUserStub 提供用户列表、查询和写入的测试数据。
-type adminUserStub struct {
-	UserAdministration
-	users         []identity.User
-	lastListUsers struct {
-		page, pageSize, calls int
-		filters               identity.UserListFilters
-		sortBy, sortOrder     string
-	}
 }
 
 func newAdminUserStub() *adminUserStub {
@@ -686,17 +707,6 @@ func newAdminUserTestHandler(users UserAdministration) *AdminUserHandler[struct{
 	return NewAdminUserHandler[struct{}](users, nil, nil, func(c *gin.Context) bool {
 		return EnforceStepUp(c, nil, nil, nil)
 	})
-}
-
-type batchLimitsAdminServiceStub struct {
-	*adminUserStub
-	calls []batchLimitsAdminServiceCall
-}
-
-type batchLimitsAdminServiceCall struct {
-	userIDs     []int64
-	concurrency *int
-	rpmLimit    *int
 }
 
 func cloneIntPointer(value *int) *int {
@@ -740,10 +750,6 @@ func pointerTo(value int) *int {
 	return &value
 }
 
-type getByIDAdminStub struct {
-	UserAdministration
-}
-
 func (s *getByIDAdminStub) GetUser(_ context.Context, _ int64) (*identity.User, error) {
 	return nil, identity.ErrUserNotFound
 }
@@ -757,12 +763,6 @@ func setupGetByIDRouter(svc UserAdministration) *gin.Engine {
 	h := newAdminUserTestHandler(svc)
 	r.GET("/admin/users/:id", h.GetByID)
 	return r
-}
-
-// listUsersFilterStub 记录 ListUsers 收到的筛选条件，其他方法由 adminUserStub 提供。
-type listUsersFilterStub struct {
-	UserAdministration
-	captured identity.UserListFilters
 }
 
 func (s *listUsersFilterStub) ListUsers(_ context.Context, _, _ int, filters identity.UserListFilters, _, _ string) ([]identity.User, int64, error) {

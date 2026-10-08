@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const maxBodyMatchLen = 8 << 10 // 8KB，错误信息不会在 8KB 之后才出现
+
 // ErrorPassthroughRepository 定义错误透传规则的数据访问接口
 type ErrorPassthroughRepository interface {
 	// List 获取所有规则
@@ -64,8 +66,6 @@ type cachedPassthroughRule struct {
 	lowerPlatforms []string         // 预计算的小写平台
 	errorCodeSet   map[int]struct{} // 预计算的 error code set
 }
-
-const maxBodyMatchLen = 8 << 10 // 8KB，错误信息不会在 8KB 之后才出现
 
 // NewErrorPassthroughService 创建错误透传规则服务
 func NewErrorPassthroughService(

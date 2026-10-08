@@ -20,6 +20,26 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/kimi"
 )
 
+// HealthObservation 固化本次错误的模型与端点意图，不从隐式业务 Context 回读。
+type HealthObservation struct {
+	Status         int
+	Headers        http.Header
+	Body           []byte
+	Model          string
+	ModelProvided  bool
+	EffectiveModel string
+	Thinking       *bool
+	ImagesEndpoint bool
+}
+
+// UpstreamHealth 组合供应商观测和提供商健康状态处理。
+type UpstreamHealth struct {
+	Core   *providercore.HealthService
+	Team   *providercore.TeamLinkedHealth
+	Limits *RateLimitObserver
+	Models *ModelHealth
+}
+
 // QuotaWindowObservation 保存供应商解析出的配额窗口，provider 执行健康状态规则。
 func QuotaWindowObservation(value *anthropicupstream.WindowLimit) *providercore.QuotaWindowObservation {
 	if value == nil {
@@ -202,26 +222,6 @@ func (s *UpstreamHealth) HandleDefault(ctx context.Context, provider *providerco
 	}
 
 	return shouldDisable
-}
-
-// HealthObservation 固化本次错误的模型与端点意图，不从隐式业务 Context 回读。
-type HealthObservation struct {
-	Status         int
-	Headers        http.Header
-	Body           []byte
-	Model          string
-	ModelProvided  bool
-	EffectiveModel string
-	Thinking       *bool
-	ImagesEndpoint bool
-}
-
-// UpstreamHealth 组合供应商观测和提供商健康状态处理。
-type UpstreamHealth struct {
-	Core   *providercore.HealthService
-	Team   *providercore.TeamLinkedHealth
-	Limits *RateLimitObserver
-	Models *ModelHealth
 }
 
 func (s *UpstreamHealth) observeFableWindow(ctx context.Context, value *providercore.Record, headers http.Header) bool {

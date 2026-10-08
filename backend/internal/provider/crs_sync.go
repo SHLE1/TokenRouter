@@ -40,6 +40,45 @@ type CRSSync struct {
 	options      CRSOptions
 }
 
+type SyncFromCRSInput struct {
+	BaseURL             string
+	Username            string
+	Password            string
+	SyncProxies         bool
+	SelectedProviderIDs []string // nil 创建全部；显式空只更新已存在提供商
+}
+
+type SyncFromCRSItemResult struct {
+	CRSAccountID string `json:"crs_account_id"`
+	Kind         string `json:"kind"`
+	Name         string `json:"name"`
+	Action       string `json:"action"` // 创建、更新、失败或跳过
+	Error        string `json:"error,omitempty"`
+}
+
+type SyncFromCRSResult struct {
+	Created int                     `json:"created"`
+	Updated int                     `json:"updated"`
+	Skipped int                     `json:"skipped"`
+	Failed  int                     `json:"failed"`
+	Items   []SyncFromCRSItemResult `json:"items"`
+}
+
+// PreviewFromCRSResult 保持原同步预览计数与逐项列表。
+type PreviewFromCRSResult struct {
+	NewProviders      []CRSPreviewProvider `json:"new_providers"`
+	ExistingProviders []CRSPreviewProvider `json:"existing_providers"`
+}
+
+// CRSPreviewProvider 只包含预览展示字段。
+type CRSPreviewProvider struct {
+	CRSAccountID string `json:"crs_account_id"`
+	Kind         string `json:"kind"`
+	Name         string `json:"name"`
+	Platform     string `json:"platform"`
+	Type         string `json:"type"`
+}
+
 func NewCRSSync(providers CRSProviderStore, proxies CRSProxyStore, exporter CRSExporter, options CRSOptions) *CRSSync {
 	if options.Now == nil {
 		options.Now = time.Now
@@ -77,30 +116,6 @@ func GuardCRSShadowParentInvariant(ctx context.Context, repo ShadowProxyStore, e
 		return fmt.Errorf("cannot change a spark-shadow parent provider to %s/%s; it must stay OpenAI OAuth (delete the shadow first)", newPlatform, newType)
 	}
 	return nil
-}
-
-type SyncFromCRSInput struct {
-	BaseURL             string
-	Username            string
-	Password            string
-	SyncProxies         bool
-	SelectedProviderIDs []string // nil 创建全部；显式空只更新已存在提供商
-}
-
-type SyncFromCRSItemResult struct {
-	CRSAccountID string `json:"crs_account_id"`
-	Kind         string `json:"kind"`
-	Name         string `json:"name"`
-	Action       string `json:"action"` // 创建、更新、失败或跳过
-	Error        string `json:"error,omitempty"`
-}
-
-type SyncFromCRSResult struct {
-	Created int                     `json:"created"`
-	Updated int                     `json:"updated"`
-	Skipped int                     `json:"skipped"`
-	Failed  int                     `json:"failed"`
-	Items   []SyncFromCRSItemResult `json:"items"`
 }
 
 func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*SyncFromCRSResult, error) {
@@ -1069,21 +1084,6 @@ func CRSShouldCreateProvider(crsID string, selectedSet map[string]struct{}) bool
 	}
 	_, ok := selectedSet[crsID]
 	return ok
-}
-
-// PreviewFromCRSResult 保持原同步预览计数与逐项列表。
-type PreviewFromCRSResult struct {
-	NewProviders      []CRSPreviewProvider `json:"new_providers"`
-	ExistingProviders []CRSPreviewProvider `json:"existing_providers"`
-}
-
-// CRSPreviewProvider 只包含预览展示字段。
-type CRSPreviewProvider struct {
-	CRSAccountID string `json:"crs_account_id"`
-	Kind         string `json:"kind"`
-	Name         string `json:"name"`
-	Platform     string `json:"platform"`
-	Type         string `json:"type"`
 }
 
 // PreviewFromCRS 先获取导出，再一次查询本地来源 ID，保持原分类顺序。

@@ -20,6 +20,11 @@ type teamLinkedProviderRepoStub struct {
 	failSetError  map[int64]error
 }
 
+type teamBlockRecorder struct {
+	providers []*Record
+	reasons   []string
+}
+
 // ListByPlatform 返回指定平台的 active 提供商。
 func (r *teamLinkedProviderRepoStub) ListByPlatform(ctx context.Context, platform string) ([]Record, error) {
 	r.listCalls++
@@ -125,11 +130,6 @@ func TestTeamLinkedError_SetErrorFailureDoesNotAbortRemaining(t *testing.T) {
 func newTeamLinkedTestService(repo *teamLinkedProviderRepoStub) (*TeamLinkedHealth, *teamBlockRecorder) {
 	blocker := &teamBlockRecorder{}
 	return NewTeamLinkedHealth(repo, TeamLinkedOptions{Block: blocker.Block}), blocker
-}
-
-type teamBlockRecorder struct {
-	providers []*Record
-	reasons   []string
 }
 
 func (r *teamBlockRecorder) Block(value *Record, _ time.Time, reason string) {

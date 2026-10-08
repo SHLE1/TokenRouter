@@ -10,21 +10,20 @@ import (
 	"testing"
 	"time"
 
-	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-
-	identity "github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
-
-	routing "github.com/TokenFlux/TokenRouter/internal/routing"
-
-	billingpg "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/creative"
-
-	creativepg "github.com/TokenFlux/TokenRouter/internal/creative/postgres"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+
+	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	billingpg "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/creative"
+	creativepg "github.com/TokenFlux/TokenRouter/internal/creative/postgres"
+	identity "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
+	routing "github.com/TokenFlux/TokenRouter/internal/routing"
 )
+
+type failingProjection struct{ billingpg.TaskProjection }
 
 // TestProviderOutcomeRollbackAndDeliveryLost 验证PostgreSQL 验证成功记录和 outbox 原子性；该测试不保存图片、prompt 或供应商原文。
 func TestProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
@@ -76,8 +75,6 @@ func TestProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
 	require.NotNil(t, run.ActualCost)
 	require.InDelta(t, 0.2, *run.ActualCost, 1e-10)
 }
-
-type failingProjection struct{ billingpg.TaskProjection }
 
 func (p failingProjection) SaveReservation(ctx context.Context, balance float64, alloc []billing.BillingAllocation, hold, estimated float64) error {
 	if err := p.TaskProjection.SaveReservation(ctx, balance, alloc, hold, estimated); err != nil {

@@ -12,6 +12,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// creativeFakeUsageLogRepo 记录 Create 收到的用量日志。
+type creativeFakeUsageLogRepo struct {
+	usage.UsageLogRepository
+	logs []*usage.UsageLog
+}
+
 func TestCreativeSucceedRunIdempotentSettlement(t *testing.T) {
 	svc := newCreativeTestService()
 	ctx := context.Background()
@@ -138,12 +144,6 @@ func TestCreativeSucceedRunRequiresTransientOutput(t *testing.T) {
 			}
 		})
 	}
-}
-
-// creativeFakeUsageLogRepo 记录 Create 收到的用量日志。
-type creativeFakeUsageLogRepo struct {
-	usage.UsageLogRepository
-	logs []*usage.UsageLog
 }
 
 func (r *creativeFakeUsageLogRepo) Create(ctx context.Context, log *usage.UsageLog) (bool, error) {

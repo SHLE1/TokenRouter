@@ -22,6 +22,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type codexImportMemoryAdminService struct {
+	*managementMutationFixture
+	nextID           int64
+	updatedProviders []struct {
+		id    int64
+		input *provider.UpdateProviderInput
+	}
+}
+
 func TestNormalizeCodexImportEntryAcceptsAgentIdentityAuthJSON(t *testing.T) {
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
@@ -426,15 +435,6 @@ func buildAgentIdentityImportValue(t *testing.T, runtimeID, providerID, userID, 
 			"account_id":        providerID,
 			"chatgpt_user_id":   userID,
 		},
-	}
-}
-
-type codexImportMemoryAdminService struct {
-	*managementMutationFixture
-	nextID           int64
-	updatedProviders []struct {
-		id    int64
-		input *provider.UpdateProviderInput
 	}
 }
 

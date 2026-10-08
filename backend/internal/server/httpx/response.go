@@ -7,11 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
-	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 )
 
 // Response 标准API响应格式
@@ -30,6 +29,14 @@ type PaginatedData struct {
 	Page     int   `json:"page"`
 	PageSize int   `json:"page_size"`
 	Pages    int   `json:"pages"`
+}
+
+// PaginationResult 分页结果（与pagination.PaginationResult兼容）
+type PaginationResult struct {
+	Total    int64
+	Page     int
+	PageSize int
+	Pages    int
 }
 
 // Success 返回成功响应
@@ -142,14 +149,6 @@ func Paginated(c *gin.Context, items any, total int64, page, pageSize int) {
 		PageSize: pageSize,
 		Pages:    pages,
 	})
-}
-
-// PaginationResult 分页结果（与pagination.PaginationResult兼容）
-type PaginationResult struct {
-	Total    int64
-	Page     int
-	PageSize int
-	Pages    int
 }
 
 // PaginatedWithResult 使用PaginationResult返回分页数据

@@ -23,6 +23,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
+type qoderCenterHTTPUpstreamStub struct {
+	proxyURL            string
+	providerID          int64
+	providerConcurrency int
+	statusCode          int
+	body                string
+	profileSet          bool
+	requests            []*http.Request
+}
+
+// qoderInvalidationCache 记录测试调用的删除操作。
+type qoderInvalidationCache struct {
+	providercore.AccessTokenCache
+	deletedKeys []string
+}
+
 // TestQoderTokenProviderConcurrent 验证 token provider 在并发访问下的缓存行为
 func TestQoderTokenProviderConcurrent(t *testing.T) {
 	tokenSource := &QoderTokenProvider{Core: &qoderSessionState{Sessions: make(map[int64]qoderSessionCacheEntry)}}
@@ -49,10 +65,10 @@ func TestQoderTokenProviderConcurrent(t *testing.T) {
 	successCount := sync.Map{}
 
 	// 并发请求 session
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(workerID int) {
 			defer wg.Done()
-			for j := 0; j < numRequestsPerGoroutine; j++ {
+			for j := range numRequestsPerGoroutine {
 				session, err := tokenSource.GetSession(ctx, provider)
 				if err != nil {
 					// Invalidate 或凭据更新后，先前代次的构建结果被丢弃。
@@ -119,14 +135,14 @@ func TestQoderTokenProviderInvalidateRace(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < numIterations; i++ {
+		for range numIterations {
 			_, _ = tokenSource.GetSession(ctx, provider)
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < numIterations; i++ {
+		for range numIterations {
 			tokenSource.Invalidate(provider.ID)
 		}
 	}()
@@ -1153,16 +1169,6 @@ func TestCompositeTokenCacheInvalidator_QoderCosyInvalidatesProviderWithoutExter
 	require.False(t, cached)
 }
 
-type qoderCenterHTTPUpstreamStub struct {
-	proxyURL            string
-	providerID          int64
-	providerConcurrency int
-	statusCode          int
-	body                string
-	profileSet          bool
-	requests            []*http.Request
-}
-
 func (s *qoderCenterHTTPUpstreamStub) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
 	return s.DoWithTLS(req, proxyURL, providerID, providerConcurrency, nil)
 }
@@ -1197,12 +1203,6 @@ func (s *qoderCenterHTTPUpstreamStub) DoWithTLS(req *http.Request, proxyURL stri
 
 func ptrInt64ForQoderTest(v int64) *int64 {
 	return &v
-}
-
-// qoderInvalidationCache 记录测试调用的删除操作。
-type qoderInvalidationCache struct {
-	providercore.AccessTokenCache
-	deletedKeys []string
 }
 
 func (c *qoderInvalidationCache) DeleteAccessToken(_ context.Context, key string) error {

@@ -13,9 +13,7 @@ import (
 const (
 	BatchImageProviderGeminiAPI = "gemini_api"
 	BatchImageProviderVertex    = "vertex"
-)
 
-const (
 	BatchImageJobStatusCreated       = "created"
 	BatchImageJobStatusUploading     = "uploading"
 	BatchImageJobStatusSubmitted     = "submitted"
@@ -26,9 +24,7 @@ const (
 	BatchImageJobStatusFailed        = "failed"
 	BatchImageJobStatusCancelled     = "cancelled"
 	BatchImageJobStatusOutputDeleted = "output_deleted"
-)
 
-const (
 	BatchImageItemStatusPending   = "pending"
 	BatchImageItemStatusSuccess   = "success"
 	BatchImageItemStatusFailed    = "failed"

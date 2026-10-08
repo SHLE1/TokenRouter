@@ -16,6 +16,17 @@ import (
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
+const (
+	anthropicThinkingToolTurn = `[
+	{"type":"thinking","thinking":"user wants weather, call the tool"},
+	{"type":"text","text":"checking"},
+	{"type":"tool_use","id":"toolu_1","name":"get_weather","input":{"city":"SF"}}
+]`
+
+	// minMaxOutputTokens 是协议测试中使用的最小输出预算期望值。
+	minMaxOutputTokens = 128
+)
+
 func TestExtractCCReasoningEffortFromBody(t *testing.T) {
 	t.Parallel()
 
@@ -2364,12 +2375,6 @@ func anthropicAssistantMsg(t *testing.T, blocks string) *protocolanthropic.Anthr
 	}
 }
 
-const anthropicThinkingToolTurn = `[
-	{"type":"thinking","thinking":"user wants weather, call the tool"},
-	{"type":"text","text":"checking"},
-	{"type":"tool_use","id":"toolu_1","name":"get_weather","input":{"city":"SF"}}
-]`
-
 func mustMarshalJSON(t *testing.T, value any) []byte {
 	t.Helper()
 	data, err := json.Marshal(value)
@@ -2443,6 +2448,3 @@ func ccChainToAnthropic(t *testing.T, ccReq *protocolopenai.ChatCompletionsReque
 	assertAnthropicPairing(t, anthReq.Messages)
 	return anthReq.Messages
 }
-
-// minMaxOutputTokens 是协议测试中使用的最小输出预算期望值。
-const minMaxOutputTokens = 128

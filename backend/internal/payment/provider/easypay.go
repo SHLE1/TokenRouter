@@ -45,6 +45,28 @@ type easyPayCustomMethod struct {
 	DisplayName  string `json:"displayName"`
 }
 
+type easyPayQueryData struct {
+	TradeStatus *string `json:"trade_status"`
+	Status      *int    `json:"status"`
+	Money       *string `json:"money"`
+	TradeNo     *string `json:"trade_no"`
+}
+
+type easyPayQueryResponse struct {
+	Code        int              `json:"code"`
+	Msg         string           `json:"msg"`
+	TradeStatus *string          `json:"trade_status"`
+	Status      *int             `json:"status"`
+	Money       *string          `json:"money"`
+	TradeNo     *string          `json:"trade_no"`
+	Data        easyPayQueryData `json:"data"`
+}
+
+type easyPayRefundAttempt struct {
+	params   map[string]string
+	refundID string
+}
+
 // NewEasyPay creates a new EasyPay provider.
 // config keys: pid, pkey, apiBase, notifyUrl, returnUrl, cid, cidAlipay, cidWxpay
 func NewEasyPay(instanceID string, config map[string]string) (*EasyPay, error) {
@@ -299,23 +321,6 @@ func (e *EasyPay) upstreamPaymentType(paymentType string) string {
 	return paymentType
 }
 
-type easyPayQueryData struct {
-	TradeStatus *string `json:"trade_status"`
-	Status      *int    `json:"status"`
-	Money       *string `json:"money"`
-	TradeNo     *string `json:"trade_no"`
-}
-
-type easyPayQueryResponse struct {
-	Code        int              `json:"code"`
-	Msg         string           `json:"msg"`
-	TradeStatus *string          `json:"trade_status"`
-	Status      *int             `json:"status"`
-	Money       *string          `json:"money"`
-	TradeNo     *string          `json:"trade_no"`
-	Data        easyPayQueryData `json:"data"`
-}
-
 func (e *EasyPay) QueryOrder(ctx context.Context, tradeNo string) (*payment.QueryOrderResponse, error) {
 	params := map[string]string{
 		"act": "order", "pid": e.config["pid"],
@@ -474,11 +479,6 @@ func (e *EasyPay) Refund(ctx context.Context, req payment.RefundRequest) (*payme
 		return &payment.RefundResponse{RefundID: attempt.refundID, Status: payment.ProviderStatusSuccess}, nil
 	}
 	return nil, firstErr
-}
-
-type easyPayRefundAttempt struct {
-	params   map[string]string
-	refundID string
 }
 
 func (e *EasyPay) refundAttempts(req payment.RefundRequest) []easyPayRefundAttempt {

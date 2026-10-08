@@ -20,6 +20,21 @@ import (
 	"github.com/TokenFlux/TokenRouter/migrations"
 )
 
+// pricingMigrationPreview 记录各作用域的价格、合并冲突和未绑定 Key 的编号。
+type pricingMigrationPreview struct {
+	Scopes        []pricingMigrationScope `json:"scopes"`
+	UnboundKeyIDs []int64                 `json:"unbound_key_ids"`
+	Blocked       bool                    `json:"blocked"`
+}
+
+type pricingMigrationScope struct {
+	Kind      string                      `json:"kind"`
+	ID        int64                       `json:"id"`
+	Before    json.RawMessage             `json:"before"`
+	After     []pricing.ModelPricingEntry `json:"after"`
+	Conflicts []pricingMergeConflict      `json:"conflicts,omitempty"`
+}
+
 // TestPlatformIndependentPricingMigration 检查迁移 SQL 的价格合并、作用域隔离和冲突回滚。
 func TestPlatformIndependentPricingMigration(t *testing.T) {
 	ctx := context.Background()
@@ -144,21 +159,6 @@ INSERT INTO groups(name,model_pricing) VALUES ('group price','[{"platform":"anth
 			require.True(t, exists)
 		})
 	}
-}
-
-// pricingMigrationPreview 记录各作用域的价格、合并冲突和未绑定 Key 的编号。
-type pricingMigrationPreview struct {
-	Scopes        []pricingMigrationScope `json:"scopes"`
-	UnboundKeyIDs []int64                 `json:"unbound_key_ids"`
-	Blocked       bool                    `json:"blocked"`
-}
-
-type pricingMigrationScope struct {
-	Kind      string                      `json:"kind"`
-	ID        int64                       `json:"id"`
-	Before    json.RawMessage             `json:"before"`
-	After     []pricing.ModelPricingEntry `json:"after"`
-	Conflicts []pricingMergeConflict      `json:"conflicts,omitempty"`
 }
 
 // previewPricingMigration 通过只读的可重复读事务检查迁移 276 之前的数据库。

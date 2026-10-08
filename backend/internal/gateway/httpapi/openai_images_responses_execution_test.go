@@ -28,6 +28,13 @@ type openAIImagesReadErrorBody struct {
 	err error
 }
 
+// countingModelRateLimitRepo 记录 SetModelRateLimit 调用，用于断言"没写提供商状态"。
+type countingModelRateLimitRepo struct {
+	gatewayprovider.ExecutionProviderStore
+	calls  int
+	scopes []string
+}
+
 func (b *openAIImagesReadErrorBody) Read([]byte) (int, error) { return 0, b.err }
 
 func (b *openAIImagesReadErrorBody) Close() error { return nil }
@@ -202,13 +209,6 @@ func TestBuildOpenAIImagesResponsesRequest_RequiresVerbatimUserPrompt(t *testing
 	require.NoError(t, err)
 	require.Equal(t, upstreamopenai.ImagesVerbatimPromptInstructions, gjson.GetBytes(body, "instructions").String())
 	require.Equal(t, prompt, gjson.GetBytes(body, "input.0.content.0.text").String())
-}
-
-// countingModelRateLimitRepo 记录 SetModelRateLimit 调用，用于断言"没写提供商状态"。
-type countingModelRateLimitRepo struct {
-	gatewayprovider.ExecutionProviderStore
-	calls  int
-	scopes []string
 }
 
 func (r *countingModelRateLimitRepo) SetModelRateLimit(_ context.Context, _ int64, scope string, _ time.Time, _ ...string) error {

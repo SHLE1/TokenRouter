@@ -15,6 +15,8 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
+var _ forwardcore.Output = ForwardConversionOutput{}
+
 // ForwardConversionOutput 保存当前 HTTP 输出和协议转换回调。
 type ForwardConversionOutput struct {
 	Context    *gin.Context
@@ -105,8 +107,6 @@ func (o ForwardConversionOutput) Error(status int, kind, message string) {
 func (o ForwardConversionOutput) Observe(level, message string, err error, requestID, event string) {
 	o.Diagnostic(level, message, err, requestID, event)
 }
-
-var _ forwardcore.Output = ForwardConversionOutput{}
 
 // WriteForwardMessageGenericError 标记响应提交，并写出 Messages 通用错误。
 func WriteForwardMessageGenericError(c *gin.Context, commit func()) {

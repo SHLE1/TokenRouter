@@ -19,7 +19,7 @@ func TestMigrationsRunner_ConcurrentInstancesSerializeOnSessionLock(t *testing.T
 	const instances = 2
 	errorsByInstance := make([]error, instances)
 	var wg sync.WaitGroup
-	for i := 0; i < instances; i++ {
+	for i := range instances {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()

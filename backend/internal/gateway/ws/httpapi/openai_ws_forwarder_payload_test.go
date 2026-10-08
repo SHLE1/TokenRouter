@@ -174,7 +174,7 @@ func TestBuildOpenAIWSHeadersNamespacesCodexIdentityByOAuthProvider(t *testing.T
 
 func TestOpenAISetupTokenWSCompatibility(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest("POST", "/v1/responses", strings.NewReader(`{}`))
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", strings.NewReader(`{}`))
 	c.Request.Header.Set("session_id", "session-one")
 	c.Set("api_key", &apikey.APIKey{ID: 17})
 

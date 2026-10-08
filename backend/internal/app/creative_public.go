@@ -29,6 +29,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// 下列函数将查询结果转换为公开模型字段。
+type creativeUsers struct{ store *identitypostgres.UserStore }
+
+type creativeProviders struct {
+	store *providerpostgres.ProviderStore
+}
+
+type creativeGroups struct{ store *routingpostgres.GroupStore }
+
+type creativeModeration struct {
+	service *moderation.ContentModerationService
+}
+
 // provideCreativePublic 绑定创作任务、资金及查询接口，共享应用存储实例。
 func provideCreativePublic(catalog *catalogprovider.Service, repo creative.CreativeRunRepository, keys *keypostgres.KeyStore, users *identitypostgres.UserStore, providers *providerpostgres.ProviderStore, groups *routingpostgres.GroupStore, rates billing.UserGroupRateRepository, queue creative.CreativeRunQueue, transient creative.CreativeTransientStore, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, logs usage.UsageLogRepository, pricing *billing.PriceResolver, modelConfigs *routing.PricingConfigService, moderation *moderation.ContentModerationService, auth apikey.APIKeyAuthCacheInvalidator, settings *creative.RuntimeSettings, cfg *config.Config, outbox creative.CreativeRunOutboxRepository) *creative.Public {
 	ttl := 30 * time.Minute
@@ -113,19 +126,12 @@ func provideCreativePublic(catalog *catalogprovider.Service, repo creative.Creat
 	}
 }
 
-// 下列函数将查询结果转换为公开模型字段。
-type creativeUsers struct{ store *identitypostgres.UserStore }
-
 func (r creativeUsers) GetByID(ctx context.Context, id int64) (creative.UserAccess, error) {
 	v, err := r.store.GetByID(ctx, id)
 	if v == nil {
 		return nil, err
 	}
 	return v, err
-}
-
-type creativeProviders struct {
-	store *providerpostgres.ProviderStore
 }
 
 func (r creativeProviders) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, platform string) ([]creative.CatalogProvider, error) {
@@ -139,8 +145,6 @@ func (r creativeProviders) ListSchedulableByGroupIDAndPlatform(ctx context.Conte
 	}
 	return out, nil
 }
-
-type creativeGroups struct{ store *routingpostgres.GroupStore }
 
 func (r creativeGroups) GetByIDLite(ctx context.Context, id int64) (*creative.GroupView, error) {
 	v, err := r.store.GetByIDLite(ctx, id)
@@ -175,10 +179,6 @@ func creativeGroupView(g *routing.Group, language string) *creative.GroupView {
 		RoutingPolicy:        g.RoutingPolicy.Clone(), ProtocolFallbacks: g.ProtocolFallbacks,
 		Operations: creative.OperationsForGroup(g.ResponsesImagePolicy != "" || g.ProtocolFallbacks != nil, g.AllowsClientProtocol),
 	}
-}
-
-type creativeModeration struct {
-	service *moderation.ContentModerationService
 }
 
 func (m creativeModeration) Check(ctx context.Context, v creative.ModerationInput) (*creative.ModerationDecision, error) {

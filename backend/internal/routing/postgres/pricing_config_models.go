@@ -13,6 +13,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+// dbExec 是 *sql.DB 和 *sql.Tx 共享的最小 SQL 执行接口
+type dbExec interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 func (r *PricingConfigStore) ListModelPricing(ctx context.Context, pricingConfigID int64) ([]routing.ModelPricingEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, pricing_config_id, models, billing_mode, price_multiplier, fast_mode_multiplier, fast_multiplier, flex_multiplier, max_reasoning_effort_multiplier, input_price, output_price, cache_write_price, cache_write_1h_price, cache_read_price, image_input_price, image_output_price, per_request_price, time_pricing, created_at, updated_at
@@ -197,13 +204,6 @@ func scanModelPricingRows(rows *sql.Rows) ([]routing.ModelPricingEntry, []int64,
 		return nil, nil, fmt.Errorf("iterate model pricing: %w", err)
 	}
 	return result, pricingIDs, nil
-}
-
-// dbExec 是 *sql.DB 和 *sql.Tx 共享的最小 SQL 执行接口
-type dbExec interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
 func setGroupIDsTx(ctx context.Context, exec dbExec, pricingConfigID int64, groupIDs []int64) error {

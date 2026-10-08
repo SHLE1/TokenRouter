@@ -16,6 +16,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
+// missingRefundRecovery 返回需要人工核实的退款恢复错误，供 HTTP 错误响应测试使用。
+type missingRefundRecovery struct{ payment.RefundStore }
+
 // TestPaymentDashboardRangeInjectedCalendar 检查支付查询的日期范围校验和指定服务端时区的日期解析。
 func TestPaymentDashboardRangeInjectedCalendar(t *testing.T) {
 	loc, err := time.LoadLocation("America/New_York")
@@ -111,16 +114,13 @@ func TestRefundRecoveryErrorIsVisibleToAdministrator(t *testing.T) {
 	router := gin.New()
 	router.POST("/orders/:id/refund/query", handler.QueryAndFinalizeRefund)
 	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, httptest.NewRequest("POST", "/orders/1/refund/query", nil))
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/orders/1/refund/query", nil))
 	require.Equal(t, 409, recorder.Code)
 	var body map[string]any
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &body))
 	require.Equal(t, "REFUND_RECOVERY_REQUIRED", body["reason"])
 	require.Contains(t, body["message"], "manual verification")
 }
-
-// missingRefundRecovery 返回需要人工核实的退款恢复错误，供 HTTP 错误响应测试使用。
-type missingRefundRecovery struct{ payment.RefundStore }
 
 func (missingRefundRecovery) Order(context.Context, int64) (*payment.Order, error) {
 	return &payment.Order{ID: 1, Status: payment.OrderStatusRefunding}, nil

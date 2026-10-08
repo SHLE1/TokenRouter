@@ -8,6 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// promptSettingsFixture 提供测试中的转发设置。
+type promptSettingsFixture struct {
+	RuntimeSettingsStore
+	data map[string]string
+}
+
+// identityPatchStore 提供身份修补开关测试中的单键读取。
+type identityPatchStore struct {
+	RuntimeSettingsStore
+	values map[string]string
+	err    error
+	reads  []string
+}
+
 func TestSettingService_GetClaudeOAuthSystemPromptInjectionSettings(t *testing.T) {
 	t.Run("defaults to enabled with empty prompt", func(t *testing.T) {
 		svc := NewRuntimeSettings(&promptSettingsFixture{data: map[string]string{}}, nil, nil)
@@ -63,12 +77,6 @@ func TestIdentityPatchSettingsOriginalReadSemantics(t *testing.T) {
 	}
 }
 
-// promptSettingsFixture 提供测试中的转发设置。
-type promptSettingsFixture struct {
-	RuntimeSettingsStore
-	data map[string]string
-}
-
 func (s *promptSettingsFixture) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	values := make(map[string]string, len(keys))
 	for _, key := range keys {
@@ -77,14 +85,6 @@ func (s *promptSettingsFixture) GetMultiple(_ context.Context, keys []string) (m
 		}
 	}
 	return values, nil
-}
-
-// identityPatchStore 提供身份修补开关测试中的单键读取。
-type identityPatchStore struct {
-	RuntimeSettingsStore
-	values map[string]string
-	err    error
-	reads  []string
 }
 
 func (s *identityPatchStore) GetValue(_ context.Context, key string) (string, error) {

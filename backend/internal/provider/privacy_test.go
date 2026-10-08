@@ -11,6 +11,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// 不响应取消的供应商也不能在超时返回后继续持久化隐私结果。
+type privacyLifecycleStore struct{ writes atomic.Int32 }
+
 // TestForceOpenAIPrivacy_SkipsShadow 验证影子隐私设置跳过(由母提供商管理),
 // 早返不触碰任何依赖(svc 无 deps,若未守卫会 nil panic)。
 func TestForceOpenAIPrivacy_SkipsShadow(t *testing.T) {
@@ -79,9 +82,6 @@ func TestApplyAntigravityPrivacyMode_PreservedBySubscriptionResult(t *testing.T)
 		t.Fatalf("expected existing extra fields to be preserved, got %v", got)
 	}
 }
-
-// 不响应取消的供应商也不能在超时返回后继续持久化隐私结果。
-type privacyLifecycleStore struct{ writes atomic.Int32 }
 
 func (s *privacyLifecycleStore) UpdatePrivacyModeIfUnchanged(context.Context, UsageObservationVersion, string) (bool, error) {
 	s.writes.Add(1)

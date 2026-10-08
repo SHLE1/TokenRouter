@@ -18,10 +18,6 @@ type OpsTokenStatsFilter struct {
 	TopN int
 }
 
-func (f *OpsTokenStatsFilter) IsTopNMode() bool {
-	return f != nil && f.TopN > 0
-}
-
 type OpsTokenStatsItem struct {
 	Model                  string   `json:"model"`
 	RequestCount           int64    `json:"request_count"`
@@ -51,4 +47,8 @@ type OpsTokenStatsResponse struct {
 
 	// TopN 模式元数据。
 	TopN *int `json:"top_n,omitempty"`
+}
+
+func (f *OpsTokenStatsFilter) IsTopNMode() bool {
+	return f != nil && f.TopN > 0
 }

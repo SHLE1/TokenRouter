@@ -31,6 +31,55 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
+// 夹具提供模型目录查询所需的数据。
+type modelHTTPProviderRows interface {
+	ListSchedulable(context.Context) ([]provider.Record, error)
+	ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error)
+}
+
+type gatewayModelsProviderRepoStub struct {
+	modelHTTPProviderRows
+
+	byGroup map[int64][]provider.Record
+}
+
+type gatewayModelsPricingConfigRepoStub struct {
+	routing.PricingConfigRepository
+
+	modelConfigs   []testkit.Configuration
+	groupPlatforms map[int64]string
+}
+
+type gatewayModelsResponseForTest struct {
+	Object string                    `json:"object"`
+	Data   []gatewayModelItemForTest `json:"data"`
+}
+
+type gatewayModelItemForTest struct {
+	ID                      string                                `json:"id"`
+	Object                  string                                `json:"object"`
+	Created                 int64                                 `json:"created"`
+	OwnedBy                 string                                `json:"owned_by"`
+	Type                    string                                `json:"type"`
+	DisplayName             string                                `json:"display_name"`
+	CreatedAt               string                                `json:"created_at"`
+	SupportsReasoningEffort bool                                  `json:"supportsReasoningEffort"`
+	ReasoningEffort         string                                `json:"reasoningEffort"`
+	ReasoningEfforts        []gatewayReasoningEffortOptionForTest `json:"reasoningEfforts"`
+}
+
+type gatewayReasoningEffortOptionForTest struct {
+	Value   string `json:"value"`
+	Label   string `json:"label"`
+	Default bool   `json:"default"`
+}
+
+// codexModelsRemovalProviderRepo 提供仅含 API Key 提供商的分组模型数据。
+type codexModelsRemovalProviderRepo struct {
+	modelHTTPProviderRows
+	providers []provider.Record
+}
+
 // TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases 检查 Gemini 与普通模型目录共用候选，自定义列表及 Key 别名取可用候选的交集。
 func TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases(t *testing.T) {
 	groupID := int64(42)
@@ -109,25 +158,6 @@ func TestGeminiV1BetaForcedAntigravityKeepsGroupRestrictions(t *testing.T) {
 	}
 }
 
-// 夹具提供模型目录查询所需的数据。
-type modelHTTPProviderRows interface {
-	ListSchedulable(context.Context) ([]provider.Record, error)
-	ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error)
-}
-
-type gatewayModelsProviderRepoStub struct {
-	modelHTTPProviderRows
-
-	byGroup map[int64][]provider.Record
-}
-
-type gatewayModelsPricingConfigRepoStub struct {
-	routing.PricingConfigRepository
-
-	modelConfigs   []testkit.Configuration
-	groupPlatforms map[int64]string
-}
-
 func (s *gatewayModelsPricingConfigRepoStub) ListAll(ctx context.Context) ([]testkit.Configuration, error) {
 	modelConfigs := make([]testkit.Configuration, len(s.modelConfigs))
 	copy(modelConfigs, s.modelConfigs)
@@ -142,30 +172,6 @@ func (s *gatewayModelsPricingConfigRepoStub) GetGroupPlatforms(ctx context.Conte
 		}
 	}
 	return platforms, nil
-}
-
-type gatewayModelsResponseForTest struct {
-	Object string                    `json:"object"`
-	Data   []gatewayModelItemForTest `json:"data"`
-}
-
-type gatewayModelItemForTest struct {
-	ID                      string                                `json:"id"`
-	Object                  string                                `json:"object"`
-	Created                 int64                                 `json:"created"`
-	OwnedBy                 string                                `json:"owned_by"`
-	Type                    string                                `json:"type"`
-	DisplayName             string                                `json:"display_name"`
-	CreatedAt               string                                `json:"created_at"`
-	SupportsReasoningEffort bool                                  `json:"supportsReasoningEffort"`
-	ReasoningEffort         string                                `json:"reasoningEffort"`
-	ReasoningEfforts        []gatewayReasoningEffortOptionForTest `json:"reasoningEfforts"`
-}
-
-type gatewayReasoningEffortOptionForTest struct {
-	Value   string `json:"value"`
-	Label   string `json:"label"`
-	Default bool   `json:"default"`
 }
 
 func (s *gatewayModelsProviderRepoStub) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]provider.Record, error) {
@@ -1315,12 +1321,6 @@ func TestResolveModelsListReadLimit(t *testing.T) {
 		cfg := &config.Config{}
 		require.Equal(t, config.DefaultModelsListReadMaxBytes, resolveModelsListReadLimit(cfg))
 	})
-}
-
-// codexModelsRemovalProviderRepo 提供仅含 API Key 提供商的分组模型数据。
-type codexModelsRemovalProviderRepo struct {
-	modelHTTPProviderRows
-	providers []provider.Record
 }
 
 func (r *codexModelsRemovalProviderRepo) ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error) {

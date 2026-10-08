@@ -5,6 +5,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -130,7 +131,7 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityProvider_MixedSchedul
 		"max_tokens": 256,
 		"messages": [{"role":"user","content":[{"type":"text","text":"Warmup"}]}]
 	}`)
-	req := httptest.NewRequest("POST", "/v1/messages", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(requeststate.WithGroup(req.Context(), group))
 	c.Request = req
@@ -212,7 +213,7 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityProvider_ForcePlatfor
 		"max_tokens": 256,
 		"messages": [{"role":"user","content":[{"type":"text","text":"Warmup"}]}]
 	}`)
-	req := httptest.NewRequest("POST", "/antigravity/v1/messages", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/antigravity/v1/messages", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	// 模拟 routes/gateway.go 里的 ForcePlatform 中间件效果：

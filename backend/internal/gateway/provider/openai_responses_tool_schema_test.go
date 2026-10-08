@@ -43,7 +43,7 @@ func TestSanitizeOpenAIResponsesToolSchemasForPlatform_ReplayBoundary(t *testing
 	// supported regex semantics.
 	for _, platform := range []string{capability.PlatformAnthropic, capability.PlatformGrok, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek} {
 		t.Run(platform, func(t *testing.T) {
-			for attempt := 0; attempt < 2; attempt++ {
+			for range 2 {
 				normalized, changed, err := SanitizeOpenAIResponsesToolSchemasForPlatform(body, platform)
 				require.NoError(t, err)
 				require.True(t, changed)

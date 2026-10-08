@@ -11,6 +11,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/identityadoptiondecision"
 	"github.com/TokenFlux/TokenRouter/ent/pendingauthsession"
@@ -18,12 +19,27 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
+const (
+	defaultPendingAuthTTL           = identity.DefaultPendingAuthTTL
+	defaultPendingAuthCompletionTTL = identity.DefaultPendingAuthCompletionTTL
+)
+
+var (
+	authPendingIdentityScopedKeyLocks = newAuthPendingIdentityScopedKeyLockRegistry()
+
+	ErrPendingAuthSessionNotFound = identity.ErrPendingAuthSessionNotFound
+	ErrPendingAuthSessionExpired  = identity.ErrPendingAuthSessionExpired
+	ErrPendingAuthSessionConsumed = identity.ErrPendingAuthSessionConsumed
+	ErrPendingAuthCodeInvalid     = identity.ErrPendingAuthCodeInvalid
+	ErrPendingAuthCodeExpired     = identity.ErrPendingAuthCodeExpired
+	ErrPendingAuthCodeConsumed    = identity.ErrPendingAuthCodeConsumed
+	ErrPendingAuthBrowserMismatch = identity.ErrPendingAuthBrowserMismatch
+)
+
 type AuthPendingIdentityService struct {
 	readTime  func() time.Time
 	entClient *dbent.Client
 }
-
-var authPendingIdentityScopedKeyLocks = newAuthPendingIdentityScopedKeyLockRegistry()
 
 type authPendingIdentityScopedKeyLockRegistry struct {
 	mu    sync.Mutex
@@ -34,6 +50,14 @@ type authPendingIdentityScopedKeyLockEntry struct {
 	mu   sync.Mutex
 	refs int
 }
+
+type (
+	PendingAuthIdentityKey               = identity.PendingAuthIdentityKey
+	CreatePendingAuthSessionInput        = identity.CreatePendingAuthSessionInput
+	IssuePendingAuthCompletionCodeInput  = identity.IssuePendingAuthCompletionCodeInput
+	IssuePendingAuthCompletionCodeResult = identity.IssuePendingAuthCompletionCodeResult
+	PendingIdentityAdoptionDecisionInput = identity.PendingIdentityAdoptionDecisionInput
+)
 
 func newAuthPendingIdentityScopedKeyLockRegistry() *authPendingIdentityScopedKeyLockRegistry {
 	return &authPendingIdentityScopedKeyLockRegistry{
@@ -392,29 +416,6 @@ func (s *AuthPendingIdentityService) UpsertAdoptionDecision(ctx context.Context,
 
 	return decision, nil
 }
-
-var (
-	ErrPendingAuthSessionNotFound = identity.ErrPendingAuthSessionNotFound
-	ErrPendingAuthSessionExpired  = identity.ErrPendingAuthSessionExpired
-	ErrPendingAuthSessionConsumed = identity.ErrPendingAuthSessionConsumed
-	ErrPendingAuthCodeInvalid     = identity.ErrPendingAuthCodeInvalid
-	ErrPendingAuthCodeExpired     = identity.ErrPendingAuthCodeExpired
-	ErrPendingAuthCodeConsumed    = identity.ErrPendingAuthCodeConsumed
-	ErrPendingAuthBrowserMismatch = identity.ErrPendingAuthBrowserMismatch
-)
-
-const (
-	defaultPendingAuthTTL           = identity.DefaultPendingAuthTTL
-	defaultPendingAuthCompletionTTL = identity.DefaultPendingAuthCompletionTTL
-)
-
-type (
-	PendingAuthIdentityKey               = identity.PendingAuthIdentityKey
-	CreatePendingAuthSessionInput        = identity.CreatePendingAuthSessionInput
-	IssuePendingAuthCompletionCodeInput  = identity.IssuePendingAuthCompletionCodeInput
-	IssuePendingAuthCompletionCodeResult = identity.IssuePendingAuthCompletionCodeResult
-	PendingIdentityAdoptionDecisionInput = identity.PendingIdentityAdoptionDecisionInput
-)
 
 func sanitizePendingAuthLocalFlowState(localFlowState map[string]any) map[string]any {
 	return identity.SanitizePendingAuthLocalFlowState(localFlowState)

@@ -8,6 +8,14 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+type contentModerationInputBuilder struct {
+	items      []ContentModerationInputItem
+	textParts  []string
+	images     []string
+	imageItems []ContentModerationImage
+	seenImages map[string]struct{}
+}
+
 // contentModerationAuditInput 根据配置生成仅供上游审核的副本，完整原文仍保留在原输入中。
 func contentModerationAuditInput(input ContentModerationInput, cfg *ContentModerationConfig) ContentModerationInput {
 	if cfg == nil {
@@ -114,14 +122,6 @@ func ExtractContentModerationInput(protocol string, body []byte) ContentModerati
 		collectGeminiCurrentTurn(gjson.GetBytes(body, "contents"), builder)
 	}
 	return builder.build()
-}
-
-type contentModerationInputBuilder struct {
-	items      []ContentModerationInputItem
-	textParts  []string
-	images     []string
-	imageItems []ContentModerationImage
-	seenImages map[string]struct{}
 }
 
 func newContentModerationInputBuilder() *contentModerationInputBuilder {

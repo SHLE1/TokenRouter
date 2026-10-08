@@ -30,7 +30,7 @@ type ResponsesRequestOptions struct {
 
 // BuildResponsesRequest 根据请求选项构造 Responses HTTP 请求。
 func BuildResponsesRequest(ctx context.Context, body []byte, promptCacheKey string, options ResponsesRequestOptions) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, "POST", options.URL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, options.URL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}

@@ -88,6 +88,10 @@ type QoderConversationDiagnostics struct {
 	OutboundPayloadBytes int
 }
 
+type QoderConversationPlanOptions struct {
+	AppendToExisting bool
+}
+
 func NewQoderConversationStore(ttl time.Duration) *QoderConversationStore {
 	if ttl <= 0 {
 		ttl = QoderConversationTTL
@@ -97,10 +101,6 @@ func NewQoderConversationStore(ttl time.Duration) *QoderConversationStore {
 		Items:   make(map[string]*QoderConversationState),
 		Aliases: make(map[string]string),
 	}
-}
-
-type QoderConversationPlanOptions struct {
-	AppendToExisting bool
 }
 
 func (s *QoderConversationStore) PlanWithOptions(key, system string, tools []any, messages []QoderMessage, options QoderConversationPlanOptions) *QoderConversationPlan {

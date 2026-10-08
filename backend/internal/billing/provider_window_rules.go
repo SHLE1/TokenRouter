@@ -4,6 +4,21 @@ import (
 	"time"
 )
 
+const (
+	ProviderDailyWindow ProviderWindowPeriod = iota
+	ProviderWeeklyWindow
+)
+
+// ProviderWindowPeriod 区分提供商的日历日窗口和日历周窗口。
+type ProviderWindowPeriod uint8
+
+type FixedProviderWindow struct {
+	Period    ProviderWindowPeriod
+	Mode      string
+	Limit     float64
+	Hour, Day int
+}
+
 // NextFixedDailyReset 计算在 after 之后的下一个每日固定重置时间点
 func NextFixedDailyReset(hour int, tz *time.Location, after time.Time) time.Time {
 	t := after.In(tz)
@@ -49,21 +64,6 @@ func LastFixedWeeklyReset(day, hour int, tz *time.Location, now time.Time) time.
 		daysBack = 7
 	}
 	return todayReset.AddDate(0, 0, -daysBack)
-}
-
-// ProviderWindowPeriod 区分提供商的日历日窗口和日历周窗口。
-type ProviderWindowPeriod uint8
-
-const (
-	ProviderDailyWindow ProviderWindowPeriod = iota
-	ProviderWeeklyWindow
-)
-
-type FixedProviderWindow struct {
-	Period    ProviderWindowPeriod
-	Mode      string
-	Limit     float64
-	Hour, Day int
 }
 
 func (w FixedProviderWindow) normalized() FixedProviderWindow {

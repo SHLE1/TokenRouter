@@ -48,6 +48,15 @@ type SearchPorts struct {
 	Workers     *completion.UsageRecordWorkerPool
 }
 
+// 当前 HTTP Adapter 使用所选提供商执行请求，并同步捕获完成快照。
+type gatewayStandaloneSearchRun struct {
+	ports   SearchPorts
+	c       *gin.Context
+	groupID int64
+	isX     bool
+	target  StandaloneSearchTarget
+}
+
 func (p SearchPorts) DefaultModel() string { return gatewaycapture.GrokStandaloneSearchModel() }
 func (p SearchPorts) NormalizeMaxResults(n int) int {
 	return gatewaycapture.GrokStandaloneSearchMaxResults(n)
@@ -92,15 +101,6 @@ func (p SearchPorts) Run(c *gin.Context, groupID int64, isX bool) SearchHTTPRun 
 func (p SearchPorts) ConcurrencyError(c *gin.Context, err error) {
 	status, kind, code, message := ConcurrencyErrorResponse(err, "provider")
 	WriteAnthropicStreamError(c, status, kind, code, message, false, MarkOpsStreamError)
-}
-
-// 当前 HTTP Adapter 使用所选提供商执行请求，并同步捕获完成快照。
-type gatewayStandaloneSearchRun struct {
-	ports   SearchPorts
-	c       *gin.Context
-	groupID int64
-	isX     bool
-	target  StandaloneSearchTarget
 }
 
 func (r *gatewayStandaloneSearchRun) Select(ctx context.Context, model string, excluded map[int64]struct{}) (searchtools.Selection, bool, error) {

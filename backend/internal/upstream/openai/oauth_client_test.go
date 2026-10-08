@@ -21,6 +21,12 @@ import (
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
+// 无法监听端口时跳过该用例。
+var oauthTestListenerCheck struct {
+	once sync.Once
+	err  error
+}
+
 type OpenAIOAuthServiceSuite struct {
 	suite.Suite
 	ctx      context.Context
@@ -482,12 +488,6 @@ func TestNewOAuthClient_DefaultTokenURL(t *testing.T) {
 
 func TestOpenAIOAuthServiceSuite(t *testing.T) {
 	suite.Run(t, new(OpenAIOAuthServiceSuite))
-}
-
-// 无法监听端口时跳过该用例。
-var oauthTestListenerCheck struct {
-	once sync.Once
-	err  error
 }
 
 func newOAuthLocalTestServer(t testing.TB, handler http.Handler) *httptest.Server {

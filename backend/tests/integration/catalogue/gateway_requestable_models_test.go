@@ -23,6 +23,18 @@ import (
 // modelRateLimitsKey 是模型限流快照的字段名。
 const modelRateLimitsKey = "model_rate_limits"
 
+type requestableModelsPricingConfigRepoStub struct {
+	routing.PricingConfigRepository
+	err error
+}
+
+// sequencedRequestableModelsProviderRepoStub 模拟第一次提供商查询失败、第二次查询恢复。
+type sequencedRequestableModelsProviderRepoStub struct {
+	catalogueRows
+	providers []providercore.Record
+	calls     int
+}
+
 // TestResolveRequestableModels_RequiresModelLevelSchedulability 验证可见模型至少存在一个未被模型级限流的提供商。
 func TestResolveRequestableModels_RequiresModelLevelSchedulability(t *testing.T) {
 	groupID := int64(4120)
@@ -63,20 +75,8 @@ func TestResolveRequestableModels_RequiresModelLevelSchedulability(t *testing.T)
 	})
 }
 
-type requestableModelsPricingConfigRepoStub struct {
-	routing.PricingConfigRepository
-	err error
-}
-
 func (s *requestableModelsPricingConfigRepoStub) ListAll(context.Context) ([]routing.PricingConfig, error) {
 	return nil, s.err
-}
-
-// sequencedRequestableModelsProviderRepoStub 模拟第一次提供商查询失败、第二次查询恢复。
-type sequencedRequestableModelsProviderRepoStub struct {
-	catalogueRows
-	providers []providercore.Record
-	calls     int
 }
 
 // ListSchedulableByGroupID 在首次调用返回临时错误，后续调用返回当前提供商快照。

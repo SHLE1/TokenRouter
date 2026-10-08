@@ -9,12 +9,14 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+var benchmarkUsageSink ForwardUsage
+
 func BenchmarkOpenAIUsageExtractLegacy(b *testing.B) {
 	body := benchmarkOpenAIUsageJSONBytes()
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		usage, ok := legacyExtractOpenAIUsageFromJSONBytes(body)
 		if ok {
 			benchmarkUsageSink = usage
@@ -27,7 +29,7 @@ func BenchmarkOpenAIUsageExtractOptimized(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		usage, ok := ExtractOpenAIUsageFromJSONBytes(body)
 		if ok {
 			benchmarkUsageSink = usage
@@ -494,7 +496,7 @@ func BenchmarkParseSSEUsageNoUsageDelta(b *testing.B) {
 	payload := []byte(`{"type":"response.output_text.delta","delta":"hello"}`)
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		ParseSSEUsageBytesWithType(payload, "response.output_text.delta", usage)
 	}
 }
@@ -512,8 +514,6 @@ func TestForEachOpenAISSEFrameDataTypeOverridesEventField(t *testing.T) {
 	})
 	require.Equal(t, []string{"response.completed"}, types)
 }
-
-var benchmarkUsageSink ForwardUsage
 
 func benchmarkOpenAIUsageJSONBytes() []byte {
 	return []byte(`{"id":"resp_bench","object":"response","model":"gpt-5.3-codex","usage":{"input_tokens":3210,"output_tokens":987,"input_tokens_details":{"cached_tokens":456}}}`)

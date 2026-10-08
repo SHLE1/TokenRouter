@@ -1,6 +1,7 @@
 package requestdebug
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 // TestCaptureOnlyForRetainedDiagnosticOrEnabledLogging 检查诊断快照是否按调用方需要和日志开关生成。
 func TestCaptureOnlyForRetainedDiagnosticOrEnabledLogging(t *testing.T) {
-	request := httptest.NewRequest("POST", "https://example.test/v1/messages", nil)
+	request := httptest.NewRequest(http.MethodPost, "https://example.test/v1/messages", nil)
 	request.Header.Set("Authorization", "Bearer fixture-secret")
 	trace := New("", "false")
 	if line := trace.Capture(request, nil, nil, "apikey", false, false); line != "" {

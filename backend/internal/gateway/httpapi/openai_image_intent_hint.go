@@ -9,6 +9,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
+// 请求级 hint 仅限 HTTP：缺失表示 unknown，false/true 都表示已完成 canonical 判定。
+const openAIImageIntentHintContextKey = "openai_image_intent_hint"
+
+type ImageIntentClassifier func(endpoint string, requestedModel string, body []byte) bool
+
 // GroupMappedImageIntent 先按分组映射改写模型和报文，再判断图片意图。
 func GroupMappedImageIntent(endpoint, model string, body []byte, mapping routing.GroupMappingResult, platform string, replace requeststate.ModelBodyReplacer) ([]byte, string, bool) {
 	target := requeststate.GroupMappedModel(model, mapping)
@@ -23,11 +28,6 @@ func SeedOpenAIForwardImageIntentHint(c *gin.Context, mapped, image bool) {
 	}
 	SetOpenAIImageIntentHint(c, image)
 }
-
-// 请求级 hint 仅限 HTTP：缺失表示 unknown，false/true 都表示已完成 canonical 判定。
-const openAIImageIntentHintContextKey = "openai_image_intent_hint"
-
-type ImageIntentClassifier func(endpoint string, requestedModel string, body []byte) bool
 
 // SetOpenAIImageIntentHint 保存请求级 canonical 生图判定。
 func SetOpenAIImageIntentHint(c *gin.Context, imageIntent bool) {

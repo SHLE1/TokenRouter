@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+// DummyThoughtSignature 用于跳过 Gemini 3 thought_signature 验证
+// 参考: https://ai.google.dev/gemini-api/docs/thought-signatures
+// 导出供跨包使用（如 gemini_native_signature_cleaner 跨提供商修复）
+const DummyThoughtSignature = "skip_thought_signature_validator"
+
 // BuildContents 构建 contents
 func BuildContents(messages []ClaudeMessage, toolIDToName map[string]string, isThinkingEnabled, allowDummyThought bool) ([]GeminiContent, []GeminiPart, bool, error) {
 	var contents []GeminiContent
@@ -65,11 +70,6 @@ func BuildContents(messages []ClaudeMessage, toolIDToName map[string]string, isT
 
 	return contents, systemParts, strippedThinking, nil
 }
-
-// DummyThoughtSignature 用于跳过 Gemini 3 thought_signature 验证
-// 参考: https://ai.google.dev/gemini-api/docs/thought-signatures
-// 导出供跨包使用（如 gemini_native_signature_cleaner 跨提供商修复）
-const DummyThoughtSignature = "skip_thought_signature_validator"
 
 // BuildParts 构建消息的 parts
 // allowDummyThought: 只有 Gemini 模型支持 dummy thought signature

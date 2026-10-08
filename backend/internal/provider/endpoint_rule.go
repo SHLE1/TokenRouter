@@ -6,8 +6,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-type OpenAIEndpointCapability string
-
 const (
 	OpenAIEndpointCapabilityTextGeneration OpenAIEndpointCapability = "text_generation"
 	OpenAIEndpointCapabilityEmbeddings     OpenAIEndpointCapability = "embeddings"
@@ -24,6 +22,8 @@ const (
 	// 它仍要求普通 Responses 能力，额外受提供商级 V2 开关控制。
 	OpenAIEndpointCapabilityRemoteCompactionV2 OpenAIEndpointCapability = "remote_compaction_v2"
 )
+
+type OpenAIEndpointCapability string
 
 func (a *Record) SupportsOpenAIEndpointCapability(requested OpenAIEndpointCapability, grokMedia func() (bool, string)) bool {
 	if a == nil {

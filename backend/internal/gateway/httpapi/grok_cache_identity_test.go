@@ -1150,7 +1150,7 @@ func TestResolveGrokCacheIdentityConcurrentDeterminism(t *testing.T) {
 	body := []byte(`{"model":"grok","messages":[{"role":"system","content":"stable"},{"role":"user","content":"hello"}]}`)
 	identities := make(chan string, workers)
 	var wg sync.WaitGroup
-	for i := 0; i < workers; i++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

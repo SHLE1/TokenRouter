@@ -22,6 +22,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+type grokUpstreamFrames struct{ conn openai.WSClientConn }
+
 // ForwardGrokVoice 转发官方 xAI Voice HTTP API，包括 TTS、STT 和自定义 Voice 子资源。
 // TTS 返回音频字节、STT 返回 JSON，且 xAI 可能附加格式专用响应头，因此响应保持透传。
 func (s *GrokExecutor) ForwardGrokVoice(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, endpoint string, body []byte, contentType string) (*forwardcore.OpenAIResult, error) {
@@ -146,8 +148,6 @@ func (s *GrokExecutor) HandleGrokRealtimeUpstreamError(ctx context.Context, prov
 	}
 	_ = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, provider, statusCode, nil, body, "")
 }
-
-type grokUpstreamFrames struct{ conn openai.WSClientConn }
 
 func (c grokUpstreamFrames) ReadFrame(ctx context.Context) (upstreamcore.FrameKind, []byte, error) {
 	data, err := c.conn.ReadMessage(ctx)

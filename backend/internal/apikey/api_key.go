@@ -9,71 +9,28 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// API Key status constants
 const (
+	// API Key status constants
 	StatusAPIKeyActive         = "active"
 	StatusAPIKeyDisabled       = "disabled"
 	StatusAPIKeyQuotaExhausted = "quota_exhausted"
 	StatusAPIKeyExpired        = "expired"
-)
 
-// API Key Fast 模式策略常量。
-const (
+	// API Key Fast 模式策略常量。
 	APIKeyFastModePolicyFollowRequest = "follow_request"
 	APIKeyFastModePolicyForceOn       = "force_on"
 	APIKeyFastModePolicyForceOff      = "force_off"
-)
 
-// API Key 结算模式常量。auto 保持存量 Key 的订阅优先、余额补足行为。
-const (
+	// API Key 结算模式常量。auto 保持存量 Key 的订阅优先、余额补足行为。
 	APIKeyBillingModeAuto         = "auto"
 	APIKeyBillingModeSubscription = "subscription"
 	APIKeyBillingModeBalance      = "balance"
-)
 
-// NormalizeAPIKeyFastModePolicy 校验并规范化 API Key Fast 模式策略。
-// 空值用于兼容旧客户端，按跟随下游请求处理。
-func NormalizeAPIKeyFastModePolicy(value string) (string, bool) {
-	switch value {
-	case "", APIKeyFastModePolicyFollowRequest:
-		return APIKeyFastModePolicyFollowRequest, true
-	case APIKeyFastModePolicyForceOn, APIKeyFastModePolicyForceOff:
-		return value, true
-	default:
-		return "", false
-	}
-}
-
-// NormalizeAPIKeyBillingMode 委托唯一资金来源规则。
-func NormalizeAPIKeyBillingMode(value string) (string, bool) {
-	return billing.NormalizeAPIKeyBillingMode(value)
-}
-
-// APIKeyEffectiveBillingMode 返回 Key 实际生效的结算模式。
-// 历史记录在缺少该字段时按 auto 处理，避免滚动升级期间错误拒绝请求。
-func APIKeyEffectiveBillingMode(key *APIKey) string {
-	if key == nil {
-		return APIKeyBillingModeAuto
-	}
-	mode, ok := NormalizeAPIKeyBillingMode(key.BillingMode)
-	if !ok {
-		return APIKeyBillingModeAuto
-	}
-	return mode
-}
-
-// Rate limit window durations
-const (
+	// Rate limit window durations
 	RateLimitWindow5h = 5 * time.Hour
 	RateLimitWindow1d = 24 * time.Hour
 	RateLimitWindow7d = 7 * 24 * time.Hour
 )
-
-// IsWindowExpired returns true if the window starting at windowStart has exceeded the given duration.
-// A nil windowStart is treated as expired — no initialized window means any accumulated usage is stale.
-func IsWindowExpired(start *time.Time, window time.Duration) bool {
-	return billing.IsWindowExpired(start, window)
-}
 
 type APIKey struct {
 	ID     int64
@@ -153,6 +110,51 @@ type APIKeyCompositeGroup struct {
 	Group                *routing.Group
 }
 
+// APIKeyListFilters holds optional filtering parameters for listing API keys.
+type APIKeyListFilters struct {
+	Search  string
+	Status  string
+	GroupID *int64 // nil=不筛选, 0=无分组, >0=指定分组
+	Scope   string // personal 或 team；空值兼容历史调用并返回全部
+}
+
+// NormalizeAPIKeyFastModePolicy 校验并规范化 API Key Fast 模式策略。
+// 空值用于兼容旧客户端，按跟随下游请求处理。
+func NormalizeAPIKeyFastModePolicy(value string) (string, bool) {
+	switch value {
+	case "", APIKeyFastModePolicyFollowRequest:
+		return APIKeyFastModePolicyFollowRequest, true
+	case APIKeyFastModePolicyForceOn, APIKeyFastModePolicyForceOff:
+		return value, true
+	default:
+		return "", false
+	}
+}
+
+// NormalizeAPIKeyBillingMode 委托唯一资金来源规则。
+func NormalizeAPIKeyBillingMode(value string) (string, bool) {
+	return billing.NormalizeAPIKeyBillingMode(value)
+}
+
+// APIKeyEffectiveBillingMode 返回 Key 实际生效的结算模式。
+// 历史记录在缺少该字段时按 auto 处理，避免滚动升级期间错误拒绝请求。
+func APIKeyEffectiveBillingMode(key *APIKey) string {
+	if key == nil {
+		return APIKeyBillingModeAuto
+	}
+	mode, ok := NormalizeAPIKeyBillingMode(key.BillingMode)
+	if !ok {
+		return APIKeyBillingModeAuto
+	}
+	return mode
+}
+
+// IsWindowExpired returns true if the window starting at windowStart has exceeded the given duration.
+// A nil windowStart is treated as expired — no initialized window means any accumulated usage is stale.
+func IsWindowExpired(start *time.Time, window time.Duration) bool {
+	return billing.IsWindowExpired(start, window)
+}
+
 func (k *APIKey) IsActive() bool {
 	return k.Status == StatusActive && !k.TeamOwnerDisabled
 }
@@ -224,14 +226,6 @@ func (k *APIKey) EffectiveUsage7d() float64 {
 		return 0
 	}
 	return k.Usage7d
-}
-
-// APIKeyListFilters holds optional filtering parameters for listing API keys.
-type APIKeyListFilters struct {
-	Search  string
-	Status  string
-	GroupID *int64 // nil=不筛选, 0=无分组, >0=指定分组
-	Scope   string // personal 或 team；空值兼容历史调用并返回全部
 }
 
 // IsExpiredAt 允许用例使用已经注入的时钟，旧无参入口继续保持默认行为。

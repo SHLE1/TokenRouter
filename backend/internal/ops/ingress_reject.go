@@ -392,7 +392,7 @@ func boundedDimension(value, fallback string) string {
 func ingressRejectHash(k ingressRejectKey) int {
 	h := uint64(1469598103934665603)
 	for _, value := range []string{k.reason, k.routeFamily, k.protocol, k.clientIP} {
-		for i := 0; i < len(value); i++ {
+		for i := range len(value) {
 			h ^= uint64(value[i])
 			h *= 1099511628211
 		}

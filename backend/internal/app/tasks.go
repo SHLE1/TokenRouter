@@ -21,6 +21,17 @@ import (
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
+// creativeManagedKeys 通过共享 KeyStore 为创作台任务提供 Key 操作。
+type creativeManagedKeys struct {
+	store *keypostgres.KeyStore
+}
+
+// batchCleanupRuntime 区分清理循环与任务消费循环的生命周期实例。
+type batchCleanupRuntime struct{ *batchimage.Runtime }
+
+// taskRequestActivity 等待提交、下载及管理请求结束，再停止 task worker 和共享存储。
+type taskRequestActivity struct{ *lifecycle.Operations }
+
 // batchImageAccessPorts 从认证上下文读取批量图片任务需要的 Key、订阅和会话 ID。
 func batchImageAccessPorts() batchhttp.AccessPorts {
 	return batchhttp.AccessPorts{Key: func(c *gin.Context) (*apikey.APIKey, bool) {
@@ -33,11 +44,6 @@ func batchImageAccessPorts() batchhttp.AccessPorts {
 		}
 		return v.Subscription, true
 	}, SessionID: gatewayhttp.ExtractClientSessionID}
-}
-
-// creativeManagedKeys 通过共享 KeyStore 为创作台任务提供 Key 操作。
-type creativeManagedKeys struct {
-	store *keypostgres.KeyStore
 }
 
 func (keys creativeManagedKeys) GetManagedKeyByUserAndGroup(ctx context.Context, userID, groupID int64, managedBy string) (*apikey.APIKey, error) {
@@ -88,16 +94,10 @@ func provideBatchCleanup(repo batchimage.BatchImageRepository, providers *provid
 	return core
 }
 
-// batchCleanupRuntime 区分清理循环与任务消费循环的生命周期实例。
-type batchCleanupRuntime struct{ *batchimage.Runtime }
-
 func provideBatchCleanupRuntime(core *batchimage.Cleanup, cfg *config.Config) *batchCleanupRuntime {
 	enabled := core != nil && core.Repo != nil && cfg != nil && cfg.BatchImage.Enabled && core.CleanupInterval() > 0
 	return &batchCleanupRuntime{batchimage.NewRuntime("batch image cleanup", enabled, core.Run)}
 }
-
-// taskRequestActivity 等待提交、下载及管理请求结束，再停止 task worker 和共享存储。
-type taskRequestActivity struct{ *lifecycle.Operations }
 
 func provideTaskActivity(manager *lifecycle.Manager) *taskRequestActivity {
 	activity := &taskRequestActivity{lifecycle.NewOperations("TaskRequestsAndDownloads")}

@@ -12,6 +12,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
+// recoveryFundsFixture 记录资金释放请求、模拟释放错误并按请求去重。
+type recoveryFundsFixture struct {
+	releases   []*billing.TaskFundsCommand
+	releaseErr error
+	seen       map[string]struct{}
+}
+
+type recordingBatchImageQueue struct {
+	*fakeBatchImageQueue
+	enqueued []string
+}
+
 func TestBatchImageBillingRecoveryService_ReleasesStaleUnsubmittedHold(t *testing.T) {
 	repo := newFakeBatchImageRepository()
 	apiKeyID := int64(22)
@@ -107,13 +119,6 @@ func TestBatchImageBillingRecoveryService_EnqueuesRetryWhenReleaseFails(t *testi
 	require.Equal(t, []string{stale.BatchID}, queue.enqueued)
 }
 
-// recoveryFundsFixture 记录资金释放请求、模拟释放错误并按请求去重。
-type recoveryFundsFixture struct {
-	releases   []*billing.TaskFundsCommand
-	releaseErr error
-	seen       map[string]struct{}
-}
-
 func (r *recoveryFundsFixture) Reserve(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error) {
 	panic("unexpected Reserve")
 }
@@ -140,11 +145,6 @@ func (r *recoveryFundsFixture) Release(_ context.Context, cmd *billing.TaskFunds
 	}
 	r.releases = append(r.releases, cmd)
 	return &billing.TaskFundsResult{Applied: true}, nil
-}
-
-type recordingBatchImageQueue struct {
-	*fakeBatchImageQueue
-	enqueued []string
 }
 
 func (q *recordingBatchImageQueue) Enqueue(_ context.Context, batchID string) error {

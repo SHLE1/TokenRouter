@@ -15,7 +15,30 @@ const (
 	gatewayStreamHeartbeatBytesKey = "gateway_stream_heartbeat_bytes"
 	maxConcurrencyWait             = 30 * time.Second
 	DefaultPingInterval            = 10 * time.Second
+
+	// SSEPingFormatClaude is the Claude/Anthropic SSE ping format
+	SSEPingFormatClaude SSEPingFormat = "data: {\"type\": \"ping\"}\n\n"
+	// SSEPingFormatNone indicates no ping should be sent (e.g., OpenAI has no ping spec)
+	SSEPingFormatNone SSEPingFormat = ""
+	// SSEPingFormatComment is an SSE comment ping for OpenAI/Codex CLI clients
+	SSEPingFormatComment SSEPingFormat = ":\n\n"
 )
+
+// SSEPingFormat defines the format of SSE ping events for different platforms
+type SSEPingFormat string
+
+// 旧 HTTP 错误入口使用相同核心类型，保留 errors.As 与字段访问。
+type ConcurrencyError = scheduler.ConcurrencyError
+
+type WaitQueueFullError = scheduler.WaitQueueFullError
+
+// ConcurrencyHelper provides common concurrency slot management for gateway handlers
+type ConcurrencyHelper struct {
+	concurrencyService *scheduler.ConcurrencyService
+	keyID              func(*gin.Context) int64
+	pingFormat         SSEPingFormat
+	pingInterval       time.Duration
+}
 
 func RecordStreamHeartbeat(c *gin.Context, written int) {
 	if c == nil || written <= 0 {
@@ -36,31 +59,6 @@ func StreamHasOnlyHeartbeats(c *gin.Context) bool {
 	}
 	heartbeatBytes, _ := value.(int)
 	return heartbeatBytes > 0 && c.Writer.Size() == heartbeatBytes
-}
-
-// SSEPingFormat defines the format of SSE ping events for different platforms
-type SSEPingFormat string
-
-const (
-	// SSEPingFormatClaude is the Claude/Anthropic SSE ping format
-	SSEPingFormatClaude SSEPingFormat = "data: {\"type\": \"ping\"}\n\n"
-	// SSEPingFormatNone indicates no ping should be sent (e.g., OpenAI has no ping spec)
-	SSEPingFormatNone SSEPingFormat = ""
-	// SSEPingFormatComment is an SSE comment ping for OpenAI/Codex CLI clients
-	SSEPingFormatComment SSEPingFormat = ":\n\n"
-)
-
-// 旧 HTTP 错误入口使用相同核心类型，保留 errors.As 与字段访问。
-type ConcurrencyError = scheduler.ConcurrencyError
-
-type WaitQueueFullError = scheduler.WaitQueueFullError
-
-// ConcurrencyHelper provides common concurrency slot management for gateway handlers
-type ConcurrencyHelper struct {
-	concurrencyService *scheduler.ConcurrencyService
-	keyID              func(*gin.Context) int64
-	pingFormat         SSEPingFormat
-	pingInterval       time.Duration
 }
 
 // NewConcurrencyHelper creates a new ConcurrencyHelper

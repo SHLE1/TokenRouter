@@ -22,15 +22,15 @@ type RealtimeDialError struct {
 	Err        error
 }
 
-func (e *RealtimeDialError) Error() string { return e.Err.Error() }
-func (e *RealtimeDialError) Unwrap() error { return e.Err }
-
 type RealtimeSession struct {
 	upstream.FrameConn
 	done     func()
 	once     sync.Once
 	closeErr error
 }
+
+func (e *RealtimeDialError) Error() string { return e.Err.Error() }
+func (e *RealtimeDialError) Unwrap() error { return e.Err }
 
 func (s *RealtimeSession) Ready() bool { return s != nil && s.FrameConn != nil }
 func (s *RealtimeSession) Close() error {

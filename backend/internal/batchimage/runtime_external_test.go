@@ -11,6 +11,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 )
 
+type blockingBatchImageRuntimeQueue struct {
+	reserveCalls atomic.Int64
+}
+
+type blockedQueue struct {
+	blockingBatchImageRuntimeQueue
+	entered, cancelled, release chan struct{}
+}
+
 func TestBatchImageWorkerRuntime_QueueDisabledDoesNotStart(t *testing.T) {
 	queue := &blockingBatchImageRuntimeQueue{}
 	runtime := batchimage.NewWorkerRuntime(
@@ -78,10 +87,6 @@ func TestStoppedRuntimesRejectStart(t *testing.T) {
 	})
 }
 
-type blockingBatchImageRuntimeQueue struct {
-	reserveCalls atomic.Int64
-}
-
 func (q *blockingBatchImageRuntimeQueue) Enqueue(context.Context, string) error {
 	return nil
 }
@@ -114,11 +119,6 @@ func (q *blockingBatchImageRuntimeQueue) RecoverStaleActive(context.Context, tim
 
 func (q *blockingBatchImageRuntimeQueue) TryAcquireJobLock(context.Context, string, time.Duration) (batchimage.BatchImageJobLock, bool, error) {
 	return nil, false, nil
-}
-
-type blockedQueue struct {
-	blockingBatchImageRuntimeQueue
-	entered, cancelled, release chan struct{}
 }
 
 func (q *blockedQueue) Reserve(ctx context.Context, _ time.Duration) (batchimage.ReservedBatchImageJob, error) {

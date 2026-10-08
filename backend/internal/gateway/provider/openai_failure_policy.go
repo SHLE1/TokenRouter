@@ -15,6 +15,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+const (
+	openAIRequestBodyTooLargeReason              = forwardcore.GatewayFailureReason("openai_request_body_too_large")
+	openAIUpstreamAccessUnavailableClientMessage = "Upstream access is temporarily unavailable, please retry later"
+	openAIOAuth429RetryDelay                     = 500 * time.Millisecond
+	openAIOAuth429MaxRetryDelay                  = 8 * time.Second
+)
+
+// OpenAIFailoverPolicy 计算当前提供商的恢复资格与截止时间。
+type OpenAIFailoverPolicy struct {
+	Health *provideradapter.OpenAIResponseHealth
+}
+
 // ClassifyOpenAIAPIKeyHealthFailure 区分请求取消、平台故障和提供商故障。
 func ClassifyOpenAIAPIKeyHealthFailure(err error) (int, []byte, bool) {
 	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
@@ -55,18 +67,6 @@ func IsOpenAIRequestBodyTooLarge(e *forwardcore.UpstreamFailoverError) bool {
 func IsOpenAICapacityShed(e *forwardcore.UpstreamFailoverError) bool {
 	return e != nil && e.RequestScopedTransient && openai.IsOpenAIRequestScopedCapacityShed("", e.ResponseBody)
 }
-
-// OpenAIFailoverPolicy 计算当前提供商的恢复资格与截止时间。
-type OpenAIFailoverPolicy struct {
-	Health *provideradapter.OpenAIResponseHealth
-}
-
-const (
-	openAIRequestBodyTooLargeReason              = forwardcore.GatewayFailureReason("openai_request_body_too_large")
-	openAIUpstreamAccessUnavailableClientMessage = "Upstream access is temporarily unavailable, please retry later"
-	openAIOAuth429RetryDelay                     = 500 * time.Millisecond
-	openAIOAuth429MaxRetryDelay                  = 8 * time.Second
-)
 
 func OpenAI429RetryDelay(headers http.Header, deadline time.Time) time.Duration {
 	delay := openAIOAuth429RetryDelay

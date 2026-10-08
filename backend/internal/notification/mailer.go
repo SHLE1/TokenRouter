@@ -10,11 +10,31 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
+const (
+	SettingKeySMTPFrom     = "smtp_from"
+	SettingKeySMTPFromName = "smtp_from_name"
+	SettingKeySMTPHost     = "smtp_host"
+	SettingKeySMTPPassword = "smtp_password"
+	SettingKeySMTPPort     = "smtp_port"
+	SettingKeySMTPUseTLS   = "smtp_use_tls"
+	SettingKeySMTPUsername = "smtp_username"
+)
+
+var ErrEmailNotConfigured = contract.ErrEmailNotConfigured
+
 type Mailer struct {
 	settingRepo              SettingRepository
 	transport                SMTPTransport
 	notificationEmailService *NotificationEmailService
 }
+
+type (
+	SMTPConfig    = contract.SMTPConfig
+	SMTPTransport interface {
+		Send(context.Context, *SMTPConfig, string, string, string) error
+		Test(context.Context, *SMTPConfig) error
+	}
+)
 
 func NewMailer(repo SettingRepository, transport SMTPTransport) *Mailer {
 	return &Mailer{settingRepo: repo, transport: transport}
@@ -42,8 +62,6 @@ func (s *Mailer) SendEmailWithConfigContext(ctx context.Context, cfg *SMTPConfig
 func (s *Mailer) TestSMTPConnectionContext(ctx context.Context, cfg *SMTPConfig) error {
 	return s.transport.Test(ctx, cfg)
 }
-
-var ErrEmailNotConfigured = contract.ErrEmailNotConfigured
 
 func EmailRecipientName(email string) string {
 	trimmed := strings.TrimSpace(email)
@@ -99,16 +117,6 @@ func (s *Mailer) GetSMTPConfig(ctx context.Context) (*SMTPConfig, error) {
 	}, nil
 }
 
-const (
-	SettingKeySMTPFrom     = "smtp_from"
-	SettingKeySMTPFromName = "smtp_from_name"
-	SettingKeySMTPHost     = "smtp_host"
-	SettingKeySMTPPassword = "smtp_password"
-	SettingKeySMTPPort     = "smtp_port"
-	SettingKeySMTPUseTLS   = "smtp_use_tls"
-	SettingKeySMTPUsername = "smtp_username"
-)
-
 // SanitizeEmailHeader 防止模板参数注入额外邮件头。
 func SanitizeEmailHeader(s string) string { return strings.NewReplacer("\r", "", "\n", "").Replace(s) }
 
@@ -135,11 +143,3 @@ func (s *Mailer) SendUserNotification(ctx context.Context, input SendRequest) er
 	}
 	return sender.Send(ctx, input)
 }
-
-type (
-	SMTPConfig    = contract.SMTPConfig
-	SMTPTransport interface {
-		Send(context.Context, *SMTPConfig, string, string, string) error
-		Test(context.Context, *SMTPConfig) error
-	}
-)

@@ -19,6 +19,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// batchDeleteAdminService 记录批量删除并发数和结果，供 handler 测试使用。
+type batchDeleteAdminService struct {
+	ProviderManagement
+
+	mu               sync.Mutex
+	active           int
+	maxActive        int
+	deletedIDs       []int64
+	deleteErrorsByID map[int64]error
+	providersByID    map[int64]*providercore.Record
+}
+
 func TestProviderHandlerBatchDeleteReturnsStablePerProviderResults(t *testing.T) {
 	adminSvc := &batchDeleteAdminService{
 		deleteErrorsByID: map[int64]error{
@@ -154,18 +166,6 @@ func TestProviderHandlerBatchRefreshSupportsQoderCosy(t *testing.T) {
 	require.Equal(t, float64(0), data["failed"])
 	require.Equal(t, "new-token", adminSvc.updateProviderInput.Credentials["security_oauth_token"])
 	require.Equal(t, "new-refresh", adminSvc.updateProviderInput.Credentials["refresh_token"])
-}
-
-// batchDeleteAdminService 记录批量删除并发数和结果，供 handler 测试使用。
-type batchDeleteAdminService struct {
-	ProviderManagement
-
-	mu               sync.Mutex
-	active           int
-	maxActive        int
-	deletedIDs       []int64
-	deleteErrorsByID map[int64]error
-	providersByID    map[int64]*providercore.Record
 }
 
 func (s *batchDeleteAdminService) GetProvidersByIDs(_ context.Context, ids []int64) ([]*providercore.Record, error) {

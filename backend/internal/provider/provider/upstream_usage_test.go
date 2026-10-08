@@ -20,6 +20,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/zhipu"
 )
 
+// 包装本地 TLS 响应，检查查询适配器关闭每个响应体。
+type usageTrackedBody struct {
+	io.ReadCloser
+	closed *atomic.Int64
+}
+
 // TestNativeUsageAdaptersLocalTLS 通过本地 TLS 检查七种用量适配器的请求端点、认证头覆盖顺序和计量结果。
 func TestNativeUsageAdaptersLocalTLS(t *testing.T) {
 	tests := []struct {
@@ -44,7 +50,7 @@ func TestNativeUsageAdaptersLocalTLS(t *testing.T) {
 				i := int(calls.Add(1) - 1)
 				if i >= len(tt.paths) {
 					t.Errorf("unexpected request %s", r.URL.Path)
-					w.WriteHeader(500)
+					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 				assert.Equal(t, tt.paths[i], r.URL.Path)
@@ -79,12 +85,6 @@ func TestNativeUsageAdaptersLocalTLS(t *testing.T) {
 			}
 		})
 	}
-}
-
-// 包装本地 TLS 响应，检查查询适配器关闭每个响应体。
-type usageTrackedBody struct {
-	io.ReadCloser
-	closed *atomic.Int64
 }
 
 func (b *usageTrackedBody) Close() error { b.closed.Add(1); return b.ReadCloser.Close() }

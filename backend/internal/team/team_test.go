@@ -16,6 +16,43 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
+type fakeTeamInvitationLimiter struct {
+	allowed    bool
+	retryAfter time.Duration
+	err        error
+}
+
+// fakeTeamRepository 记录团队管理方法的参数并返回预设结果。
+type fakeTeamRepository struct {
+	TeamRepository
+
+	teamContext       *TeamContext
+	members           []TeamMembership
+	usageSummary      *TeamUsageSummary
+	usageQuery        TeamUsageQuery
+	teamKeys          []TeamAPIKeyItem
+	teamKeyActor      *int64
+	teamKeyActorIsNil bool
+	status            string
+	name              string
+	defaultLimits     [3]float64
+	defaultLimitsSet  bool
+	adminUpdate       TeamAdminUpdate
+	adminUpdateCount  int
+	invitationCreates int
+	invitationPreview *TeamInvitationPreview
+	previewTokenHash  string
+	previewEmail      string
+	previewAt         time.Time
+}
+
+// fakeTeamUserRepository 为邀请预览提供当前登录用户邮箱。
+type fakeTeamUserRepository struct {
+	UserReader
+
+	user *UserSnapshot
+}
+
 func TestTeamServiceListMembersMemberOnlySeesOwnerAndSelf(t *testing.T) {
 	repo := &fakeTeamRepository{
 		teamContext: teamServiceTestContext(2, TeamRoleMember),
@@ -300,38 +337,8 @@ func TestTeamServiceInvitationLimitFailsClosedWhenRedisUnavailable(t *testing.T)
 	require.ErrorIs(t, err, ErrTeamInvitationUnavailable)
 }
 
-type fakeTeamInvitationLimiter struct {
-	allowed    bool
-	retryAfter time.Duration
-	err        error
-}
-
 func (l *fakeTeamInvitationLimiter) CheckAndRecord(context.Context, int64, string) (bool, time.Duration, error) {
 	return l.allowed, l.retryAfter, l.err
-}
-
-// fakeTeamRepository 记录团队管理方法的参数并返回预设结果。
-type fakeTeamRepository struct {
-	TeamRepository
-
-	teamContext       *TeamContext
-	members           []TeamMembership
-	usageSummary      *TeamUsageSummary
-	usageQuery        TeamUsageQuery
-	teamKeys          []TeamAPIKeyItem
-	teamKeyActor      *int64
-	teamKeyActorIsNil bool
-	status            string
-	name              string
-	defaultLimits     [3]float64
-	defaultLimitsSet  bool
-	adminUpdate       TeamAdminUpdate
-	adminUpdateCount  int
-	invitationCreates int
-	invitationPreview *TeamInvitationPreview
-	previewTokenHash  string
-	previewEmail      string
-	previewAt         time.Time
 }
 
 func (r *fakeTeamRepository) GetContextByUserID(context.Context, int64) (*TeamContext, error) {
@@ -391,13 +398,6 @@ func (r *fakeTeamRepository) PreviewInvitation(_ context.Context, tokenHash, nor
 	r.previewEmail = normalizedEmail
 	r.previewAt = now
 	return r.invitationPreview, nil
-}
-
-// fakeTeamUserRepository 为邀请预览提供当前登录用户邮箱。
-type fakeTeamUserRepository struct {
-	UserReader
-
-	user *UserSnapshot
 }
 
 func (r *fakeTeamUserRepository) GetByID(context.Context, int64) (*UserSnapshot, error) {

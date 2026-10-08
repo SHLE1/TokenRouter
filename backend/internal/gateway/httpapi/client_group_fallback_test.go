@@ -26,15 +26,15 @@ type clientFallbackExecutor struct {
 	calls   int
 }
 
-func (e *clientFallbackExecutor) Execute(_ context.Context, in execution.Request, _ upstream.OutputSink) (execution.ExecutionResult, error) {
-	e.request, e.calls = in, e.calls+1
-	return execution.ExecutionResult{}, nil
-}
-
 type clientFallbackFunding struct {
 	t            *testing.T
 	calls        int
 	subscription *billing.UserSubscription
+}
+
+func (e *clientFallbackExecutor) Execute(_ context.Context, in execution.Request, _ upstream.OutputSink) (execution.ExecutionResult, error) {
+	e.request, e.calls = in, e.calls+1
+	return execution.ExecutionResult{}, nil
 }
 
 func (f *clientFallbackFunding) CheckKey(_ context.Context, key *apikey.APIKey, sub *billing.UserSubscription, _ string, _ bool) error {

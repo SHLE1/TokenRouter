@@ -16,6 +16,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings/preaggregation"
 )
 
+// preAggregationHandlerRepoStub 保存预聚合接口测试使用的设置数据。
+type preAggregationHandlerRepoStub struct {
+	values map[string]string
+}
+
 // TestSettingHandlerGetPreAggregationSettings 检查存在旧运维配置时仍返回预聚合默认值。
 func TestSettingHandlerGetPreAggregationSettings(t *testing.T) {
 	repo := &preAggregationHandlerRepoStub{values: map[string]string{
@@ -77,11 +82,6 @@ func TestSettingHandlerUpdatePreAggregationSettingsPersistsUnifiedValue(t *testi
 	require.Equal(t, 90, persisted.Usage.IntervalSeconds)
 	require.False(t, persisted.Ops.Enabled)
 	require.Len(t, repo.values, 1)
-}
-
-// preAggregationHandlerRepoStub 保存预聚合接口测试使用的设置数据。
-type preAggregationHandlerRepoStub struct {
-	values map[string]string
 }
 
 func (s *preAggregationHandlerRepoStub) Get(context.Context, string) (*settingscore.Setting, error) {

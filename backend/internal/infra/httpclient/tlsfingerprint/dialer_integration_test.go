@@ -298,7 +298,7 @@ func fetchCapturedFingerprint(t *testing.T, captureURL string, profile *Profile)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", captureURL, strings.NewReader(`{"model":"test"}`))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, captureURL, strings.NewReader(`{"model":"test"}`))
 	if err != nil {
 		t.Fatalf("create request: %v", err)
 		return nil

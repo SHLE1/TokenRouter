@@ -43,6 +43,11 @@ type RefreshAttempts struct {
 	PostActions, SyncCleanup          func(context.Context, *Record)
 }
 
+type rateLimitedRefreshExecutor struct {
+	OAuthRefreshExecutor
+	acquireRate func(context.Context) (func(), error)
+}
+
 func (s RefreshAttempts) Run(
 	ctx context.Context,
 	provider *Record,
@@ -374,11 +379,6 @@ func (s RefreshAttempts) Run(
 	}
 
 	return lastErr
-}
-
-type rateLimitedRefreshExecutor struct {
-	OAuthRefreshExecutor
-	acquireRate func(context.Context) (func(), error)
 }
 
 func (e *rateLimitedRefreshExecutor) Refresh(ctx context.Context, provider *Record) (map[string]any, error) {

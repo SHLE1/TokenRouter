@@ -14,6 +14,11 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
+type failTestEventWriter struct {
+	TestStreamWriter
+	err error
+}
+
 // TestProviderTestPropagatesEventWriteFailure 验证流事件无法写出时，测试不能把已经丢失的输出报告为执行成功。
 func TestProviderTestPropagatesEventWriteFailure(t *testing.T) {
 	failed := errors.New("forced test event write failure")
@@ -58,11 +63,6 @@ func TestProcessGeminiStream_EmitsImageEvent(t *testing.T) {
 	require.Contains(t, body, "\"type\":\"image\"")
 	require.Contains(t, body, "\"image_url\":\"data:image/png;base64,QUJD\"")
 	require.Contains(t, body, "\"mime_type\":\"image/png\"")
-}
-
-type failTestEventWriter struct {
-	TestStreamWriter
-	err error
 }
 
 func (w failTestEventWriter) Write([]byte) (int, error) { return 0, w.err }

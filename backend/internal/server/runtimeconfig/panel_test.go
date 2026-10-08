@@ -5,8 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
 type panelRateLimitSettingRepo struct {
@@ -170,7 +171,7 @@ func TestGetPanelRateLimitSettingsCachedAvoidsRepeatedDBReads(t *testing.T) {
 	}}
 	svc := newPanelRateLimitTestService(repo)
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		settings := svc.GetPanelRateLimitSettingsCached(context.Background())
 		require.Equal(t, 100, settings.UserRPM)
 	}

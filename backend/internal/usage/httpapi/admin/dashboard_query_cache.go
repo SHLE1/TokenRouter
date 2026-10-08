@@ -8,6 +8,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// snapshotCache 缓存 HTTP 快照及其 ETag。
+type snapshotCache = httpx.SnapshotCache
+
 func (h *DashboardHandler) getUsageTrendCached(
 	ctx context.Context,
 	startTime, endTime time.Time,
@@ -61,9 +64,6 @@ func cacheStatusValue(hit bool) string {
 	}
 	return "miss"
 }
-
-// snapshotCache 缓存 HTTP 快照及其 ETag。
-type snapshotCache = httpx.SnapshotCache
 
 // newSnapshotCache 创建指定有效期的 HTTP 快照缓存。
 func newSnapshotCache(ttl time.Duration) *snapshotCache { return httpx.NewSnapshotCache(ttl) }

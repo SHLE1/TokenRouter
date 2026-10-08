@@ -15,6 +15,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/testutil/rediscontainer"
 )
 
+type EmailCacheSuite struct {
+	rediscontainer.Suite
+	cache identity.EmailCache
+}
+
 func (s *EmailCacheSuite) TestGetVerificationCode_Missing() {
 	_, err := s.cache.GetVerificationCode(s.Ctx, "nonexistent@example.com")
 	require.True(s.T(), errors.Is(err, redis.Nil), "expected redis.Nil for missing verification code")
@@ -81,11 +86,6 @@ func (s *EmailCacheSuite) TestGetVerificationCode_JSONCorruption() {
 
 func TestEmailCacheSuite(t *testing.T) {
 	suite.Run(t, new(EmailCacheSuite))
-}
-
-type EmailCacheSuite struct {
-	rediscontainer.Suite
-	cache identity.EmailCache
 }
 
 func (s *EmailCacheSuite) SetupTest() {

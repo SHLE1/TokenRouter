@@ -13,6 +13,23 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+// DashboardHandler handles admin dashboard statistics
+type DashboardHandler struct {
+	calendar         timezone.Calendar
+	dashboardService *usage.DashboardService
+	startTime        time.Time // Server start time for uptime calculation
+}
+
+// BatchUsersUsageRequest represents the request body for batch user usage stats
+type BatchUsersUsageRequest struct {
+	UserIDs []int64 `json:"user_ids" binding:"required"`
+}
+
+// BatchAPIKeysUsageRequest represents the request body for batch api key usage stats
+type BatchAPIKeysUsageRequest struct {
+	APIKeyIDs []int64 `json:"api_key_ids" binding:"required"`
+}
+
 // parseOptionalBoolDashboardFilter 解析可选布尔筛选，空值表示不启用该条件。
 func parseOptionalBoolDashboardFilter(c *gin.Context, key string) (*bool, error) {
 	raw := strings.TrimSpace(c.Query(key))
@@ -24,13 +41,6 @@ func parseOptionalBoolDashboardFilter(c *gin.Context, key string) (*bool, error)
 		return nil, fmt.Errorf("invalid %s value, use true or false", key)
 	}
 	return &value, nil
-}
-
-// DashboardHandler handles admin dashboard statistics
-type DashboardHandler struct {
-	calendar         timezone.Calendar
-	dashboardService *usage.DashboardService
-	startTime        time.Time // Server start time for uptime calculation
 }
 
 // NewDashboardHandler creates a new admin dashboard handler
@@ -473,11 +483,6 @@ func (h *DashboardHandler) GetUserUsageTrend(c *gin.Context) {
 	})
 }
 
-// BatchUsersUsageRequest represents the request body for batch user usage stats
-type BatchUsersUsageRequest struct {
-	UserIDs []int64 `json:"user_ids" binding:"required"`
-}
-
 func parseRankingLimit(raw string) int {
 	limit, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil || limit <= 0 {
@@ -540,11 +545,6 @@ func (h *DashboardHandler) GetBatchUsersUsage(c *gin.Context) {
 	payload := gin.H{"stats": stats}
 	c.Header("X-Snapshot-Cache", cacheStatusValue(hit))
 	response.Success(c, payload)
-}
-
-// BatchAPIKeysUsageRequest represents the request body for batch api key usage stats
-type BatchAPIKeysUsageRequest struct {
-	APIKeyIDs []int64 `json:"api_key_ids" binding:"required"`
 }
 
 // GetBatchAPIKeysUsage handles getting usage stats for multiple API keys

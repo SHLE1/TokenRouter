@@ -35,6 +35,21 @@ type SchedulerScoreView struct {
 	options      SchedulerScoreOptions
 }
 
+// ProviderSchedulerScore 表示管理端展示的提供商调度评分。
+type ProviderSchedulerScore struct {
+	BaseScore             float64 `json:"base_score"`
+	StickyScore           float64 `json:"sticky_score"`
+	StickyScoreInfinity   bool    `json:"sticky_score_infinity"`
+	StickyWeightedEnabled bool    `json:"sticky_weighted_enabled"`
+}
+
+// ProviderSchedulerGroupScore 表示提供商在指定分组中的调度评分。
+type ProviderSchedulerGroupScore struct {
+	GroupID   *int64 `json:"group_id"`
+	GroupName string `json:"group_name,omitempty"`
+	ProviderSchedulerScore
+}
+
 func NewSchedulerScoreView(reader SchedulerScoreProviders, options SchedulerScoreOptions) *SchedulerScoreView {
 	if options.Warn == nil {
 		options.Warn = func(string, ...any) {}
@@ -260,19 +275,4 @@ func (h *SchedulerScoreView) listProviderSchedulerScoreFilterPool(
 func (h *SchedulerScoreView) Build(ctx context.Context, values []Record, platform, kind, status, search string, groupID int64, privacy string) (map[int64]*ProviderSchedulerScore, map[int64][]ProviderSchedulerGroupScore) {
 	pool := h.listProviderSchedulerScoreFilterPool(ctx, platform, kind, status, search, groupID, privacy)
 	return h.buildAdvancedProviderSchedulerScores(ctx, values, pool)
-}
-
-// ProviderSchedulerScore 表示管理端展示的提供商调度评分。
-type ProviderSchedulerScore struct {
-	BaseScore             float64 `json:"base_score"`
-	StickyScore           float64 `json:"sticky_score"`
-	StickyScoreInfinity   bool    `json:"sticky_score_infinity"`
-	StickyWeightedEnabled bool    `json:"sticky_weighted_enabled"`
-}
-
-// ProviderSchedulerGroupScore 表示提供商在指定分组中的调度评分。
-type ProviderSchedulerGroupScore struct {
-	GroupID   *int64 `json:"group_id"`
-	GroupName string `json:"group_name,omitempty"`
-	ProviderSchedulerScore
 }

@@ -82,7 +82,7 @@ func TestSanitizedUpstreamPathSuffixRejectsNonConformingSegments(t *testing.T) {
 
 func TestSanitizedUpstreamPathSuffixEnforcesBounds(t *testing.T) {
 	longSegment := "/"
-	for i := 0; i < MaxUpstreamPathSegmentLen+1; i++ {
+	for range MaxUpstreamPathSegmentLen + 1 {
 		longSegment += "a"
 	}
 	_, ok := SanitizedUpstreamPathSuffix(longSegment)

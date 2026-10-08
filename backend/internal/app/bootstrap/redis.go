@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	redisinfra "github.com/TokenFlux/TokenRouter/internal/infra/redis"
-
-	"github.com/redis/go-redis/v9"
 )
 
 // InitRedis 初始化 Redis 客户端

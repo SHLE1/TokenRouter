@@ -21,6 +21,20 @@ type recordStore struct {
 	events  *[]string
 }
 
+type recordWriter struct {
+	rows               []*usage.UsageLog
+	bestErr, errorSync error
+	events             *[]string
+	contexts           []error
+}
+
+type recordEffects struct{ events *[]string }
+
+type recordModels struct{}
+
+// recordPriceCatalog 仅为资金和日志时序测试提供明确目录价。
+type recordPriceCatalog struct{}
+
 func (s *recordStore) Apply(ctx context.Context, c *billing.UsageBillingCommand) (*billing.UsageBillingApplyResult, error) {
 	s.calls++
 	s.command = c
@@ -29,13 +43,6 @@ func (s *recordStore) Apply(ctx context.Context, c *billing.UsageBillingCommand)
 		return nil, err
 	}
 	return &billing.UsageBillingApplyResult{Applied: true, BalanceAmountUSD: c.BillableAmountUSD}, s.err
-}
-
-type recordWriter struct {
-	rows               []*usage.UsageLog
-	bestErr, errorSync error
-	events             *[]string
-	contexts           []error
 }
 
 func (w *recordWriter) CreateBestEffort(ctx context.Context, r *usage.UsageLog) error {
@@ -52,8 +59,6 @@ func (w *recordWriter) Create(ctx context.Context, r *usage.UsageLog) (bool, err
 	return true, w.errorSync
 }
 
-type recordEffects struct{ events *[]string }
-
 func (e recordEffects) ProviderUsed(int64) { *e.events = append(*e.events, "used") }
 
 func (e recordEffects) InvalidateAuth(context.Context, string) { *e.events = append(*e.events, "auth") }
@@ -61,8 +66,6 @@ func (e recordEffects) InvalidateAuth(context.Context, string) { *e.events = app
 func (e recordEffects) Settled(SettlementInput, *billing.UsageBillingApplyResult) {
 	*e.events = append(*e.events, "effects")
 }
-
-type recordModels struct{}
 
 func (recordModels) Candidates(model string, _ ...string) []string { return []string{model} }
 
@@ -145,9 +148,6 @@ func TestSnapshotIsolatesQueueInputs(t *testing.T) {
 	require.Equal(t, 1, frozen.Result.ImageSizeBreakdown["1K"])
 	require.Equal(t, 2.0, frozen.Subscription.Plan.GroupRateMultipliers[7])
 }
-
-// recordPriceCatalog 仅为资金和日志时序测试提供明确目录价。
-type recordPriceCatalog struct{}
 
 func (recordPriceCatalog) GetModelPricing(model string) *pricing.CatalogModelPricing {
 	if model != "claude-sonnet-4" {

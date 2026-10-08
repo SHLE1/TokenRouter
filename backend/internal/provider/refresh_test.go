@@ -16,13 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-func TestIsInvalidGrantError(t *testing.T) {
-	require.True(t, IsInvalidGrantError(errors.New("invalid_grant: token revoked")))
-	require.True(t, IsInvalidGrantError(errors.New("INVALID_GRANT")))
-	require.False(t, IsInvalidGrantError(errors.New("invalid_client")))
-	require.False(t, IsInvalidGrantError(nil))
-}
-
 // refreshAPIProviderRepo 模拟刷新协调器读取和保存凭据。
 type refreshAPIProviderRepo struct {
 	provider * // returned by GetByID
@@ -38,6 +31,57 @@ type refreshAPIProviderRepo struct {
 	beforeSuccessCAS        func(*refreshAPIProviderRepo)
 	lastExpectedCredentials map[string]any
 	lastExpectedProxyID     *int64
+}
+
+// refreshAPIExecutorStub 模拟刷新执行器。
+type refreshAPIExecutorStub struct {
+	needsRefresh  bool
+	cannotRefresh bool
+	credentials   map[string]any
+	err           error
+	refreshCalls  int
+	canRefresh    func(*Record) bool
+	onRefresh     func()
+	delay         time.Duration
+}
+
+// refreshAPICacheStub 模拟刷新锁的缓存存储。
+type refreshAPICacheStub struct {
+	lockResult    bool
+	lockErr       error
+	releaseCalls  int
+	releaseCtxErr error
+	deleteCalls   int
+	deleteKey     string
+	deleteCtxErr  error
+}
+
+// refreshAPIProviderRepoWithRace 在后续读取时返回另一份记录，模拟其他 worker 已刷新令牌。
+type refreshAPIProviderRepoWithRace struct {
+	refreshAPIProviderRepo
+	raceProvider * // returned on 2nd+ GetByID call
+	Record
+	getByIDCalls int
+}
+
+// dynamicRefreshExecutor 通过注入函数实现刷新资格判断和交换。
+type dynamicRefreshExecutor struct {
+	canRefresh       bool
+	cacheKey         string
+	needsRefreshFunc func() bool
+	refreshFunc      func(context.Context, *Record) (map[string]any, error)
+}
+
+// 上下文在取锁前已取消，访问数据库或交换器会使测试失败。
+type refreshCoreRepo struct{}
+
+type refreshCoreExecutor struct{ refreshCalls int }
+
+func TestIsInvalidGrantError(t *testing.T) {
+	require.True(t, IsInvalidGrantError(errors.New("invalid_grant: token revoked")))
+	require.True(t, IsInvalidGrantError(errors.New("INVALID_GRANT")))
+	require.False(t, IsInvalidGrantError(errors.New("invalid_client")))
+	require.False(t, IsInvalidGrantError(nil))
 }
 
 func (r *refreshAPIProviderRepo) GetByID(_ context.Context, _ int64) (*Record, error) {
@@ -111,18 +155,6 @@ func (r *refreshAPIProviderRepo) UpdateGrokOAuthCredentialsIfUnchanged(
 	return true, nil
 }
 
-// refreshAPIExecutorStub 模拟刷新执行器。
-type refreshAPIExecutorStub struct {
-	needsRefresh  bool
-	cannotRefresh bool
-	credentials   map[string]any
-	err           error
-	refreshCalls  int
-	canRefresh    func(*Record) bool
-	onRefresh     func()
-	delay         time.Duration
-}
-
 func (e *refreshAPIExecutorStub) CanRefresh(provider *Record) bool {
 	if e.cannotRefresh {
 		return false
@@ -153,17 +185,6 @@ func (e *refreshAPIExecutorStub) Refresh(_ context.Context, _ *Record) (map[stri
 
 func (e *refreshAPIExecutorStub) CacheKey(provider *Record) string {
 	return "test:api:" + provider.Platform
-}
-
-// refreshAPICacheStub 模拟刷新锁的缓存存储。
-type refreshAPICacheStub struct {
-	lockResult    bool
-	lockErr       error
-	releaseCalls  int
-	releaseCtxErr error
-	deleteCalls   int
-	deleteKey     string
-	deleteCtxErr  error
 }
 
 func (c *refreshAPICacheStub) GetAccessToken(context.Context, string) (string, error) {
@@ -703,14 +724,6 @@ func TestMergeCredentials_NewOverridesOld(t *testing.T) {
 	require.Equal(t, "old-refresh", result["refresh_token"]) // preserved
 }
 
-// refreshAPIProviderRepoWithRace 在后续读取时返回另一份记录，模拟其他 worker 已刷新令牌。
-type refreshAPIProviderRepoWithRace struct {
-	refreshAPIProviderRepo
-	raceProvider * // returned on 2nd+ GetByID call
-	Record
-	getByIDCalls int
-}
-
 func (r *refreshAPIProviderRepoWithRace) GetByID(_ context.Context, _ int64) (*Record, error) {
 	r.getByIDCalls++
 	if r.getByIDCalls > 1 && r.raceProvider != nil {
@@ -862,7 +875,7 @@ func TestRefreshIfNeeded_LocalMutexSerializesConcurrent(t *testing.T) {
 	results := make([]*OAuthRefreshResult, 2)
 	errs := make([]error, 2)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -950,14 +963,6 @@ func TestRefreshIfNeeded_ReleasesDistributedLockWithCleanupContext(t *testing.T)
 	require.Zero(t, provider.GetCredentialAsInt64("_token_version"))
 	require.Equal(t, 1, cache.releaseCalls)
 	require.NoError(t, cache.releaseCtxErr)
-}
-
-// dynamicRefreshExecutor 通过注入函数实现刷新资格判断和交换。
-type dynamicRefreshExecutor struct {
-	canRefresh       bool
-	cacheKey         string
-	needsRefreshFunc func() bool
-	refreshFunc      func(context.Context, *Record) (map[string]any, error)
 }
 
 func (e *dynamicRefreshExecutor) CanRefresh(_ *Record) bool { return e.canRefresh }
@@ -1053,14 +1058,9 @@ func TestRefreshIfNeeded_LocalLockWaitHonorsContext(t *testing.T) {
 	require.Zero(t, executor.refreshCalls)
 }
 
-// 上下文在取锁前已取消，访问数据库或交换器会使测试失败。
-type refreshCoreRepo struct{}
-
 func (*refreshCoreRepo) GetByID(context.Context, int64) (*Record, error) {
 	panic("等待锁时不应访问仓储")
 }
-
-type refreshCoreExecutor struct{ refreshCalls int }
 
 func (*refreshCoreExecutor) CanRefresh(*Record) bool { return true }
 

@@ -16,6 +16,12 @@ import (
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 )
 
+// ImageErrorResponse 返回图片错误的可选 code/param 和清洗后的客户端错误信息。
+type ImageErrorResponse struct {
+	Status                     int
+	Type, Message, Code, Param string
+}
+
 func WriteEmbeddingsUpstreamResponse(c *gin.Context, resp *http.Response, body []byte, filter *egress.CompiledHeaderFilter) {
 	if c == nil || resp == nil {
 		return
@@ -110,12 +116,6 @@ func IsExpectedGrokRealtimeClose(err error) bool {
 	default:
 		return false
 	}
-}
-
-// ImageErrorResponse 返回图片错误的可选 code/param 和清洗后的客户端错误信息。
-type ImageErrorResponse struct {
-	Status                     int
-	Type, Message, Code, Param string
 }
 
 func WriteImageError(c *gin.Context, value *ImageErrorResponse, adjustedWritten func() int, stopKeepalive func()) bool {

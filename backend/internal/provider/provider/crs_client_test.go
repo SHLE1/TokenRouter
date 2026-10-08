@@ -19,6 +19,30 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
+// 在 CRS 交换 token 期间修改持久凭据，检查迟到结果的处理。
+type crsStaleCredentialRepo struct {
+	providercore.CRSProviderStore
+	current *providercore.Record
+}
+
+type crsStaleOAuthClient struct {
+	OpenAIOAuthClient
+	repo  *crsStaleCredentialRepo
+	calls int
+}
+
+type crsDeprecatedExtraProviderRepo struct {
+	providercore.CRSProviderStore
+	providers map[string]*providercore.Record
+	nextID    int64
+}
+
+type crsOpenAIDeprecatedExtraSource struct {
+	collection  string
+	credentials map[string]any
+	extra       map[string]any
+}
+
 // TestCRSClientHTTPContract 通过本地服务器检查 HTTP 顺序、认证头、错误和响应读取上限。
 func TestCRSClientHTTPContract(t *testing.T) {
 	for _, mode := range []string{"success", "login_error", "blank_token", "login_oversize", "export_error", "export_oversize"} {
@@ -34,7 +58,7 @@ func TestCRSClientHTTPContract(t *testing.T) {
 					require.Equal(t, map[string]string{"username": "local", "password": "fixture"}, credentials)
 					switch mode {
 					case "login_error":
-						w.WriteHeader(403)
+						w.WriteHeader(http.StatusForbidden)
 						_, _ = w.Write([]byte("login-denied"))
 					case "blank_token":
 						_, _ = w.Write([]byte(`{"success":true,"token":" "}`))
@@ -192,12 +216,6 @@ func (r *crsStaleCredentialRepo) UpdateOAuthCredentialsIfUnchanged(ctx context.C
 	return true, r.UpdateCredentials(ctx, v.ID, credentials)
 }
 
-// 在 CRS 交换 token 期间修改持久凭据，检查迟到结果的处理。
-type crsStaleCredentialRepo struct {
-	providercore.CRSProviderStore
-	current *providercore.Record
-}
-
 func (r *crsStaleCredentialRepo) Create(_ context.Context, v *providercore.Record) error {
 	v.ID = 77
 	r.current = crsStaleCopy(v)
@@ -229,28 +247,10 @@ func crsStaleCopy(v *providercore.Record) *providercore.Record {
 	return &out
 }
 
-type crsStaleOAuthClient struct {
-	OpenAIOAuthClient
-	repo  *crsStaleCredentialRepo
-	calls int
-}
-
 func (c *crsStaleOAuthClient) RefreshTokenWithClientID(context.Context, string, string, string, ...openai.OAuthTokenRequestOptions) (*openai.TokenResponse, error) {
 	c.calls++
 	c.repo.current.Credentials = map[string]any{"access_token": "admin-new-at", "refresh_token": "admin-new-rt"}
 	return &openai.TokenResponse{AccessToken: "late-at", RefreshToken: "late-rt", ExpiresIn: 3600}, nil
-}
-
-type crsDeprecatedExtraProviderRepo struct {
-	providercore.CRSProviderStore
-	providers map[string]*providercore.Record
-	nextID    int64
-}
-
-type crsOpenAIDeprecatedExtraSource struct {
-	collection  string
-	credentials map[string]any
-	extra       map[string]any
 }
 
 func newCRSDeprecatedExtraProviderRepo(existing ...*providercore.Record) *crsDeprecatedExtraProviderRepo {

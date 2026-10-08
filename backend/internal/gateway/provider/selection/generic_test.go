@@ -30,6 +30,43 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
+type usageLogWindowBatchRepoStub struct {
+	usage.UsageLogRepository
+
+	batchResult map[int64]*usage.ProviderStats
+	batchErr    error
+	batchCalls  atomic.Int64
+
+	singleResult map[int64]*usage.ProviderStats
+	singleErr    error
+	singleCalls  atomic.Int64
+}
+
+type sessionLimitCacheHotpathStub struct {
+	billing.WindowCostCache
+
+	batchData map[int64]float64
+	batchErr  error
+
+	setData map[int64]float64
+	setErr  error
+}
+
+type stickyGatewayCacheHotpathStub struct {
+	session.GatewayCache
+
+	stickyID int64
+	getCalls atomic.Int64
+}
+
+// sessionLimitReleaseCacheStub 记录 UnregisterSession 调用，用于验证释放逻辑
+type sessionLimitReleaseCacheStub struct {
+	schedulercore.SessionLimitCache
+
+	unregistered map[int64][]string
+	err          error
+}
+
 func TestCollectSelectionFailureStats(t *testing.T) {
 	svc := NewGeneric(GenericDependencies{}, DefaultOptions())
 	model := "gpt-5.4"
@@ -679,18 +716,6 @@ func TestIsModelSupportedByProviderWithContext_QoderUsesGroupMappedProviderLayer
 		"provider whitelist should be checked after channel mapping and provider mapping")
 }
 
-type usageLogWindowBatchRepoStub struct {
-	usage.UsageLogRepository
-
-	batchResult map[int64]*usage.ProviderStats
-	batchErr    error
-	batchCalls  atomic.Int64
-
-	singleResult map[int64]*usage.ProviderStats
-	singleErr    error
-	singleCalls  atomic.Int64
-}
-
 func (s *usageLogWindowBatchRepoStub) GetProviderWindowStatsBatch(ctx context.Context, providerIDs []int64, startTime time.Time) (map[int64]*usage.ProviderStats, error) {
 	s.batchCalls.Add(1)
 	if s.batchErr != nil {
@@ -716,16 +741,6 @@ func (s *usageLogWindowBatchRepoStub) GetProviderWindowStats(ctx context.Context
 	return &usage.ProviderStats{}, nil
 }
 
-type sessionLimitCacheHotpathStub struct {
-	billing.WindowCostCache
-
-	batchData map[int64]float64
-	batchErr  error
-
-	setData map[int64]float64
-	setErr  error
-}
-
 func (s *sessionLimitCacheHotpathStub) GetWindowCostBatch(ctx context.Context, providerIDs []int64) (map[int64]float64, error) {
 	if s.batchErr != nil {
 		return nil, s.batchErr
@@ -748,13 +763,6 @@ func (s *sessionLimitCacheHotpathStub) SetWindowCost(ctx context.Context, provid
 	}
 	s.setData[providerID] = cost
 	return nil
-}
-
-type stickyGatewayCacheHotpathStub struct {
-	session.GatewayCache
-
-	stickyID int64
-	getCalls atomic.Int64
 }
 
 func (s *stickyGatewayCacheHotpathStub) GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {
@@ -3194,14 +3202,6 @@ func TestGatewayNewSelectionResultReleasesSlotWhenHydrationFails(t *testing.T) {
 	if calls != 1 {
 		t.Fatalf("释放次数=%d，期望 1", calls)
 	}
-}
-
-// sessionLimitReleaseCacheStub 记录 UnregisterSession 调用，用于验证释放逻辑
-type sessionLimitReleaseCacheStub struct {
-	schedulercore.SessionLimitCache
-
-	unregistered map[int64][]string
-	err          error
 }
 
 func newSessionLimitReleaseCacheStub() *sessionLimitReleaseCacheStub {

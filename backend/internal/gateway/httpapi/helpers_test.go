@@ -71,6 +71,378 @@ import (
 	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
+const (
+	testCodexFingerprintSeed = "11111111-1111-4111-8111-111111111111"
+
+	keepaliveTestInterval = 10 * time.Millisecond
+)
+
+var (
+	handlerStructuredLogCaptureMu sync.Mutex
+
+	_ gatewaysession.CyberSessionBlockStore = (*fakeCyberBlockStore)(nil)
+
+	_ settings.Repository = (*fakeSettingRepo)(nil)
+
+	_ gatewaysession.GatewayCache           = (*comboCacheAndStore)(nil)
+	_ gatewaysession.CyberSessionBlockStore = (*comboCacheAndStore)(nil)
+
+	// 编译期接口断言
+	_ gatewayprovider.ExecutionProviderStore = (*stubOpenAIProviderRepo)(nil)
+	_ gatewaysession.GatewayCache            = (*sessiontestkit.StickyCache)(nil)
+
+	// 8 字节 PNG 魔数足以让字节嗅探判定为 image/png。
+	b64BackfillPNGBytes = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
+
+	opsErrorLogQueue    chan opsErrorLogJob
+	testOpsCaptureQueue *captureOpsErrorQueue
+)
+
+type handlerInMemoryLogSink struct {
+	mu     sync.Mutex
+	events []*logging.LogEvent
+}
+
+// countHTTPContract 只替换外部执行与资金读取，实际 HTTP 和唯一尝试循环均运行。
+type countHTTPContract struct {
+	CountExecutor
+	t        *testing.T
+	events   []string
+	attempts int
+	bodies   [][]byte
+	group    int64
+	platform string
+}
+
+type countHTTPContractTarget struct {
+	fixture *countHTTPContract
+	id      int64
+}
+
+type fakeCyberBlockStore struct {
+	blocked   map[string]bool
+	scopes    map[string]bool
+	findCalls int
+}
+
+// fakeSettingRepo is a minimal SettingRepository stub for unit tests.
+// Only GetValue is exercised by GetCyberSessionBlockRuntime; all other methods
+// panic so accidental calls are caught immediately.
+type fakeSettingRepo struct {
+	vals map[string]string
+}
+
+// comboCacheAndStore implements both GatewayCache (no-op stubs) and
+// CyberSessionBlockStore (delegates to fakeCyberBlockStore) so it can be
+// injected as s.cache and successfully type-asserted to CyberSessionBlockStore.
+type comboCacheAndStore struct {
+	store fakeCyberBlockStore
+}
+
+// 逐步执行替身记录调用顺序，调用未实现接口时测试失败。
+type cyberTestPorts struct {
+	CyberBackend
+	ModerationPort
+	events   []string
+	scope    bool
+	scopeErr error
+	mark     moderationflow.Mark
+	task     func()
+	entry    *ops.OpsInsertErrorLogInput
+	enabled  bool
+	found    string
+}
+
+type grokQuotaProviderRepo struct {
+	*grokFixtureProviders
+	updates               map[int64]map[string]any
+	updateCalls           int
+	rateLimitedCalls      int
+	lastRateLimitedID     int64
+	lastRateLimitResetAt  time.Time
+	tempUnschedCalls      int
+	lastTempUnschedID     int64
+	lastTempUnschedUntil  time.Time
+	lastTempUnschedReason string
+	recoveryClearCalls    int
+	recoveryObservedAt    time.Time
+	recoveryObservedReset time.Time
+	recoveryClearResult   bool
+}
+
+// grokFixtureProviders 保存按 ID 回读的指针和计数，其他写入使用基础夹具。
+type grokFixtureProviders struct {
+	gatewaytestkit.HealthStoreBase
+	providersByID map[int64]*gatewayprovider.ExecutionProvider
+	getByIDCalls  int
+}
+
+// wsFixtureOptions 保存传输测试使用的选项。
+type wsFixtureOptions struct {
+	WS      gatewayws.Parameters
+	Pool    openaiws.WSPoolOptions
+	Request OpenAIRequestOptions
+	Output  OpenAIResponseOptions
+}
+
+// wsFixtureInputs 使用实际拥有者与I/O替身，不构造旧网关应用图。
+type wsFixtureInputs struct {
+	options   *wsFixtureOptions
+	providers gatewayprovider.ExecutionProviderStore
+	cache     gatewaysession.GatewayCache
+	health    *provideradapter.UpstreamHealth
+	transport httpclient.UpstreamTransport
+	dialer    openaicore.WSClientDialer
+	pool      *openaiws.WSConnPool
+	state     gatewaysession.OpenAIWSStateStore
+
+	readers   *gatewayprovider.RuntimeReaders
+	corrector *openaicore.CodexToolCorrector
+}
+
+// wsExecutionFixture 组合 HTTP 和 WS 测试使用的执行器，共用连接与会话状态。
+type wsExecutionFixture struct {
+	*OpenAIResponsesExecutor
+	Responses *OpenAIResponsesExecutor
+	Text      *OpenAITextExecutor
+	choices   *selection.Compatible
+	options   *wsFixtureOptions
+}
+
+type mediaHTTPProbe struct {
+	AuxiliaryHTTPPorts
+	t       *testing.T
+	access  *MediaAccess
+	steps   []string
+	mapping routing.GroupMappingResult
+}
+
+type modelsBackendStub struct {
+	ModelsBackend
+	key               *apikey.APIKey
+	result            routing.RequestableModelsResult
+	byGroup           map[int64]routing.RequestableModelsResult
+	forced            string
+	resolvedPlatforms []string
+	response          *ModelHTTPResponse
+	selectErr         error
+	antigravity       bool
+	paths             []string
+	observations      int
+}
+
+// 回退分支调用未实现的目录方法时测试失败，空结果会掩盖默认列表恢复错误。
+type modelsCatalogStub struct {
+	ModelsCatalog
+	fallbacks int
+}
+
+type openAIStream403ProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	setErrorCalls int
+}
+
+type agentIdentityForwardRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	provider *gatewayprovider.ExecutionProvider
+}
+
+// auxiliaryFixtureInputs 提供辅助请求测试所需的依赖。
+type auxiliaryFixtureInputs struct {
+	allowHTTP     bool
+	transport     httpclient.UpstreamTransport
+	profiles      *egressprovider.TLSProfiles
+	store         gatewayprovider.ExecutionProviderStore
+	credentials   *providercore.OpenAIExecutionCredentials
+	observer      *provideradapter.UpstreamHealth
+	authorization *providercore.OpenAIAuthorization
+}
+
+type auxiliaryHTTPRecorder struct {
+	// checkContext 让传输替身按请求取消状态拒绝发送。
+	checkContext bool
+	lastReq      *http.Request
+	lastBody     []byte
+	lastProxyURL string
+	requests     []*http.Request
+	bodies       [][]byte
+
+	resp      *http.Response
+	responses []*http.Response
+	err       error
+
+	lastTLSProfile *tlsfingerprint.Profile
+}
+
+type openAIChatFailingWriter struct {
+	gin.ResponseWriter
+	failAfter int
+	writes    int
+}
+
+type openAIChatStreamReadErrorCloser struct {
+	payload []byte
+	err     error
+	sent    bool
+}
+
+type passthroughFlushTestWriter struct {
+	gin.ResponseWriter
+	recorder         *httptest.ResponseRecorder
+	failAfterWrites  int
+	successfulWrites int
+	failedWrites     int
+	flushBodyLengths []int
+}
+
+type openAIResponseFlushRecorder struct {
+	header          http.Header
+	mu              sync.Mutex
+	body            bytes.Buffer
+	status          int
+	writes          int
+	failAfterWrites int
+	flushSnapshots  []string
+	flushEvents     chan int
+	blockFlush      int
+	flushBlocked    chan struct{}
+	releaseFlush    <-chan struct{}
+}
+
+type stubOpenAIProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+
+	providers []gatewayprovider.
+
+		// tempUnschedulableOpenAIProviderRepo 记录临时不可调度规则写入的模型范围。
+		ExecutionProvider
+}
+
+type openAIStreamReadThenErrorCloser struct {
+	reader *strings.Reader
+	err    error
+}
+
+// imagesFixtureInputs 只提供图片执行实际使用的传输、提供商存储和输出预算。
+type imagesFixtureInputs struct {
+	observer                       *provideradapter.UpstreamHealth
+	transport                      httpclient.UpstreamTransport
+	store                          gatewayprovider.ExecutionProviderStore
+	allowHTTP                      bool
+	ImageStreamDataIntervalTimeout int
+	ImageStreamKeepaliveInterval   int
+}
+
+// httpRuntimeClock 为过期窗口测试提供时钟。
+type httpRuntimeClock struct{ nanos atomic.Int64 }
+
+type transientCooldownProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
+}
+
+// responsesFixtureOptions 只描述 Responses 断言使用的请求、响应和图片桥接选项。
+type responsesFixtureOptions struct {
+	Request        OpenAIRequestOptions
+	Response       OpenAIResponseOptions
+	Headers        egress.ResponseHeaderOptions
+	Health         providercore.HealthOptions
+	ForcedTemplate string
+	ImageBridge    bool
+}
+
+type responsesFixtureInputs struct {
+	providers       gatewayprovider.ExecutionProviderStore
+	health          *provideradapter.UpstreamHealth
+	headers         *egress.CompiledHeaderFilter
+	profiles        *egressprovider.TLSProfiles
+	routers         *egress.TLSFingerprintRouterService
+	credentials     *providercore.OpenAIExecutionCredentials
+	registerTaskURL string
+	grokTokens      *providercore.GrokTokenSource
+	readers         *gatewayprovider.RuntimeReaders
+	cache           gatewaysession.GatewayCache
+	compactModel    string
+	transport       httpclient.UpstreamTransport
+	options         *responsesFixtureOptions
+}
+
+// 测试嵌入 HTTP 适配器，I/O 接口使用替身，HTTP 读取和错误输出直接调用生产实现。
+type openAITextEntryProbe struct {
+	openAITextHTTPBackend
+	events                          []string
+	key                             *apikey.APIKey
+	allowed, owned, image, canceled bool
+	eligibility                     error
+	rewrite                         []byte
+	decision                        *moderation.Decision
+	call                            *OpenAITextCall
+}
+
+// 不选择提供商的终点证明前置组合已进入统一循环，未额外发起供应商请求。
+type openAITextNoAttempt struct{ textflow.ResponsePorts }
+
+type openAITextReadProbe struct {
+	io.Reader
+	reads int
+}
+
+type opsErrorLogJob struct {
+	ops   *ops.OpsService
+	entry *ops.OpsInsertErrorLogInput
+}
+
+type captureOpsErrorQueue struct{ health ops.ErrorLogQueueHealth }
+
+// qoderRuntimeContract 为 HTTP、提供商尝试和完成提交测试提供外部依赖替身。
+type qoderRuntimeContract struct {
+	t                                   *testing.T
+	partial                             bool
+	wire                                protocol.ProtocolID
+	events                              []string
+	captures, records, binds, refreshes int
+}
+
+type searchHTTPStub struct {
+	calls         []string
+	authenticated bool
+	platform      string
+	billing       *SearchHTTPFailure
+	moderation    *SearchHTTPFailure
+	isX           bool
+	released      bool
+	completed     bool
+}
+
+type openAIWSPolicyRepo struct {
+	transientCooldownProviderRepo
+	setErrorCalls int
+}
+
+// 拒绝路径调用未实现的调度或存储接口时，测试失败。
+type prefaceBackend struct {
+	CompatibleTextBackend
+	key       *apikey.APIKey
+	events    []string
+	block     bool
+	policyErr error
+	call      CompatibleTextCall
+}
+
+// Gemini 使用独立的审核接口实现，按自己的顺序调用。
+type geminiPrefaceBackend struct {
+	GeminiNativeBackend
+	base  *prefaceBackend
+	call  GeminiNativeCall
+	bound int64
+}
+
+// unifiedRecordFunds 在协议用量测试中通过完成流程调用结算接口。
+type unifiedRecordFunds struct{}
+
+func init() {}
+
 func adaptiveProtocolTestProvider(platform string, baseURLs map[string]any) *gatewayprovider.ExecutionProvider {
 	return &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
@@ -110,8 +482,6 @@ func newTestAgentIdentityKey(t *testing.T) (openaicore.AgentIdentityKey, string)
 	}, base64.StdEncoding.EncodeToString(der)
 }
 
-const testCodexFingerprintSeed = "11111111-1111-4111-8111-111111111111"
-
 func newFingerprintStageTestContext(t *testing.T) *gin.Context {
 	t.Helper()
 
@@ -132,8 +502,6 @@ func newCompactBridgeTestContext(t *testing.T, markClientStream bool) (*gin.Cont
 	return c, rec
 }
 
-const keepaliveTestInterval = 10 * time.Millisecond
-
 // waitForKeepaliveBeats 等待至少一次心跳。读取 recorder 前调用 StopOpenAICompactSSEKeepaliveCommitted，等待心跳写入结束。
 func waitForKeepaliveBeats() {
 	time.Sleep(20 * keepaliveTestInterval)
@@ -149,11 +517,6 @@ func stripKeepaliveComments(body string) string {
 		blocks = append(blocks, block)
 	}
 	return strings.Join(blocks, "\n\n")
-}
-
-type handlerInMemoryLogSink struct {
-	mu     sync.Mutex
-	events []*logging.LogEvent
 }
 
 func (s *handlerInMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
@@ -240,8 +603,6 @@ func captureHandlerStructuredLog(t *testing.T) (*handlerInMemoryLogSink, func())
 	}
 }
 
-var handlerStructuredLogCaptureMu sync.Mutex
-
 // ContainsMessage 保留跨入口日志合同的子串匹配，不附加级别条件。
 func (s *handlerInMemoryLogSink) ContainsMessage(substr string) bool {
 	s.mu.Lock()
@@ -252,17 +613,6 @@ func (s *handlerInMemoryLogSink) ContainsMessage(substr string) bool {
 		}
 	}
 	return false
-}
-
-// countHTTPContract 只替换外部执行与资金读取，实际 HTTP 和唯一尝试循环均运行。
-type countHTTPContract struct {
-	CountExecutor
-	t        *testing.T
-	events   []string
-	attempts int
-	bodies   [][]byte
-	group    int64
-	platform string
 }
 
 func (f *countHTTPContract) CheckKey(_ context.Context, _ *apikey.APIKey, _ *billing.UserSubscription, platform string, simple bool) error {
@@ -295,11 +645,6 @@ func (f *countHTTPContract) PlanCountRoute(_ context.Context, key *apikey.APIKey
 func (*countHTTPContract) TempUnscheduleRetryableError(context.Context, int64, *forwardcore.UpstreamFailoverError) {
 }
 
-type countHTTPContractTarget struct {
-	fixture *countHTTPContract
-	id      int64
-}
-
 func (t countHTTPContractTarget) Snapshot() providercore.ProviderSnapshot {
 	return providercore.ProviderSnapshot{ID: t.id, Platform: "anthropic"}
 }
@@ -326,14 +671,6 @@ func (t countHTTPContractTarget) ForwardCountTokens(_ context.Context, c *gin.Co
 func unexpectedCountModelDiagnosis(context.Context, *int64, string, string) routing.ModelAvailabilityDiagnosis {
 	panic("计数合同不应进入模型诊断")
 }
-
-type fakeCyberBlockStore struct {
-	blocked   map[string]bool
-	scopes    map[string]bool
-	findCalls int
-}
-
-var _ gatewaysession.CyberSessionBlockStore = (*fakeCyberBlockStore)(nil)
 
 func (f *fakeCyberBlockStore) SetCyberSessionBlocked(_ context.Context, scopeKey string, keys []string, _ time.Duration) error {
 	if f.blocked == nil {
@@ -363,13 +700,6 @@ func (f *fakeCyberBlockStore) FindCyberSessionBlocked(_ context.Context, keys []
 		}
 	}
 	return "", nil
-}
-
-// fakeSettingRepo is a minimal SettingRepository stub for unit tests.
-// Only GetValue is exercised by GetCyberSessionBlockRuntime; all other methods
-// panic so accidental calls are caught immediately.
-type fakeSettingRepo struct {
-	vals map[string]string
 }
 
 func (r *fakeSettingRepo) GetValue(_ context.Context, key string) (string, error) {
@@ -403,20 +733,6 @@ func (r *fakeSettingRepo) GetAll(_ context.Context) (map[string]string, error) {
 func (r *fakeSettingRepo) Delete(_ context.Context, _ string) error {
 	panic("fakeSettingRepo.Delete not implemented")
 }
-
-var _ settings.Repository = (*fakeSettingRepo)(nil)
-
-// comboCacheAndStore implements both GatewayCache (no-op stubs) and
-// CyberSessionBlockStore (delegates to fakeCyberBlockStore) so it can be
-// injected as s.cache and successfully type-asserted to CyberSessionBlockStore.
-type comboCacheAndStore struct {
-	store fakeCyberBlockStore
-}
-
-var (
-	_ gatewaysession.GatewayCache           = (*comboCacheAndStore)(nil)
-	_ gatewaysession.CyberSessionBlockStore = (*comboCacheAndStore)(nil)
-)
 
 func (c *comboCacheAndStore) GetSessionProviderID(_ context.Context, _ int64, _ string) (int64, error) {
 	return 0, errors.New("stub")
@@ -482,20 +798,6 @@ func (c *comboCacheAndStore) FindCyberSessionBlocked(ctx context.Context, keys [
 	return c.store.FindCyberSessionBlocked(ctx, keys)
 }
 
-// 逐步执行替身记录调用顺序，调用未实现接口时测试失败。
-type cyberTestPorts struct {
-	CyberBackend
-	ModerationPort
-	events   []string
-	scope    bool
-	scopeErr error
-	mark     moderationflow.Mark
-	task     func()
-	entry    *ops.OpsInsertErrorLogInput
-	enabled  bool
-	found    string
-}
-
 func (p *cyberTestPorts) Mark(*gin.Context) *moderationflow.Mark { return &p.mark }
 
 func (p *cyberTestPorts) UpstreamEndpoint(*gin.Context, string) string { return "/v1/responses" }
@@ -552,25 +854,6 @@ func (p *cyberTestPorts) Check(context.Context, moderation.ContentModerationChec
 	return nil, errors.New("failed")
 }
 
-func init() {}
-
-type grokQuotaProviderRepo struct {
-	*grokFixtureProviders
-	updates               map[int64]map[string]any
-	updateCalls           int
-	rateLimitedCalls      int
-	lastRateLimitedID     int64
-	lastRateLimitResetAt  time.Time
-	tempUnschedCalls      int
-	lastTempUnschedID     int64
-	lastTempUnschedUntil  time.Time
-	lastTempUnschedReason string
-	recoveryClearCalls    int
-	recoveryObservedAt    time.Time
-	recoveryObservedReset time.Time
-	recoveryClearResult   bool
-}
-
 func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {
 	r.updateCalls++
 	if r.updates == nil {
@@ -618,13 +901,6 @@ func (r *grokQuotaProviderRepo) SetTempUnschedulable(_ context.Context, id int64
 	return nil
 }
 
-// grokFixtureProviders 保存按 ID 回读的指针和计数，其他写入使用基础夹具。
-type grokFixtureProviders struct {
-	gatewaytestkit.HealthStoreBase
-	providersByID map[int64]*gatewayprovider.ExecutionProvider
-	getByIDCalls  int
-}
-
 func (r *grokFixtureProviders) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	r.getByIDCalls++
 	if value, ok := r.providersByID[id]; ok {
@@ -635,38 +911,6 @@ func (r *grokFixtureProviders) GetByID(_ context.Context, id int64) (*gatewaypro
 
 func newHTTPGrokTokenFixture(store gatewayprovider.ExecutionProviderStore, cache providercore.AccessTokenCache) *providercore.GrokTokenSource {
 	return &providercore.GrokTokenSource{Repository: gatewaytestkit.TokenRepository(store), Cache: cache, Policy: providercore.GrokProviderRefreshPolicy()}
-}
-
-// wsFixtureOptions 保存传输测试使用的选项。
-type wsFixtureOptions struct {
-	WS      gatewayws.Parameters
-	Pool    openaiws.WSPoolOptions
-	Request OpenAIRequestOptions
-	Output  OpenAIResponseOptions
-}
-
-// wsFixtureInputs 使用实际拥有者与I/O替身，不构造旧网关应用图。
-type wsFixtureInputs struct {
-	options   *wsFixtureOptions
-	providers gatewayprovider.ExecutionProviderStore
-	cache     gatewaysession.GatewayCache
-	health    *provideradapter.UpstreamHealth
-	transport httpclient.UpstreamTransport
-	dialer    openaicore.WSClientDialer
-	pool      *openaiws.WSConnPool
-	state     gatewaysession.OpenAIWSStateStore
-
-	readers   *gatewayprovider.RuntimeReaders
-	corrector *openaicore.CodexToolCorrector
-}
-
-// wsExecutionFixture 组合 HTTP 和 WS 测试使用的执行器，共用连接与会话状态。
-type wsExecutionFixture struct {
-	*OpenAIResponsesExecutor
-	Responses *OpenAIResponsesExecutor
-	Text      *OpenAITextExecutor
-	choices   *selection.Compatible
-	options   *wsFixtureOptions
 }
 
 func wsFixturePoolOptions(options *wsFixtureOptions) *openaiws.WSPoolOptions {
@@ -762,14 +1006,6 @@ func protocolHTTPOptions() *responsesFixtureOptions {
 	return &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{AllowInsecureHTTP: true}}}
 }
 
-type mediaHTTPProbe struct {
-	AuxiliaryHTTPPorts
-	t       *testing.T
-	access  *MediaAccess
-	steps   []string
-	mapping routing.GroupMappingResult
-}
-
 func (p *mediaHTTPProbe) Access(*gin.Context) (*MediaAccess, bool) {
 	p.steps = append(p.steps, "auth")
 	return p.access, p.access != nil
@@ -810,20 +1046,6 @@ func (p *mediaHTTPProbe) ParseGrok(string, []byte) GrokMediaInput {
 	return GrokMediaInput{}
 }
 
-type modelsBackendStub struct {
-	ModelsBackend
-	key               *apikey.APIKey
-	result            routing.RequestableModelsResult
-	byGroup           map[int64]routing.RequestableModelsResult
-	forced            string
-	resolvedPlatforms []string
-	response          *ModelHTTPResponse
-	selectErr         error
-	antigravity       bool
-	paths             []string
-	observations      int
-}
-
 func (p *modelsBackendStub) Access(*gin.Context) (*apikey.APIKey, bool) { return p.key, p.key != nil }
 
 func (p *modelsBackendStub) ForcedPlatform(*gin.Context) (string, bool) {
@@ -860,12 +1082,6 @@ func (p *modelsBackendStub) CapacityLimited(*gin.Context, error) { p.observation
 
 func (p *modelsBackendStub) SafeModelSegment(m string) bool { return m != "bad/model" }
 
-// 回退分支调用未实现的目录方法时测试失败，空结果会掩盖默认列表恢复错误。
-type modelsCatalogStub struct {
-	ModelsCatalog
-	fallbacks int
-}
-
 func (p *modelsCatalogStub) GeminiList(bool) GeminiModelsList {
 	p.fallbacks++
 	return GeminiModelsList{Models: []GeminiModel{{Name: "models/fallback"}}}
@@ -878,21 +1094,9 @@ func (p *modelsCatalogStub) GeminiModel(name string, _ bool) GeminiModel {
 
 func (p *modelsCatalogStub) HasGeminiFallback(name string) bool { return name == "known" }
 
-type openAIStream403ProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	setErrorCalls int
-}
-
 func (r *openAIStream403ProviderRepo) SetError(context.Context, int64, string) error {
 	r.setErrorCalls++
 	return nil
-}
-
-type agentIdentityForwardRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	provider *gatewayprovider.ExecutionProvider
 }
 
 func (r *agentIdentityForwardRepo) GetByID(_ context.Context, _ int64) (*gatewayprovider.ExecutionProvider, error) {
@@ -902,17 +1106,6 @@ func (r *agentIdentityForwardRepo) GetByID(_ context.Context, _ int64) (*gateway
 func (r *agentIdentityForwardRepo) UpdateCredentials(_ context.Context, _ int64, credentials map[string]any) error {
 	r.provider.Record.Credentials = credentials
 	return nil
-}
-
-// auxiliaryFixtureInputs 提供辅助请求测试所需的依赖。
-type auxiliaryFixtureInputs struct {
-	allowHTTP     bool
-	transport     httpclient.UpstreamTransport
-	profiles      *egressprovider.TLSProfiles
-	store         gatewayprovider.ExecutionProviderStore
-	credentials   *providercore.OpenAIExecutionCredentials
-	observer      *provideradapter.UpstreamHealth
-	authorization *providercore.OpenAIAuthorization
 }
 
 func newAuxiliaryFixture(v auxiliaryFixtureInputs) *OpenAIAuxiliary {
@@ -936,22 +1129,6 @@ func newAuxiliaryFixture(v auxiliaryFixtureInputs) *OpenAIAuxiliary {
 	}}
 	output := &OpenAIResponseOutput{Options: OpenAIResponseOptions{Configured: true, ReadLimit: 128 * 1024 * 1024}, Health: &provideradapter.OpenAIResponseHealth{Health: v.observer, Runtime: blocks, ModelTransient: models}, GrokHealth: grok, Headers: egress.CompileHeaderFilter(egress.ResponseHeaderOptions{})}
 	return &OpenAIAuxiliary{Requests: requests, Output: output, Authorization: v.authorization, CodexUsage: &provideradapter.CodexUsageObserver{Store: v.store, Throttle: providercore.NewWriteThrottle(30 * time.Second)}}
-}
-
-type auxiliaryHTTPRecorder struct {
-	// checkContext 让传输替身按请求取消状态拒绝发送。
-	checkContext bool
-	lastReq      *http.Request
-	lastBody     []byte
-	lastProxyURL string
-	requests     []*http.Request
-	bodies       [][]byte
-
-	resp      *http.Response
-	responses []*http.Response
-	err       error
-
-	lastTLSProfile *tlsfingerprint.Profile
 }
 
 func (u *auxiliaryHTTPRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
@@ -1005,24 +1182,12 @@ func newCompactBridgeTestService() *OpenAIResponseOutput {
 	return output
 }
 
-type openAIChatFailingWriter struct {
-	gin.ResponseWriter
-	failAfter int
-	writes    int
-}
-
 func (w *openAIChatFailingWriter) Write(p []byte) (int, error) {
 	if w.writes >= w.failAfter {
 		return 0, errors.New("write failed: client disconnected")
 	}
 	w.writes++
 	return w.ResponseWriter.Write(p)
-}
-
-type openAIChatStreamReadErrorCloser struct {
-	payload []byte
-	err     error
-	sent    bool
 }
 
 func (r *openAIChatStreamReadErrorCloser) Read(p []byte) (int, error) {
@@ -1050,15 +1215,6 @@ func assertGrokInlineImageTools(t *testing.T, body []byte, pathTemplate string) 
 	t.Helper()
 	require.False(t, gjson.GetBytes(body, strings.Replace(pathTemplate, "%s", "view_image", 1)).Exists(), string(body))
 	require.True(t, gjson.GetBytes(body, strings.Replace(pathTemplate, "%s", "shell_command", 1)).Exists(), string(body))
-}
-
-type passthroughFlushTestWriter struct {
-	gin.ResponseWriter
-	recorder         *httptest.ResponseRecorder
-	failAfterWrites  int
-	successfulWrites int
-	failedWrites     int
-	flushBodyLengths []int
 }
 
 func (w *passthroughFlushTestWriter) Write(data []byte) (int, error) {
@@ -1168,20 +1324,6 @@ func bindStatusCodePassthroughRule(c *gin.Context, platform string, statusCode i
 	BindErrorPassthroughService(c, svc)
 }
 
-type openAIResponseFlushRecorder struct {
-	header          http.Header
-	mu              sync.Mutex
-	body            bytes.Buffer
-	status          int
-	writes          int
-	failAfterWrites int
-	flushSnapshots  []string
-	flushEvents     chan int
-	blockFlush      int
-	flushBlocked    chan struct{}
-	releaseFlush    <-chan struct{}
-}
-
 func (w *openAIResponseFlushRecorder) Header() http.Header {
 	return w.header
 }
@@ -1247,21 +1389,6 @@ func openAIClientToolsTestService(upstream *auxiliaryHTTPRecorder) *OpenAIRespon
 	return newResponsesFixture(responsesFixtureInputs{transport: upstream})
 }
 
-// 编译期接口断言
-var (
-	_ gatewayprovider.ExecutionProviderStore = (*stubOpenAIProviderRepo)(nil)
-	_ gatewaysession.GatewayCache            = (*sessiontestkit.StickyCache)(nil)
-)
-
-type stubOpenAIProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-
-	providers []gatewayprovider.
-
-		// tempUnschedulableOpenAIProviderRepo 记录临时不可调度规则写入的模型范围。
-		ExecutionProvider
-}
-
 func (r stubOpenAIProviderRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	for i := range r.providers {
 		if r.providers[i].Record.ID == id {
@@ -1318,11 +1445,6 @@ func (r stubOpenAIProviderRepo) ListSchedulableUngroupedByPlatform(ctx context.C
 	return r.ListSchedulableByPlatform(ctx, platform)
 }
 
-type openAIStreamReadThenErrorCloser struct {
-	reader *strings.Reader
-	err    error
-}
-
 func (r *openAIStreamReadThenErrorCloser) Read(p []byte) (int, error) {
 	if r.reader != nil && r.reader.Len() > 0 {
 		return r.reader.Read(p)
@@ -1371,9 +1493,6 @@ func newOpenAIImageGenerationControlTestProvider() *gatewayprovider.ExecutionPro
 	}
 }
 
-// 8 字节 PNG 魔数足以让字节嗅探判定为 image/png。
-var b64BackfillPNGBytes = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
-
 func b64BackfillImageResponse(status int, contentType string, payload []byte) *http.Response {
 	header := http.Header{}
 	if contentType != "" {
@@ -1403,16 +1522,6 @@ func b64BackfillProvider(enabled bool) *gatewayprovider.ExecutionProvider {
 		provider.Record.Extra = map[string]any{gatewayprovider.ProviderExtraImagesURLToB64JSON: true}
 	}
 	return provider
-}
-
-// imagesFixtureInputs 只提供图片执行实际使用的传输、提供商存储和输出预算。
-type imagesFixtureInputs struct {
-	observer                       *provideradapter.UpstreamHealth
-	transport                      httpclient.UpstreamTransport
-	store                          gatewayprovider.ExecutionProviderStore
-	allowHTTP                      bool
-	ImageStreamDataIntervalTimeout int
-	ImageStreamKeepaliveInterval   int
 }
 
 func newImagesFixture(v imagesFixtureInputs) *OpenAIImagesExecutor {
@@ -1510,9 +1619,6 @@ func requireSingleOpenCodeSessionHeader(t *testing.T, headers http.Header, want 
 	require.Equal(t, 1, count)
 }
 
-// httpRuntimeClock 为过期窗口测试提供时钟。
-type httpRuntimeClock struct{ nanos atomic.Int64 }
-
 func (c *httpRuntimeClock) Now() time.Time {
 	if value := c.nanos.Load(); value != 0 {
 		return time.Unix(0, value)
@@ -1522,38 +1628,8 @@ func (c *httpRuntimeClock) Now() time.Time {
 
 func (c *httpRuntimeClock) Set(value time.Time) { c.nanos.Store(value.UnixNano()) }
 
-type transientCooldownProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
-}
-
 func (transientCooldownProviderRepo) SetOverloaded(context.Context, int64, time.Time) error {
 	return nil
-}
-
-// responsesFixtureOptions 只描述 Responses 断言使用的请求、响应和图片桥接选项。
-type responsesFixtureOptions struct {
-	Request        OpenAIRequestOptions
-	Response       OpenAIResponseOptions
-	Headers        egress.ResponseHeaderOptions
-	Health         providercore.HealthOptions
-	ForcedTemplate string
-	ImageBridge    bool
-}
-
-type responsesFixtureInputs struct {
-	providers       gatewayprovider.ExecutionProviderStore
-	health          *provideradapter.UpstreamHealth
-	headers         *egress.CompiledHeaderFilter
-	profiles        *egressprovider.TLSProfiles
-	routers         *egress.TLSFingerprintRouterService
-	credentials     *providercore.OpenAIExecutionCredentials
-	registerTaskURL string
-	grokTokens      *providercore.GrokTokenSource
-	readers         *gatewayprovider.RuntimeReaders
-	cache           gatewaysession.GatewayCache
-	compactModel    string
-	transport       httpclient.UpstreamTransport
-	options         *responsesFixtureOptions
 }
 
 // newResponsesFixture 直接构造原生单次 HTTP 链，不创建提供商选择器、WS 池或完成队列。
@@ -1746,18 +1822,6 @@ func openAIConcatenatedJSONTestEvents(t *testing.T) (string, string, string) {
 	return largeInProgress, outputItemAdded, completed
 }
 
-// 测试嵌入 HTTP 适配器，I/O 接口使用替身，HTTP 读取和错误输出直接调用生产实现。
-type openAITextEntryProbe struct {
-	openAITextHTTPBackend
-	events                          []string
-	key                             *apikey.APIKey
-	allowed, owned, image, canceled bool
-	eligibility                     error
-	rewrite                         []byte
-	decision                        *moderation.Decision
-	call                            *OpenAITextCall
-}
-
 func (p *openAITextEntryProbe) mark(s string) { p.events = append(p.events, s) }
 
 func (p *openAITextEntryProbe) Access(*gin.Context) (*apikey.APIKey, bool) {
@@ -1878,15 +1942,7 @@ func (p *openAITextEntryProbe) Execution(_ *gin.Context, call OpenAITextCall) te
 	return openAITextNoAttempt{}
 }
 
-// 不选择提供商的终点证明前置组合已进入统一循环，未额外发起供应商请求。
-type openAITextNoAttempt struct{ textflow.ResponsePorts }
-
 func (openAITextNoAttempt) CanAttempt() bool { return false }
-
-type openAITextReadProbe struct {
-	io.Reader
-	reads int
-}
 
 func (b *openAITextReadProbe) Read(p []byte) (int, error) { b.reads++; return b.Reader.Read(p) }
 
@@ -1936,18 +1992,6 @@ func assertOpenAITextEventBefore(t *testing.T, events []string, a, b string) {
 	require.Greater(t, bi, ai, events)
 }
 
-type opsErrorLogJob struct {
-	ops   *ops.OpsService
-	entry *ops.OpsInsertErrorLogInput
-}
-
-var (
-	opsErrorLogQueue    chan opsErrorLogJob
-	testOpsCaptureQueue *captureOpsErrorQueue
-)
-
-type captureOpsErrorQueue struct{ health ops.ErrorLogQueueHealth }
-
 func (q *captureOpsErrorQueue) Enqueue(s *ops.OpsService, e *ops.OpsInsertErrorLogInput) {
 	if s == nil || e == nil {
 		return
@@ -1990,15 +2034,6 @@ func opsAccessFixture() OpsObservationAccess {
 
 func opsLoggerFixture(service *ops.OpsService) gin.HandlerFunc {
 	return OpsErrorLoggerMiddleware(service, testOpsCaptureQueue, opsAccessFixture())
-}
-
-// qoderRuntimeContract 为 HTTP、提供商尝试和完成提交测试提供外部依赖替身。
-type qoderRuntimeContract struct {
-	t                                   *testing.T
-	partial                             bool
-	wire                                protocol.ProtocolID
-	events                              []string
-	captures, records, binds, refreshes int
 }
 
 func (f *qoderRuntimeContract) CheckKey(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error {
@@ -2102,17 +2137,6 @@ func newResponseOutputForTest(options OpenAIResponseOptions) *OpenAIResponseOutp
 	}
 }
 
-type searchHTTPStub struct {
-	calls         []string
-	authenticated bool
-	platform      string
-	billing       *SearchHTTPFailure
-	moderation    *SearchHTTPFailure
-	isX           bool
-	released      bool
-	completed     bool
-}
-
 func (s *searchHTTPStub) DefaultModel() string {
 	s.calls = append(s.calls, "model")
 	return "grok-test"
@@ -2196,11 +2220,6 @@ func (s *wsExecutionFixture) handleGrokProviderUpstreamError(
 	return gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, statusCode, headers, responseBody, "", requestedModel...).StopScheduling
 }
 
-type openAIWSPolicyRepo struct {
-	transientCooldownProviderRepo
-	setErrorCalls int
-}
-
 func (r *openAIWSPolicyRepo) SetError(context.Context, int64, string) error {
 	r.setErrorCalls++
 	return nil
@@ -2235,16 +2254,6 @@ func parseResponsesFailedSSE(t *testing.T, body string) (map[string]any, map[str
 	require.True(t, ok, "error object missing")
 
 	return resp, errObj
-}
-
-// 拒绝路径调用未实现的调度或存储接口时，测试失败。
-type prefaceBackend struct {
-	CompatibleTextBackend
-	key       *apikey.APIKey
-	events    []string
-	block     bool
-	policyErr error
-	call      CompatibleTextCall
 }
 
 func (p *prefaceBackend) Access(*gin.Context) (*apikey.APIKey, bool) { return p.key, p.key != nil }
@@ -2322,14 +2331,6 @@ func prefaceKey() *apikey.APIKey {
 
 func prefaceConcurrency() *ConcurrencyHelper {
 	return NewConcurrencyHelper(scheduler.NewConcurrencyService(nil), SSEPingFormatNone, 0)
-}
-
-// Gemini 使用独立的审核接口实现，按自己的顺序调用。
-type geminiPrefaceBackend struct {
-	GeminiNativeBackend
-	base  *prefaceBackend
-	call  GeminiNativeCall
-	bound int64
 }
 
 func (p *geminiPrefaceBackend) Access(c *gin.Context) (*apikey.APIKey, bool) { return p.base.Access(c) }
@@ -2410,9 +2411,6 @@ func textPricingFixture(t *testing.T, cards ...routing.ModelPricingEntry) *admis
 	})
 	return &admission.ModelPricing{Resolver: testkit.ResolverWithCards(t, calculator, cards)}
 }
-
-// unifiedRecordFunds 在协议用量测试中通过完成流程调用结算接口。
-type unifiedRecordFunds struct{}
 
 func (unifiedRecordFunds) Apply(_ context.Context, command *billing.UsageBillingCommand) (*billing.UsageBillingApplyResult, error) {
 	return &billing.UsageBillingApplyResult{Applied: true, BalanceAmountUSD: command.BillableAmountUSD}, nil

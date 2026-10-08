@@ -10,6 +10,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
+// dingTalkStaffClient 记录员工资料查询并返回预设的结果或错误。
+type dingTalkStaffClient struct {
+	identity.DingTalkOAuthClient
+	userErr, staffErr error
+	calls             []string
+	profile           *identity.DingTalkProfileSnapshot
+}
+
 // TestDingTalkStaffLookupPolicy 检查员工资料查询顺序、返回结果和失败处理。
 func TestDingTalkStaffLookupPolicy(t *testing.T) {
 	for _, policy := range []string{"none", "", "internal_only", "unknown"} {
@@ -45,14 +53,6 @@ func TestDingTalkStaffLookupPolicy(t *testing.T) {
 			})
 		}
 	}
-}
-
-// dingTalkStaffClient 记录员工资料查询并返回预设的结果或错误。
-type dingTalkStaffClient struct {
-	identity.DingTalkOAuthClient
-	userErr, staffErr error
-	calls             []string
-	profile           *identity.DingTalkProfileSnapshot
 }
 
 func (c *dingTalkStaffClient) GetUserIdByUnionId(_ context.Context, id string) (string, error) {

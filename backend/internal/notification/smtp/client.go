@@ -14,19 +14,26 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/notification/contract"
 )
 
-type (
-	Client     struct{}
-	SMTPConfig = contract.SMTPConfig
-)
-
-func New() *Client { return &Client{} }
-
 const (
 	smtpDialTimeout = 10 * time.Second
 	smtpIOTimeout   = 20 * time.Second
 )
 
 var smtpTestRootCAs *x509.CertPool
+
+type (
+	Client     struct{}
+	SMTPConfig = contract.SMTPConfig
+)
+
+// contextConn 让取消关闭当前连接；正常关闭会注销回调，避免残留等待任务。
+type contextConn struct {
+	net.Conn
+	stop     func() bool
+	deadline time.Time
+}
+
+func New() *Client { return &Client{} }
 
 func sanitizeEmailHeader(s string) string { return strings.NewReplacer("\r", "", "\n", "").Replace(s) }
 
@@ -179,13 +186,6 @@ func (s *Client) Test(ctx context.Context, config *SMTPConfig) (resultErr error)
 	// 认证成功即可证明配置可用于发送，忽略非标准 QUIT 响应。
 	_ = client.Quit()
 	return nil
-}
-
-// contextConn 让取消关闭当前连接；正常关闭会注销回调，避免残留等待任务。
-type contextConn struct {
-	net.Conn
-	stop     func() bool
-	deadline time.Time
 }
 
 func (c *contextConn) Close() error {

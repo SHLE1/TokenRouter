@@ -54,7 +54,7 @@ func TestOpsIngressRejectAggregatorUsesGlobalBucketCapacity(t *testing.T) {
 	}
 	require.Equal(t, int64(600), a.Health().Cardinality)
 
-	for i := 0; i < ingressRejectMaxEntries; i++ {
+	for i := range ingressRejectMaxEntries {
 		a.RecordIngressReject("invalid_api_key", "messages", "anthropic", fmt.Sprintf("rotating-%d", i), 0, 0)
 	}
 	health := a.Health()
@@ -74,11 +74,11 @@ func TestOpsIngressRejectAggregatorConcurrentCountAndStopFlush(t *testing.T) {
 	const goroutines = 32
 	const perGoroutine = 200
 	var wg sync.WaitGroup
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < perGoroutine; j++ {
+			for range perGoroutine {
 				a.RecordIngressReject("invalid_api_key", "responses", "openai", "192.0.2.10", 0, 0)
 			}
 		}()

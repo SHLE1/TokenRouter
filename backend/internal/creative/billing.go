@@ -9,18 +9,33 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-// 创作台计费请求 ID 前缀：全部经由 usage_billing_dedup 幂等表去重，
-// 同一 runID 的同一操作（hold/capture/release）重试不会产生重复资金动作。
 const (
+	// 创作台计费请求 ID 前缀：全部经由 usage_billing_dedup 幂等表去重，
+	// 同一 runID 的同一操作（hold/capture/release）重试不会产生重复资金动作。
 	creativeHoldRequestPrefix       = "creative_hold:"
 	creativeCaptureRequestPrefix    = "creative_capture:"
 	creativeReleaseRequestPrefix    = "creative_release:"
 	creativeSettlementRequestPrefix = "creative_settle:"
+
+	// creativePricingSnapshotVersion 标识按基础金额分配的计费快照版本。
+	// 创作台没有批量折扣与提供商倍率：scale 固定为 1，hold 与结算同价。
+	creativePricingSnapshotVersion = 2
+
+	// FundingScope 标识创作台任务的资金操作范围。
+	FundingScope billing.TaskScope = "creative"
 )
 
-// creativePricingSnapshotVersion 标识按基础金额分配的计费快照版本。
-// 创作台没有批量折扣与提供商倍率：scale 固定为 1，hold 与结算同价。
-const creativePricingSnapshotVersion = 2
+// FundingStore 提供任务资金的预占、捕获和释放操作。
+type FundingStore interface {
+	Reserve(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
+	Capture(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
+	Release(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
+}
+
+type Funding struct {
+	Store   FundingStore
+	Observe func(string, ...any)
+}
 
 func CreativeHoldRequestID(runID string) string {
 	return creativeHoldRequestPrefix + strings.TrimSpace(runID)
@@ -177,18 +192,6 @@ func (funding Funding) Release(ctx context.Context, run *CreativeRun) error {
 	return nil
 }
 
-// FundingStore 提供任务资金的预占、捕获和释放操作。
-type FundingStore interface {
-	Reserve(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
-	Capture(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
-	Release(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error)
-}
-
-type Funding struct {
-	Store   FundingStore
-	Observe func(string, ...any)
-}
-
 func cloneBillingAllocations(values []billing.BillingAllocation) []billing.BillingAllocation {
 	if values == nil {
 		return nil
@@ -209,9 +212,6 @@ func batchImageSubscriptionAllocations(values []billing.BillingAllocation) []bil
 	}
 	return out
 }
-
-// FundingScope 标识创作台任务的资金操作范围。
-const FundingScope billing.TaskScope = "creative"
 
 // FundingReference 返回任务资金引用和预占请求 ID。
 func FundingReference(id string) billing.TaskReference {

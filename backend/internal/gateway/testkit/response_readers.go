@@ -13,6 +13,12 @@ type BlockingReadCloser struct {
 	closeOnce sync.Once
 }
 
+// CloseTrackingReader 记录响应体是否被关闭，供跨协议资源断言共用。
+type CloseTrackingReader struct {
+	io.Reader
+	Closed bool
+}
+
 func NewBlockingReadCloser(data []byte) *BlockingReadCloser {
 	return &BlockingReadCloser{
 		data:   data,
@@ -35,12 +41,6 @@ func (r *BlockingReadCloser) Close() error {
 		close(r.closed)
 	})
 	return nil
-}
-
-// CloseTrackingReader 记录响应体是否被关闭，供跨协议资源断言共用。
-type CloseTrackingReader struct {
-	io.Reader
-	Closed bool
 }
 
 func (r *CloseTrackingReader) Close() error {

@@ -11,6 +11,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )
 
+// DefaultTestModel 是 DeepSeek 提供商的默认探测模型。
+const DefaultTestModel = "deepseek-chat"
+
 type DeepseekBalanceUsageAdapter struct{}
 
 func (*DeepseekBalanceUsageAdapter) Name() string {
@@ -65,6 +68,3 @@ func (*DeepseekBalanceUsageAdapter) Query(ctx context.Context, input *usagecontr
 		Available: &available,
 	}, nil
 }
-
-// DefaultTestModel 是 DeepSeek 提供商的默认探测模型。
-const DefaultTestModel = "deepseek-chat"

@@ -12,6 +12,16 @@ type bmUpdateRepoStub struct {
 	getValueFn func(ctx context.Context, key string) (string, error)
 }
 
+type settingUpdateRepoStub struct {
+	updates        map[string]string
+	values         map[string]string
+	setMultipleErr error
+}
+
+type settingGetAllRepoStub struct {
+	values map[string]string
+}
+
 func (s *bmUpdateRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
 	panic("unexpected Get call")
 }
@@ -45,12 +55,6 @@ func (s *bmUpdateRepoStub) GetAll(ctx context.Context) (map[string]string, error
 
 func (s *bmUpdateRepoStub) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
-}
-
-type settingUpdateRepoStub struct {
-	updates        map[string]string
-	values         map[string]string
-	setMultipleErr error
 }
 
 func (s *settingUpdateRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
@@ -96,10 +100,6 @@ func (s *settingUpdateRepoStub) GetAll(ctx context.Context) (map[string]string, 
 
 func (s *settingUpdateRepoStub) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
-}
-
-type settingGetAllRepoStub struct {
-	values map[string]string
 }
 
 func (s *settingGetAllRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {

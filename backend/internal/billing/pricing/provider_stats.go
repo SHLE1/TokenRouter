@@ -4,6 +4,15 @@ import (
 	"strings"
 )
 
+// ProviderStatsInput 包含查询到的价卡，nil 成本和配置的零价分别处理。
+type ProviderStatsInput struct {
+	Rules               []ProviderStatsPricingRule
+	ProviderID, GroupID int64
+	Models              []string
+	Tokens              UsageTokens
+	RequestCount        int
+}
+
 func UniqueNonEmptyProviderStatsModels(models []string) []string {
 	out := make([]string, 0, len(models))
 	seen := make(map[string]struct{}, len(models))
@@ -208,15 +217,6 @@ func HasAnyStatsTokenUsage(tokens UsageTokens) bool {
 		tokens.CacheCreationTokens > 0 ||
 		tokens.CacheReadTokens > 0 ||
 		tokens.ImageOutputTokens > 0
-}
-
-// ProviderStatsInput 包含查询到的价卡，nil 成本和配置的零价分别处理。
-type ProviderStatsInput struct {
-	Rules               []ProviderStatsPricingRule
-	ProviderID, GroupID int64
-	Models              []string
-	Tokens              UsageTokens
-	RequestCount        int
 }
 
 // ResolveProviderStatsOverride 返回 handled，区分明确不覆盖与继续查询模型目录。

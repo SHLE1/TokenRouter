@@ -25,6 +25,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+type geminiResponsesFailingStream struct {
+	read bool
+}
+
 func TestGeminiForwardAsResponsesReturnsResponsesFormat(t *testing.T) {
 	upstreamBody := `{
 		"candidates":[{"content":{"parts":[
@@ -565,10 +569,6 @@ func TestGeminiForwardAsChatCompletions_FunctionNamedWebSearchStaysClientSide(t 
 	require.Equal(t, "read_file", readFileDecl["name"])
 	require.NotContains(t, functionTool, "googleSearch")
 	require.NotContains(t, functionTool, "google_search")
-}
-
-type geminiResponsesFailingStream struct {
-	read bool
 }
 
 func (r *geminiResponsesFailingStream) Read(p []byte) (int, error) {

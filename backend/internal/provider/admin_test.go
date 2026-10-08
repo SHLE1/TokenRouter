@@ -24,6 +24,43 @@ type providerRepoStubForClearProviderError struct {
 	clearTempUnschedCalls    int
 }
 
+// adminClearErrorRuntimeBlockRecorder 记录管理员恢复后的内存阻断清理。
+type adminClearErrorRuntimeBlockRecorder struct{ clearedIDs []int64 }
+
+// deleteProviderStore 替换删除所需的数据库读写，级联顺序由 Admin 执行。
+type deleteProviderStore struct {
+	AdminStore
+	shadows            []*Record
+	listErr, deleteErr error
+	deletedIDs         []int64
+}
+
+type providerRepoStubForAdminList struct {
+	AdminStore
+
+	listWithFiltersCalls     int
+	listWithFiltersParams    pagination.PaginationParams
+	listWithFiltersPlatform  string
+	listWithFiltersType      string
+	listWithFiltersStatus    string
+	listWithFiltersSearch    string
+	listWithFiltersPrivacy   string
+	listWithFiltersProviders []Record
+	listWithFiltersResult    *pagination.PaginationResult
+	listWithFiltersErr       error
+}
+
+type resetProviderQuotaRepoStub struct {
+	AdminStore
+	provider            *Record
+	getByIDErr          error
+	resetErr            error
+	resetCalls          int
+	clearRateLimitCalls int
+	callOrder           []string
+	overloaded          bool
+}
+
 func (r *providerRepoStubForClearProviderError) GetByID(ctx context.Context, id int64) (*Record, error) {
 	return CloneRecord(r.provider), nil
 }
@@ -91,19 +128,8 @@ func TestAdminService_ClearProviderError_AlsoClearsRecoverableRuntimeState(t *te
 	require.Equal(t, []int64{31}, blocker.clearedIDs)
 }
 
-// adminClearErrorRuntimeBlockRecorder 记录管理员恢复后的内存阻断清理。
-type adminClearErrorRuntimeBlockRecorder struct{ clearedIDs []int64 }
-
 func (r *adminClearErrorRuntimeBlockRecorder) ClearProviderSchedulingBlock(id int64) {
 	r.clearedIDs = append(r.clearedIDs, id)
-}
-
-// deleteProviderStore 替换删除所需的数据库读写，级联顺序由 Admin 执行。
-type deleteProviderStore struct {
-	AdminStore
-	shadows            []*Record
-	listErr, deleteErr error
-	deletedIDs         []int64
 }
 
 func (s *deleteProviderStore) ListShadowsByParent(context.Context, int64) ([]*Record, error) {
@@ -143,21 +169,6 @@ func TestAdminDeleteProviderDeletesShadowsBeforeParent(t *testing.T) {
 	err := NewAdmin(repo, AdminOptions{}).DeleteProvider(t.Context(), 55)
 	require.NoError(t, err)
 	require.Equal(t, []int64{56, 55}, repo.deletedIDs)
-}
-
-type providerRepoStubForAdminList struct {
-	AdminStore
-
-	listWithFiltersCalls     int
-	listWithFiltersParams    pagination.PaginationParams
-	listWithFiltersPlatform  string
-	listWithFiltersType      string
-	listWithFiltersStatus    string
-	listWithFiltersSearch    string
-	listWithFiltersPrivacy   string
-	listWithFiltersProviders []Record
-	listWithFiltersResult    *pagination.PaginationResult
-	listWithFiltersErr       error
 }
 
 func (s *providerRepoStubForAdminList) ListAllWithFilters(context.Context, string, string, string, string, int64, string) ([]Record, error) {
@@ -225,17 +236,6 @@ func TestAdminService_ListProviders_WithPrivacyMode(t *testing.T) {
 		require.Equal(t, []Record{{ID: 2, Name: "acc2"}}, providers)
 		require.Equal(t, openai.PrivacyModeCFBlocked, repo.listWithFiltersPrivacy)
 	})
-}
-
-type resetProviderQuotaRepoStub struct {
-	AdminStore
-	provider            *Record
-	getByIDErr          error
-	resetErr            error
-	resetCalls          int
-	clearRateLimitCalls int
-	callOrder           []string
-	overloaded          bool
 }
 
 func (r *resetProviderQuotaRepoStub) GetByID(context.Context, int64) (*Record, error) {

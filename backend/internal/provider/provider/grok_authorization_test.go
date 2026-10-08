@@ -17,6 +17,34 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+type grokOAuthClientStub struct {
+	refreshResponse     *xai.TokenResponse
+	ssoResponse         *xai.TokenResponse
+	loginResult         *providercore.GrokPasswordLoginResult
+	loginEmail          string
+	loginPassword       string
+	exchangeCalls       int
+	exchangeRedirectURI string
+}
+
+type grokTokenCacheForProviderTest struct {
+	token        string
+	setKey       string
+	setToken     string
+	setTTL       time.Duration
+	lockResult   bool
+	releaseCalls int
+	deletedKeys  []string
+	deleteErr    error
+	getCalls     int
+	mu           sync.Mutex
+}
+
+type grokCredentialRaceRepo struct {
+	*tokenRefreshProviderRepo
+	mu sync.RWMutex
+}
+
 func TestGrokOAuthServiceRefreshTokenPreservesOriginalRefreshTokenWhenNotRotated(t *testing.T) {
 	svc := newGrokAuthorizationForTest(nil, &grokOAuthClientStub{
 		refreshResponse: &xai.TokenResponse{
@@ -729,16 +757,6 @@ func TestGrokTokenProviderRejectsIneligibleSelectedProviderBeforeWarmCache(t *te
 	}
 }
 
-type grokOAuthClientStub struct {
-	refreshResponse     *xai.TokenResponse
-	ssoResponse         *xai.TokenResponse
-	loginResult         *providercore.GrokPasswordLoginResult
-	loginEmail          string
-	loginPassword       string
-	exchangeCalls       int
-	exchangeRedirectURI string
-}
-
 func (s *grokOAuthClientStub) ExchangeCode(_ context.Context, _, _, redirectURI, _, _ string) (*xai.TokenResponse, error) {
 	s.exchangeCalls++
 	s.exchangeRedirectURI = redirectURI
@@ -768,24 +786,6 @@ func newGrokAuthorizationForTest(proxies egress.ProxyRepository, client provider
 func stopGrokAuthorizationForTest(t *testing.T, authorization *providercore.GrokAuthorization) {
 	t.Helper()
 	require.NoError(t, authorization.StopContext(context.Background()))
-}
-
-type grokTokenCacheForProviderTest struct {
-	token        string
-	setKey       string
-	setToken     string
-	setTTL       time.Duration
-	lockResult   bool
-	releaseCalls int
-	deletedKeys  []string
-	deleteErr    error
-	getCalls     int
-	mu           sync.Mutex
-}
-
-type grokCredentialRaceRepo struct {
-	*tokenRefreshProviderRepo
-	mu sync.RWMutex
 }
 
 func (r *grokCredentialRaceRepo) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {

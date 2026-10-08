@@ -4,10 +4,10 @@ import (
 	"time"
 )
 
-// TokenRefreshTempUnschedDuration token 刷新重试耗尽后临时不可调度的持续时间
-const TokenRefreshTempUnschedDuration = 10 * time.Minute
-
 const (
+	// TokenRefreshTempUnschedDuration token 刷新重试耗尽后临时不可调度的持续时间
+	TokenRefreshTempUnschedDuration = 10 * time.Minute
+
 	DefaultTokenRefreshCandidatePageSize        = 200
 	MaxTokenRefreshCandidatePageSize            = 1000
 	DefaultTokenRefreshProviderConcurrency      = 4

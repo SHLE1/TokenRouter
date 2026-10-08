@@ -3,18 +3,15 @@
 package billing_test
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-
 	context "context"
-
 	fmt "fmt"
+	testing "testing"
+	time "time"
 
 	require "github.com/stretchr/testify/require"
 
-	testing "testing"
-
-	time "time"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 )
 
 // TestSetBalanceReturnsLockedOldValue 用真实行锁固定结算先于 set 提交，核对返回的实际旧值。

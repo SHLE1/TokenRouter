@@ -7,6 +7,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
+// ProtocolTarget 组合本次协议选择与提供商配置，只用于当前执行或维护查询。
+// Protocol 不写入 Record 或共享缓存；零值沿用配置协议。
+type ProtocolTarget struct {
+	*Record
+	Protocol protocolcore.ProtocolID
+}
+
 // ConfiguredAPIProtocol 从提供商配置读取 API 协议。
 func (a *Record) ConfiguredAPIProtocol() string {
 	if a == nil || !a.IsCNProvider() {
@@ -28,13 +35,6 @@ func (a *Record) ConfiguredAPIProtocol() string {
 		return APIProtocolChatCompletions
 	}
 	return APIProtocolChatCompletions
-}
-
-// ProtocolTarget 组合本次协议选择与提供商配置，只用于当前执行或维护查询。
-// Protocol 不写入 Record 或共享缓存；零值沿用配置协议。
-type ProtocolTarget struct {
-	*Record
-	Protocol protocolcore.ProtocolID
 }
 
 // GetOpenAIBaseURL 根据本次协议选择读取原地址，不改变保存的提供商配置。

@@ -16,10 +16,39 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 )
 
+// errAuthCacheMiss 模拟缓存未命中。包内测试使用 redis.Nil 检查 Redis 未命中的兼容性。
+var errAuthCacheMiss = errors.New("auth cache miss")
+
 type compositeGroupRepoStub struct {
 	routing.GroupRepository
 
 	groups map[int64]*routing.Group
+}
+
+type authRepoStub struct {
+	getByKeyForAuth   func(ctx context.Context, key string) (*apikey.APIKey, error)
+	listKeysByUserID  func(ctx context.Context, userID int64) ([]string, error)
+	listKeysByGroupID func(ctx context.Context, groupID int64) ([]string, error)
+}
+
+type authCacheStub struct {
+	getAuthCache   func(ctx context.Context, key string) (*apikey.APIKeyAuthCacheEntry, error)
+	setAuthKeys    []string
+	deleteAuthKeys []string
+}
+
+// apiKeyTestDependencies 提供测试依赖替身，实际状态由所属模块创建。
+type apiKeyTestDependencies struct {
+	apiKeyRepo            apikey.APIKeyRepository
+	userRepo              identity.UserRepository
+	groupRepo             routing.GroupRepository
+	userSubRepo           billing.UserSubscriptionRepository
+	userGroupRateRepo     billing.UserGroupRateRepository
+	teamRepo              team.TeamRepository
+	cache                 apikey.APIKeyCache
+	cfg                   *config.Config
+	concurrencyService    *scheduler.ConcurrencyService
+	rateLimitCacheInvalid apikey.RateLimitCacheInvalidator
 }
 
 func (s *compositeGroupRepoStub) GetByID(_ context.Context, id int64) (*routing.Group, error) {
@@ -29,12 +58,6 @@ func (s *compositeGroupRepoStub) GetByID(_ context.Context, id int64) (*routing.
 	}
 	copyGroup := *group
 	return &copyGroup, nil
-}
-
-type authRepoStub struct {
-	getByKeyForAuth   func(ctx context.Context, key string) (*apikey.APIKey, error)
-	listKeysByUserID  func(ctx context.Context, userID int64) ([]string, error)
-	listKeysByGroupID func(ctx context.Context, groupID int64) ([]string, error)
 }
 
 func (s *authRepoStub) Create(ctx context.Context, key *apikey.APIKey) error {
@@ -146,12 +169,6 @@ func (s *authRepoStub) GetRateLimitData(ctx context.Context, id int64) (*apikey.
 	panic("unexpected GetRateLimitData call")
 }
 
-type authCacheStub struct {
-	getAuthCache   func(ctx context.Context, key string) (*apikey.APIKeyAuthCacheEntry, error)
-	setAuthKeys    []string
-	deleteAuthKeys []string
-}
-
 func (s *authCacheStub) GetCreateAttemptCount(ctx context.Context, userID int64) (int, error) {
 	return 0, nil
 }
@@ -197,9 +214,6 @@ func (s *authCacheStub) SubscribeAuthCacheInvalidation(ctx context.Context, hand
 	return nil
 }
 
-// errAuthCacheMiss 模拟缓存未命中。包内测试使用 redis.Nil 检查 Redis 未命中的兼容性。
-var errAuthCacheMiss = errors.New("auth cache miss")
-
 func validTeamAPIKeyForLifecycleTest() *apikey.APIKey {
 	teamID := int64(11)
 	createdAt := time.Now()
@@ -219,20 +233,6 @@ func validTeamAPIKeyForLifecycleTest() *apikey.APIKey {
 		ActorUser: &identity.User{ID: 2, Status: billing.StatusActive},
 		User:      &identity.User{ID: 1, Status: billing.StatusActive},
 	}
-}
-
-// apiKeyTestDependencies 提供测试依赖替身，实际状态由所属模块创建。
-type apiKeyTestDependencies struct {
-	apiKeyRepo            apikey.APIKeyRepository
-	userRepo              identity.UserRepository
-	groupRepo             routing.GroupRepository
-	userSubRepo           billing.UserSubscriptionRepository
-	userGroupRateRepo     billing.UserGroupRateRepository
-	teamRepo              team.TeamRepository
-	cache                 apikey.APIKeyCache
-	cfg                   *config.Config
-	concurrencyService    *scheduler.ConcurrencyService
-	rateLimitCacheInvalid apikey.RateLimitCacheInvalidator
 }
 
 func newAPIKeyTestService(d apiKeyTestDependencies) *apikey.APIKeyService {

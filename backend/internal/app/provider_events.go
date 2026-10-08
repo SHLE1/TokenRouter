@@ -22,14 +22,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
 )
 
-// provideProviderDeferred 为延迟写入绑定提供商存储和时间轮。
-func provideProviderDeferred(store *providerpostgres.ProviderStore, wheel *timingwheel.Wheel) *acctcore.DeferredService {
-	return acctcore.NewDeferredService(store, wheel, acctcore.DeferredOptions{Interval: 10 * time.Second, Now: time.Now, Observe: log.Printf})
-}
-
 type providerRecordsReader interface {
 	GetByID(context.Context, int64) (*acctcore.Record, error)
 	GetByIDs(context.Context, []int64) ([]*acctcore.Record, error)
+}
+
+type providerSchedulerEvents struct{ publisher scheduler.SnapshotPublisher }
+
+// provideProviderDeferred 为延迟写入绑定提供商存储和时间轮。
+func provideProviderDeferred(store *providerpostgres.ProviderStore, wheel *timingwheel.Wheel) *acctcore.DeferredService {
+	return acctcore.NewDeferredService(store, wheel, acctcore.DeferredOptions{Interval: 10 * time.Second, Now: time.Now, Observe: log.Printf})
 }
 
 // newProviderEvents 将提供商写入事件接入唯一 scheduler outbox 与快照发布器。
@@ -49,8 +51,6 @@ func newProviderEvents(reader providerRecordsReader, cache scheduler.SnapshotCac
 		},
 	}}
 }
-
-type providerSchedulerEvents struct{ publisher scheduler.SnapshotPublisher }
 
 func (b providerSchedulerEvents) Write(ctx context.Context, exec postgresinfra.Executor, event providerpostgres.ProviderEvent, id, group *int64, payload any) error {
 	return schedulerpostgres.EnqueueSchedulerChange(ctx, exec, providerSchedulerEventName(event), id, group, payload)

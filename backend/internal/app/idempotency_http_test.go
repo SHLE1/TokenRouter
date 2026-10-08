@@ -61,7 +61,7 @@ func TestIdempotencyHTTPUsesExplicitApplicationCoordinator(t *testing.T) {
 		request++
 		execute(c, "shared-binding", map[string]string{"action": "copy"}, time.Hour, func(context.Context) (any, error) { calls++; return gin.H{"ok": true}, nil })
 	})
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/operation", nil)
 		req.Header.Set("Idempotency-Key", "shared-key")

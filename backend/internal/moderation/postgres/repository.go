@@ -23,6 +23,13 @@ type sqlQueryRower interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
+// UserStatusTx 在调用方的 SQL 事务中锁定和禁用用户，提交由调用方负责。
+type UserStatusTx interface {
+	LockUser(context.Context, int64) (string, bool, error)
+	SetDisabled(context.Context, int64) (bool, error)
+}
+type UserParticipation func(*sql.Tx) UserStatusTx
+
 func NewContentModerationRepository(db *sql.DB, users UserParticipation) *Store {
 	return &Store{db: db, users: users}
 }
@@ -977,13 +984,6 @@ func buildContentModerationCyberWhere(filter moderation.ContentModerationCyberWa
 	}
 	return where, args
 }
-
-// UserStatusTx 在调用方的 SQL 事务中锁定和禁用用户，提交由调用方负责。
-type UserStatusTx interface {
-	LockUser(context.Context, int64) (string, bool, error)
-	SetDisabled(context.Context, int64) (bool, error)
-}
-type UserParticipation func(*sql.Tx) UserStatusTx
 
 // paginationResultFromTotal 根据总数和分页参数生成查询分页结果。
 func paginationResultFromTotal(total int64, params pagination.PaginationParams) *pagination.PaginationResult {
