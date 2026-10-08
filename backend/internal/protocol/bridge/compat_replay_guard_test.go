@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
-
 	"github.com/stretchr/testify/require"
+
+	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
 func TestApplyAnthropicCompatFullReplayGuard_TrimsOldMessages(t *testing.T) {

@@ -3,6 +3,7 @@ package google
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // ErrorResponse represents a Google API error response
@@ -45,4 +46,26 @@ func ParseError(body string) (*ErrorResponse, error) {
 		return nil, fmt.Errorf("failed to parse error response: %w", err)
 	}
 	return &errResp, nil
+}
+
+// ExtractPlatformMessage 读取 error.message 或顶层 message 中的错误消息。
+func ExtractPlatformMessage(body []byte) string {
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return ""
+	}
+
+	// Google 错误响应的消息位于 error.message。
+	if errObj, ok := payload["error"].(map[string]any); ok {
+		if msg, ok := errObj["message"].(string); ok && strings.TrimSpace(msg) != "" {
+			return msg
+		}
+	}
+
+	// 顶层 message 也可以提供错误消息。
+	if msg, ok := payload["message"].(string); ok && strings.TrimSpace(msg) != "" {
+		return msg
+	}
+
+	return ""
 }

@@ -3,8 +3,9 @@ package bridge
 import (
 	"bytes"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
 // CompatOutputMeaning 从本模块写出的完整帧中识别内容输出和终止事件。

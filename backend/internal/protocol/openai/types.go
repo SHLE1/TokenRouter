@@ -643,3 +643,11 @@ func (d ChatDelta) ReasoningText() *string {
 	}
 	return d.Reasoning
 }
+
+// TextProtocol 描述普通文本请求发往上游时使用的协议。
+type TextProtocol string
+
+const (
+	TextProtocolChatCompletions TextProtocol = "chat_completions"
+	TextProtocolResponses       TextProtocol = "responses"
+)

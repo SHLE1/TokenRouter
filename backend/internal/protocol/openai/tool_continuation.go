@@ -3,9 +3,9 @@ package openai
 import (
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
-
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 )
 
 // ToolContinuationSignals 在一次遍历中收集工具续接所需的 input 信号。

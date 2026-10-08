@@ -68,3 +68,34 @@ func EmitSSEDataPayload(data string, fn func([]byte)) {
 	}
 	fn([]byte(data))
 }
+
+// ExtractSSEDataLine 提取 SSE `data:` 行内容。
+// 兼容 `data: xxx` 与 `data:xxx` 两种格式。
+func ExtractSSEDataLine(line string) (string, bool) {
+	if !strings.HasPrefix(line, "data:") {
+		return "", false
+	}
+	start := len("data:")
+	for start < len(line) {
+		if line[start] != ' ' && line[start] != '	' {
+			break
+		}
+		start++
+	}
+	return line[start:], true
+}
+
+// ExtractSSEEventLine 提取并去除 SSE event 行内容的首尾空白。
+func ExtractSSEEventLine(line string) (string, bool) {
+	if !strings.HasPrefix(line, "event:") {
+		return "", false
+	}
+	start := len("event:")
+	for start < len(line) {
+		if line[start] != ' ' && line[start] != '	' {
+			break
+		}
+		start++
+	}
+	return strings.TrimSpace(line[start:]), true
+}

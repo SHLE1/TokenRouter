@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
 func NativeConvertGeminiToClaudeMessage(runtime NativeGeminiRuntime, geminiResp map[string]any, originalModel string, rawData []byte, includeInlineData bool) (map[string]any, *NativeGeminiUsage) {
@@ -784,11 +786,30 @@ func NativeConvertClaudeGenerationConfig(req map[string]any) map[string]any {
 // NativeGeminiUsage 保存从 Gemini 响应解析出的 token 用量。
 type NativeGeminiUsage struct{ InputTokens, OutputTokens, CacheReadInputTokens, ImageOutputTokens int }
 
-// NativeGeminiOptions 由旧平台确定签名策略，转换器不识别提供商或认证方式。
+// NativeGeminiOptions 保存调用方选择的签名策略。
 type NativeGeminiOptions struct{ DummyThoughtSignature string }
 
 // NativeGeminiRuntime 接收调用方提供的消息和工具 ID 生成函数。
 type NativeGeminiRuntime struct {
 	MessageID func() string
 	RandomHex func(int) string
+}
+
+// NativePickGeminiCollectResult 优先返回包含内容分片的响应，否则返回最后一个响应。
+func NativePickGeminiCollectResult(last map[string]any, lastWithParts map[string]any) map[string]any {
+	if lastWithParts != nil {
+		return lastWithParts
+	}
+	if last != nil {
+		return last
+	}
+	return map[string]any{}
+}
+
+// NativeUsageProjection 将 Gemini 用量转换为统一用量，输入为空时返回 nil。
+func NativeUsageProjection(usage *NativeGeminiUsage) *protocol.TokenUsage {
+	if usage == nil {
+		return nil
+	}
+	return &protocol.TokenUsage{InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, CacheReadInputTokens: usage.CacheReadInputTokens, ImageOutputTokens: usage.ImageOutputTokens}
 }

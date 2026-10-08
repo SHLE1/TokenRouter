@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
+	"github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
@@ -76,3 +77,49 @@ const minMaxOutputTokens = 128
 func toolSearchCallArgumentsJSON(arguments string) json.RawMessage {
 	return openai.ToolSearchCallArgumentsJSON(arguments)
 }
+
+type ClaudeRequest = anthropic.ClaudeRequest
+
+type ClaudeMessage = anthropic.ClaudeMessage
+
+type ClaudeTool = anthropic.ClaudeTool
+
+type ContentBlock = anthropic.ContentBlock
+
+type ClaudeResponse = anthropic.ClaudeResponse
+
+type ClaudeContentItem = anthropic.ClaudeContentItem
+
+type ClaudeUsage = anthropic.ClaudeUsage
+
+type GeminiContent = gemini.GeminiContent
+
+type GeminiPart = gemini.GeminiPart
+
+type GeminiInlineData = gemini.GeminiInlineData
+
+type GeminiFunctionCall = gemini.GeminiFunctionCall
+
+type GeminiFunctionResponse = gemini.GeminiFunctionResponse
+
+type GeminiGenerationConfig = gemini.GeminiGenerationConfig
+
+type GeminiThinkingConfig = gemini.GeminiThinkingConfig
+
+type GeminiToolDeclaration = gemini.GeminiToolDeclaration
+
+type GeminiCodeExecution = gemini.GeminiCodeExecution
+
+type GeminiFunctionDecl = gemini.GeminiFunctionDecl
+
+type GeminiGoogleSearch = gemini.GeminiGoogleSearch
+
+type GeminiEnhancedContent = gemini.GeminiEnhancedContent
+
+type GeminiImageSearch = gemini.GeminiImageSearch
+
+type GeminiResponse = gemini.GeminiResponse
+
+type GeminiGroundingMetadata = gemini.GeminiGroundingMetadata
+
+type GeminiGroundingChunk = gemini.GeminiGroundingChunk
