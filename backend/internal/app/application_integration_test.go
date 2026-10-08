@@ -364,9 +364,9 @@ func TestProcessModes(t *testing.T) {
 			require.Contains(t, output, fmt.Sprintf("ADMIN_USER_ID=%d", id))
 			require.NotContains(t, output, "[Lifecycle] started")
 			token := ""
-			for _, line := range strings.Split(output, "\n") {
-				if strings.HasPrefix(line, "JWT=") {
-					token = strings.TrimPrefix(line, "JWT=")
+			for line := range strings.SplitSeq(output, "\n") {
+				if after, ok := strings.CutPrefix(line, "JWT="); ok {
+					token = after
 				}
 			}
 			verifier := identity.NewSessionService(identity.SessionOptions{Secret: secret}, nil, nil, nil, nil)

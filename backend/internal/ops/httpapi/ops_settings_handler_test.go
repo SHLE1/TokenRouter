@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -136,17 +137,13 @@ func (s *testSettingRepo) GetMultiple(ctx context.Context, keys []string) (map[s
 }
 
 func (s *testSettingRepo) SetMultiple(ctx context.Context, settings map[string]string) error {
-	for k, v := range settings {
-		s.values[k] = v
-	}
+	maps.Copy(s.values, settings)
 	return nil
 }
 
 func (s *testSettingRepo) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(s.values))
-	for k, v := range s.values {
-		out[k] = v
-	}
+	maps.Copy(out, s.values)
 	return out, nil
 }
 

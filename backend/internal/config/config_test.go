@@ -211,20 +211,16 @@ func TestForwardedClientIPSettingsConcurrentPublication(t *testing.T) {
 		{TrustForwardedIP: true, Headers: []string{"X-Public-A"}},
 		{TrustForwardedIP: false, Headers: []string{"X-Public-B"}},
 	} {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			for range iterations {
 				cfg.SetForwardedClientIPSettings(settings.TrustForwardedIP, settings.Headers)
 			}
-		}()
+		})
 	}
 
 	for range cap(errCh) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			for range iterations {
 				snapshot := cfg.ForwardedClientIPSettings()
@@ -235,7 +231,7 @@ func TestForwardedClientIPSettingsConcurrentPublication(t *testing.T) {
 					return
 				}
 			}
-		}()
+		})
 	}
 
 	close(start)
@@ -2641,7 +2637,7 @@ func TestProductConfigDirectories(t *testing.T) {
 // 缺失键需要在 setEnvReachableDefaults 注册零值默认项。map 和结构体切片由配置文件设置。
 func TestConfigKeysAreEnvReachable(t *testing.T) {
 	bound := map[string]string{}
-	collectMapstructureKeys(reflect.TypeOf(Config{}), "", bound)
+	collectMapstructureKeys(reflect.TypeFor[Config](), "", bound)
 
 	viper.Reset()
 	t.Cleanup(viper.Reset)
@@ -2977,8 +2973,7 @@ func TestValidateWebAuthnConfig(t *testing.T) {
 
 // collectMapstructureKeys 遍历配置结构，返回 viper 填充结构所需的全部点分键。
 func collectMapstructureKeys(t reflect.Type, prefix string, out map[string]string) {
-	for i := range t.NumField() {
-		field := t.Field(i)
+	for field := range t.Fields() {
 		if field.PkgPath != "" {
 			continue // 跳过未导出字段
 		}

@@ -31,8 +31,7 @@ func IsProviderScopedTerminalRefreshError(err error) bool {
 	if err == nil {
 		return false
 	}
-	var containmentErr *ProviderCycleContainmentRefreshError
-	if errors.As(err, &containmentErr) {
+	if _, ok := errors.AsType[*ProviderCycleContainmentRefreshError](err); ok {
 		return true
 	}
 	var configurationErr *ProviderConfigurationRefreshError

@@ -152,8 +152,7 @@ func IsConnectionError(err error) bool {
 	}
 
 	// 检查连接错误（DNS 失败、连接拒绝）
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
+	if _, ok := errors.AsType[*net.OpError](err); ok {
 		return true
 	}
 

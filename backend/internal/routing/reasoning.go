@@ -2,6 +2,7 @@ package routing
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
@@ -127,10 +128,8 @@ func NormalizeMaxReasoningEffortForPlatform(platform, raw string) (string, error
 	}
 
 	value := NormalizeMaxReasoningEffort(raw)
-	for _, allowed := range allowedValues {
-		if value == allowed {
-			return value, nil
-		}
+	if slices.Contains(allowedValues, value) {
+		return value, nil
 	}
 	return "", fmt.Errorf(
 		"reasoning effort %q is not supported for platform %q; allowed values: %s",
@@ -151,10 +150,8 @@ func NormalizeReasoningEffortMappingValueForPlatform(platform, raw string) (stri
 	}
 
 	value := NormalizeReasoningEffortMappingValue(raw)
-	for _, allowed := range allowedValues {
-		if value == allowed {
-			return value, nil
-		}
+	if slices.Contains(allowedValues, value) {
+		return value, nil
 	}
 	return "", fmt.Errorf(
 		"reasoning effort mapping value %q is not supported for platform %q; allowed values: %s",

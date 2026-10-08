@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -1051,11 +1052,8 @@ func buildOpsErrorLogsWhere(filter *ops.OpsErrorLogFilter) (string, []any) {
 	}
 	if len(filter.ErrorPhasesAny) > 0 {
 		phases := append([]string(nil), filter.ErrorPhasesAny...)
-		for _, phase := range filter.ErrorPhasesAny {
-			if phase == "provider_auth" {
-				phases = append(phases, "account_auth")
-				break
-			}
+		if slices.Contains(filter.ErrorPhasesAny, "provider_auth") {
+			phases = append(phases, "account_auth")
 		}
 		args = append(args, pq.Array(phases))
 		clauses = append(clauses, "e.error_phase = ANY($"+itoa(len(args))+")")

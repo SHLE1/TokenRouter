@@ -141,8 +141,8 @@ func (c *DingTalkClient) DingTalkOAPIBase() string {
 		return "https://oapi.dingtalk.com"
 	}
 	host := u.Host
-	if strings.HasPrefix(host, "api.") {
-		host = "oapi." + strings.TrimPrefix(host, "api.")
+	if after, ok := strings.CutPrefix(host, "api."); ok {
+		host = "oapi." + after
 	}
 	return u.Scheme + "://" + host
 }

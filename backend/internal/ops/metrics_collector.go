@@ -95,8 +95,7 @@ func (c *OpsMetricsCollector) Start() {
 		if c.stopCh == nil {
 			c.stopCh = make(chan struct{})
 		}
-		c.loopWG.Add(1)
-		go func() { defer c.loopWG.Done(); c.run() }()
+		c.loopWG.Go(func() { ; c.run() })
 	})
 }
 

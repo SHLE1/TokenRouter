@@ -40,10 +40,7 @@ func RPMStickyBuffer(base, concurrency, sessions, override int) int {
 		sessions = 0
 	}
 	buffer := concurrency + sessions
-	floor := base / 5
-	if floor < 1 {
-		floor = 1
-	}
+	floor := max(base/5, 1)
 	if buffer < floor {
 		buffer = floor
 	}

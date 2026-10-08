@@ -116,8 +116,7 @@ func TestAuthenticationConcurrentStartStop(t *testing.T) {
 		service := NewAPIKeyService(nil, nil, nil, nil, nil, nil, nil)
 		var callers sync.WaitGroup
 		for range 4 {
-			callers.Add(1)
-			go func() { defer callers.Done(); service.Start(); service.Stop() }()
+			callers.Go(func() { ; service.Start(); service.Stop() })
 		}
 		callers.Wait()
 		require.True(t, service.operations.isStopping())

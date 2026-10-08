@@ -394,15 +394,13 @@ func TestIdempotencyCoordinator_ConcurrentSameKeySingleSideEffect(t *testing.T) 
 	var execCount int32
 	var wg sync.WaitGroup
 	for range 8 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, _ = coordinator.Execute(context.Background(), opts, func(ctx context.Context) (any, error) {
 				atomic.AddInt32(&execCount, 1)
 				time.Sleep(80 * time.Millisecond)
 				return map[string]any{"ok": true}, nil
 			})
-		}()
+		})
 	}
 	wg.Wait()
 

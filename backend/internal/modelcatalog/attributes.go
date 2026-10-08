@@ -3,6 +3,7 @@ package modelcatalog
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
@@ -45,9 +46,7 @@ func (a Attributes) fields() map[string]json.RawMessage {
 // Merge 按字段覆盖，未填写的字段继续继承，数组整体替换。
 func Merge(base, patch Attributes) Attributes {
 	fields := base.fields()
-	for key, value := range patch.fields() {
-		fields[key] = value
-	}
+	maps.Copy(fields, patch.fields())
 	body, _ := json.Marshal(fields)
 	var result Attributes
 	_ = json.Unmarshal(body, &result)

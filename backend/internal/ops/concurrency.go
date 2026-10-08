@@ -3,6 +3,7 @@ package ops
 import (
 	"context"
 	"log"
+	"maps"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
@@ -93,19 +94,14 @@ func (s *OpsService) getProvidersLoadMapBestEffort(ctx context.Context, provider
 
 	out := make(map[int64]*ProviderLoadInfo, len(batch))
 	for i := 0; i < len(batch); i += opsConcurrencyBatchChunkSize {
-		end := i + opsConcurrencyBatchChunkSize
-		if end > len(batch) {
-			end = len(batch)
-		}
+		end := min(i+opsConcurrencyBatchChunkSize, len(batch))
 		part, err := s.concurrencyService.GetProvidersLoadBatch(ctx, batch[i:end])
 		if err != nil {
 			// 负载查询失败时返回零值。
 			log.Printf("[Ops] GetProvidersLoadBatch failed: %v", err)
 			continue
 		}
-		for k, v := range part {
-			out[k] = v
-		}
+		maps.Copy(out, part)
 	}
 
 	return out
@@ -328,19 +324,14 @@ func (s *OpsService) getUsersLoadMapBestEffort(ctx context.Context, users []User
 
 	out := make(map[int64]*UserLoadInfo, len(batch))
 	for i := 0; i < len(batch); i += opsConcurrencyBatchChunkSize {
-		end := i + opsConcurrencyBatchChunkSize
-		if end > len(batch) {
-			end = len(batch)
-		}
+		end := min(i+opsConcurrencyBatchChunkSize, len(batch))
 		part, err := s.concurrencyService.GetUsersLoadBatch(ctx, batch[i:end])
 		if err != nil {
 			// 负载查询失败时返回零值。
 			log.Printf("[Ops] GetUsersLoadBatch failed: %v", err)
 			continue
 		}
-		for k, v := range part {
-			out[k] = v
-		}
+		maps.Copy(out, part)
 	}
 
 	return out

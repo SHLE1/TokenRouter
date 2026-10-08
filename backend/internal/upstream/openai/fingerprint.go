@@ -3,6 +3,7 @@ package openai
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -134,9 +135,7 @@ func RewriteCodexTurnMetadataFields(h http.Header, fields map[string]any) {
 	if err := json.Unmarshal([]byte(raw), &metadata); err != nil || metadata == nil {
 		metadata = make(map[string]any, len(fields))
 	}
-	for k, v := range fields {
-		metadata[k] = v
-	}
+	maps.Copy(metadata, fields)
 	rebuilt, err := json.Marshal(metadata)
 	if err != nil {
 		return
@@ -326,9 +325,7 @@ func RewriteClientMetadataEmbeddedTurnMetadata(clientMetadata map[string]any, fi
 	if err := json.Unmarshal([]byte(raw), &metadata); err != nil || metadata == nil {
 		metadata = make(map[string]any, len(fields))
 	}
-	for k, v := range fields {
-		metadata[k] = v
-	}
+	maps.Copy(metadata, fields)
 	if rebuilt, err := json.Marshal(metadata); err == nil {
 		clientMetadata["x-codex-turn-metadata"] = string(rebuilt)
 	}

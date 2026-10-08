@@ -92,8 +92,7 @@ func (s *GrokExecutor) ChatResponses(
 
 	updatedBody, policyErr := tierpolicy.ApplyBody(responsesBody, s.FastPolicy.Input(ctx, provider, upstreamModel))
 	if policyErr != nil {
-		var blocked *tierpolicy.BlockedError
-		if errors.As(policyErr, &blocked) {
+		if blocked, ok := errors.AsType[*tierpolicy.BlockedError](policyErr); ok {
 			MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
 			WriteForwardChatError(c, http.StatusForbidden, "permission_error", blocked.Message)
 		}

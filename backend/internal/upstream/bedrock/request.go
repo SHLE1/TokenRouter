@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -248,8 +249,8 @@ func ConvertOutputFormatToInlineSchema(body []byte) []byte {
 	}
 	msgArr := messages.Array()
 	lastUserIdx := -1
-	for i := len(msgArr) - 1; i >= 0; i-- {
-		if msgArr[i].Get("role").String() == "user" {
+	for i, m := range slices.Backward(msgArr) {
+		if m.Get("role").String() == "user" {
 			lastUserIdx = i
 			break
 		}
@@ -557,12 +558,7 @@ func SanitizeBedrockFieldsForBetaTokens(body []byte, betaTokens []string) []byte
 
 // ContainsBedrockBetaToken 判断最终 beta token 列表中是否包含指定能力开关。
 func ContainsBedrockBetaToken(tokens []string, target string) bool {
-	for _, token := range tokens {
-		if token == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tokens, target)
 }
 
 // ContainsAnyBedrockBetaToken 判断 tokens 是否包含 targets 中的任意一个 token。

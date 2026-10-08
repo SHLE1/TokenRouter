@@ -34,10 +34,7 @@ func NewOpenAI403CounterCache(rdb *redis.Client) provider.OpenAI403CounterCache 
 func (c *openAI403CounterCache) IncrementOpenAI403Count(ctx context.Context, providerID int64, windowMinutes int) (int64, error) {
 	key := fmt.Sprintf("%s%d", openAI403CounterPrefix, providerID)
 
-	ttlSeconds := windowMinutes * 60
-	if ttlSeconds < 60 {
-		ttlSeconds = 60
-	}
+	ttlSeconds := max(windowMinutes*60, 60)
 
 	result, err := openAI403CounterIncrScript.Run(ctx, c.rdb, []string{key}, ttlSeconds).Int64()
 	if err != nil {

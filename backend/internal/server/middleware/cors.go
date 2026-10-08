@@ -3,6 +3,7 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 
@@ -16,13 +17,7 @@ var corsWarningOnce sync.Once
 // CORS 跨域中间件。
 func CORS(cfg httpconfig.CORSConfig) gin.HandlerFunc {
 	allowedOrigins := normalizeOrigins(cfg.AllowedOrigins)
-	allowAll := false
-	for _, origin := range allowedOrigins {
-		if origin == "*" {
-			allowAll = true
-			break
-		}
-	}
+	allowAll := slices.Contains(allowedOrigins, "*")
 	wildcardWithSpecific := allowAll && len(allowedOrigins) > 1
 	if wildcardWithSpecific {
 		allowedOrigins = []string{"*"}

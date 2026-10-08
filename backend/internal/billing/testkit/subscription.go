@@ -148,7 +148,7 @@ func (s *SubscriptionRepository) RebuildIndex() {
 	}
 	for key := range s.byUserPlan {
 		ids := s.byUserPlan[key]
-		for i := 0; i < len(ids); i++ {
+		for i := range ids {
 			for j := i + 1; j < len(ids); j++ {
 				left := s.ByID[ids[i]]
 				right := s.ByID[ids[j]]

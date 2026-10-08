@@ -40,10 +40,9 @@ func NewTimeoutCounterCache(rdb *redis.Client) provider.TimeoutCounterCache {
 func (c *timeoutCounterCache) IncrementTimeoutCount(ctx context.Context, providerID int64, windowMinutes int) (int64, error) {
 	key := fmt.Sprintf("%s%d", timeoutCounterPrefix, providerID)
 
-	ttlSeconds := windowMinutes * 60
-	if ttlSeconds < 60 {
-		ttlSeconds = 60 // 最小1分钟
-	}
+	ttlSeconds := max(windowMinutes*60,
+		// 最小1分钟
+		60)
 
 	result, err := timeoutCounterIncrScript.Run(ctx, c.rdb, []string{key}, ttlSeconds).Int64()
 	if err != nil {

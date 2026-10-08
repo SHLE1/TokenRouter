@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -483,9 +484,7 @@ func BuildPendingOAuthSessionStatusPayload(session *identity.PendingAuthSession)
 		"provider":    strings.TrimSpace(session.ProviderType),
 		"intent":      strings.TrimSpace(session.Intent),
 	}
-	for key, value := range completionResponse {
-		payload[key] = value
-	}
+	maps.Copy(payload, completionResponse)
 	if email := strings.TrimSpace(session.ResolvedEmail); email != "" {
 		payload["email"] = email
 	}
@@ -681,8 +680,7 @@ func (h *PendingHandler) CreatePendingAccountForProvider(c *gin.Context, provide
 
 	finalization := identity.PendingAccountFinalization{Session: session, User: user, InvitationCode: strings.TrimSpace(req.InvitationCode), AffiliateCode: strings.TrimSpace(req.AffCode), BeforeCommit: h.pendingOptions.BeforeAccountCommit}
 	if err := h.flow.FinalizeCreatedAccountWithChoice(c.Request.Context(), finalization, identity.OAuthAdoptionChoice{AdoptDisplayName: req.AdoptDisplayName, AdoptAvatar: req.AdoptAvatar}); err != nil {
-		var failure *identity.PendingWriteError
-		if errors.As(err, &failure) {
+		if failure, ok := errors.AsType[*identity.PendingWriteError](err); ok {
 			switch failure.Phase {
 			case "binding", "hook":
 				RespondPendingOAuthBindingApplyError(c, failure.Cause)

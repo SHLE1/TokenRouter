@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -534,9 +535,7 @@ func cloneMapStringAny(src map[string]any) map[string]any {
 		return nil
 	}
 	dst := make(map[string]any, len(src))
-	for k, v := range src {
-		dst[k] = v
-	}
+	maps.Copy(dst, src)
 	return dst
 }
 
@@ -620,9 +619,7 @@ func (s *handlerInMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
 	cloned := *event
 	if event.Fields != nil {
 		cloned.Fields = make(map[string]any, len(event.Fields))
-		for k, v := range event.Fields {
-			cloned.Fields[k] = v
-		}
+		maps.Copy(cloned.Fields, event.Fields)
 	}
 	s.mu.Lock()
 	s.events = append(s.events, &cloned)
@@ -728,9 +725,7 @@ func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates
 			if value.Record.Extra == nil {
 				value.Record.Extra = make(map[string]any)
 			}
-			for key, v := range updates {
-				value.Record.Extra[key] = v
-			}
+			maps.Copy(value.Record.Extra, updates)
 		}
 	}
 

@@ -249,10 +249,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	s.normalizeResult(result, billingProvider, true, provider)
 
 	// OpenAI input_tokens 包含缓存读取和写入，此处分为未缓存输入、缓存读取和缓存写入三个独立计费桶。
-	actualInputTokens := result.Usage.InputTokens - result.Usage.CacheReadInputTokens - result.Usage.CacheCreationInputTokens
-	if actualInputTokens < 0 {
-		actualInputTokens = 0
-	}
+	actualInputTokens := max(result.Usage.InputTokens-result.Usage.CacheReadInputTokens-result.Usage.CacheCreationInputTokens, 0)
 
 	// Calculate cost
 	tokens := UsageTokens{

@@ -1012,8 +1012,7 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 			return
 		}
 		proxyErr := svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "access-token-a", firstMessage, nil)
-		var failoverErr *forwardcore.UpstreamFailoverError
-		if !errors.As(proxyErr, &failoverErr) {
+		if _, ok := errors.AsType[*forwardcore.UpstreamFailoverError](proxyErr); !ok {
 			serverErrCh <- proxyErr
 			return
 		}

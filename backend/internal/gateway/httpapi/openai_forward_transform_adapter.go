@@ -168,8 +168,7 @@ func (p openAIForwardTransformAdapter) FastDecision(ctx context.Context, model, 
 }
 
 func (p openAIForwardTransformAdapter) FastBlocked(err error) {
-	var blocked *tierpolicy.BlockedError
-	if errors.As(err, &blocked) {
+	if blocked, ok := errors.AsType[*tierpolicy.BlockedError](err); ok {
 		WriteFastPolicyBlockedResponse(p.c, blocked)
 	}
 }

@@ -79,16 +79,13 @@ func (s *OpenAIWebSocketExecutor) proxyResponsesWebSocketV2Passthrough(
 }
 
 func openAIWSPassthroughRelayClientClose(exit openaiwsv2.RelayExit, completedTurns int) (coderws.StatusCode, string, bool) {
-	var closeErr *gatewayhttp.OpenAIWSClientCloseError
-	if errors.As(exit.Err, &closeErr) {
+	if closeErr, ok := errors.AsType[*gatewayhttp.OpenAIWSClientCloseError](exit.Err); ok {
 		return closeErr.StatusCode(), closeErr.Reason(), true
 	}
-	var activeTurnTimeoutErr *gatewayws.ActiveTurnTimeoutError
-	if errors.As(exit.Err, &activeTurnTimeoutErr) {
+	if _, ok := errors.AsType[*gatewayws.ActiveTurnTimeoutError](exit.Err); ok {
 		return coderws.StatusGoingAway, "upstream websocket read timeout; please reconnect", true
 	}
-	var firstOutputTimeoutErr *gatewayws.FirstOutputTimeoutError
-	if errors.As(exit.Err, &firstOutputTimeoutErr) {
+	if _, ok := errors.AsType[*gatewayws.FirstOutputTimeoutError](exit.Err); ok {
 		if completedTurns > 0 || exit.WroteDownstream {
 			return coderws.StatusGoingAway, "upstream produced no semantic output; please reconnect", true
 		}
@@ -127,8 +124,7 @@ func (s *OpenAIWebSocketExecutor) mapOpenAIWSPassthroughDialError(
 		return nil
 	}
 	wrappedErr := err
-	var dialErr *upstreamopenai.WSDialError
-	if !errors.As(err, &dialErr) {
+	if _, ok := errors.AsType[*upstreamopenai.WSDialError](err); !ok {
 		var handshakeErr *upstreamopenai.WSHandshakeError
 		var responseBody []byte
 		if errors.As(err, &handshakeErr) && handshakeErr != nil {

@@ -114,7 +114,7 @@ func MergeAnthropicBeta(required []string, incoming string) string {
 	for _, r := range required {
 		add(r)
 	}
-	for _, p := range strings.Split(incoming, ",") {
+	for p := range strings.SplitSeq(incoming, ",") {
 		add(p)
 	}
 	return strings.Join(out, ",")
@@ -126,7 +126,7 @@ func MergeAnthropicBetaDropping(required []string, incoming string, drop map[str
 		return merged
 	}
 	out := make([]string, 0, 8)
-	for _, p := range strings.Split(merged, ",") {
+	for p := range strings.SplitSeq(merged, ",") {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
@@ -311,7 +311,7 @@ func ContainsBetaToken(header, token string) bool {
 	if header == "" || token == "" {
 		return false
 	}
-	for _, p := range strings.Split(header, ",") {
+	for p := range strings.SplitSeq(header, ",") {
 		if strings.TrimSpace(p) == token {
 			return true
 		}

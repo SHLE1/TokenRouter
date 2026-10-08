@@ -242,10 +242,7 @@ func sweepGrokFreeQuotaGateCache(cache *sync.Map, now time.Time, cacheTTL time.D
 	if cache == nil || cacheTTL <= 0 {
 		return
 	}
-	maxAge := cacheTTL * 20
-	if maxAge < grokFreeQuotaGateCacheMinSweepAge {
-		maxAge = grokFreeQuotaGateCacheMinSweepAge
-	}
+	maxAge := max(cacheTTL*20, grokFreeQuotaGateCacheMinSweepAge)
 	cache.Range(func(key, value any) bool {
 		entry, ok := value.(grokFreeQuotaGateCacheEntry)
 		if !ok || now.Sub(entry.checkedAt) > maxAge {

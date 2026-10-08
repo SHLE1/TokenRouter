@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -138,9 +139,7 @@ func (r *bulkUpdateProbeProviderRepo) UpdateExtra(ctx context.Context, id int64,
 		if provider.Extra == nil {
 			provider.Extra = map[string]any{}
 		}
-		for key, value := range updates {
-			provider.Extra[key] = value
-		}
+		maps.Copy(provider.Extra, updates)
 	}
 	r.mu.Unlock()
 

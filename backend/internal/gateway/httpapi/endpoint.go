@@ -186,11 +186,11 @@ func DeriveUpstreamEndpoint(inbound, rawRequestPath, platform string) string {
 // Returns "" when there is no meaningful suffix.
 func responsesSubpathSuffix(rawPath string) string {
 	trimmed := strings.TrimRight(strings.TrimSpace(rawPath), "/")
-	idx := strings.LastIndex(trimmed, "/responses")
-	if idx < 0 {
+	_, after, ok := strings.CutLast(trimmed, "/responses")
+	if !ok {
 		return ""
 	}
-	suffix := trimmed[idx+len("/responses"):]
+	suffix := after
 	if suffix == "" || suffix == "/" {
 		return ""
 	}

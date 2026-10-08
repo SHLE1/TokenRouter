@@ -34,8 +34,7 @@ func (h *ManagementHandler) SyncUpstreamModels(c *gin.Context) {
 
 	models, err := h.models.Fetch(c.Request.Context(), provider)
 	if err != nil {
-		var syncErr *providercore.UpstreamModelSyncError
-		if errors.As(err, &syncErr) {
+		if syncErr, ok := errors.AsType[*providercore.UpstreamModelSyncError](err); ok {
 			switch syncErr.Kind {
 			case providercore.UpstreamModelSyncErrorConfiguration, providercore.UpstreamModelSyncErrorUnsupported:
 				response.BadRequest(c, syncErr.SafeMessage())
@@ -84,8 +83,7 @@ func (h *ManagementHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 
 	models, err := h.models.Fetch(c.Request.Context(), tempProvider)
 	if err != nil {
-		var syncErr *providercore.UpstreamModelSyncError
-		if errors.As(err, &syncErr) {
+		if syncErr, ok := errors.AsType[*providercore.UpstreamModelSyncError](err); ok {
 			switch syncErr.Kind {
 			case providercore.UpstreamModelSyncErrorConfiguration, providercore.UpstreamModelSyncErrorUnsupported:
 				response.BadRequest(c, syncErr.SafeMessage())

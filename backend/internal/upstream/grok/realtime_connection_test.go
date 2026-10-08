@@ -131,8 +131,7 @@ func TestRealtimeNativeLocalWebSocket(t *testing.T) {
 	require.Error(t, got.err)
 	var wg sync.WaitGroup
 	for range 8 {
-		wg.Add(1)
-		go func() { defer wg.Done(); _ = session.Close() }()
+		wg.Go(func() { ; _ = session.Close() })
 	}
 	wg.Wait()
 	require.EqualValues(t, 1, closed.Load())

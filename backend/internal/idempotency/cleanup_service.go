@@ -55,8 +55,7 @@ func (s *IdempotencyCleanupService) Start() {
 
 	s.startOnce.Do(func() {
 		notifyObserver(s.observer, "service.idempotency_cleanup", fmt.Sprintf("[IdempotencyCleanup] started interval=%s batch=%d", s.interval, s.batch))
-		s.wg.Add(1)
-		go func() { defer s.wg.Done(); s.runLoop() }()
+		s.wg.Go(func() { ; s.runLoop() })
 	})
 }
 

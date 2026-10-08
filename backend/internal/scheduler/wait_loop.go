@@ -128,10 +128,7 @@ func (s *ConcurrencyService) AcquireUser(ctx context.Context, options UserAcquir
 	var waited WaitResult
 	release := result.ReleaseFunc
 	if !result.Acquired {
-		limit := CalculateMaxWait(options.Limit) - options.Limit
-		if limit < 1 {
-			limit = 1
-		}
+		limit := max(CalculateMaxWait(options.Limit)-options.Limit, 1)
 		waited, err = s.EnterUserWait(ctx, options.UserID, limit)
 		if err != nil {
 			return nil, waited, err
@@ -163,10 +160,7 @@ func (s *ConcurrencyService) AcquireUser(ctx context.Context, options UserAcquir
 
 func NextBackoff(current time.Duration) time.Duration {
 	// 指数退避：当前时间 * 1.5
-	next := time.Duration(float64(current) * backoffMultiplier)
-	if next > MaxBackoff {
-		next = MaxBackoff
-	}
+	next := min(time.Duration(float64(current)*backoffMultiplier), MaxBackoff)
 	// 添加 ±20% 的随机抖动（jitter 范围 0.8 ~ 1.2）
 	// 抖动将多个请求的 Redis 重试分散到不同时间点。
 	jitter := 0.8 + rand.Float64()*0.4

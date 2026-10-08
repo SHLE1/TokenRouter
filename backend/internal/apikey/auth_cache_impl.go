@@ -70,10 +70,7 @@ func (c KeyApiKeyAuthCacheConfig) KeyJitterTTL(ttl time.Duration) time.Duration 
 	if c.jitterPercent <= 0 {
 		return ttl
 	}
-	percent := c.jitterPercent
-	if percent > 100 {
-		percent = 100
-	}
+	percent := min(c.jitterPercent, 100)
 	delta := float64(percent) / 100
 	randVal := rand.Float64()
 	factor := 1 - delta + randVal*(2*delta)
@@ -131,9 +128,7 @@ func (s *APIKeyService) StartAuthCacheInvalidationSubscriber(ctx context.Context
 			s.authInvalidationConnected.Store(true)
 		})
 		s.authInvalidationCancel = cancel
-		s.authInvalidationWG.Add(1)
-		go func() {
-			defer s.authInvalidationWG.Done()
+		s.authInvalidationWG.Go(func() {
 			backoff := time.Second
 			for {
 				err := s.cache.SubscribeAuthCacheInvalidation(subscriberCtx, func(cacheKey string) {
@@ -165,7 +160,7 @@ func (s *APIKeyService) StartAuthCacheInvalidationSubscriber(ctx context.Context
 					}
 				}
 			}
-		}()
+		})
 	})
 }
 

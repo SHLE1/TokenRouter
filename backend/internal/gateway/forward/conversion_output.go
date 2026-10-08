@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -203,10 +204,8 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 		}
 
 		events := bridge.AnthropicEventToResponsesEvents(in.Runtime, event, state)
-		for _, evt := range events {
-			if writeEvent(evt) {
-				return true
-			}
+		if slices.ContainsFunc(events, writeEvent) {
+			return true
 		}
 		if len(events) > 0 {
 			out.Flush()
@@ -216,10 +215,8 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 
 	finalizeStream := func() (*Result, error) {
 		if finalEvents := bridge.FinalizeAnthropicResponsesStream(state); len(finalEvents) > 0 {
-			for _, evt := range finalEvents {
-				if writeEvent(evt) {
-					return resultWithUsage(), nil
-				}
+			if slices.ContainsFunc(finalEvents, writeEvent) {
+				return resultWithUsage(), nil
 			}
 			out.Flush()
 		}

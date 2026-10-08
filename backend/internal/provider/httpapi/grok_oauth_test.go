@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -301,7 +302,7 @@ func TestGrokSSOBatchImportKeepsCreatedProvidersWhenOneAutomaticProbeFails(t *te
 			snapshot := value.RoutingSnapshot()
 			queue.Schedule(prober, &snapshot)
 		},
-		RunTask: func(_ string, run func()) { tasks.Add(1); go func() { defer tasks.Done(); run() }() },
+		RunTask: func(_ string, run func()) { ; tasks.Go(func() { ; run() }) },
 	})
 	handler := NewGrokOAuthHandler(oauthService, imports, nil, GrokOAuthHTTPOptions{})
 
@@ -483,9 +484,7 @@ func (s *grokImportProbeStub) snapshot() (map[int64]int, int, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	calls := make(map[int64]int, len(s.calls))
-	for id, count := range s.calls {
-		calls[id] = count
-	}
+	maps.Copy(calls, s.calls)
 	return calls, s.maxActive, s.deadlineSeen
 }
 

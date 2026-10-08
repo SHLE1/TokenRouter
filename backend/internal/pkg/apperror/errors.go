@@ -3,6 +3,7 @@ package apperror
 import (
 	"errors"
 	"fmt"
+	"maps"
 )
 
 const (
@@ -69,9 +70,7 @@ func (e *ApplicationError) WithMetadata(md map[string]string) *ApplicationError 
 		return err
 	}
 	err.Metadata = make(map[string]string, len(md))
-	for k, v := range md {
-		err.Metadata[k] = v
-	}
+	maps.Copy(err.Metadata, md)
 	return err
 }
 
@@ -120,9 +119,7 @@ func Clone(err *ApplicationError) *ApplicationError {
 	var metadata map[string]string
 	if err.Metadata != nil {
 		metadata = make(map[string]string, len(err.Metadata))
-		for k, v := range err.Metadata {
-			metadata[k] = v
-		}
+		maps.Copy(metadata, err.Metadata)
 	}
 	return &ApplicationError{
 		cause: err.cause,

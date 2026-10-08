@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 	"time"
@@ -89,9 +90,7 @@ func (s *UpstreamUsageService) SnapshotMetrics() UpstreamUsageMetrics {
 	}
 	s.metricsMu.Lock()
 	defer s.metricsMu.Unlock()
-	for key, value := range s.metrics {
-		result.Counts[key] = value
-	}
+	maps.Copy(result.Counts, s.metrics)
 	return result
 }
 

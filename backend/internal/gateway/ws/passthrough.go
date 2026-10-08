@@ -337,10 +337,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 			if isResponseCreate {
 				usageMeta.CaptureRequestedReasoningEffort(originalResponseCreate)
 			}
-			turnNo := int(completedTurns.Load()) + 1
-			if turnNo < 2 {
-				turnNo = 2
-			}
+			turnNo := max(int(completedTurns.Load())+1, 2)
 			if isResponseCreate && hooks != nil && hooks.BeforeRequest != nil {
 				requestModel := usageMeta.RequestModelForFrame(payload)
 				if requestModel == "" {
@@ -528,10 +525,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 			OnUpstreamEvent: func(eventType string, payload []byte) {
 				warning := p.Warning(eventType, payload)
 				if warning != nil && hooks != nil && hooks.OnUpstreamError != nil {
-					turnNo := int(completedTurns.Load()) + 1
-					if turnNo < 1 {
-						turnNo = 1
-					}
+					turnNo := max(int(completedTurns.Load())+1, 1)
 					turnPayload := turnPayloads.Peek()
 					hooks.OnUpstreamError(turnNo, turnPayload.OriginalModel, warning.StatusCode, warning.ResponseBody, warning.Message)
 				}
@@ -722,8 +716,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	))
 
 	relayErr := relayExit.Err
-	var firstOutputTimeoutErr *FirstOutputTimeoutError
-	if errors.As(relayErr, &firstOutputTimeoutErr) {
+	if firstOutputTimeoutErr, ok := errors.AsType[*FirstOutputTimeoutError](relayErr); ok {
 		deadline := firstOutputTimeoutErr.Deadline
 		failoverErr := p.FirstOutputFailure(ctx, deadline, handshakeHeaders)
 
@@ -739,8 +732,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 			)
 		}
 	}
-	var activeTurnTimeoutErr *ActiveTurnTimeoutError
-	if errors.As(relayErr, &activeTurnTimeoutErr) {
+	if activeTurnTimeoutErr, ok := errors.AsType[*ActiveTurnTimeoutError](relayErr); ok {
 		relayErr = p.CloseError(
 			1001,
 			"upstream websocket read timeout; please reconnect",

@@ -37,7 +37,7 @@ func ForEachSSEDataPayload(body string, fn func([]byte)) {
 		return
 	}
 	var acc SSEDataAccumulator
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		acc.AddLine(line, fn)
 	}
 	acc.Flush(fn)

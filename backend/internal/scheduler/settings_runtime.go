@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"maps"
 	"math"
 	"strconv"
 	"strings"
@@ -329,9 +330,7 @@ func CloneAdvancedSchedulerWeightOverrides(in map[string]float64) map[string]flo
 		return nil
 	}
 	out := make(map[string]float64, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
+	maps.Copy(out, in)
 	return out
 }
 

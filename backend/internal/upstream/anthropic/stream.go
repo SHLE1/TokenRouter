@@ -218,8 +218,8 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 		dataLine := ""
 		for _, line := range lines {
 			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "event:") {
-				eventName = strings.TrimSpace(strings.TrimPrefix(trimmed, "event:"))
+			if after, ok0 := strings.CutPrefix(trimmed, "event:"); ok0 {
+				eventName = strings.TrimSpace(after)
 				continue
 			}
 			if dataLine == "" && sseDataPattern.MatchString(trimmed) {

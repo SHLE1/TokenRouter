@@ -457,13 +457,7 @@ func (s *RetryAdapter) HandleSingleProviderRetryInPlace(
 		if attempt < AntigravitySingleProviderSmartRetryMaxAttempts && lastRetryBody != nil {
 			_, _, newWaitDuration, _, _ := ShouldTriggerAntigravitySmartRetry(p.Native, lastRetryBody)
 			if newWaitDuration > 0 {
-				waitDuration = newWaitDuration
-				if waitDuration > AntigravitySingleProviderSmartRetryMaxWait {
-					waitDuration = AntigravitySingleProviderSmartRetryMaxWait
-				}
-				if waitDuration < AntigravitySmartRetryMinWait {
-					waitDuration = AntigravitySmartRetryMinWait
-				}
+				waitDuration = max(min(newWaitDuration, AntigravitySingleProviderSmartRetryMaxWait), AntigravitySmartRetryMinWait)
 			}
 		}
 	}
@@ -785,18 +779,12 @@ func ShouldAntigravityFallbackToNextURL(err error, statusCode int) bool {
 // SleepAntigravityBackoffWithContext 带 context 取消检查的退避等待
 // 返回 true 表示正常完成等待，false 表示 context 已取消。
 func SleepAntigravityBackoffWithContext(ctx context.Context, attempt int) bool {
-	delay := AntigravityRetryBaseDelay * time.Duration(1<<uint(attempt-1))
-	if delay > AntigravityRetryMaxDelay {
-		delay = AntigravityRetryMaxDelay
-	}
+	delay := min(AntigravityRetryBaseDelay*time.Duration(1<<uint(attempt-1)), AntigravityRetryMaxDelay)
 
 	// +/- 20% jitter
 	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
 	jitter := time.Duration(float64(delay) * 0.2 * (r.Float64()*2 - 1))
-	sleepFor := delay + jitter
-	if sleepFor < 0 {
-		sleepFor = 0
-	}
+	sleepFor := max(delay+jitter, 0)
 
 	timer := time.NewTimer(sleepFor)
 	select {
@@ -957,10 +945,7 @@ func ShouldTriggerAntigravitySmartRetry(native bool, respBody []byte) (shouldRet
 	}
 
 	// retryDelay < 阈值：智能重试
-	waitDuration = info.RetryDelay
-	if waitDuration < AntigravitySmartRetryMinWait {
-		waitDuration = AntigravitySmartRetryMinWait
-	}
+	waitDuration = max(info.RetryDelay, AntigravitySmartRetryMinWait)
 
 	return true, false, waitDuration, info.ModelName, false
 }

@@ -134,8 +134,7 @@ func TestHTTPServerGlobalBodyLimit(t *testing.T) {
 	r.POST("/", func(c *gin.Context) {
 		_, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			var maxErr *http.MaxBytesError
-			if errors.As(err, &maxErr) {
+			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 				c.Status(http.StatusRequestEntityTooLarge)
 				return
 			}

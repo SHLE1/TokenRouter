@@ -114,18 +114,13 @@ func (s *WindowCostGuard) Prefetch(ctx context.Context, providers []CostWindowIn
 	costs := make(map[int64]float64, len(providerIDs))
 	cacheValues, err := s.cache.GetWindowCostBatch(ctx, providerIDs)
 	if err == nil {
-		for providerID, cost := range cacheValues {
-			costs[providerID] = cost
-		}
+		maps.Copy(costs, cacheValues)
 		s.stats.Hit.Add(int64(len(cacheValues)))
 	} else {
 		s.stats.Errors.Add(1)
 		s.log("window_cost batch cache read failed: %v", err)
 	}
-	cacheMissCount := len(providerIDs) - len(costs)
-	if cacheMissCount < 0 {
-		cacheMissCount = 0
-	}
+	cacheMissCount := max(len(providerIDs)-len(costs), 0)
 	s.stats.Miss.Add(int64(cacheMissCount))
 
 	missingByStart := make(map[int64][]int64)

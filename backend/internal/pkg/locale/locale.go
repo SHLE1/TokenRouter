@@ -64,7 +64,7 @@ func Normalize(raw string) string {
 	if len(raw) > 35 || strings.ContainsAny(raw, ",; \t\r\n") {
 		return ""
 	}
-	for _, segment := range strings.Split(raw, "-") {
+	for segment := range strings.SplitSeq(raw, "-") {
 		if segment == "" {
 			return ""
 		}

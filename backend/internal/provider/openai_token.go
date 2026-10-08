@@ -288,10 +288,7 @@ func (p *OpenAITokenSource) WaitForTokenAfterLockRace(ctx context.Context, cache
 		case <-timer.C:
 		}
 
-		waitMs := actualWait.Milliseconds()
-		if waitMs < 0 {
-			waitMs = 0
-		}
+		waitMs := max(actualWait.Milliseconds(), 0)
 		totalWaitMs += waitMs
 		p.Metrics.lockWaitSamples.Add(1)
 		p.Metrics.lockWaitTotalMs.Add(waitMs)

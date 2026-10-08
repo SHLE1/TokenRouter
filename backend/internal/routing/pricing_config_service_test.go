@@ -3,6 +3,7 @@ package routing
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -2199,10 +2200,8 @@ func makePolicyRepo(policy GroupRoutingPolicy, config PricingConfig, platforms m
 		policy.AllowedModels = append(policy.AllowedModels, price.Models...)
 	}
 	repo.readGroup = func(_ context.Context, id int64) (*Group, error) {
-		for _, groupID := range config.GroupIDs {
-			if groupID == id {
-				return &Group{ID: id, RoutingPolicy: policy.Clone()}, nil
-			}
+		if slices.Contains(config.GroupIDs, id) {
+			return &Group{ID: id, RoutingPolicy: policy.Clone()}, nil
 		}
 		return nil, nil
 	}

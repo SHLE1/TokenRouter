@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -218,10 +219,7 @@ func lockProxyConnectionIdentity(ctx context.Context, client *dbent.Client, prox
 func (r *ProxyStore) EnqueueProviderChanges(ctx context.Context, exec postgresinfra.Executor, providerIDs []int64) error {
 	providerIDs = SortedUniqueProviderIDs(providerIDs)
 	for start := 0; start < len(providerIDs); start += proxyProviderOutboxChunkSize {
-		end := start + proxyProviderOutboxChunkSize
-		if end > len(providerIDs) {
-			end = len(providerIDs)
-		}
+		end := min(start+proxyProviderOutboxChunkSize, len(providerIDs))
 		payload := map[string]any{"provider_ids": providerIDs[start:end]}
 		if err := r.changes.Enqueue(ctx, exec, payload); err != nil {
 			return err
@@ -636,7 +634,7 @@ func SortedUniqueProviderIDs(providerIDs []int64) []int64 {
 	if len(providerIDs) < 2 {
 		return providerIDs
 	}
-	sort.Slice(providerIDs, func(i, j int) bool { return providerIDs[i] < providerIDs[j] })
+	slices.Sort(providerIDs)
 	write := 1
 	for _, providerID := range providerIDs[1:] {
 		if providerID == providerIDs[write-1] {

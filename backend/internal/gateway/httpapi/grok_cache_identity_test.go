@@ -1151,11 +1151,9 @@ func TestResolveGrokCacheIdentityConcurrentDeterminism(t *testing.T) {
 	identities := make(chan string, workers)
 	var wg sync.WaitGroup
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			identities <- ResolveGrokCacheIdentity(newGrokCacheTestContext(501), body, "", "grok-4.5")
-		}()
+		})
 	}
 	wg.Wait()
 	close(identities)

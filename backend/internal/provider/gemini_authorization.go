@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"strconv"
 	"strings"
@@ -529,10 +530,7 @@ func (s *GeminiAuthorization) refreshToken(ctx context.Context, oauthType, refre
 
 	for attempt := range 4 {
 		if attempt > 0 {
-			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
-			if backoff > 30*time.Second {
-				backoff = 30 * time.Second
-			}
+			backoff := min(time.Duration(1<<uint(attempt-1))*time.Second, 30*time.Second)
 			time.Sleep(backoff)
 		}
 
@@ -766,9 +764,7 @@ func (s *GeminiAuthorization) BuildProviderCredentials(tokenInfo *GeminiTokenInf
 	}
 	// Store extra metadata (Drive info) if present
 	if len(tokenInfo.Extra) > 0 {
-		for k, v := range tokenInfo.Extra {
-			creds[k] = v
-		}
+		maps.Copy(creds, tokenInfo.Extra)
 	}
 	return creds
 }

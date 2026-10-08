@@ -147,9 +147,7 @@ func (s *Service) startUpdateScheduler() {
 		checkInterval = 10 * time.Minute
 	}
 
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		if remoteEnabled {
 			_ = s.syncWithRemote()
 		}
@@ -171,7 +169,7 @@ func (s *Service) startUpdateScheduler() {
 				return
 			}
 		}
-	}()
+	})
 
 	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Update scheduler started (check every %v, remote sync=%t, custom file watch=%t)", checkInterval, remoteEnabled, watchCustom)
 }

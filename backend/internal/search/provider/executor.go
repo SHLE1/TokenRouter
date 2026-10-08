@@ -122,17 +122,14 @@ func isProxyError(err error) bool {
 		return false
 	}
 	// Network-level errors (timeout, connection refused, DNS failure)
-	var netErr net.Error
-	if errors.As(err, &netErr) {
+	if _, ok := errors.AsType[net.Error](err); ok {
 		return true
 	}
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
+	if _, ok := errors.AsType[*net.OpError](err); ok {
 		return true
 	}
 	// TLS handshake failures (often caused by proxy intercepting/blocking)
-	var tlsErr *tls.RecordHeaderError
-	if errors.As(err, &tlsErr) {
+	if _, ok := errors.AsType[*tls.RecordHeaderError](err); ok {
 		return true
 	}
 	// String-based detection for wrapped errors

@@ -75,13 +75,11 @@ func TestOpsIngressRejectAggregatorConcurrentCountAndStopFlush(t *testing.T) {
 	const perGoroutine = 200
 	var wg sync.WaitGroup
 	for range goroutines {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range perGoroutine {
 				a.RecordIngressReject("invalid_api_key", "responses", "openai", "192.0.2.10", 0, 0)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	a.Stop()

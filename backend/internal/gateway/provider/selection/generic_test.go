@@ -243,8 +243,7 @@ func TestGetSchedulableProvider_AppliesGrokFreeSoftGate(t *testing.T) {
 	var tasks sync.WaitGroup
 	t.Cleanup(tasks.Wait)
 	gate := newGrokFreeQuotaTestGate(cfg, usageRepo, func(_ string, work func()) bool {
-		tasks.Add(1)
-		go func() { defer tasks.Done(); work() }()
+		tasks.Go(func() { ; work() })
 		return true
 	})
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, FreeQuota: gate}, cfg)

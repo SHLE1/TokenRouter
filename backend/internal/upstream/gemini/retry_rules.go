@@ -25,18 +25,12 @@ func IsGeminiSignatureRelatedError(respBody []byte) bool {
 }
 
 func SleepGeminiBackoff(attempt int) {
-	delay := geminiRetryBaseDelay * time.Duration(1<<uint(attempt-1))
-	if delay > geminiRetryMaxDelay {
-		delay = geminiRetryMaxDelay
-	}
+	delay := min(geminiRetryBaseDelay*time.Duration(1<<uint(attempt-1)), geminiRetryMaxDelay)
 
 	// +/- 20% jitter
 	r := mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
 	jitter := time.Duration(float64(delay) * 0.2 * (r.Float64()*2 - 1))
-	sleepFor := delay + jitter
-	if sleepFor < 0 {
-		sleepFor = 0
-	}
+	sleepFor := max(delay+jitter, 0)
 	time.Sleep(sleepFor)
 }
 

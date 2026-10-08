@@ -158,8 +158,7 @@ func (s *AliyunCaptchaService) ValidateCredentials(ctx context.Context, accessKe
 
 	_, err := s.verifier.VerifyCaptcha(ctx, cred, AliyunCredentialValidationParam)
 	if err != nil {
-		var apiErr *AliyunCaptchaAPIError
-		if errors.As(err, &apiErr) {
+		if apiErr, ok := errors.AsType[*AliyunCaptchaAPIError](err); ok {
 			if _, invalid := AliyunInvalidCredentialCodes[apiErr.Code]; invalid {
 				return ErrCaptchaInvalidCredentials
 			}

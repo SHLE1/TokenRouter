@@ -181,8 +181,7 @@ func (p *grokVoiceAdapter) ForwardVoice(ctx context.Context, _ providercore.Prov
 	if result != nil {
 		outcome.Result = &gatewaymedia.VoiceResult{RequestID: result.RequestID, Headers: http.Header(result.UpstreamHeaders).Clone(), Model: result.Model, UpstreamModel: result.UpstreamModel, Duration: result.Duration, AudioUsage: cloneGrokAudioUsage(result.AudioUsage)}
 	}
-	var failure *forwardcore.UpstreamFailoverError
-	if errors.As(err, &failure) {
+	if failure, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		outcome.RetryNext = failure.ShouldRetryNextProvider()
 	}
 	return outcome

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -875,12 +876,8 @@ func mergeTestExtraUpdates(base, more map[string]any) map[string]any {
 		return nil
 	}
 	result := make(map[string]any, len(base)+len(more))
-	for key, value := range base {
-		result[key] = value
-	}
-	for key, value := range more {
-		result[key] = value
-	}
+	maps.Copy(result, base)
+	maps.Copy(result, more)
 	return result
 }
 

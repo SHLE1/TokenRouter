@@ -54,9 +54,7 @@ func TestPendingTransactionConsumesOnce(t *testing.T) {
 	results := make(chan error, 2)
 	var workers sync.WaitGroup
 	for range 2 {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			tx, e := client.Tx(ctx)
 			if e != nil {
 				results <- e
@@ -68,7 +66,7 @@ func TestPendingTransactionConsumesOnce(t *testing.T) {
 				e = tx.Commit()
 			}
 			results <- e
-		}()
+		})
 	}
 	for range 2 {
 		select {

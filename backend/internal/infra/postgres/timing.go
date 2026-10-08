@@ -262,7 +262,7 @@ func (r *serverTimingRows) ColumnTypeScanType(index int) reflect.Type {
 	if rows, ok := r.Rows.(driver.RowsColumnTypeScanType); ok {
 		return rows.ColumnTypeScanType(index)
 	}
-	return reflect.TypeOf(new(any)).Elem()
+	return reflect.TypeFor[any]()
 }
 
 func (r *serverTimingRows) ColumnTypeDatabaseTypeName(index int) string {

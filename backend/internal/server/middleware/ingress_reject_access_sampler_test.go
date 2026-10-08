@@ -20,13 +20,11 @@ func TestIngressRejectAccessSamplerConcurrentGlobalLimit(t *testing.T) {
 	var allowed atomic.Int64
 	var wg sync.WaitGroup
 	for range 200 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if ok, _ := sampler.allow(now); ok {
 				allowed.Add(1)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	require.Equal(t, int64(10), allowed.Load())

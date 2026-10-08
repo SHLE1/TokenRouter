@@ -212,8 +212,7 @@ func (h *LiveHandler) WriteLiveCreateError(c *gin.Context, err error) {
 	case errors.Is(err, session.ErrLiveUnavailable):
 		h.ports.Error(c, http.StatusServiceUnavailable, "api_error", "Live is unavailable")
 	default:
-		var attestationErr *session.LiveAttestationUnavailableError
-		if errors.As(err, &attestationErr) {
+		if attestationErr, ok := errors.AsType[*session.LiveAttestationUnavailableError](err); ok {
 			h.ports.Error(c, http.StatusServiceUnavailable, "api_error", attestationErr.Error())
 			return
 		}

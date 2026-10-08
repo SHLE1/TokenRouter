@@ -212,10 +212,7 @@ func (q *batchImageQueue) Reserve(ctx context.Context, blockTimeout time.Duratio
 		if remaining <= 0 {
 			return batchimage.ReservedBatchImageJob{}, batchimage.ErrBatchImageQueueEmpty
 		}
-		wait := batchImageReservePollInterval
-		if remaining < wait {
-			wait = remaining
-		}
+		wait := min(remaining, batchImageReservePollInterval)
 		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():

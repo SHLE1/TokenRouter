@@ -82,10 +82,8 @@ func openAIStickyProviderMatchesGroup(provider *gatewayprovider.ExecutionProvide
 	if groupID == nil || *groupID <= 0 {
 		return false
 	}
-	for _, providerGroupID := range provider.Record.GroupIDs {
-		if providerGroupID == *groupID {
-			return true
-		}
+	if slices.Contains(provider.Record.GroupIDs, *groupID) {
+		return true
 	}
 	for _, providerGroup := range provider.Record.ProviderGroups {
 		if providerGroup.GroupID == *groupID {

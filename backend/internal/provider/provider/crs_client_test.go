@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -241,9 +242,7 @@ func crsStaleCopy(v *providercore.Record) *providercore.Record {
 	}
 	out := *v
 	out.Credentials = map[string]any{}
-	for k, x := range v.Credentials {
-		out.Credentials[k] = x
-	}
+	maps.Copy(out.Credentials, v.Credentials)
 	return &out
 }
 

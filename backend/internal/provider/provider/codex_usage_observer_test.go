@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"maps"
 	"net/http"
 	"testing"
 	"time"
@@ -31,9 +32,7 @@ func (r *openAICodexSnapshotAsyncRepo) SetRateLimited(_ context.Context, _ int64
 func (r *openAICodexSnapshotAsyncRepo) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
 	if r.updateExtraCh != nil {
 		copied := make(map[string]any, len(updates))
-		for k, v := range updates {
-			copied[k] = v
-		}
+		maps.Copy(copied, updates)
 		r.updateExtraCh <- copied
 	}
 	return nil
@@ -131,9 +130,7 @@ func TestOpenAIGatewayService_UpdateCodexUsageSnapshot_ThrottlesExtraWrites(t *t
 func (r *snapshotUpdateProviderRepo) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
 	if r.updateExtraCalls != nil {
 		copied := make(map[string]any, len(updates))
-		for k, v := range updates {
-			copied[k] = v
-		}
+		maps.Copy(copied, updates)
 		r.updateExtraCalls <- copied
 	}
 	return nil

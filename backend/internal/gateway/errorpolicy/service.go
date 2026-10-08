@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -505,12 +506,7 @@ func (s *ErrorPassthroughService) platformMatchesCached(rule *cachedPassthroughR
 	if len(rule.lowerPlatforms) == 0 {
 		return true
 	}
-	for _, p := range rule.lowerPlatforms {
-		if p == lowerPlatform {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(rule.lowerPlatforms, lowerPlatform)
 }
 
 // ruleMatchesOptimized 优化的规则匹配，支持短路和延迟 body 转换。

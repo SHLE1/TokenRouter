@@ -63,15 +63,13 @@ func (v *aliyunCaptchaVerifier) VerifyCaptcha(ctx context.Context, cred identity
 // normalizeAliyunCaptchaError 把 SDK 的两种错误类型归一化为 identity.AliyunCaptchaAPIError，
 // 其余错误（网络/超时等）原样返回。
 func normalizeAliyunCaptchaError(err error) error {
-	var teaErr *tea.SDKError
-	if errors.As(err, &teaErr) {
+	if teaErr, ok := errors.AsType[*tea.SDKError](err); ok {
 		return &identity.AliyunCaptchaAPIError{
 			Code:    tea.StringValue(teaErr.Code),
 			Message: tea.StringValue(teaErr.Message),
 		}
 	}
-	var daraErr *dara.SDKError
-	if errors.As(err, &daraErr) {
+	if daraErr, ok := errors.AsType[*dara.SDKError](err); ok {
 		return &identity.AliyunCaptchaAPIError{
 			Code:    dara.StringValue(daraErr.Code),
 			Message: dara.StringValue(daraErr.Message),

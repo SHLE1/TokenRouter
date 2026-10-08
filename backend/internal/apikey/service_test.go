@@ -277,12 +277,10 @@ func TestAPIKeyService_TouchLastUsed_ConcurrentFirstTouchDeduplicated(t *testing
 	var wg sync.WaitGroup
 
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-startCh
 			errCh <- svc.TouchLastUsed(context.Background(), 321)
-		}()
+		})
 	}
 
 	close(startCh)

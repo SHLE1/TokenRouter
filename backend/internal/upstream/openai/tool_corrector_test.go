@@ -2,6 +2,7 @@ package openai
 
 import (
 	"encoding/json"
+	"maps"
 	"strings"
 	"testing"
 )
@@ -528,9 +529,7 @@ func (c *CodexToolCorrector) ResetStats() {
 func GetToolNameMapping() map[string]string {
 	// 返回副本以避免外部修改
 	mapping := make(map[string]string, len(codexToolNameMapping))
-	for k, v := range codexToolNameMapping {
-		mapping[k] = v
-	}
+	maps.Copy(mapping, codexToolNameMapping)
 	return mapping
 }
 

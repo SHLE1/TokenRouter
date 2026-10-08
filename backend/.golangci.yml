@@ -15,6 +15,7 @@ linters:
     - govet
     - ineffassign
     - intrange
+    - modernize
     - nolintlint
     - revive
     - staticcheck
@@ -120,6 +121,16 @@ linters:
         - '^\s*@project-doc'
         # 路由注释写的是请求方法和路径。
         - '^\s*(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|ANY) /'
+    modernize:
+      disable:
+        # 用到 Go 1.26 以后的新写法，读者和工具还不熟悉。
+        - embedlit
+        - newexpr
+        # 会改变 JSON 输出或字段类型。
+        - omitzero
+        - atomictypes
+        # t.Context() 在 t.Cleanup 之前取消，清理函数里继续使用会出错。
+        - testingcontext
     nolintlint:
       # 每条 nolint 写明被关闭的 linter 和原因。
       require-specific: true

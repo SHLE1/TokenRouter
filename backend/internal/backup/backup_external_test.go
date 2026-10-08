@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 	"sync"
 	"testing"
@@ -121,9 +122,7 @@ func (m *mockSettingRepo) GetMultiple(_ context.Context, keys []string) (map[str
 func (m *mockSettingRepo) SetMultiple(_ context.Context, settings map[string]string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for k, v := range settings {
-		m.data[k] = v
-	}
+	maps.Copy(m.data, settings)
 	return nil
 }
 
@@ -131,9 +130,7 @@ func (m *mockSettingRepo) GetAll(_ context.Context) (map[string]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	result := make(map[string]string, len(m.data))
-	for k, v := range m.data {
-		result[k] = v
-	}
+	maps.Copy(result, m.data)
 	return result, nil
 }
 
@@ -149,8 +146,8 @@ func (e *plainEncryptor) Encrypt(plaintext string) (string, error) {
 }
 
 func (e *plainEncryptor) Decrypt(ciphertext string) (string, error) {
-	if strings.HasPrefix(ciphertext, "ENC:") {
-		return strings.TrimPrefix(ciphertext, "ENC:"), nil
+	if after, ok := strings.CutPrefix(ciphertext, "ENC:"); ok {
+		return after, nil
 	}
 	return ciphertext, fmt.Errorf("not encrypted")
 }
@@ -843,10 +840,7 @@ func gzipBackupBytes(t *testing.T, content []byte) []byte {
 func splitBackupBytes(data []byte, partSize int) [][]byte {
 	var parts [][]byte
 	for len(data) > 0 {
-		size := partSize
-		if len(data) < size {
-			size = len(data)
-		}
+		size := min(len(data), partSize)
 		parts = append(parts, append([]byte(nil), data[:size]...))
 		data = data[size:]
 	}

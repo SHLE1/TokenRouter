@@ -423,10 +423,7 @@ func (s *Public) SubmitHeartbeatInterval() time.Duration {
 	if s != nil && s.Options.StaleActiveAfterSeconds > 0 {
 		staleAfter = time.Duration(s.Options.StaleActiveAfterSeconds) * time.Second
 	}
-	interval := staleAfter / 3
-	if interval < 15*time.Second {
-		interval = 15 * time.Second
-	}
+	interval := max(staleAfter/3, 15*time.Second)
 	return interval
 }
 

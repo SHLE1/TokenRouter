@@ -147,15 +147,13 @@ func (b *openAIMessageAttemptBridge) Forward() textflow.ResponseOutcome {
 	out.NativePartial = err != nil && b.result != nil && b.result.NativeUsage != nil && (b.result.NativeUsage.HasObservedTokens() || b.result.ImageCount > 0)
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
 	if err != nil && !out.Images {
-		var overLimit *routing.ReasoningEffortOverLimitError
-		if errors.As(err, &overLimit) {
+		if overLimit, ok := errors.AsType[*routing.ReasoningEffortOverLimitError](err); ok {
 			b.reqLog.Info("openai_messages.reasoning_effort_policy_denied", zap.String("reason", overLimit.Error()))
 			out.Stop = true
 			return out
 		}
 	}
-	var retry *forwardcore.UpstreamFailoverError
-	if errors.As(err, &retry) {
+	if retry, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		out.Failure = &textflow.AttemptFailure{Cause: err, Policy: retry.RetryFailure()}
 	}
 	return out

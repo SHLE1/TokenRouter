@@ -79,14 +79,12 @@ func TestPoolConcurrentOptionsPublication(t *testing.T) {
 	defer pool.Close()
 	var workers sync.WaitGroup
 	for range 4 {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			for i := range 100 {
 				_ = pool.UpdateOptions(WSPoolOptions{MaxConnsPerProvider: i + 1})
 				_ = pool.nativeOptions().MaxConnsHardCap()
 			}
-		}()
+		})
 	}
 	workers.Wait()
 }
@@ -2249,11 +2247,9 @@ func TestOpenAIWSConnPool_PickOldestIdleAndProviderPoolLoad(t *testing.T) {
 func TestOpenAIWSConnPool_Close_WaitsWorkerGroupAndNilStopChannel(t *testing.T) {
 	pool := &WSConnPool{}
 	release := make(chan struct{})
-	pool.workerWg.Add(1)
-	go func() {
-		defer pool.workerWg.Done()
+	pool.workerWg.Go(func() {
 		<-release
-	}()
+	})
 
 	closed := make(chan struct{})
 	go func() {

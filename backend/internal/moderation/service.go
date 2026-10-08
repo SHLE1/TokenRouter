@@ -11,8 +11,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/url"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1584,9 +1585,7 @@ func (s *ContentModerationService) auditContentModerationInput(ctx context.Conte
 		jobs := make(chan int)
 		var wg sync.WaitGroup
 		for range workerCount {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				for index := range jobs {
 					image := content.ImageItems[index]
 					if err := ctx.Err(); err != nil {
@@ -1597,7 +1596,7 @@ func (s *ContentModerationService) auditContentModerationInput(ctx context.Conte
 					apiResult, err := s.callModeration(ctx, cfg, parts, trackKeyLoad)
 					results <- contentModerationUnitResult{unitType: ContentModerationItemTypeImage, index: index, sourceIndex: image.SourceIndex, result: apiResult, err: err}
 				}
-			}()
+			})
 		}
 		go func() {
 			for index := range content.ImageItems {
@@ -1695,8 +1694,7 @@ func mergeContentModerationUnitResult(target *contentModerationAuditResult, unit
 
 // publicContentModerationError 不把审核供应商响应体写入审计记录，避免回显输入或凭据。
 func publicContentModerationError(err error) string {
-	var apiErr *contentModerationAPIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*contentModerationAPIError](err); ok {
 		switch {
 		case apiErr.StatusCode == 429:
 			return "moderation provider rate limited"
@@ -2353,17 +2351,8 @@ func (s *ContentModerationService) GetStatus(ctx context.Context) (*ContentModer
 		return nil, err
 	}
 	riskEnabled := s.isRiskControlEnabled(ctx)
-	active := int(s.asyncActive.Load())
-	if active < 0 {
-		active = 0
-	}
-	if active > cfg.WorkerCount {
-		active = cfg.WorkerCount
-	}
-	preBlockActive := int(s.preBlockActive.Load())
-	if preBlockActive < 0 {
-		preBlockActive = 0
-	}
+	active := min(max(int(s.asyncActive.Load()), 0), cfg.WorkerCount)
+	preBlockActive := max(int(s.preBlockActive.Load()), 0)
 	preBlockChecked := s.preBlockChecked.Load()
 	preBlockAvgLatency := int64(0)
 	if preBlockChecked > 0 {
@@ -3209,12 +3198,7 @@ func (cfg *ContentModerationConfig) includesGroup(groupID *int64) bool {
 	if groupID == nil {
 		return false
 	}
-	for _, id := range cfg.GroupIDs {
-		if id == *groupID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(cfg.GroupIDs, *groupID)
 }
 
 func (cfg *ContentModerationConfig) includesModel(model string) bool {
@@ -3690,9 +3674,7 @@ func buildContentModerationTestAuditResult(result *moderationAPIResult, threshol
 		return nil
 	}
 	scores := make(map[string]float64, len(result.CategoryScores))
-	for category, score := range result.CategoryScores {
-		scores[category] = score
-	}
+	maps.Copy(scores, result.CategoryScores)
 	thresholdSnapshot := mergeContentModerationThresholds(ContentModerationDefaultThresholds(), thresholds)
 	flagged, highestCategory, highestScore := evaluateModerationScores(scores, thresholdSnapshot)
 	compositeScore := highestScore
@@ -3778,7 +3760,7 @@ func normalizeInt64IDs(ids []int64) []int64 {
 		seen[id] = struct{}{}
 		out = append(out, id)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 
@@ -4127,9 +4109,7 @@ func cloneFloatMap(in map[string]float64) map[string]float64 {
 		return map[string]float64{}
 	}
 	out := make(map[string]float64, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 
@@ -4182,11 +4162,9 @@ func (s *ContentModerationService) Start() {
 	s.runtimeStarted = true
 	s.runtimeDone = make(chan struct{})
 	for i := range s.workerCount {
-		s.runtimeWG.Add(1)
-		go func() { defer s.runtimeWG.Done(); s.worker(i) }()
+		s.runtimeWG.Go(func() { ; s.worker(i) })
 	}
-	s.runtimeWG.Add(1)
-	go func() { defer s.runtimeWG.Done(); s.cleanupWorker() }()
+	s.runtimeWG.Go(func() { ; s.cleanupWorker() })
 }
 
 // Stop 返回未排空任务的数量，不能把读取配置失败造成的剩余任务当作成功。

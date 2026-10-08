@@ -183,7 +183,7 @@ func TestInit_CallerShouldPointToCallsite(t *testing.T) {
 	logBytes, _ := io.ReadAll(stdoutR)
 
 	var line string
-	for _, item := range strings.Split(string(logBytes), "\n") {
+	for item := range strings.SplitSeq(string(logBytes), "\n") {
 		if strings.Contains(item, "caller-check") {
 			line = item
 			break

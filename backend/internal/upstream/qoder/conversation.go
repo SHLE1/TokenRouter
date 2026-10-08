@@ -385,13 +385,7 @@ func (p *QoderConversationPlan) AcceptedFingerprints() []string {
 	if !p.Reused {
 		return append([]string(nil), p.CommittedFingerprints...)
 	}
-	prefixLen := p.PrefixMessageCount
-	if prefixLen < 0 {
-		prefixLen = 0
-	}
-	if prefixLen > len(p.MessageFingerprints) {
-		prefixLen = len(p.MessageFingerprints)
-	}
+	prefixLen := min(max(p.PrefixMessageCount, 0), len(p.MessageFingerprints))
 	return append([]string(nil), p.MessageFingerprints[:prefixLen]...)
 }
 

@@ -58,10 +58,7 @@ func (r *creativeRunOutboxRepository) Claim(ctx context.Context, workerID string
 	if lease <= 0 {
 		lease = 2 * time.Minute
 	}
-	leaseSeconds := int64(lease / time.Second)
-	if leaseSeconds < 1 {
-		leaseSeconds = 1
-	}
+	leaseSeconds := max(int64(lease/time.Second), 1)
 	token, err := newCreativeOutboxLeaseToken(workerID)
 	if err != nil {
 		return nil, err

@@ -130,9 +130,7 @@ func (a *OpsIngressRejectAggregator) Start() {
 		return
 	}
 	a.accepting.Store(true)
-	a.wg.Add(1)
-	go func() {
-		defer a.wg.Done()
+	a.wg.Go(func() {
 		ticker := time.NewTicker(ingressRejectFlushInterval)
 		defer ticker.Stop()
 		for {
@@ -146,7 +144,7 @@ func (a *OpsIngressRejectAggregator) Start() {
 				a.flushPending()
 			}
 		}
-	}()
+	})
 }
 
 func (a *OpsIngressRejectAggregator) Stop() {

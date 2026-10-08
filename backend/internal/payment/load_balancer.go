@@ -321,7 +321,7 @@ func InstanceSupportsType(supportedTypes string, target PaymentType) bool {
 		return true
 	}
 	normalizedTarget := normalizeVisibleMethodSupportType(target)
-	for _, t := range strings.Split(supportedTypes, ",") {
+	for t := range strings.SplitSeq(supportedTypes, ",") {
 		supported := strings.TrimSpace(t)
 		if supported == target || normalizeVisibleMethodSupportType(supported) == normalizedTarget {
 			return true

@@ -117,8 +117,7 @@ func (s *Client) connectSMTPContext(ctx context.Context, config *SMTPConfig) (*s
 		if err == nil {
 			return newSMTPClient(conn, config.Host)
 		}
-		var recordErr tls.RecordHeaderError
-		if !errors.As(err, &recordErr) {
+		if _, ok := errors.AsType[tls.RecordHeaderError](err); !ok {
 			return nil, fmt.Errorf("tls dial: %w", err)
 		}
 		// SMTP 服务先发问候语，明文问候会使 TLS 握手返回 RecordHeaderError。

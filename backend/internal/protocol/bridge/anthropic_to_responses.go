@@ -46,10 +46,7 @@ func AnthropicToResponses(req *AnthropicRequest, options RequestOptions) (*Respo
 	out.Text = &ResponsesText{Verbosity: "medium"}
 
 	if req.MaxTokens > 0 {
-		v := req.MaxTokens
-		if v < minMaxOutputTokens {
-			v = minMaxOutputTokens
-		}
+		v := max(req.MaxTokens, minMaxOutputTokens)
 		out.MaxOutputTokens = &v
 	}
 

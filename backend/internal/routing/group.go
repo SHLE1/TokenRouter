@@ -112,8 +112,8 @@ func MatchModelPattern(pattern, model string) bool {
 	}
 
 	// 处理 * 通配符（仅支持末尾通配符）
-	if strings.HasSuffix(pattern, "*") {
-		prefix := strings.TrimSuffix(pattern, "*")
+	if before, ok := strings.CutSuffix(pattern, "*"); ok {
+		prefix := before
 		return strings.HasPrefix(model, prefix)
 	}
 

@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -499,14 +501,14 @@ func QoderThinkingEffortForCapability(capability ThinkingCapability, requested s
 }
 
 func AddQoderEphemeralCacheControl(messages []any) {
-	for i := len(messages) - 1; i >= 0; i-- {
-		message, ok := messages[i].(map[string]any)
+	for _, message := range slices.Backward(messages) {
+		message, ok := message.(map[string]any)
 		if !ok {
 			continue
 		}
 		contents, _ := message["contents"].([]any)
-		for j := len(contents) - 1; j >= 0; j-- {
-			block, ok := contents[j].(map[string]any)
+		for _, content := range slices.Backward(contents) {
+			block, ok := content.(map[string]any)
 			if !ok || block["type"] != "text" {
 				continue
 			}
@@ -911,9 +913,7 @@ func QoderCopyRawMap(raw map[string]any) map[string]any {
 		return map[string]any{}
 	}
 	copied := make(map[string]any, len(raw))
-	for key, value := range raw {
-		copied[key] = value
-	}
+	maps.Copy(copied, raw)
 	return copied
 }
 

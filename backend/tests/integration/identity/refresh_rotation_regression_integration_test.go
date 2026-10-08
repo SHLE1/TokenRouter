@@ -77,8 +77,7 @@ func TestRefreshRotationConsumesOnce(t *testing.T) {
 	results := make(chan error, 2)
 	var workers sync.WaitGroup
 	for range 2 {
-		workers.Add(1)
-		go func() { defer workers.Done(); _, e := auth.RefreshTokenPair(ctx, pair.RefreshToken); results <- e }()
+		workers.Go(func() { ; _, e := auth.RefreshTokenPair(ctx, pair.RefreshToken); results <- e })
 	}
 	for range 2 {
 		select {

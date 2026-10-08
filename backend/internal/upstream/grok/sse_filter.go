@@ -68,10 +68,7 @@ func FilterGrokResponsesBillingPings(
 	scanner := bufio.NewScanner(source)
 	scanBuf := httpclient.GetSSEScannerBuf64K()
 	defer httpclient.PutSSEScannerBuf64K(scanBuf)
-	initialBufferSize := len(scanBuf)
-	if maxLineSize < initialBufferSize {
-		initialBufferSize = maxLineSize
-	}
+	initialBufferSize := min(maxLineSize, len(scanBuf))
 	scanner.Buffer(scanBuf[:0:initialBufferSize], maxLineSize)
 	scanner.Split(ScanSSELinesPreservingEndings)
 

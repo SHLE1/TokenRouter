@@ -1205,7 +1205,7 @@ func parseGrokProtocolSSEFrames(t *testing.T, body string) []grokProtocolSSEFram
 	t.Helper()
 	var frames []grokProtocolSSEFrame
 	event := ""
-	for _, rawLine := range strings.Split(body, "\n") {
+	for rawLine := range strings.SplitSeq(body, "\n") {
 		line := strings.TrimSuffix(rawLine, "\r")
 		if value, ok := openai.ExtractSSEEventLine(line); ok {
 			event = strings.TrimSpace(value)

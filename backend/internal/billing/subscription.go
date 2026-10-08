@@ -2,6 +2,7 @@ package billing
 
 import (
 	"math"
+	"slices"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
@@ -410,12 +411,7 @@ func subscriptionPlanIncludesGroup(plan *SubscriptionPlan, groupID int64) bool {
 	if len(plan.GroupIDs) == 0 {
 		return true
 	}
-	for _, id := range plan.GroupIDs {
-		if id == groupID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(plan.GroupIDs, groupID)
 }
 
 // SubscriptionAllowsGroup 返回订阅套餐是否覆盖目标分组。

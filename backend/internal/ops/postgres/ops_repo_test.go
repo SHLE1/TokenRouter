@@ -299,7 +299,7 @@ func TestOpsErrorLogInsertDoesNotPersistRequestReplayFields(t *testing.T) {
 		}
 	}
 
-	inputType := reflect.TypeOf(ops.OpsInsertErrorLogInput{})
+	inputType := reflect.TypeFor[ops.OpsInsertErrorLogInput]()
 	disallowedFields := []string{
 		"RequestBodyJSON",
 		"RequestBodyTruncated",

@@ -132,8 +132,8 @@ func readCgroupCPULimitCores() float64 {
 func readCgroupCPUUsageNanos() (usageNanos uint64, ok bool) {
 	// cgroup v2: cpu.stat has usage_usec
 	if raw, err := os.ReadFile("/sys/fs/cgroup/cpu.stat"); err == nil {
-		lines := strings.Split(string(raw), "\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(string(raw), "\n")
+		for line := range lines {
 			fields := strings.Fields(line)
 			if len(fields) != 2 {
 				continue

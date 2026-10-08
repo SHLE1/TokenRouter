@@ -1541,12 +1541,12 @@ func parseSSEEventsForTest(t *testing.T, stream string) []map[string]any {
 		}
 		eventName := ""
 		dataLine := ""
-		for _, line := range strings.Split(chunk, "\n") {
-			if strings.HasPrefix(line, "event:") {
-				eventName = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+		for line := range strings.SplitSeq(chunk, "\n") {
+			if after, ok := strings.CutPrefix(line, "event:"); ok {
+				eventName = strings.TrimSpace(after)
 			}
-			if strings.HasPrefix(line, "data:") {
-				dataLine = strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			if after, ok := strings.CutPrefix(line, "data:"); ok {
+				dataLine = strings.TrimSpace(after)
 			}
 		}
 		if dataLine == "" || dataLine == "[DONE]" {

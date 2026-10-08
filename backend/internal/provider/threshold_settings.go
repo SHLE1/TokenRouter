@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -51,13 +53,7 @@ func DefaultProviderSchedulingThresholds() map[string]int {
 func ValidateAndNormalizeProviderSchedulingThresholds(input map[string]int) (map[string]int, error) {
 	normalized := DefaultProviderSchedulingThresholds()
 	for platform, value := range input {
-		allowed := false
-		for _, item := range AllowedSchedulingThresholdPlatforms {
-			if item == platform {
-				allowed = true
-				break
-			}
-		}
+		allowed := slices.Contains(AllowedSchedulingThresholdPlatforms, platform)
 		if !allowed {
 			return nil, apperror.BadRequest("INVALID_PROVIDER_SCHEDULING_THRESHOLDS", fmt.Sprintf("unknown platform %q", platform))
 		}
@@ -99,9 +95,7 @@ func CloneProviderSchedulingThresholds(input map[string]int) map[string]int {
 		return DefaultProviderSchedulingThresholds()
 	}
 	cloned := make(map[string]int, len(input))
-	for key, value := range input {
-		cloned[key] = value
-	}
+	maps.Copy(cloned, input)
 	return cloned
 }
 

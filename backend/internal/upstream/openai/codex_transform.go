@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
@@ -100,8 +102,8 @@ func CompactCodexCallIDForItemType(itemType, id string) string {
 
 func TrimOpenAIResponsesKnownCallIDPrefix(id string) string {
 	for _, prefix := range []string{"fc_", "ctc_", "tsc_"} {
-		if strings.HasPrefix(id, prefix) {
-			return strings.TrimPrefix(id, prefix)
+		if after, ok := strings.CutPrefix(id, prefix); ok {
+			return after
 		}
 	}
 	return id
@@ -412,9 +414,7 @@ func NormalizeCodexToolRoleMessages(input []any) ([]any, bool) {
 			// Responses does not accept role:"tool". If no call id is available,
 			// preserve the text as a user message instead of sending invalid input.
 			fallback := make(map[string]any, len(m))
-			for key, value := range m {
-				fallback[key] = value
-			}
+			maps.Copy(fallback, m)
 			fallback["role"] = "user"
 			delete(fallback, "tool_call_id")
 			normalized = append(normalized, fallback)
@@ -473,9 +473,7 @@ func NormalizeCodexMessageContentText(input []any) ([]any, bool) {
 				return
 			}
 			newItem = make(map[string]any, len(m))
-			for key, value := range m {
-				newItem[key] = value
-			}
+			maps.Copy(newItem, m)
 			newParts = make([]any, len(parts))
 			copy(newParts, parts)
 		}
@@ -495,9 +493,7 @@ func NormalizeCodexMessageContentText(input []any) ([]any, bool) {
 
 			ensureItemCopy()
 			newPart := make(map[string]any, len(part))
-			for key, value := range part {
-				newPart[key] = value
-			}
+			maps.Copy(newPart, part)
 			newPart["text"] = StringifyCodexContentText(text)
 			newParts[i] = newPart
 			modified = true
@@ -717,10 +713,8 @@ func HasOpenAIInputImage(reqBody map[string]any) bool {
 func HasOpenAIInputImageValue(value any) bool {
 	switch v := value.(type) {
 	case []any:
-		for _, item := range v {
-			if HasOpenAIInputImageValue(item) {
-				return true
-			}
+		if slices.ContainsFunc(v, HasOpenAIInputImageValue) {
+			return true
 		}
 	case map[string]any:
 		if strings.TrimSpace(FirstNonEmptyString(v["type"])) == "input_image" {
@@ -1463,9 +1457,7 @@ func FilterCodexInputWithOptions(input []any, opts CodexInputFilterOptions) []an
 				continue
 			}
 			newItem := make(map[string]any, len(m))
-			for key, value := range m {
-				newItem[key] = value
-			}
+			maps.Copy(newItem, m)
 			if id, ok := newItem["id"].(string); ok && strings.HasPrefix(strings.TrimSpace(id), "call_") {
 				trimmedID := strings.TrimSpace(id)
 				_, referencesExistingItem := inputItemIDs[trimmedID]
@@ -1491,9 +1483,7 @@ func FilterCodexInputWithOptions(input []any, opts CodexInputFilterOptions) []an
 				return
 			}
 			newItem = make(map[string]any, len(m))
-			for key, value := range m {
-				newItem[key] = value
-			}
+			maps.Copy(newItem, m)
 			copied = true
 		}
 

@@ -370,10 +370,7 @@ func nextMonthlyReset(subscribedAt time.Time) time.Time {
 	if subscribedAt.IsZero() {
 		return now.AddDate(0, 1, 0)
 	}
-	months := (now.Year()-subscribedAt.Year())*12 + int(now.Month()-subscribedAt.Month())
-	if months < 0 {
-		months = 0
-	}
+	months := max((now.Year()-subscribedAt.Year())*12+int(now.Month()-subscribedAt.Month()), 0)
 	candidate := addMonthsClamped(subscribedAt, months)
 	if candidate.After(now) {
 		return candidate

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"strconv"
 	"strings"
@@ -70,9 +71,7 @@ type (
 func NewSettlementStore(sqlDB *sql.DB, calendar timezone.Calendar, outbox ProviderQuotaOutbox, factories ...TaskProjectionFactories) *SettlementStore {
 	projections := make(TaskProjectionFactories)
 	for _, set := range factories {
-		for scope, factory := range set {
-			projections[scope] = factory
-		}
+		maps.Copy(projections, set)
 	}
 	return &SettlementStore{db: sqlDB, calendar: calendar, providerOutbox: outbox, taskProjections: projections}
 }

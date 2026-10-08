@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -2023,9 +2024,7 @@ func TestProviderTestService_AutomaticOpenAIProbeRejectsClientPolicyLocally(t *t
 	for i, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			extra := map[string]any{"openai_oauth_client_policy": test.policy}
-			for key, value := range test.extra {
-				extra[key] = value
-			}
+			maps.Copy(extra, test.extra)
 			provider := providercore.Record{
 				ID:       int64(1100 + i),
 				Platform: capability.PlatformOpenAI,
@@ -2912,9 +2911,7 @@ func (r *openAIProbeStore) UpdateExtra(_ context.Context, _ int64, updates map[s
 	r.updatedExtra = updates
 	if r.updateExtraCalls != nil {
 		copy := make(map[string]any, len(updates))
-		for key, value := range updates {
-			copy[key] = value
-		}
+		maps.Copy(copy, updates)
 		r.updateExtraCalls <- copy
 	}
 	return nil

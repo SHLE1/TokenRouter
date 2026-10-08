@@ -382,7 +382,7 @@ func NormalizeSSOToken(value string) string {
 	if strings.HasPrefix(strings.ToLower(value), "cookie:") {
 		value = strings.TrimSpace(value[len("cookie:"):])
 	}
-	for _, part := range strings.Split(value, ";") {
+	for part := range strings.SplitSeq(value, ";") {
 		name, token, found := strings.Cut(strings.TrimSpace(part), "=")
 		if !found {
 			continue

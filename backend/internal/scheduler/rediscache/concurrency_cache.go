@@ -540,10 +540,7 @@ func (c *concurrencyCache) readIndexLoads(ctx context.Context, spec slotIndexSpe
 
 	cutoffTime := now - int64(c.slotTTLSeconds)
 	for start := 0; start < len(candidates); start += activeIndexPipelineChunkSize {
-		end := start + activeIndexPipelineChunkSize
-		if end > len(candidates) {
-			end = len(candidates)
-		}
+		end := min(start+activeIndexPipelineChunkSize, len(candidates))
 		chunk := candidates[start:end]
 
 		pipe := c.rdb.Pipeline()

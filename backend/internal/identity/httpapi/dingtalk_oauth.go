@@ -69,11 +69,10 @@ func (h *DingTalkHandler) findDingTalkCompatEmailUser(ctx context.Context, email
 // DingTalkUpstreamRedirect 在 4 步链上游调用失败时记录详细错误日志并跳错误页。
 // 把钉钉 errcode/errmsg 写进 backend log + URL fragment，避免被泛 "internal error" 吞掉。
 func DingTalkUpstreamRedirect(c *gin.Context, frontendCallback, step string, err error) {
-	var apiErr *identity.DingTalkAPIError
 	dtCode := ""
 	dtMsg := ""
 	dtHTTP := 0
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*identity.DingTalkAPIError](err); ok {
 		dtCode = apiErr.Code
 		dtMsg = apiErr.Message
 		dtHTTP = apiErr.HTTP

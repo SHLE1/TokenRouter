@@ -161,10 +161,7 @@ func TestEnqueueProxyProviderChangesChunksLargePayloads(t *testing.T) {
 		providerIDs[i] = int64(i + 1)
 	}
 	for start := 0; start < len(providerIDs); start += 500 {
-		end := start + 500
-		if end > len(providerIDs) {
-			end = len(providerIDs)
-		}
+		end := min(start+500, len(providerIDs))
 		mock.ExpectExec(regexp.QuoteMeta("INSERT INTO scheduler_outbox (event_type, provider_id, group_id, payload)")).
 			WithArgs(scheduler.SchedulerOutboxEventProviderBulkChanged, nil, nil, proxyProviderIDsPayloadMatcher{want: providerIDs[start:end]}).
 			WillReturnResult(sqlmock.NewResult(1, 1))

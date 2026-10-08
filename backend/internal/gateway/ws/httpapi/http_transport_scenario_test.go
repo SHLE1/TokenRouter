@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -329,9 +330,7 @@ func TestOpenAIGatewayService_APIKeyPassthrough_PoolModeAuthErrorsTriggerFailove
 				"base_url":  "https://api.example.test",
 				"pool_mode": true,
 			}
-			for key, value := range tt.credentials {
-				credentials[key] = value
-			}
+			maps.Copy(credentials, tt.credentials)
 			provider := &gatewayprovider.ExecutionProvider{
 				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 129, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1,

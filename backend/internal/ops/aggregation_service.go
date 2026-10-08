@@ -172,10 +172,8 @@ func (s *OpsAggregationService) Start() {
 		if s.stopCh == nil {
 			s.stopCh = make(chan struct{})
 		}
-		s.loopWG.Add(1)
-		go func() { defer s.loopWG.Done(); s.hourlyLoop() }()
-		s.loopWG.Add(1)
-		go func() { defer s.loopWG.Done(); s.dailyLoop() }()
+		s.loopWG.Go(func() { ; s.hourlyLoop() })
+		s.loopWG.Go(func() { ; s.dailyLoop() })
 	})
 }
 

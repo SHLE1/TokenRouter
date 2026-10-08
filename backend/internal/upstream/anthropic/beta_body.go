@@ -107,7 +107,7 @@ func AnthropicBetaTokensContains(header, token string) bool {
 	if header == "" || token == "" {
 		return false
 	}
-	for _, part := range strings.Split(header, ",") {
+	for part := range strings.SplitSeq(header, ",") {
 		if strings.TrimSpace(part) == token {
 			return true
 		}

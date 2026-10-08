@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -133,9 +134,8 @@ func TestSettingsFieldOwnership(t *testing.T) {
 	}
 	input := reflect.TypeFor[settingsdto.UpdateSettingsRequest]()
 	count := 0
-	for i := range input.NumField() {
-		field := input.Field(i)
-		name := strings.Split(field.Tag.Get("json"), ",")[0]
+	for field := range input.Fields() {
+		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if name == "" || name == "-" {
 			continue
 		}
@@ -243,9 +243,7 @@ func (s *failingAuthSourceSettingsRepoStub) SetMultiple(ctx context.Context, set
 
 func (s *failingAuthSourceSettingsRepoStub) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(s.values))
-	for key, value := range s.values {
-		out[key] = value
-	}
+	maps.Copy(out, s.values)
 	return out, nil
 }
 

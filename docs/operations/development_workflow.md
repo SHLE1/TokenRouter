@@ -361,7 +361,7 @@ Vue 的最低版本为 `3.5.42`，该版本修复了 `@vue/server-renderer` 属�
 
 `make fmt` 先用 `tools/declorder` 重排[文件内的声明顺序](#backend_declaration_order)，再运行 `golangci-lint fmt`。golangci-lint 开始前，入口先校验版本，版本不符时任何文件都不会被改写。
 
-`make lint-go` 对全部手写文件运行格式检查、声明顺序检查和静态分析，带 integration 标签覆盖无标签和集成文件，`make test-embed` 检查 embed 文件。除了 errcheck、gosec、govet、staticcheck 这类错误检查，lint 还启用 whitespace、unconvert、copyloopvar、usestdlibvars、intrange 和 nolintlint。nolintlint 要求每条 `//nolint` 写出 linter 名和原因。godot 要求顶层声明的文档注释以句号结尾，中文用“。”，英文用“.”，Project Doc 锚点和路由注释（`// GET /api/...`）除外。revive 检查接收者命名、多余的 import 别名、`TestMain` 里多余的 `os.Exit`，以及可以去掉的 if 和 else。gocritic 只开 assignOp、captLocal、emptyStringTest 等几项有明确改法的检查。
+`make lint-go` 对全部手写文件运行格式检查、声明顺序检查和静态分析，带 integration 标签覆盖无标签和集成文件，`make test-embed` 检查 embed 文件。除了 errcheck、gosec、govet、staticcheck 这类错误检查，lint 还启用 whitespace、unconvert、copyloopvar、usestdlibvars、intrange 和 nolintlint。nolintlint 要求每条 `//nolint` 写出 linter 名和原因。godot 要求顶层声明的文档注释以句号结尾，中文用“。”，英文用“.”，Project Doc 锚点和路由注释（`// GET /api/...`）除外。revive 检查接收者命名、多余的 import 别名、`TestMain` 里多余的 `os.Exit`，以及可以去掉的 if 和 else。gocritic 只开 assignOp、captLocal、emptyStringTest 等几项有明确改法的检查。modernize 要求使用标准库的新写法，例如 `min`、`max`、`slices.Contains`、`maps.Copy`、`sync.WaitGroup.Go` 和 `errors.AsType`。会改变 JSON 输出、字段类型或测试 context 行为的几项，以及 Go 1.26 以后的新语法，在配置里关闭。
 
 被调函数返回具体的指针类型（例如 `*BetaBlockedError`）、外层函数返回 `error` 时，`if err := f(); err != nil { return err }; return nil` 不能改写成 `return f()`：nil 指针会被包成非 nil 的 error。revive 的 if-return 会报这类位置，在 if 上方加 `//nolint:revive` 并写明原因。
 

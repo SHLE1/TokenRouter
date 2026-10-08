@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -591,9 +593,7 @@ func StringMappingFromRaw(raw any) map[string]string {
 			return nil
 		}
 		result := make(map[string]string, len(mapping))
-		for key, value := range mapping {
-			result[key] = value
-		}
+		maps.Copy(result, mapping)
 		return result
 	default:
 		return nil
@@ -854,12 +854,7 @@ func ParsePoolModeRetryCount(value any) int {
 
 // IsPoolModeRetryableStatus 池模式下应触发同提供商重试的状态码（默认列表）。
 func IsPoolModeRetryableStatus(statusCode int) bool {
-	for _, c := range DefaultPoolModeRetryableStatusCodes {
-		if c == statusCode {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(DefaultPoolModeRetryableStatusCodes, statusCode)
 }
 
 // GetPoolModeRetryStatusCodes 返回提供商自定义的池模式同提供商重试状态码列表。
@@ -927,12 +922,7 @@ func (r *Record) IsPoolModeRetryableStatus(statusCode int) bool {
 	if codes == nil {
 		return IsPoolModeRetryableStatus(statusCode)
 	}
-	for _, c := range codes {
-		if c == statusCode {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(codes, statusCode)
 }
 
 func (r *Record) GetCustomErrorCodes() []int {
@@ -963,12 +953,7 @@ func (r *Record) ShouldHandleErrorCode(statusCode int) bool {
 	if len(codes) == 0 {
 		return true
 	}
-	for _, code := range codes {
-		if code == statusCode {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(codes, statusCode)
 }
 
 func (r *Record) IsInterceptWarmupEnabled() bool {
@@ -1146,8 +1131,8 @@ func StripCNAnthropicPathSuffix(baseURL string) string {
 	if path == "/anthropic" {
 		parsed.Path = ""
 		parsed.RawPath = ""
-	} else if strings.HasSuffix(path, "/anthropic") {
-		parsed.Path = strings.TrimSuffix(path, "/anthropic")
+	} else if before, ok := strings.CutSuffix(path, "/anthropic"); ok {
+		parsed.Path = before
 		parsed.RawPath = ""
 	}
 	return strings.TrimRight(parsed.String(), "/")

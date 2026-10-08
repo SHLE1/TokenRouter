@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -365,9 +366,7 @@ func buildCodexTestJWTForTest(t *testing.T, exp time.Time, extraClaims map[strin
 		"exp": exp.Unix(),
 		"iat": time.Now().Unix(),
 	}
-	for k, v := range extraClaims {
-		claims[k] = v
-	}
+	maps.Copy(claims, extraClaims)
 	headerBytes, err := json.Marshal(header)
 	if err != nil {
 		t.Fatalf("marshal header: %v", err)

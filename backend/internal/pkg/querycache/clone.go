@@ -1,6 +1,7 @@
 package querycache
 
 import (
+	"maps"
 	"reflect"
 )
 
@@ -8,9 +9,7 @@ import (
 // nil 输入返回已分配的空映射。
 func ShallowMap(values map[string]any) map[string]any {
 	out := make(map[string]any, len(values))
-	for key, value := range values {
-		out[key] = value
-	}
+	maps.Copy(out, values)
 	return out
 }
 
@@ -20,7 +19,7 @@ func Clone[T any](value T) T {
 	if !v.IsValid() {
 		return value
 	}
-	result, ok := cloneValue(v).Interface().(T)
+	result, ok := reflect.TypeAssert[T](cloneValue(v))
 	if !ok {
 		panic("querycache: cloned value changed type")
 	}

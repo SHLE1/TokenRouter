@@ -1236,10 +1236,7 @@ func (p *WSConnPool) cleanupProviderLocked(ap *openAIWSProviderPool, now time.Ti
 		sort.SliceStable(idleConns, func(i, j int) bool {
 			return idleConns[i].lastUsedAt().Before(idleConns[j].lastUsedAt())
 		})
-		redundant := max(0, len(idleConns)-maxIdle, len(ap.conns)-maxConns)
-		if redundant > len(idleConns) {
-			redundant = len(idleConns)
-		}
+		redundant := min(max(0, len(idleConns)-maxIdle, len(ap.conns)-maxConns), len(idleConns))
 		for i := range redundant {
 			conn := idleConns[i]
 			delete(ap.conns, conn.id)
@@ -1369,8 +1366,7 @@ func (p *WSConnPool) ensureTargetIdleAsync(providerID int64) {
 	ap.creating += need
 	p.metrics.scaleUpTotal.Add(int64(need))
 
-	p.prewarmWG.Add(1)
-	go func() { defer p.prewarmWG.Done(); p.prewarmConns(providerID, req, need, generation) }()
+	p.prewarmWG.Go(func() { ; p.prewarmConns(providerID, req, need, generation) })
 }
 
 func (p *WSConnPool) targetConnCountLocked(ap *openAIWSProviderPool, maxConns int) int {
@@ -1382,13 +1378,7 @@ func (p *WSConnPool) targetConnCountLocked(ap *openAIWSProviderPool, maxConns in
 		return 0
 	}
 
-	minIdle := p.minIdlePerProvider()
-	if minIdle < 0 {
-		minIdle = 0
-	}
-	if minIdle > maxConns {
-		minIdle = maxConns
-	}
+	minIdle := min(max(p.minIdlePerProvider(), 0), maxConns)
 
 	inflight, waiters := providerPoolLoadLocked(ap)
 	utilization := p.targetUtilization()
@@ -1749,7 +1739,7 @@ func normalizeOpenAIWSBetaFeatures(headers http.Header) string {
 			continue
 		}
 		for _, value := range values {
-			for _, feature := range strings.Split(value, ",") {
+			for feature := range strings.SplitSeq(value, ",") {
 				if feature = strings.TrimSpace(feature); feature != "" {
 					features[feature] = struct{}{}
 				}

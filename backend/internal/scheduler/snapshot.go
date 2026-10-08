@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -592,7 +591,7 @@ func (s *SnapshotService) handleBulkProviderEvent(ctx context.Context, payload m
 		for groupID := range groupSet {
 			platformGroupIDs = append(platformGroupIDs, groupID)
 		}
-		sort.Slice(platformGroupIDs, func(i, j int) bool { return platformGroupIDs[i] < platformGroupIDs[j] })
+		slices.Sort(platformGroupIDs)
 		buckets = append(buckets, s.bucketsForPlatform(platform, platformGroupIDs, seen)...)
 	}
 	return s.rebuildBuckets(ctx, buckets, "provider_bulk_change")
@@ -1038,7 +1037,7 @@ func (s *SnapshotService) rebuildFullSnapshot(ctx context.Context, reason string
 			staleGroupIDs = append(staleGroupIDs, groupID)
 		}
 	}
-	sort.Slice(staleGroupIDs, func(i, j int) bool { return staleGroupIDs[i] < staleGroupIDs[j] })
+	slices.Sort(staleGroupIDs)
 
 	for _, groupID := range staleGroupIDs {
 		plan, err := s.prepareGroupLifecycle(ctx, groupID, registeredByGroup[groupID])
@@ -1090,7 +1089,7 @@ func (s *SnapshotService) listActiveSchedulerGroupIDs(ctx context.Context) ([]in
 		seen[groupID] = struct{}{}
 		normalized = append(normalized, groupID)
 	}
-	sort.Slice(normalized, func(i, j int) bool { return normalized[i] < normalized[j] })
+	slices.Sort(normalized)
 	return normalized, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -1053,18 +1054,14 @@ func KeyApiKeyEntityToService(m *dbent.APIKey) *keycore.APIKey {
 					out.User.AllowedGroups = append(out.User.AllowedGroups, g.ID)
 				}
 			}
-			sort.Slice(out.User.AllowedGroups, func(i, j int) bool {
-				return out.User.AllowedGroups[i] < out.User.AllowedGroups[j]
-			})
+			slices.Sort(out.User.AllowedGroups)
 		}
 		if disabledPublicRows, err := m.Edges.User.Edges.UserDisabledPublicGroupsOrErr(); err == nil {
 			out.User.DisabledPublicGroups = make([]int64, 0, len(disabledPublicRows))
 			for _, row := range disabledPublicRows {
 				out.User.DisabledPublicGroups = append(out.User.DisabledPublicGroups, row.GroupID)
 			}
-			sort.Slice(out.User.DisabledPublicGroups, func(i, j int) bool {
-				return out.User.DisabledPublicGroups[i] < out.User.DisabledPublicGroups[j]
-			})
+			slices.Sort(out.User.DisabledPublicGroups)
 			out.User.GroupRestrictionsLoaded = true
 		}
 	}

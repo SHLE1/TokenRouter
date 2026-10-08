@@ -17,14 +17,12 @@ const (
 )
 
 func ConcurrencyErrorResponse(err error, slotType string) (int, string, string, string) {
-	var waitQueueFullErr *scheduler.WaitQueueFullError
-	if errors.As(err, &waitQueueFullErr) {
+	if _, ok := errors.AsType[*scheduler.WaitQueueFullError](err); ok {
 		return http.StatusTooManyRequests, "rate_limit_error", GatewayQueueFullCode,
 			"Too many pending requests, please retry later"
 	}
 
-	var concurrencyErr *scheduler.ConcurrencyError
-	if errors.As(err, &concurrencyErr) {
+	if concurrencyErr, ok := errors.AsType[*scheduler.ConcurrencyError](err); ok {
 		if concurrencyErr.SlotType != "" {
 			slotType = concurrencyErr.SlotType
 		}

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -142,9 +143,7 @@ func ProjectGoogleOneTier(v *Record, observation GoogleOneTierObservation) (map[
 	if extra == nil {
 		extra = map[string]any{}
 	}
-	for k, x := range GoogleOneTierExtraPatch(observation) {
-		extra[k] = x
-	}
+	maps.Copy(extra, GoogleOneTierExtraPatch(observation))
 	credentials := CloneValues(v.Credentials)
 	if credentials == nil {
 		credentials = map[string]any{}

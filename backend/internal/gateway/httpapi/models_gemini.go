@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -171,9 +172,7 @@ func (h *ModelsHandler) AppendAPIKeyAliasesToGeminiModelsJSON(body []byte, mappi
 			continue
 		}
 		cloned := make(map[string]json.RawMessage, len(template))
-		for key, value := range template {
-			cloned[key] = value
-		}
+		maps.Copy(cloned, template)
 		cloned["name"], _ = json.Marshal("models/" + alias)
 		cloned["displayName"], _ = json.Marshal(alias)
 		models = append(models, cloned)

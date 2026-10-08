@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -249,9 +250,7 @@ CREATE TABLE IF NOT EXISTS user_avatars (
 		promotion.SettingKeyInvitationCodeEnabled:  boolSettingValue(options.invitationEnabled),
 		identitycore.SettingKeyEmailVerifyEnabled:  boolSettingValue(options.emailVerifyEnabled),
 	}
-	for key, value := range options.settingValues {
-		settingValues[key] = value
-	}
+	maps.Copy(settingValues, options.settingValues)
 	settingSvc := newAuthSettingsFixture(&oauthPendingFlowSettingRepoStub{values: settingValues}, cfg)
 	userRepo := &oauthPendingFlowUserRepo{
 		client:  client,
@@ -340,9 +339,7 @@ func (s *oauthPendingFlowSettingRepoStub) SetMultiple(context.Context, map[strin
 
 func (s *oauthPendingFlowSettingRepoStub) GetAll(context.Context) (map[string]string, error) {
 	result := make(map[string]string, len(s.values))
-	for key, value := range s.values {
-		result[key] = value
-	}
+	maps.Copy(result, s.values)
 	return result, nil
 }
 
@@ -1349,12 +1346,8 @@ func newWeChatOAuthTestHandlerWithSettings(t *testing.T, invitationEnabled bool,
 		identitycore.SettingKeyRegistrationEnabled: "true",
 		promotion.SettingKeyInvitationCodeEnabled:  boolSettingValue(invitationEnabled),
 	}
-	for key, value := range wechatOAuthTestSettings("open", "wx-open-app", "wx-open-secret", "/auth/wechat/callback") {
-		values[key] = value
-	}
-	for key, value := range extraSettings {
-		values[key] = value
-	}
+	maps.Copy(values, wechatOAuthTestSettings("open", "wx-open-app", "wx-open-secret", "/auth/wechat/callback"))
+	maps.Copy(values, extraSettings)
 	settingSvc := newAuthSettingsFixture(&wechatOAuthSettingRepoStub{values: values}, cfg)
 
 	authSvc := identitytestkit.Auth(
@@ -1401,9 +1394,7 @@ func (s *wechatOAuthSettingRepoStub) SetMultiple(context.Context, map[string]str
 
 func (s *wechatOAuthSettingRepoStub) GetAll(context.Context) (map[string]string, error) {
 	result := make(map[string]string, len(s.values))
-	for key, value := range s.values {
-		result[key] = value
-	}
+	maps.Copy(result, s.values)
 	return result, nil
 }
 

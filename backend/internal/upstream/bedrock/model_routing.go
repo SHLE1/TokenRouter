@@ -329,8 +329,8 @@ func ResolveBedrockModelRoute(provider *RouteInput, requestedModel string) (Bedr
 // BedrockBaseModelID 仅识别推理范围前缀，不剥离版本、日期或 ARN 的任何组成部分。
 func BedrockBaseModelID(modelID string) string {
 	for _, prefix := range BedrockCrossRegionPrefixes {
-		if strings.HasPrefix(modelID, prefix) {
-			return strings.TrimPrefix(modelID, prefix)
+		if after, ok := strings.CutPrefix(modelID, prefix); ok {
+			return after
 		}
 	}
 	return modelID

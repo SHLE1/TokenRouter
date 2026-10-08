@@ -343,8 +343,7 @@ func (h *OpenAIOAuthHandler) RefreshQuota(c *gin.Context) {
 
 	value, err := h.quotaActions().Refresh(c.Request.Context(), providerID)
 	if err != nil {
-		var missing *providercore.OpenAIQuotaOutcomeError
-		if errors.As(err, &missing) {
+		if missing, ok := errors.AsType[*providercore.OpenAIQuotaOutcomeError](err); ok {
 			response.Error(c, http.StatusInternalServerError, missing.Message)
 		} else {
 			response.ErrorFrom(c, err)
@@ -398,8 +397,7 @@ func (h *OpenAIOAuthHandler) ResetQuota(c *gin.Context) {
 	}
 	value, err := h.quotaActions().Reset(c.Request.Context(), providerID)
 	if err != nil {
-		var missing *providercore.OpenAIQuotaOutcomeError
-		if errors.As(err, &missing) {
+		if missing, ok := errors.AsType[*providercore.OpenAIQuotaOutcomeError](err); ok {
 			response.Error(c, http.StatusInternalServerError, missing.Message)
 		} else {
 			response.ErrorFrom(c, err)
@@ -427,8 +425,7 @@ func (h *OpenAIOAuthHandler) providerImport() *providercore.OpenAIProviderImport
 }
 
 func writeOpenAIProviderImportError(c *gin.Context, err error) {
-	var inputError *providercore.OpenAIProviderInputError
-	if errors.As(err, &inputError) {
+	if inputError, ok := errors.AsType[*providercore.OpenAIProviderInputError](err); ok {
 		response.BadRequest(c, inputError.Message)
 		return
 	}

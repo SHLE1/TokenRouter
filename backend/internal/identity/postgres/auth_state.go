@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"strings"
 	"time"
 
@@ -286,9 +287,7 @@ func (s *AuthState) AuthEnsureEmailOAuthIdentity(ctx context.Context, userID int
 		"email":          strings.TrimSpace(strings.ToLower(input.Email)),
 		"email_verified": input.EmailVerified,
 	}
-	for key, value := range input.UpstreamMetadata {
-		metadata[key] = value
-	}
+	maps.Copy(metadata, input.UpstreamMetadata)
 	if strings.TrimSpace(input.Username) != "" {
 		metadata["username"] = strings.TrimSpace(input.Username)
 	}

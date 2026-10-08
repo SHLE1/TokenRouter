@@ -8,9 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -81,12 +83,7 @@ func generateMenuItemID() (string, error) {
 
 // scopesContainOpenID 检查以空白分隔的权限范围中是否有 openid，比较时忽略大小写。
 func scopesContainOpenID(scopes string) bool {
-	for _, scope := range strings.Fields(strings.ToLower(strings.TrimSpace(scopes))) {
-		if scope == "openid" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Fields(strings.ToLower(strings.TrimSpace(scopes))), "openid")
 }
 
 // firstNonEmpty 返回首个去除首尾空白后非空的字符串。
@@ -135,10 +132,9 @@ func (h *Handler) ensureActorTotpForStepUp(c *gin.Context) bool {
 }
 
 func buildSettingKeyByJSONName() map[string]string {
-	t := reflect.TypeOf(UpdateSettingsRequest{})
+	t := reflect.TypeFor[UpdateSettingsRequest]()
 	out := make(map[string]string, t.NumField())
-	for i := range t.NumField() {
-		field := t.Field(i)
+	for field := range t.Fields() {
 		if field.Type.Kind() == reflect.Pointer {
 			continue
 		}
@@ -1066,9 +1062,8 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 				return
 			}
 			urlTrimmed := strings.TrimSpace(item.URL)
-			if strings.HasPrefix(urlTrimmed, "md:") {
+			if slug, ok := strings.CutPrefix(urlTrimmed, "md:"); ok {
 				// Markdown 页面模式使用 md:<slug>，slug 规则与 /api/v1/pages/:slug 保持一致。
-				slug := strings.TrimPrefix(urlTrimmed, "md:")
 				if slug == "" {
 					httpx.BadRequest(c, "Custom menu item markdown slug cannot be empty (use md:slug format)")
 					return
@@ -1296,13 +1291,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 
 	// Ops metrics collector interval validation (seconds).
 	if req.OpsMetricsIntervalSeconds != nil {
-		v := *req.OpsMetricsIntervalSeconds
-		if v < 60 {
-			v = 60
-		}
-		if v > 3600 {
-			v = 3600
-		}
+		v := min(max(*req.OpsMetricsIntervalSeconds, 60), 3600)
 		req.OpsMetricsIntervalSeconds = &v
 	}
 	defaultSubscriptions := make([]billing.DefaultSubscriptionSetting, 0, len(req.DefaultSubscriptions))
@@ -1913,9 +1902,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		httpx.ErrorFrom(c, err)
 		return
 	}
-	for name, value := range identity.AuthSourceParticipantFields(authSourceDefaults) {
-		identityFields[name] = value
-	}
+	maps.Copy(identityFields, identity.AuthSourceParticipantFields(authSourceDefaults))
 	for name, value := range identityFields {
 		if _, nonPointer := settingKeyByJSONName[name]; nonPointer {
 			if _, sent := sentFields[name]; !sent {

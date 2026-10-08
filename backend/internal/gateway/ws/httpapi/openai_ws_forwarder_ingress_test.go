@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -243,9 +244,7 @@ func (r *gatewayTTLSettingRepo) SetMultiple(_ context.Context, settings map[stri
 	if r.data == nil {
 		r.data = map[string]string{}
 	}
-	for key, value := range settings {
-		r.data[key] = value
-	}
+	maps.Copy(r.data, settings)
 	return nil
 }
 
@@ -254,9 +253,7 @@ func (r *gatewayTTLSettingRepo) GetAll(context.Context) (map[string]string, erro
 	if r == nil {
 		return result, nil
 	}
-	for key, value := range r.data {
-		result[key] = value
-	}
+	maps.Copy(result, r.data)
 	return result, nil
 }
 
@@ -466,8 +463,7 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 		// connection without sending a close frame, and the C3 timing
 		// assertion (next read returns CloseStatus=1008) would see EOF
 		// instead.
-		var closeErr *gatewayhttp.OpenAIWSClientCloseError
-		if errors.As(proxyErr, &closeErr) {
+		if closeErr, ok := errors.AsType[*gatewayhttp.OpenAIWSClientCloseError](proxyErr); ok {
 			_ = conn.Close(closeErr.StatusCode(), closeErr.Reason())
 		}
 		serverErrCh <- proxyErr
@@ -6759,9 +6755,7 @@ func (r *openAIWSRateLimitSignalRepo) SetError(_ context.Context, _ int64, error
 
 func (r *openAIWSRateLimitSignalRepo) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
 	copied := make(map[string]any, len(updates))
-	for k, v := range updates {
-		copied[k] = v
-	}
+	maps.Copy(copied, updates)
 	r.updateExtra = append(r.updateExtra, copied)
 	return nil
 }

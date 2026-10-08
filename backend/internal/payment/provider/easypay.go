@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"sort"
@@ -76,9 +77,7 @@ func NewEasyPay(instanceID string, config map[string]string) (*EasyPay, error) {
 		}
 	}
 	cfg := make(map[string]string, len(config))
-	for k, v := range config {
-		cfg[k] = v
-	}
+	maps.Copy(cfg, config)
 	cfg["apiBase"] = normalizeEasyPayAPIBase(cfg["apiBase"])
 	return &EasyPay{
 		instanceID: instanceID,
@@ -501,9 +500,7 @@ func (e *EasyPay) refundAttempts(req payment.RefundRequest) []easyPayRefundAttem
 
 func cloneStringMap(in map[string]string) map[string]string {
 	out := make(map[string]string, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 

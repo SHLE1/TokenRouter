@@ -38,11 +38,11 @@ func RawOpenAIResponsesRequestPathSuffix(c *gin.Context) string {
 	if normalizedPath == "" {
 		return ""
 	}
-	idx := strings.LastIndex(normalizedPath, "/responses")
-	if idx < 0 {
+	_, after, ok := strings.CutLast(normalizedPath, "/responses")
+	if !ok {
 		return ""
 	}
-	suffix := normalizedPath[idx+len("/responses"):]
+	suffix := after
 	if suffix == "" || suffix == "/" {
 		return ""
 	}

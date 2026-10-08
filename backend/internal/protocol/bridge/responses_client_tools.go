@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 )
 
@@ -226,9 +227,7 @@ func AdaptResponsesClientToolsWithInheritedMapping(
 
 func copyClientTool(tool map[string]any) map[string]any {
 	copy := make(map[string]any, len(tool))
-	for key, value := range tool {
-		copy[key] = value
-	}
+	maps.Copy(copy, tool)
 	return copy
 }
 

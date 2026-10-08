@@ -90,8 +90,7 @@ func NewMediaHandler(ports MediaHTTPPorts) *MediaHandler { return &MediaHandler{
 func (h *MediaHandler) readBody(c *gin.Context) ([]byte, bool) {
 	body, err := ReadRequestBodyWithPrealloc(c.Request)
 	if err != nil {
-		var exceeded *http.MaxBytesError
-		if errors.As(err, &exceeded) {
+		if exceeded, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			h.ports.Error(c, 413, "invalid_request_error", BodyTooLargeMessage(exceeded.Limit))
 		} else {
 			h.ports.Error(c, 400, "invalid_request_error", "Failed to read request body")

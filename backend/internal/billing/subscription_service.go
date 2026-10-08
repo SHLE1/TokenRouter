@@ -1122,10 +1122,7 @@ func NormalizedWindowProgress(limit *float64, used float64, resetAt, windowStart
 			percentage = 100
 		}
 	}
-	resetsIn := int64(time.Until(resetsAt).Seconds())
-	if resetsIn < 0 {
-		resetsIn = 0
-	}
+	resetsIn := max(int64(time.Until(resetsAt).Seconds()), 0)
 	return &UsageWindowProgress{
 		LimitUSD:        *limit,
 		UsedUSD:         used,

@@ -52,8 +52,7 @@ func (h *ArchiveHandler) ExportData(c *gin.Context) {
 	}
 	payload, err := h.archive.Export(c.Request.Context(), query)
 	if err != nil {
-		var inputErr *provider.ArchiveInputError
-		if errors.As(err, &inputErr) {
+		if inputErr, ok := errors.AsType[*provider.ArchiveInputError](err); ok {
 			response.BadRequest(c, inputErr.Error())
 		} else {
 			response.ErrorFrom(c, err)
@@ -98,7 +97,7 @@ func parseProviderIDs(c *gin.Context) ([]int64, error) {
 
 	ids := make([]int64, 0, len(values))
 	for _, item := range values {
-		for _, part := range strings.Split(item, ",") {
+		for part := range strings.SplitSeq(item, ",") {
 			part = strings.TrimSpace(part)
 			if part == "" {
 				continue

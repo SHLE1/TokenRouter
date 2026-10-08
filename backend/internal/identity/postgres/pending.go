@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -89,8 +90,8 @@ func (r *authPendingIdentityScopedKeyLockRegistry) lock(keys ...string) func() {
 	}
 
 	return func() {
-		for i := len(entries) - 1; i >= 0; i-- {
-			entries[i].mu.Unlock()
+		for _, entrie := range slices.Backward(entries) {
+			entrie.mu.Unlock()
 		}
 
 		r.mu.Lock()

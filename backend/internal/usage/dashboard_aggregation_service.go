@@ -816,8 +816,7 @@ func (s *DashboardAggregationService) runBackground(fn func()) {
 	if !s.runtimeStarted || s.runtimeStopped {
 		return
 	}
-	s.runtimeWG.Add(1)
-	go func() { defer s.runtimeWG.Done(); fn() }()
+	s.runtimeWG.Go(func() { ; fn() })
 }
 
 // Stop 先停止产生新聚合工作，再等待时间轮回调与已唤醒的任务。

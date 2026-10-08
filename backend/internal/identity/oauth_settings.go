@@ -1034,12 +1034,7 @@ func (s *OAuthSettings) GetOIDCConnectOAuthConfig(ctx context.Context) (authconf
 }
 
 func SettingsScopesContainOpenID(scopes string) bool {
-	for _, scope := range strings.Fields(strings.ToLower(strings.TrimSpace(scopes))) {
-		if scope == "openid" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Fields(strings.ToLower(strings.TrimSpace(scopes))), "openid")
 }
 
 func SettingsOidcDefaultDiscoveryURL(issuerURL string) string {

@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"slices"
 	"sync"
 )
 
@@ -88,8 +89,8 @@ func (l *Lease) Release() {
 		if stop != nil {
 			stop()
 		}
-		for i := len(resources) - 1; i >= 0; i-- {
-			resources[i]()
+		for _, resource := range slices.Backward(resources) {
+			resource()
 		}
 	})
 }

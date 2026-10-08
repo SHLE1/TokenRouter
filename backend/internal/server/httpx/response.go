@@ -137,10 +137,7 @@ func InternalError(c *gin.Context, message string) {
 
 // Paginated 返回分页数据。
 func Paginated(c *gin.Context, items any, total int64, page, pageSize int) {
-	pages := int(math.Ceil(float64(total) / float64(pageSize)))
-	if pages < 1 {
-		pages = 1
-	}
+	pages := max(int(math.Ceil(float64(total)/float64(pageSize))), 1)
 
 	Success(c, PaginatedData{
 		Items:    items,

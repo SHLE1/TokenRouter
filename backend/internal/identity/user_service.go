@@ -16,6 +16,7 @@ import (
 	_ "image/png"
 	"log/slog"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -647,13 +648,7 @@ func (s *UserService) ProfileCanUseEmailAsSignInMethod(user *User, records []Use
 		return true
 	}
 
-	for _, record := range ProfileFilterUserAuthIdentities(records, "email") {
-		if ProfileEmailIdentitySupportsSignIn(record) {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(ProfileFilterUserAuthIdentities(records, "email"), ProfileEmailIdentitySupportsSignIn)
 }
 
 func ProfileEmailSignupSourceAllowsLogin(signupSource string) bool {

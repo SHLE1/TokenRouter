@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -539,9 +540,7 @@ func cloneCodexImportTestMap(input map[string]any) map[string]any {
 		return nil
 	}
 	out := make(map[string]any, len(input))
-	for key, value := range input {
-		out[key] = value
-	}
+	maps.Copy(out, input)
 	return out
 }
 
@@ -556,9 +555,7 @@ func buildCodexImportTestJWT(t *testing.T, exp time.Time, extraClaims map[string
 		"exp": exp.Unix(),
 		"iat": time.Now().Unix(),
 	}
-	for k, v := range extraClaims {
-		claims[k] = v
-	}
+	maps.Copy(claims, extraClaims)
 	headerBytes, err := json.Marshal(header)
 	if err != nil {
 		t.Fatalf("marshal header: %v", err)

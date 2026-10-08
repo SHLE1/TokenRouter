@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -994,9 +995,7 @@ func (r *sparkShadowUsageTestRepo) GetByID(_ context.Context, id int64) (*provid
 func (r *sparkShadowUsageTestRepo) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
 	if r.updateExtraCh != nil {
 		copied := make(map[string]any, len(updates))
-		for k, v := range updates {
-			copied[k] = v
-		}
+		maps.Copy(copied, updates)
 		r.updateExtraCh <- copied
 	}
 	return nil

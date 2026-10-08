@@ -609,10 +609,7 @@ func (s *TeamService) CheckInvitationRate(ctx context.Context, teamID int64, ema
 	if allowed {
 		return nil
 	}
-	retrySeconds := int64((retryAfter + time.Second - 1) / time.Second)
-	if retrySeconds < 1 {
-		retrySeconds = 1
-	}
+	retrySeconds := max(int64((retryAfter+time.Second-1)/time.Second), 1)
 	return ErrTeamInvitationRateLimited.WithMetadata(map[string]string{"retry_after": strconv.FormatInt(retrySeconds, 10)})
 }
 

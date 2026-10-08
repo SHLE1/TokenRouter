@@ -474,15 +474,13 @@ func (b *messageAttemptBridge) Exhausted(err *textflow.AttemptFailure, platform 
 		b.binding().handleFailoverExhaustedSimple(b.c, 502, *b.streamStarted)
 		return
 	}
-	var original *forwardcore.UpstreamFailoverError
-	if errors.As(err.Cause, &original) {
+	if original, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err.Cause); ok {
 		b.binding().handleFailoverExhausted(b.c, original, platform, forceStream || *b.streamStarted)
 	}
 }
 
 func (b *messageAttemptBridge) PolicyFailure(err error) {
-	var original *anthropic.BetaBlockedError
-	if errors.As(err, &original) {
+	if original, ok := errors.AsType[*anthropic.BetaBlockedError](err); ok {
 		gatewayhttp.MarkOpsClientBusinessLimited(b.c, gatewayhttp.OpsClientBusinessLimitedReasonLocalPolicyDenied)
 		b.binding().errorResponse(b.c, http.StatusBadRequest, "invalid_request_error", original.Message)
 	}
@@ -493,8 +491,7 @@ func (b *messageAttemptBridge) Switched() {
 }
 func (b *messageAttemptBridge) Abandon(id int64) { b.sessionAttempts.Abandon(id) }
 func (b *messageAttemptBridge) TempUnscheduleRetryableError(ctx context.Context, id int64, err *textflow.AttemptFailure) {
-	var original *forwardcore.UpstreamFailoverError
-	if errors.As(err.Cause, &original) {
+	if original, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err.Cause); ok {
 		b.binding().tempUnschedule(ctx, id, original)
 	}
 }

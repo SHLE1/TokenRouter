@@ -21,8 +21,7 @@ func TestRequestBodyLimitTooLarge(t *testing.T) {
 	router.POST("/test", func(c *gin.Context) {
 		_, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			var maxErr *http.MaxBytesError
-			if errors.As(err, &maxErr) {
+			if maxErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
 				c.JSON(http.StatusRequestEntityTooLarge, gin.H{
 					"error": BodyTooLargeMessage(maxErr.Limit),
 				})

@@ -136,10 +136,7 @@ func (h *OpenAITextHandler) LogRemoteCompactOutcome(c *gin.Context, startedAt ti
 			outcome = "failed"
 		}
 	}
-	latencyMs := time.Since(startedAt).Milliseconds()
-	if latencyMs < 0 {
-		latencyMs = 0
-	}
+	latencyMs := max(time.Since(startedAt).Milliseconds(), 0)
 
 	fields := []zap.Field{
 		zap.String("component", "handler.openai_gateway.responses"),

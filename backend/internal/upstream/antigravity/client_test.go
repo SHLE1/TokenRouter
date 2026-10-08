@@ -800,8 +800,8 @@ func TestLoadCodeAssistResponse_完整JSON(t *testing.T) {
 func (rt *redirectRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	originalURL := req.URL.String()
 	for prefix, target := range rt.redirects {
-		if strings.HasPrefix(originalURL, prefix) {
-			newURL := target + strings.TrimPrefix(originalURL, prefix)
+		if after, ok := strings.CutPrefix(originalURL, prefix); ok {
+			newURL := target + after
 			parsed, err := url.Parse(newURL)
 			if err != nil {
 				return nil, err

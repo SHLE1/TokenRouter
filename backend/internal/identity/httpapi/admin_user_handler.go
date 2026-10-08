@@ -557,10 +557,7 @@ func (h *AdminUserHandler[K]) GetBalanceHistory(c *gin.Context) {
 	}
 
 	// Custom response with total_recharged alongside pagination
-	pages := int((total + int64(pageSize) - 1) / int64(pageSize))
-	if pages < 1 {
-		pages = 1
-	}
+	pages := max(int((total+int64(pageSize)-1)/int64(pageSize)), 1)
 	response.Success(c, gin.H{
 		"items":           out,
 		"total":           total,

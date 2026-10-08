@@ -67,10 +67,7 @@ func NewSystemOperationLockService(repo idempotency.OperationLeaseStore, cfg Opt
 	if lease <= 0 {
 		lease = 30 * time.Second
 	}
-	renewInterval := lease / 3
-	if renewInterval < time.Second {
-		renewInterval = time.Second
-	}
+	renewInterval := max(lease/3, time.Second)
 	ttl := cfg.SystemOperationTTL
 	if ttl <= 0 {
 		ttl = time.Hour

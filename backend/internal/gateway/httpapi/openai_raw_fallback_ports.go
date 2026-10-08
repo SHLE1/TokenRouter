@@ -49,8 +49,7 @@ func (p *openAIRawFallbackAdapter) NormalizeGLM(b []byte, m string) ([]byte, boo
 
 func (p *openAIRawFallbackAdapter) FastFallback(ctx context.Context, m string, b []byte) ([]byte, error) {
 	updated, err := tierpolicy.ApplyBody(b, p.s.FastPolicy.Input(ctx, p.provider, m))
-	var blocked *tierpolicy.BlockedError
-	if errors.As(err, &blocked) {
+	if blocked, ok := errors.AsType[*tierpolicy.BlockedError](err); ok {
 		WriteFastPolicyBlockedResponse(p.c, blocked)
 	}
 	return updated, err

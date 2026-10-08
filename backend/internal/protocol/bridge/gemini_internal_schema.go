@@ -2,6 +2,8 @@ package bridge
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 )
 
@@ -30,15 +32,11 @@ func CleanJSONSchema(schema map[string]any) map[string]any {
 func extractDefs(schema map[string]any) map[string]any {
 	defs := make(map[string]any)
 	if d, ok := schema["$defs"].(map[string]any); ok {
-		for k, v := range d {
-			defs[k] = v
-		}
+		maps.Copy(defs, d)
 		delete(schema, "$defs")
 	}
 	if d, ok := schema["definitions"].(map[string]any); ok {
-		for k, v := range d {
-			defs[k] = v
-		}
+		maps.Copy(defs, d)
 		delete(schema, "definitions")
 	}
 	return defs
@@ -187,13 +185,7 @@ func cleanJSONSchemaRecursive(value any) any {
 						if sourceReq, ok := v.([]any); ok {
 							for _, rv := range sourceReq {
 								// 简单的去重添加
-								exists := false
-								for _, tr := range targetReq {
-									if tr == rv {
-										exists = true
-										break
-									}
-								}
+								exists := slices.Contains(targetReq, rv)
 								if !exists {
 									targetReq = append(targetReq, rv)
 								}
@@ -398,9 +390,7 @@ func mergeAllOf(m map[string]any) {
 		if subMap, ok := sub.(map[string]any); ok {
 			// Props
 			if props, ok := subMap["properties"].(map[string]any); ok {
-				for k, v := range props {
-					mergedProps[k] = v
-				}
+				maps.Copy(mergedProps, props)
 			}
 			// Required
 			if reqs, ok := subMap["required"].([]any); ok {

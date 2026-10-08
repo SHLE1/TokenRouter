@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"net/http"
 	"time"
 
@@ -63,9 +64,7 @@ func (s *GrokHealth) StoreSnapshot(ctx context.Context, value *providercore.Reco
 	}
 	// 同时派生 grokThresholdCandidates 评估器读取的调度阈值扩展字段 grok_sched_*。
 	// 缺少此写入逻辑时，管理员配置的 Grok 自动暂停阈值无法触发。
-	for k, v := range providercore.BuildGrokSchedulerExtraUpdates(snapshot) {
-		updates[k] = v
-	}
+	maps.Copy(updates, providercore.BuildGrokSchedulerExtraUpdates(snapshot))
 	stateCtx := ctx
 	if hasActiveLimit {
 		var cancel context.CancelFunc

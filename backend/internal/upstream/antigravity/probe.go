@@ -73,17 +73,17 @@ func BuildClaudeTestRequest(projectID, mappedModel string, prompts ...string) ([
 // ExtractTextFromSSEResponse 从 SSE 流式响应中提取文本。
 func ExtractTextFromSSEResponse(respBody []byte) string {
 	var texts []string
-	lines := bytes.Split(respBody, []byte("\n"))
+	lines := bytes.SplitSeq(respBody, []byte("\n"))
 
-	for _, line := range lines {
+	for line := range lines {
 		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
 		}
 
 		// 跳过 SSE 前缀
-		if bytes.HasPrefix(line, []byte("data:")) {
-			line = bytes.TrimPrefix(line, []byte("data:"))
+		if after, ok := bytes.CutPrefix(line, []byte("data:")); ok {
+			line = after
 			line = bytes.TrimSpace(line)
 		}
 
@@ -149,8 +149,7 @@ func Probe(ctx context.Context, input RetryInput, options RetryOptions, model st
 	input.Ctx = ctx
 	result, err := (&RetryAdapter{Options: options}).AntigravityRetryLoop(input)
 	if err != nil {
-		var switchErr *AntigravityProviderSwitchError
-		if errors.As(err, &switchErr) {
+		if switchErr, ok := errors.AsType[*AntigravityProviderSwitchError](err); ok {
 			return nil, fmt.Errorf("provider model %s is rate limited; try again later", switchErr.RateLimitedModel)
 		}
 		return nil, err

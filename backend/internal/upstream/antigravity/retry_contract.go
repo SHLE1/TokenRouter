@@ -68,8 +68,7 @@ func (e *AntigravityProviderSwitchError) Error() string {
 
 // IsAntigravityProviderSwitchError 检查错误是否为提供商切换信号。
 func IsAntigravityProviderSwitchError(err error) (*AntigravityProviderSwitchError, bool) {
-	var switchErr *AntigravityProviderSwitchError
-	if errors.As(err, &switchErr) {
+	if switchErr, ok := errors.AsType[*AntigravityProviderSwitchError](err); ok {
 		return switchErr, true
 	}
 	return nil, false

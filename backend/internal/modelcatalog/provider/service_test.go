@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -1206,15 +1207,13 @@ func TestModelsCatalogSupplementAndConcurrentReaders(t *testing.T) {
 	require.InDelta(t, 12e-6, s.GetModelPricing("claude-test").CacheCreationInputTokenCostAbove1hr, 1e-12)
 	var wg sync.WaitGroup
 	for range 4 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 10 {
 				_ = s.ModelAttributes("claude-test")
 				_ = s.AttributesSnapshot()
 				_ = s.ReadOnlySnapshot()
 			}
-		}()
+		})
 	}
 	for range 3 {
 		require.NoError(t, s.ForceUpdate())
@@ -1372,9 +1371,7 @@ func (s *inMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
 	cloned := *event
 	if event.Fields != nil {
 		cloned.Fields = make(map[string]any, len(event.Fields))
-		for k, v := range event.Fields {
-			cloned.Fields[k] = v
-		}
+		maps.Copy(cloned.Fields, event.Fields)
 	}
 	s.mu.Lock()
 	s.events = append(s.events, &cloned)

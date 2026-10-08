@@ -224,15 +224,11 @@ func parseCreativeCreateRunMultipart(c *gin.Context, partLimit, totalInputLimit 
 				_ = part.Close()
 				return nil, creative.ErrCreativeInputTooLarge
 			}
-			readLimit := partLimit
-			if remaining < readLimit {
-				readLimit = remaining
-			}
+			readLimit := min(remaining, partLimit)
 			data, readErr := io.ReadAll(io.LimitReader(part, readLimit+1))
 			_ = part.Close()
 			if readErr != nil {
-				var maxBytesErr *http.MaxBytesError
-				if errors.As(readErr, &maxBytesErr) {
+				if _, ok := errors.AsType[*http.MaxBytesError](readErr); ok {
 					return nil, creative.ErrCreativeInputTooLarge
 				}
 				return nil, readErr

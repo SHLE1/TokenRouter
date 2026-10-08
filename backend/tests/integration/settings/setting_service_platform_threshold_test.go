@@ -2,6 +2,7 @@ package settings_test
 
 import (
 	"context"
+	"maps"
 	"sync"
 	"testing"
 
@@ -29,9 +30,7 @@ func newSettingServiceForPlatformThresholdTest(seed map[string]string) *settings
 
 func newSettingServiceAndRepoForPlatformThresholdTest(seed map[string]string) (*settingskit.Composite, *mockSettingRepo) {
 	repo := newMockSettingRepo()
-	for k, v := range seed {
-		repo.data[k] = v
-	}
+	maps.Copy(repo.data, seed)
 	return settingskit.NewComposite(repo, &config.Config{}), repo
 }
 
@@ -205,9 +204,7 @@ func (m *mockSettingRepo) GetMultiple(_ context.Context, keys []string) (map[str
 func (m *mockSettingRepo) SetMultiple(_ context.Context, settings map[string]string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for k, v := range settings {
-		m.data[k] = v
-	}
+	maps.Copy(m.data, settings)
 	return nil
 }
 
@@ -215,9 +212,7 @@ func (m *mockSettingRepo) GetAll(_ context.Context) (map[string]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	result := make(map[string]string, len(m.data))
-	for k, v := range m.data {
-		result[k] = v
-	}
+	maps.Copy(result, m.data)
 	return result, nil
 }
 

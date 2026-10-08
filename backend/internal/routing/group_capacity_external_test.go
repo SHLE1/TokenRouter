@@ -2,6 +2,7 @@ package routing_test
 
 import (
 	"context"
+	"maps"
 	"testing"
 	"time"
 
@@ -389,9 +390,7 @@ func (s *groupCapacityConcurrencyCacheStub) GetProviderConcurrencyBatch(_ contex
 func (s *groupCapacitySessionCacheStub) GetActiveSessionCountBatch(_ context.Context, providerIDs []int64, idleTimeouts map[int64]time.Duration) (map[int64]int, error) {
 	s.requested = append([]int64(nil), providerIDs...)
 	s.idleTimeouts = make(map[int64]time.Duration, len(idleTimeouts))
-	for id, timeout := range idleTimeouts {
-		s.idleTimeouts[id] = timeout
-	}
+	maps.Copy(s.idleTimeouts, idleTimeouts)
 	out := make(map[int64]int, len(providerIDs))
 	for _, id := range providerIDs {
 		out[id] = s.counts[id]

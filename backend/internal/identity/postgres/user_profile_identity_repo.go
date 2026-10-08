@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -167,8 +169,8 @@ func (r *IdentityScopedKeyLockRegistry) lock(keys ...string) func() {
 	}
 
 	return func() {
-		for i := len(entries) - 1; i >= 0; i-- {
-			entries[i].mu.Unlock()
+		for _, entrie := range slices.Backward(entries) {
+			entrie.mu.Unlock()
 		}
 
 		r.mu.Lock()
@@ -818,9 +820,7 @@ func IdentityCopyMetadata(in map[string]any) map[string]any {
 		return map[string]any{}
 	}
 	out := make(map[string]any, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 

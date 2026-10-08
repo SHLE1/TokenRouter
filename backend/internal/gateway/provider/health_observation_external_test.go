@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strconv"
 	"sync/atomic"
@@ -1286,9 +1287,7 @@ func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates
 		if provider.Record.Extra == nil {
 			provider.Record.Extra = make(map[string]any)
 		}
-		for key, value := range updates {
-			provider.Record.Extra[key] = value
-		}
+		maps.Copy(provider.Record.Extra, updates)
 	}
 	return nil
 }

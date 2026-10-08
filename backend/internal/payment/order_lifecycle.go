@@ -592,10 +592,7 @@ func ReconcilePageIDs(ids []int64, cursor uint64, limit int) []int64 {
 	pageCount := (len(ids) + limit - 1) / limit
 	page := int(cursor % uint64(pageCount))
 	start := page * limit
-	end := start + limit
-	if end > len(ids) {
-		end = len(ids)
-	}
+	end := min(start+limit, len(ids))
 	return append([]int64(nil), ids[start:end]...)
 }
 

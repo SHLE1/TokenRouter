@@ -2,6 +2,7 @@ package completion
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -110,12 +111,7 @@ func SubscriptionPlanIncludesGroup(plan *billing.SubscriptionPlan, groupID int64
 	if len(plan.GroupIDs) == 0 {
 		return true
 	}
-	for _, id := range plan.GroupIDs {
-		if id == groupID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(plan.GroupIDs, groupID)
 }
 
 func SubscriptionPlanGroupRateMultiplier(plan *billing.SubscriptionPlan, groupID int64) (float64, bool) {

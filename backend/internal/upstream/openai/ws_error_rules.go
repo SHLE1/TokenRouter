@@ -14,8 +14,7 @@ func ClassifyWSAcquireError(err error) string {
 	if err == nil {
 		return "acquire_conn"
 	}
-	var dialErr *WSDialError
-	if errors.As(err, &dialErr) {
+	if dialErr, ok := errors.AsType[*WSDialError](err); ok {
 		switch dialErr.StatusCode {
 		case http.StatusUpgradeRequired:
 			return "upgrade_required"

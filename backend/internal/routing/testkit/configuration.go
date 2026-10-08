@@ -2,6 +2,8 @@ package testkit
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
@@ -52,9 +54,7 @@ func (c Configuration) Policy() routing.GroupRoutingPolicy {
 		allowed = append(allowed, price.Models...)
 	}
 	mapping := make(map[string]string)
-	for source, target := range c.ModelMapping {
-		mapping[source] = target
-	}
+	maps.Copy(mapping, c.ModelMapping)
 	return routing.GroupRoutingPolicy{Enabled: c.Status == routing.StatusActive, ModelMapping: mapping, RestrictModels: c.RestrictModels, RestrictionModelSource: c.BillingModelSource, AllowedModels: allowed, Features: c.Features, FeaturesConfig: c.FeaturesConfig}
 }
 
@@ -112,10 +112,8 @@ func (r configurationRows) ReadGroup(ctx context.Context, id int64) (*routing.Gr
 		return nil, err
 	}
 	for _, row := range rows {
-		for _, groupID := range row.GroupIDs {
-			if groupID == id {
-				return &routing.Group{ID: id, AllowedProtocols: capability.DefaultGroupClientProtocols(""), RoutingPolicy: row.Policy()}, nil
-			}
+		if slices.Contains(row.GroupIDs, id) {
+			return &routing.Group{ID: id, AllowedProtocols: capability.DefaultGroupClientProtocols(""), RoutingPolicy: row.Policy()}, nil
 		}
 	}
 	return &routing.Group{ID: id}, nil

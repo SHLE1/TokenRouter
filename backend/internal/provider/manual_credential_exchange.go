@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -94,9 +95,7 @@ func (h *ManualCredentialExchange) Refresh(ctx context.Context, provider *Record
 
 		// 保留非令牌配置，例如 intercept_warmup_requests。
 		newCredentials = make(map[string]any)
-		for k, v := range provider.Credentials {
-			newCredentials[k] = v
-		}
+		maps.Copy(newCredentials, provider.Credentials)
 
 		// 只更新原先认可的令牌字段。
 		newCredentials["access_token"] = tokenInfo.AccessToken

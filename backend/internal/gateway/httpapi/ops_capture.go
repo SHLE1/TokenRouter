@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -962,8 +963,8 @@ func logOpsRecoveredUpstream(c *gin.Context, ops *opscore.OpsService, finalStatu
 		lastStatus = *entry.UpstreamStatusCode
 	}
 	lastStage := ""
-	for i := len(entry.UpstreamErrors) - 1; i >= 0; i-- {
-		if event := entry.UpstreamErrors[i]; event != nil {
+	for _, event := range slices.Backward(entry.UpstreamErrors) {
+		if event != nil {
 			lastStage = event.Stage
 			if event.ProviderID > 0 {
 				providerID := event.ProviderID
@@ -1230,9 +1231,9 @@ func applyOpsStreamErrorSnapshot(entry *opscore.OpsInsertErrorLogInput, streamEr
 	}
 	entry.UpstreamErrors = streamErr.UpstreamErrors
 	lastStage := ""
-	for i := len(streamErr.UpstreamErrors) - 1; i >= 0; i-- {
-		if streamErr.UpstreamErrors[i] != nil {
-			lastStage = streamErr.UpstreamErrors[i].Stage
+	for _, v := range slices.Backward(streamErr.UpstreamErrors) {
+		if v != nil {
+			lastStage = v.Stage
 			break
 		}
 	}
@@ -1260,9 +1261,9 @@ func shouldSkipFinalOpsFailure(c *gin.Context) bool {
 	}
 	if v, ok := c.Get(OpsUpstreamErrorsKey); ok {
 		if events, ok := v.([]*opscore.OpsUpstreamErrorEvent); ok {
-			for i := len(events) - 1; i >= 0; i-- {
-				if events[i] != nil {
-					return events[i].SkipMonitoring
+			for _, event := range slices.Backward(events) {
+				if event != nil {
+					return event.SkipMonitoring
 				}
 			}
 		}
@@ -1334,9 +1335,9 @@ func applyOpsUpstreamFieldsFromContext(c *gin.Context, entry *opscore.OpsInsertE
 func applyOpsUpstreamErrorEvents(entry *opscore.OpsInsertErrorLogInput, events []*opscore.OpsUpstreamErrorEvent) {
 	entry.UpstreamErrors = events
 	var last *opscore.OpsUpstreamErrorEvent
-	for i := len(events) - 1; i >= 0; i-- {
-		if events[i] != nil {
-			last = events[i]
+	for _, event := range slices.Backward(events) {
+		if event != nil {
+			last = event
 			break
 		}
 	}
@@ -1488,7 +1489,7 @@ func parseOpsSSEFailure(body []byte) (parsedOpsError, bool) {
 	normalized := strings.ReplaceAll(string(body), "\r\n", "\n")
 	normalized = strings.ReplaceAll(normalized, "\r", "\n")
 	var errorCandidate *parsedOpsError
-	for _, frame := range strings.Split(normalized, "\n\n") {
+	for frame := range strings.SplitSeq(normalized, "\n\n") {
 		frame = strings.TrimSpace(frame)
 		if frame == "" {
 			continue
@@ -1620,7 +1621,7 @@ func sanitizeOpsSSEDataForPersistence(body []byte) string {
 		}
 		wroteData := false
 		emittedLine := false
-		for _, line := range bytes.Split(frame, []byte{'\n'}) {
+		for line := range bytes.SplitSeq(frame, []byte{'\n'}) {
 			field, _, found := bytes.Cut(line, []byte{':'})
 			if found && bytes.Equal(bytes.TrimSpace(field), []byte("data")) {
 				if wroteData {
@@ -1775,9 +1776,9 @@ func hasOpsProviderAuthFailure(c *gin.Context) bool {
 	}
 	if v, ok := c.Get(OpsUpstreamErrorsKey); ok {
 		if events, ok := v.([]*opscore.OpsUpstreamErrorEvent); ok {
-			for i := len(events) - 1; i >= 0; i-- {
-				if events[i] != nil {
-					return events[i].Stage == opscore.ErrorPhaseProviderAuth
+			for _, event := range slices.Backward(events) {
+				if event != nil {
+					return event.Stage == opscore.ErrorPhaseProviderAuth
 				}
 			}
 		}

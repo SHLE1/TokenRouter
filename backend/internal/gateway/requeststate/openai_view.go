@@ -135,7 +135,7 @@ func isSimpleOpenAIRequestPatchPath(path string) bool {
 	if path == "" || strings.ContainsRune(path, '\\') {
 		return false
 	}
-	for _, part := range strings.Split(path, ".") {
+	for part := range strings.SplitSeq(path, ".") {
 		if strings.TrimSpace(part) == "" {
 			return false
 		}

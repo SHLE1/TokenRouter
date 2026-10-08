@@ -92,8 +92,7 @@ func TestHandleUpstreamTransportError_PersistentEvictsProvider(t *testing.T) {
 	err := s.transportError(context.Background(), c, provider,
 		errors.New(`dial tcp 1.2.3.4:443: connect: connection refused`), forwardcore.Notice{})
 
-	var failoverErr *forwardcore.UpstreamFailoverError
-	if !errors.As(err, &failoverErr) {
+	if _, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); !ok {
 		t.Fatalf("expected *UpstreamFailoverError, got %T: %v", err, err)
 	}
 	if repo.calls != 1 {
@@ -123,8 +122,7 @@ func TestHandleUpstreamTransportError_ClientCanceledNoFailover(t *testing.T) {
 	inErr := context.Canceled
 	err := s.transportError(context.Background(), c, provider, inErr, forwardcore.Notice{})
 
-	var failoverErr *forwardcore.UpstreamFailoverError
-	if errors.As(err, &failoverErr) {
+	if _, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		t.Fatal("canceled client must not fail over to another provider")
 	}
 	if !errors.Is(err, context.Canceled) {
@@ -147,8 +145,7 @@ func TestHandleUpstreamTransportError_UpstreamDeadlineStillFailsOver(t *testing.
 	err := s.transportError(context.Background(), c, provider,
 		context.DeadlineExceeded, forwardcore.Notice{})
 
-	var failoverErr *forwardcore.UpstreamFailoverError
-	if !errors.As(err, &failoverErr) {
+	if _, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); !ok {
 		t.Fatalf("upstream deadline with live request context must fail over, got %T: %v", err, err)
 	}
 	if repo.calls != 0 {

@@ -385,7 +385,7 @@ func OpenAICacheCreationTokensFromUsage(value gjson.Result) int {
 // BodyHasSSEFraming 按 SSE 规范检查是否存在以 data: 或 event: 开头的物理行。
 // 有效 JSON 字符串中的同名文本不会出现在物理行首，因此不会被误判。
 func BodyHasSSEFraming(body []byte) bool {
-	for _, line := range bytes.Split(body, []byte("\n")) {
+	for line := range bytes.SplitSeq(body, []byte("\n")) {
 		line = bytes.TrimRight(line, "\r")
 		if bytes.HasPrefix(line, []byte("data:")) || bytes.HasPrefix(line, []byte("event:")) {
 			return true
@@ -759,11 +759,11 @@ func ForEachOpenAISSEFrame(body string, fn func(string, []byte)) {
 			emitData(frame.Data)
 			return
 		}
-		for _, value := range strings.Split(frame.Data, "\n") {
+		for value := range strings.SplitSeq(frame.Data, "\n") {
 			emitData(value)
 		}
 	}
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		emit(parser.AddLine(strings.TrimRight(line, "\r")))
 	}
 	emit(parser.Finish())

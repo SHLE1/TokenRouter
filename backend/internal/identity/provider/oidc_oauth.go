@@ -326,7 +326,7 @@ func OidcAllowedSigningAlgs(raw string) []string {
 	}
 	seen := make(map[string]struct{})
 	out := make([]string, 0, 4)
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		alg := strings.ToUpper(strings.TrimSpace(part))
 		if alg == "" {
 			continue

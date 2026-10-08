@@ -1,5 +1,7 @@
 package provider
 
+import "maps"
+
 var (
 	// SensitiveCredentialKeys 列出向前端返回凭据时需要移除的敏感字段。
 	// dto 响应脱敏和服务更新合并共用此清单，添加凭据类型时需要同步更新。
@@ -37,9 +39,7 @@ func IsSensitiveCredentialKey(key string) bool {
 // 非敏感字段以 incoming 为准，敏感字段在 incoming 携带该键时按输入覆盖。
 func MergePreservingSensitiveCreds(existing, incoming map[string]any) map[string]any {
 	out := make(map[string]any, len(incoming)+len(SensitiveCredentialKeys))
-	for k, v := range incoming {
-		out[k] = v
-	}
+	maps.Copy(out, incoming)
 	for _, key := range SensitiveCredentialKeys {
 		if _, hasIncoming := incoming[key]; hasIncoming {
 			continue

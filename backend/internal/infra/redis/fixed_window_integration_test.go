@@ -23,12 +23,10 @@ func TestFixedWindowConcurrentCounts(t *testing.T) {
 	results := make(chan result, 32)
 	var group sync.WaitGroup
 	for range 32 {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			allowed, count, _, err := limiter.Allow(t.Context(), "concurrent", 16, 2*time.Second)
 			results <- result{allowed, count, err}
-		}()
+		})
 	}
 	group.Wait()
 	close(results)

@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -17,12 +18,7 @@ type InternalGeminiGenerationOptions struct {
 }
 
 func InternalHasWebSearchTool(tools []ClaudeTool) bool {
-	for _, tool := range tools {
-		if InternalIsWebSearchTool(tool) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(tools, InternalIsWebSearchTool)
 }
 
 func InternalIsWebSearchTool(tool ClaudeTool) bool {
@@ -67,13 +63,7 @@ func BuildInternalGeminiTools(tools []ClaudeTool) ([]GeminiToolDeclaration, []st
 	}
 
 	hasWebSearch := InternalHasWebSearchTool(tools)
-	hasCodeExecution := false
-	for _, tool := range tools {
-		if InternalIsCodeExecutionTool(tool) {
-			hasCodeExecution = true
-			break
-		}
-	}
+	hasCodeExecution := slices.ContainsFunc(tools, InternalIsCodeExecutionTool)
 
 	// 普通工具
 	var funcDecls []GeminiFunctionDecl

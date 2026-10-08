@@ -1,6 +1,7 @@
 package pricing
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -92,12 +93,7 @@ func (r *ResolvedPricing) IsUnpriced() bool {
 	if r.Mode != BillingModeToken || r.ConfigPricing == nil || r.hasBaseTokenPricing() {
 		return false
 	}
-	for _, interval := range r.Intervals {
-		if PricingIntervalHasEffectiveTokenPricing(interval) {
-			return false
-		}
-	}
-	return true
+	return !slices.ContainsFunc(r.Intervals, PricingIntervalHasEffectiveTokenPricing)
 }
 
 // hasBaseTokenPricing 区分有效基础价（包含显式免费）与仅用于保存倍率的占位结构。

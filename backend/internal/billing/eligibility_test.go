@@ -93,14 +93,12 @@ func TestBillingCacheServiceGetUserBalance_Singleflight(t *testing.T) {
 	balCh := make(chan float64, goroutines)
 
 	for range goroutines {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			bal, err := svc.GetUserBalance(context.Background(), 99)
 			errCh <- err
 			balCh <- bal
-		}()
+		})
 	}
 
 	close(start)

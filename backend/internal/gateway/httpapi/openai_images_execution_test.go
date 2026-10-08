@@ -1021,7 +1021,7 @@ func parseOpenAIImageTestSSEEvents(body string) []openAIImageTestSSEEvent {
 			continue
 		}
 		var event openAIImageTestSSEEvent
-		for _, line := range strings.Split(chunk, "\n") {
+		for line := range strings.SplitSeq(chunk, "\n") {
 			switch {
 			case strings.HasPrefix(line, "event: "):
 				event.Name = strings.TrimSpace(strings.TrimPrefix(line, "event: "))

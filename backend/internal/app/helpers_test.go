@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -1031,9 +1032,7 @@ func (s *handlerInMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
 	cloned := *event
 	if event.Fields != nil {
 		cloned.Fields = make(map[string]any, len(event.Fields))
-		for k, v := range event.Fields {
-			cloned.Fields[k] = v
-		}
+		maps.Copy(cloned.Fields, event.Fields)
 	}
 	s.mu.Lock()
 	s.events = append(s.events, &cloned)
@@ -1283,9 +1282,7 @@ func (r *grokCredentialHandlerRepo) UpdateExtra(_ context.Context, id int64, upd
 		if r.providers[i].Record.Extra == nil {
 			r.providers[i].Record.Extra = map[string]any{}
 		}
-		for key, value := range updates {
-			r.providers[i].Record.Extra[key] = value
-		}
+		maps.Copy(r.providers[i].Record.Extra, updates)
 	}
 	return nil
 }
@@ -1332,9 +1329,7 @@ func (c *grokCredentialHandlerTokenCache) ReleaseRefreshLock(context.Context, st
 
 func cloneCredentialMap(source map[string]any) map[string]any {
 	cloned := make(map[string]any, len(source))
-	for key, value := range source {
-		cloned[key] = value
-	}
+	maps.Copy(cloned, source)
 	return cloned
 }
 
@@ -1656,17 +1651,13 @@ func (r *contentModerationHandlerSettingRepo) SetMultiple(ctx context.Context, s
 	if r.values == nil {
 		r.values = map[string]string{}
 	}
-	for key, value := range settings {
-		r.values[key] = value
-	}
+	maps.Copy(r.values, settings)
 	return nil
 }
 
 func (r *contentModerationHandlerSettingRepo) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(r.values))
-	for key, value := range r.values {
-		out[key] = value
-	}
+	maps.Copy(out, r.values)
 	return out, nil
 }
 
@@ -2171,9 +2162,9 @@ func routeInventoryValue(kind reflect.Type, depth int) reflect.Value {
 	}
 	if kind.Kind() == reflect.Struct {
 		value := reflect.New(kind).Elem()
-		for i := range value.NumField() {
-			if value.Field(i).CanSet() && value.Field(i).Kind() == reflect.Func {
-				value.Field(i).Set(routeInventoryValue(value.Field(i).Type(), depth+1))
+		for _, field := range value.Fields() {
+			if field.CanSet() && field.Kind() == reflect.Func {
+				field.Set(routeInventoryValue(field.Type(), depth+1))
 			}
 		}
 		return value
@@ -2187,7 +2178,7 @@ func routeInventoryMount[T any](t *testing.T, factory any) T {
 	for i := range args {
 		args[i] = routeInventoryValue(value.Type().In(i), 0)
 	}
-	result, ok := value.Call(args)[0].Interface().(T)
+	result, ok := reflect.TypeAssert[T](value.Call(args)[0])
 	require.True(t, ok, "生产注册函数的返回类型不匹配")
 	return result
 }
@@ -2710,9 +2701,7 @@ func (s *settingHandlerRepoStub) SetMultiple(ctx context.Context, settings map[s
 
 func (s *settingHandlerRepoStub) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(s.values))
-	for key, value := range s.values {
-		out[key] = value
-	}
+	maps.Copy(out, s.values)
 	return out, nil
 }
 

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"maps"
 	"strings"
 	"time"
 )
@@ -147,9 +148,7 @@ func (s *RefreshPostActions) ClearRefreshRequest(ctx context.Context, provider *
 		return
 	}
 	if provider.Extra != nil {
-		for k, v := range updates {
-			provider.Extra[k] = v
-		}
+		maps.Copy(provider.Extra, updates)
 	}
 	s.Info("token_refresh.cleared_antigravity_force_refresh",
 		"provider_id", provider.ID,

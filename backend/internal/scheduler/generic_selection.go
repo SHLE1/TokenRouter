@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"time"
@@ -204,9 +205,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 	// 基础调度器在负载批查询不可用时走单次选择。高级分组仍执行评分，缺失负载按中性信号处理。
 	if !usesAdvancedScheduler && (s.concurrencyService == nil || !cfg.LoadBatchEnabled) {
 		localExcluded := make(map[int64]struct{})
-		for k, v := range excludedIDs {
-			localExcluded[k] = v
-		}
+		maps.Copy(localExcluded, excludedIDs)
 
 		for {
 			provider, err := s.selectRoutes(ctx, groupID, sessionHash, requestedModel, localExcluded)

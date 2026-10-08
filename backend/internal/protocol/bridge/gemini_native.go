@@ -268,8 +268,8 @@ func NativeComputeGeminiTextDelta(seen, incoming string) (delta, newSeen string)
 	}
 
 	// Cumulative mode: incoming contains full text so far.
-	if strings.HasPrefix(incoming, seen) {
-		return strings.TrimPrefix(incoming, seen), incoming
+	if after, ok := strings.CutPrefix(incoming, seen); ok {
+		return after, incoming
 	}
 	// Duplicate/rewind: ignore.
 	if strings.HasPrefix(seen, incoming) {

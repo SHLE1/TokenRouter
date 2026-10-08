@@ -3,6 +3,7 @@ package testkit
 import (
 	_ "embed"
 	"encoding/json"
+	"maps"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -80,9 +81,7 @@ func Calculator(catalog *catalogprovider.Service, prices map[string]*pricing.Mod
 			if err != nil {
 				panic(err)
 			}
-			for name, price := range media {
-				data[name] = price
-			}
+			maps.Copy(data, media)
 		}
 		catalog = catalogprovider.NewServiceFromSnapshot(catalogprovider.Options{}, nil, catalogprovider.Snapshot{Data: data})
 	}

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 )
 
@@ -92,9 +93,7 @@ func ApplyConfigurationChange(current, desired *Record, change ConfigurationChan
 			if out.Extra == nil {
 				out.Extra = map[string]any{}
 			}
-			for key, value := range CloneValues(change.ExtraPatch) {
-				out.Extra[key] = value
-			}
+			maps.Copy(out.Extra, CloneValues(change.ExtraPatch))
 		}
 	}
 	if change.Fields&ConfigProxyID != 0 {

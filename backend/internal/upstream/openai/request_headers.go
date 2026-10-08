@@ -157,7 +157,7 @@ func EnsureRemoteCompactionV2Header(h http.Header) {
 	}
 	tokens := make([]string, 0, 4)
 	for _, value := range h.Values("x-codex-beta-features") {
-		for _, token := range strings.Split(value, ",") {
+		for token := range strings.SplitSeq(value, ",") {
 			token = strings.TrimSpace(token)
 			if token == "" {
 				continue

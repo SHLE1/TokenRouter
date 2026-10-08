@@ -3444,12 +3444,7 @@ func ValidateFrontendRedirectURL(raw string) error {
 }
 
 func scopeContainsOpenID(scopes string) bool {
-	for _, scope := range strings.Fields(strings.ToLower(strings.TrimSpace(scopes))) {
-		if scope == "openid" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Fields(strings.ToLower(strings.TrimSpace(scopes))), "openid")
 }
 
 func warnIfInsecureURL(field, raw string) {

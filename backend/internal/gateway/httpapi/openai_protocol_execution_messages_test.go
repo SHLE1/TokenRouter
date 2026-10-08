@@ -2961,7 +2961,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelTool
 	blockStates := make(map[int]string)
 	toolPositions := make(map[int]int)
 	var tools []observedToolUse
-	for _, line := range strings.Split(rec.Body.String(), "\n") {
+	for line := range strings.SplitSeq(rec.Body.String(), "\n") {
 		if !strings.HasPrefix(line, "data: ") {
 			continue
 		}

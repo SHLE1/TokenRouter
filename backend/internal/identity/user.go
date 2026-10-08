@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -117,20 +118,10 @@ func (u *User) CanBindGroup(groupID int64, isExclusive bool) bool {
 	}
 	if !isExclusive {
 		// 公开分组默认可用，只按用户级禁用列表做排除。
-		for _, id := range u.DisabledPublicGroups {
-			if id == groupID {
-				return false
-			}
-		}
-		return true
+		return !slices.Contains(u.DisabledPublicGroups, groupID)
 	}
 	// 专属分组：需要在 AllowedGroups 中
-	for _, id := range u.AllowedGroups {
-		if id == groupID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(u.AllowedGroups, groupID)
 }
 
 func (u *User) SetPassword(password string) error {

@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -1737,9 +1738,7 @@ func TestUpdatePaymentConfig_OmittedVisibleMethodRoutingIsPreserved(t *testing.T
 		payment.SettingPaymentVisibleMethodWxpaySource:   payment.VisibleMethodSourceOfficialWechat,
 	}
 	initial := make(map[string]string, len(wantVisibleMethods))
-	for key, value := range wantVisibleMethods {
-		initial[key] = value
-	}
+	maps.Copy(initial, wantVisibleMethods)
 	repo := &paymentConfigSettingRepoStub{values: initial}
 	svc := paymenttestkit.Configuration(nil, repo, nil)
 

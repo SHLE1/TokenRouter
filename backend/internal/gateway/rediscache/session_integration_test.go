@@ -153,9 +153,7 @@ func (s *GatewayCacheSuite) TestSessionOwnerGroupID_ConcurrentFirstBindAllowsSin
 	var winner int64
 	errCh := make(chan error, 8)
 	for groupID := int64(1); groupID <= 8; groupID++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			written, err := s.cache.SetSessionOwnerGroupID(s.Ctx, 7, session.SessionIsolationSourceGemini, "session-owner-race", groupID, time.Minute)
 			if err != nil {
@@ -166,7 +164,7 @@ func (s *GatewayCacheSuite) TestSessionOwnerGroupID_ConcurrentFirstBindAllowsSin
 				atomic.AddInt32(&writtenCount, 1)
 				atomic.StoreInt64(&winner, groupID)
 			}
-		}()
+		})
 	}
 
 	close(start)

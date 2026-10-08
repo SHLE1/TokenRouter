@@ -301,8 +301,7 @@ func (a *attempt) Execute(ctx context.Context, in forwardcore.MessageExecution) 
 }
 
 func (a *attempt) StreamError(err error) (string, bool) {
-	var e *claude.StreamErrorEventError
-	if errors.As(err, &e) {
+	if e, ok := errors.AsType[*claude.StreamErrorEventError](err); ok {
 		return e.RawData, true
 	}
 	return "", false

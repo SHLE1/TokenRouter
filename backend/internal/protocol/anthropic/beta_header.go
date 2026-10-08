@@ -61,7 +61,7 @@ func ParseAnthropicBetaHeader(header string) []string {
 		}
 	}
 	var tokens []string
-	for _, part := range strings.Split(header, ",") {
+	for part := range strings.SplitSeq(header, ",") {
 		t := strings.TrimSpace(part)
 		if t != "" {
 			tokens = append(tokens, t)

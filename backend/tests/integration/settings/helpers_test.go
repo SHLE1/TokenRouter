@@ -43,9 +43,7 @@ func (s *bmUpdateRepoStub) GetMultiple(ctx context.Context, keys []string) (map[
 
 func (s *bmUpdateRepoStub) SetMultiple(ctx context.Context, settings map[string]string) error {
 	s.updates = make(map[string]string, len(settings))
-	for k, v := range settings {
-		s.updates[k] = v
-	}
+	maps.Copy(s.updates, settings)
 	return nil
 }
 
@@ -92,9 +90,7 @@ func (s *settingUpdateRepoStub) SetMultiple(ctx context.Context, settings map[st
 
 func (s *settingUpdateRepoStub) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(s.values))
-	for key, value := range s.values {
-		out[key] = value
-	}
+	maps.Copy(out, s.values)
 	return out, nil
 }
 
@@ -124,9 +120,7 @@ func (s *settingGetAllRepoStub) SetMultiple(ctx context.Context, settings map[st
 
 func (s *settingGetAllRepoStub) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(s.values))
-	for key, value := range s.values {
-		out[key] = value
-	}
+	maps.Copy(out, s.values)
 	return out, nil
 }
 

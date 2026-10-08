@@ -256,8 +256,8 @@ func (s *ResponseAdapter) HandleOpenAICompatStreamingResponseFromGemini(
 		line, err := reader.ReadString('\n')
 		if line != "" {
 			trimmed := strings.TrimRight(line, "\r\n")
-			if strings.HasPrefix(trimmed, "data:") {
-				payload := strings.TrimSpace(strings.TrimPrefix(trimmed, "data:"))
+			if after, ok0 := strings.CutPrefix(trimmed, "data:"); ok0 {
+				payload := strings.TrimSpace(after)
 				if payload != "" && payload != "[DONE]" {
 					rawBytes := []byte(payload)
 					if isOAuth {

@@ -294,8 +294,7 @@ func MapClientError(err error) error {
 	if err == nil {
 		return nil
 	}
-	var apiErr *GeminiAPIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*GeminiAPIError](err); ok {
 		switch apiErr.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden:
 			return ProviderError("GEMINI_AUTH_FAILED", "Gemini authentication failed", nil)

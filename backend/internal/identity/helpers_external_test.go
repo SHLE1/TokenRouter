@@ -3,6 +3,7 @@ package identity_test
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -321,9 +322,7 @@ func cloneEmailNormalizationUser(u *identity.User) *identity.User {
 	}
 	if u.GroupRates != nil {
 		cloned.GroupRates = make(map[int64]float64, len(u.GroupRates))
-		for k, v := range u.GroupRates {
-			cloned.GroupRates[k] = v
-		}
+		maps.Copy(cloned.GroupRates, u.GroupRates)
 	}
 	return &cloned
 }

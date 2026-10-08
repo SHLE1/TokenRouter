@@ -52,18 +52,18 @@ func ResponsesToAnthropic(resp *ResponsesResponse, model string) *AnthropicRespo
 	for _, item := range resp.Output {
 		switch item.Type {
 		case "reasoning":
-			summaryText := ""
+			var summaryText strings.Builder
 			for _, s := range item.Summary {
 				if s.Type == "summary_text" && s.Text != "" {
-					summaryText += s.Text
+					_, _ = summaryText.WriteString(s.Text)
 				}
 			}
 			// 始终将 encrypted_content 暴露为 thinking.signature，让 Claude Code
 			// 等多轮客户端可以回传。模型未生成可见摘要时，仅含签名的 thinking 块也有效。
-			if summaryText != "" || strings.TrimSpace(item.EncryptedContent) != "" {
+			if summaryText.String() != "" || strings.TrimSpace(item.EncryptedContent) != "" {
 				blocks = append(blocks, AnthropicContentBlock{
 					Type:      "thinking",
-					Thinking:  summaryText,
+					Thinking:  summaryText.String(),
 					Signature: item.EncryptedContent,
 				})
 			}
@@ -129,10 +129,7 @@ func anthropicUsageFromResponsesUsage(usage *ResponsesUsage) AnthropicUsage {
 		cachedTokens = usage.InputTokensDetails.CachedTokens
 	}
 
-	inputTokens := usage.InputTokens - cachedTokens - usage.CacheCreationInputTokens
-	if inputTokens < 0 {
-		inputTokens = 0
-	}
+	inputTokens := max(usage.InputTokens-cachedTokens-usage.CacheCreationInputTokens, 0)
 
 	return AnthropicUsage{
 		InputTokens:              inputTokens,

@@ -483,8 +483,7 @@ func TestStartAfterStopDoesNotCreateWorker(t *testing.T) {
 	pool.Stop()
 	var wg sync.WaitGroup
 	for range 16 {
-		wg.Add(1)
-		go func() { defer wg.Done(); pool.Start(); pool.Stop() }()
+		wg.Go(func() { ; pool.Start(); pool.Stop() })
 	}
 	wg.Wait()
 	require.Nil(t, pool.autoScaleCancel)

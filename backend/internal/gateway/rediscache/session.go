@@ -349,10 +349,7 @@ func (c *gatewayCache) FindCyberSessionBlocked(ctx context.Context, keys []strin
 		return "", nil
 	}
 	for start := 0; start < len(keys); start += cyberSessionRedisCommandMaxKeys {
-		end := start + cyberSessionRedisCommandMaxKeys
-		if end > len(keys) {
-			end = len(keys)
-		}
+		end := min(start+cyberSessionRedisCommandMaxKeys, len(keys))
 		redisKeys := make([]string, end-start)
 		for i, key := range keys[start:end] {
 			redisKeys[i] = cyberSessionBlockPrefix + key

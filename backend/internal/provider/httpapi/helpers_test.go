@@ -154,10 +154,7 @@ func (s *managementListFixture) ListProviders(ctx context.Context, page, pageSiz
 	if start >= total {
 		return []providercore.Record{}, int64(total), nil
 	}
-	end := start + pageSize
-	if end > total {
-		end = total
-	}
+	end := min(start+pageSize, total)
 	return providers[start:end], int64(total), nil
 }
 

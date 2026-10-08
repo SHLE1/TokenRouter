@@ -206,7 +206,7 @@ func (s *proxyProbeService) parseIPify(body []byte, latencyMs int64) (*egress.Pr
 // parseChatGPTTrace 解析 Cloudflare trace 端点的纯文本响应。
 func (s *proxyProbeService) parseChatGPTTrace(body []byte, latencyMs int64) (*egress.ProxyExitInfo, int64, error) {
 	var ip, loc string
-	for _, line := range strings.Split(string(body), "\n") {
+	for line := range strings.SplitSeq(string(body), "\n") {
 		key, value, found := strings.Cut(strings.TrimSpace(line), "=")
 		if !found {
 			continue

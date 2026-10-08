@@ -535,8 +535,8 @@ func splitSQLStatements(content string) []string {
 func stripSQLLineComment(s string) string {
 	lines := strings.Split(s, "\n")
 	for i, line := range lines {
-		if idx := strings.Index(line, "--"); idx >= 0 {
-			lines[i] = line[:idx]
+		if before, _, ok := strings.Cut(line, "--"); ok {
+			lines[i] = before
 		}
 	}
 	return strings.TrimSpace(strings.Join(lines, "\n"))

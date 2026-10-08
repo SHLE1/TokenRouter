@@ -389,11 +389,9 @@ func (s *UserRepoSuite) TestApplyRedeemBalanceAdjustment_ConcurrentNeverNegative
 	var wg sync.WaitGroup
 	errs := make(chan error, 2)
 	for range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			errs <- s.repo.ApplyRedeemBalanceAdjustment(context.Background(), user.ID, -7)
-		}()
+		})
 	}
 	wg.Wait()
 	close(errs)
@@ -482,11 +480,9 @@ func (s *UserRepoSuite) TestApplyRedeemConcurrencyAdjustment_ConcurrentNeverNega
 	var wg sync.WaitGroup
 	errs := make(chan error, 2)
 	for range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			errs <- s.repo.ApplyRedeemConcurrencyAdjustment(context.Background(), user.ID, -7)
-		}()
+		})
 	}
 	wg.Wait()
 	close(errs)
@@ -554,15 +550,13 @@ func (s *UserRepoSuite) TestCreateWithNormalizedEmailGuardSerializesProviderAlia
 	errs := make(chan error, len(candidates))
 	var wg sync.WaitGroup
 	for _, candidate := range candidates {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			errs <- s.repo.CreateWithNormalizedEmailGuard(
 				s.ctx,
 				candidate,
 				identitycore.NormalizeRegistrationEmailAddress(candidate.Email),
 			)
-		}()
+		})
 	}
 	wg.Wait()
 	close(errs)

@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"maps"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -1125,9 +1126,7 @@ func newOIDCOauthHTTPFixtureAndClientWithSettings(
 		identitycore.SettingKeyOIDCConnectClockSkewSeconds:     "120",
 		identitycore.SettingKeyOIDCConnectRequireEmailVerified: boolSettingValue(oauthCfg.RequireEmailVerified),
 	}
-	for key, value := range settingValues {
-		values[key] = value
-	}
+	maps.Copy(values, settingValues)
 
 	handler, client := newOAuthPendingFlowTestHandlerWithDependencies(t, oauthPendingFlowTestHandlerOptions{
 		invitationEnabled: invitationEnabled,

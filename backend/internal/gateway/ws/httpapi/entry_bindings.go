@@ -128,8 +128,7 @@ func (p openAIWSHTTPBackend) Dependencies(c *gin.Context, log *zap.Logger) bool 
 }
 
 func (p openAIWSHTTPBackend) SummarizeRead(err error) (string, string) {
-	var closed *gatewayws.ClientCloseError
-	if errors.As(err, &closed) {
+	if closed, ok := errors.AsType[*gatewayws.ClientCloseError](err); ok {
 		err = gatewayhttp.NewOpenAIWSClientCloseError(coderws.StatusCode(closed.Status), closed.Reason, closed.Cause)
 	}
 	return gatewayhttp.SummarizeWSCloseErrorForLog(err)

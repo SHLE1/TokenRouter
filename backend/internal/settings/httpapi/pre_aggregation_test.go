@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -125,9 +126,7 @@ func (s *preAggregationHandlerRepoStub) SetMultiple(ctx context.Context, setting
 
 func (s *preAggregationHandlerRepoStub) GetAll(context.Context) (map[string]string, error) {
 	result := make(map[string]string, len(s.values))
-	for key, value := range s.values {
-		result[key] = value
-	}
+	maps.Copy(result, s.values)
 	return result, nil
 }
 

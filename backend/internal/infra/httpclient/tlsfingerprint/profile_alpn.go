@@ -2,6 +2,7 @@ package tlsfingerprint
 
 import (
 	"net"
+	"slices"
 	"strings"
 
 	utls "github.com/refraction-networking/utls" //nolint:revive // 包名是 tls，别名用来和 crypto/tls 区分。
@@ -70,10 +71,5 @@ func profileHasALPNExtension(profile *Profile) bool {
 	if profile == nil || len(profile.Extensions) == 0 {
 		return true
 	}
-	for _, extensionID := range profile.Extensions {
-		if extensionID == 16 {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(profile.Extensions, 16)
 }

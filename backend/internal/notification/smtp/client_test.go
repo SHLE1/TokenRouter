@@ -289,24 +289,20 @@ func startFakeSMTPServer(t *testing.T, implicitTLS, advertiseStartTLS bool) (*fa
 		srv.wg.Wait()
 	})
 
-	srv.wg.Add(1)
-	go func() {
-		defer srv.wg.Done()
+	srv.wg.Go(func() {
 		for {
 			conn, err := srv.listener.Accept()
 			if err != nil {
 				return
 			}
 			srv.conns.Add(1)
-			srv.wg.Add(1)
-			go func() {
-				defer srv.wg.Done()
+			srv.wg.Go(func() {
 				defer func() { _ = conn.Close() }()
 				_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
 				srv.serve(conn, srv.advertiseStartTLS)
-			}()
+			})
 		}
-	}()
+	})
 
 	port := testassert.MustType[*net.TCPAddr](listener.Addr()).Port
 	return srv, port

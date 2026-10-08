@@ -2,6 +2,7 @@ package httpapi_test
 
 import (
 	"context"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,9 +45,7 @@ func (r *bmSettingRepo) SetMultiple(_ context.Context, settings map[string]strin
 	if r.values == nil {
 		r.values = make(map[string]string, len(settings))
 	}
-	for key, value := range settings {
-		r.values[key] = value
-	}
+	maps.Copy(r.values, settings)
 	return nil
 }
 

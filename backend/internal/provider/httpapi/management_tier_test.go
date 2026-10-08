@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,13 +45,9 @@ func TestTierRefreshDoesNotOverwriteNewCredentials(t *testing.T) {
 func (s *tierIdentityAdmin) GetProvider(context.Context, int64) (*provider.Record, error) {
 	v := s.current
 	v.Credentials = map[string]any{}
-	for k, x := range s.current.Credentials {
-		v.Credentials[k] = x
-	}
+	maps.Copy(v.Credentials, s.current.Credentials)
 	v.Extra = map[string]any{}
-	for k, x := range s.current.Extra {
-		v.Extra[k] = x
-	}
+	maps.Copy(v.Extra, s.current.Extra)
 	return &v, nil
 }
 

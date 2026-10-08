@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"maps"
 	"net/http"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
@@ -28,9 +29,7 @@ func ToHTTP(err error) (statusCode int, body apperror.Status) {
 	}
 	if appErr.Metadata != nil {
 		body.Metadata = make(map[string]string, len(appErr.Metadata))
-		for k, v := range appErr.Metadata {
-			body.Metadata[k] = v
-		}
+		maps.Copy(body.Metadata, appErr.Metadata)
 	}
 	return int(appErr.Code), body
 }

@@ -23,7 +23,7 @@ func ProviderTerminology() gin.HandlerFunc {
 			return
 		}
 		legacy := func(key string) bool {
-			for _, part := range strings.Split(key, "_") {
+			for part := range strings.SplitSeq(key, "_") {
 				if part == "account" || part == "accounts" {
 					return true
 				}

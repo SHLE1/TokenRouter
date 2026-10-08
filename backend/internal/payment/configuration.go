@@ -259,7 +259,7 @@ func (s *ConfigService) ConfigParsePaymentConfig(vals map[string]string) *Paymen
 	}
 	if raw := vals[SettingEnabledPaymentTypes]; raw != "" {
 		types := make([]string, 0, len(strings.Split(raw, ",")))
-		for _, t := range strings.Split(raw, ",") {
+		for t := range strings.SplitSeq(raw, ",") {
 			t = strings.TrimSpace(t)
 			if t != "" {
 				types = append(types, t)

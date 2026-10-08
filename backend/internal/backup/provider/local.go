@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -196,8 +197,8 @@ func (s *LocalBackupStore) rooted(key string) (*os.Root, string, error) {
 	for {
 		target, e := filepath.EvalSymlinks(probe)
 		if e == nil {
-			for i := len(suffix) - 1; i >= 0; i-- {
-				target = filepath.Join(target, suffix[i])
+			for _, s := range slices.Backward(suffix) {
+				target = filepath.Join(target, s)
 			}
 			rel, e := filepath.Rel(base, target)
 			if e != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {

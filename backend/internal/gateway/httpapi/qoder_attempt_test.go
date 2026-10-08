@@ -3596,8 +3596,8 @@ func TestQoderGatewayStreamsAnthropicUsageForBillingAndClient(t *testing.T) {
 func qoderOpenAIStreamChunksForTest(t *testing.T, stream string) [][]byte {
 	t.Helper()
 	chunks := make([][]byte, 0)
-	for _, block := range strings.Split(stream, "\n\n") {
-		for _, line := range strings.Split(block, "\n") {
+	for block := range strings.SplitSeq(stream, "\n\n") {
+		for line := range strings.SplitSeq(block, "\n") {
 			line = strings.TrimSpace(line)
 			if !strings.HasPrefix(line, "data: ") {
 				continue
@@ -3636,12 +3636,12 @@ func qoderWrappedErrorSSELineForTest(t *testing.T, statusCode int, inner map[str
 
 func qoderOpenAIUsageChunkForTest(t *testing.T, body string) gjson.Result {
 	t.Helper()
-	for _, frame := range strings.Split(body, "\n\n") {
+	for frame := range strings.SplitSeq(body, "\n\n") {
 		frame = strings.TrimSpace(frame)
 		if frame == "" {
 			continue
 		}
-		for _, line := range strings.Split(frame, "\n") {
+		for line := range strings.SplitSeq(frame, "\n") {
 			line = strings.TrimSpace(line)
 			if !strings.HasPrefix(line, "data: ") {
 				continue
@@ -3663,12 +3663,12 @@ func qoderOpenAIUsageChunkForTest(t *testing.T, body string) gjson.Result {
 func qoderResponsesStreamEventsForTest(t *testing.T, body string) []gjson.Result {
 	t.Helper()
 	var events []gjson.Result
-	for _, frame := range strings.Split(body, "\n\n") {
+	for frame := range strings.SplitSeq(body, "\n\n") {
 		frame = strings.TrimSpace(frame)
 		if frame == "" || strings.HasPrefix(frame, ":") {
 			continue
 		}
-		for _, line := range strings.Split(frame, "\n") {
+		for line := range strings.SplitSeq(frame, "\n") {
 			line = strings.TrimSpace(line)
 			if !strings.HasPrefix(line, "data: ") {
 				continue
@@ -3698,13 +3698,13 @@ func qoderResponsesCompletedEventForTest(t *testing.T, body string) gjson.Result
 func qoderAnthropicStreamEventsForTest(t *testing.T, stream string) []qoderAnthropicStreamEventForTest {
 	t.Helper()
 	events := make([]qoderAnthropicStreamEventForTest, 0)
-	for _, block := range strings.Split(stream, "\n\n") {
+	for block := range strings.SplitSeq(stream, "\n\n") {
 		block = strings.TrimSpace(block)
 		if block == "" {
 			continue
 		}
 		event := qoderAnthropicStreamEventForTest{}
-		for _, line := range strings.Split(block, "\n") {
+		for line := range strings.SplitSeq(block, "\n") {
 			line = strings.TrimSpace(line)
 			switch {
 			case strings.HasPrefix(line, "event: "):

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -487,10 +488,8 @@ func (q *publicBatchImageQueue) Enqueue(_ context.Context, batchID string) error
 	if q.err != nil {
 		return q.err
 	}
-	for _, existing := range q.enqueued {
-		if existing == batchID {
-			return batchimage.ErrBatchImageAlreadyQueued
-		}
+	if slices.Contains(q.enqueued, batchID) {
+		return batchimage.ErrBatchImageAlreadyQueued
 	}
 	q.enqueued = append(q.enqueued, batchID)
 	return nil
@@ -655,10 +654,7 @@ func (r *fakeBatchImageRepository) ListBatchImageJobsForOwner(_ context.Context,
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
-	offset := filter.Offset
-	if offset < 0 {
-		offset = 0
-	}
+	offset := max(filter.Offset, 0)
 	var jobs []*batchimage.BatchImageJob
 	for _, job := range r.jobs {
 		if job.UserID != userID || job.APIKeyID == nil || *job.APIKeyID != apiKeyID {
@@ -885,10 +881,7 @@ func (r *fakeBatchImageRepository) ListBatchImageItems(_ context.Context, batchI
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	offset := filter.Offset
-	if offset < 0 {
-		offset = 0
-	}
+	offset := max(filter.Offset, 0)
 	var result []*batchimage.BatchImageItem
 	for _, item := range r.items[batchID] {
 		if filter.Status != "" && item.Status != filter.Status {

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -199,9 +200,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 		// 保留来源扩展字段并补入同步元数据。
 		extra := make(map[string]any)
 		if src.Extra != nil {
-			for k, v := range src.Extra {
-				extra[k] = v
-			}
+			maps.Copy(extra, src.Extra)
 		}
 		extra["crs_account_id"] = src.ID
 		extra["crs_kind"] = src.Kind
@@ -477,9 +476,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 		// 保留来源扩展字段并补入同步元数据。
 		extra := make(map[string]any)
 		if src.Extra != nil {
-			for k, v := range src.Extra {
-				extra[k] = v
-			}
+			maps.Copy(extra, src.Extra)
 		}
 		extra["crs_account_id"] = src.ID
 		extra["crs_kind"] = src.Kind
@@ -621,9 +618,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 		status := MapCRSStatus(src.IsActive, src.Status)
 
 		extra := make(map[string]any, len(src.Extra)+3)
-		for key, value := range src.Extra {
-			extra[key] = value
-		}
+		maps.Copy(extra, src.Extra)
 		extra["crs_account_id"] = src.ID
 		extra["crs_kind"] = src.Kind
 		extra["crs_synced_at"] = now
@@ -755,9 +750,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 
 		extra := make(map[string]any)
 		if src.Extra != nil {
-			for k, v := range src.Extra {
-				extra[k] = v
-			}
+			maps.Copy(extra, src.Extra)
 		}
 		extra["crs_account_id"] = src.ID
 		extra["crs_kind"] = src.Kind
@@ -881,9 +874,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 
 		extra := make(map[string]any)
 		if src.Extra != nil {
-			for k, v := range src.Extra {
-				extra[k] = v
-			}
+			maps.Copy(extra, src.Extra)
 		}
 		extra["crs_account_id"] = src.ID
 		extra["crs_kind"] = src.Kind
@@ -976,12 +967,8 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 
 func CRSMergeMap(existing map[string]any, updates map[string]any) map[string]any {
 	out := make(map[string]any, len(existing)+len(updates))
-	for k, v := range existing {
-		out[k] = v
-	}
-	for k, v := range updates {
-		out[k] = v
-	}
+	maps.Copy(out, existing)
+	maps.Copy(out, updates)
 	return CloneValues(out)
 }
 
@@ -1059,8 +1046,8 @@ func MapCRSStatus(isActive bool, status string) string {
 func CRSCleanBaseURL(credentials map[string]any, suffixToRemove string) {
 	if baseURL, ok := credentials["base_url"].(string); ok && baseURL != "" {
 		trimmed := strings.TrimSpace(baseURL)
-		if strings.HasSuffix(trimmed, suffixToRemove) {
-			credentials["base_url"] = strings.TrimSuffix(trimmed, suffixToRemove)
+		if before, ok0 := strings.CutSuffix(trimmed, suffixToRemove); ok0 {
+			credentials["base_url"] = before
 		}
 	}
 }

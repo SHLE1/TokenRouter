@@ -187,8 +187,7 @@ func (s *GrokExecutor) ForwardGrokMedia(
 		return handledResult, err
 	}
 	if err != nil {
-		var missing *grok.MissingImageOutput
-		if errors.As(err, &missing) {
+		if missing, ok := errors.AsType[*grok.MissingImageOutput](err); ok {
 			SetOpsUpstreamError(c, http.StatusBadGateway, missing.Error(), logredact.TruncateUTF8(string(missing.Body), 512))
 			return nil, &forwardcore.UpstreamFailoverError{StatusCode: http.StatusBadGateway, ResponseBody: missing.Body, ResponseHeaders: missing.Headers}
 		}

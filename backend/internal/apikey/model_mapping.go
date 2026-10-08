@@ -2,6 +2,7 @@ package apikey
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -75,9 +76,7 @@ func (k *APIKey) ResolveModelMapping(requestedModel string) (string, bool) {
 // CloneModelMapping 返回可安全写入缓存或响应的独立副本。
 func CloneModelMapping(mapping map[string]string) map[string]string {
 	cloned := make(map[string]string, len(mapping))
-	for source, target := range mapping {
-		cloned[source] = target
-	}
+	maps.Copy(cloned, mapping)
 	return cloned
 }
 

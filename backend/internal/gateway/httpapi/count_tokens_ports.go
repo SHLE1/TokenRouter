@@ -193,8 +193,7 @@ func (b *countAttempt) Forward(_ textflow.Selection) *textflow.AttemptFailure {
 	if err == nil {
 		return nil
 	}
-	var original *forwardcore.UpstreamFailoverError
-	if errors.As(err, &original) {
+	if original, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		return &textflow.AttemptFailure{Cause: err, Policy: original.RetryFailure()}
 	}
 	return &textflow.AttemptFailure{Cause: err}
@@ -223,8 +222,7 @@ func (b *countAttempt) exhausted(last *textflow.AttemptFailure, platform string)
 }
 
 func (b *countAttempt) TempUnscheduleRetryableError(ctx context.Context, id int64, failure *textflow.AttemptFailure) {
-	var original *forwardcore.UpstreamFailoverError
-	if errors.As(failure.Cause, &original) {
+	if original, ok := errors.AsType[*forwardcore.UpstreamFailoverError](failure.Cause); ok {
 		b.ports.Executor.TempUnscheduleRetryableError(ctx, id, original)
 	}
 }

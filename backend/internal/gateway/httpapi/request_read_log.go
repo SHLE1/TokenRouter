@@ -54,8 +54,7 @@ func requestBodyReadErrorKind(err error) string {
 	if err == nil {
 		return "none"
 	}
-	var maxErr *http.MaxBytesError
-	if errors.As(err, &maxErr) {
+	if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 		return "max_bytes"
 	}
 	lower := strings.ToLower(err.Error())
@@ -71,8 +70,7 @@ func requestBodyReadErrorKind(err error) string {
 	if errors.Is(err, io.ErrUnexpectedEOF) {
 		return "truncated_body"
 	}
-	var netErr net.Error
-	if errors.As(err, &netErr) {
+	if _, ok := errors.AsType[net.Error](err); ok {
 		return "transport"
 	}
 	return "io_read"

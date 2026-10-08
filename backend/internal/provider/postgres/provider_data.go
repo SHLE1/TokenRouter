@@ -317,10 +317,7 @@ func (r *ProviderStore) LoadProxies(ctx context.Context, proxyIDs []int64) (map[
 	}
 
 	for start := 0; start < len(proxyIDs); start += postgresParameterBatchSize {
-		end := start + postgresParameterBatchSize
-		if end > len(proxyIDs) {
-			end = len(proxyIDs)
-		}
+		end := min(start+postgresParameterBatchSize, len(proxyIDs))
 		proxies, err := r.client.Proxy.Query().Where(dbproxy.IDIn(proxyIDs[start:end]...)).All(ctx)
 		if err != nil {
 			return nil, err
@@ -343,10 +340,7 @@ func (r *ProviderStore) LoadProviderGroups(ctx context.Context, providerIDs []in
 	}
 
 	for start := 0; start < len(providerIDs); start += postgresParameterBatchSize {
-		end := start + postgresParameterBatchSize
-		if end > len(providerIDs) {
-			end = len(providerIDs)
-		}
+		end := min(start+postgresParameterBatchSize, len(providerIDs))
 		entries, err := r.client.ProviderGroup.Query().
 			Where(dbprovidergroup.ProviderIDIn(providerIDs[start:end]...)).
 			Order(dbprovidergroup.ByProviderID(), dbprovidergroup.ByGroupID()).
@@ -391,10 +385,7 @@ func (r *ProviderStore) LoadGroups(ctx context.Context, groupIDs []int64) (map[i
 	}
 
 	for start := 0; start < len(groupIDs); start += postgresParameterBatchSize {
-		end := start + postgresParameterBatchSize
-		if end > len(groupIDs) {
-			end = len(groupIDs)
-		}
+		end := min(start+postgresParameterBatchSize, len(groupIDs))
 		groups, err := r.client.Group.Query().Where(dbgroup.IDIn(groupIDs[start:end]...)).All(ctx)
 		if err != nil {
 			return nil, err

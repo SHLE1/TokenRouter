@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net/url"
 	"strconv"
@@ -279,9 +280,7 @@ func (s *Checkout) InvokeProvider(ctx context.Context, order *Order, req CreateO
 		// pass it through with provider context added to metadata. Otherwise wrap as PAYMENT_PROVIDER_MISCONFIGURED.
 		if appErr := new(infraerrors.ApplicationError); errors.As(err, &appErr) {
 			md := map[string]string{"provider": sel.ProviderKey, "instance_id": sel.InstanceID}
-			for k, v := range appErr.Metadata {
-				md[k] = v
-			}
+			maps.Copy(md, appErr.Metadata)
 			return nil, appErr.WithMetadata(md)
 		}
 		return nil, infraerrors.ServiceUnavailable("PAYMENT_PROVIDER_MISCONFIGURED", "provider_misconfigured").

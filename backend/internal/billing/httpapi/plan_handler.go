@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"maps"
 	"strconv"
 	"strings"
 
@@ -152,7 +153,7 @@ func ParsePlanFeatures(raw string) []string {
 		return []string{}
 	}
 	var out []string
-	for _, line := range strings.Split(raw, "\n") {
+	for line := range strings.SplitSeq(raw, "\n") {
 		if s := strings.TrimSpace(line); s != "" {
 			out = append(out, s)
 		}
@@ -168,8 +169,6 @@ func ClonePlanOfferRates(in map[int64]float64) map[int64]float64 {
 		return map[int64]float64{}
 	}
 	out := make(map[int64]float64, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }

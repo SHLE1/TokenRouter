@@ -71,10 +71,7 @@ func BuildDynamicToolMap(toolNames []string) map[string]string {
 	mapping := make(map[string]string, len(toolNames))
 	for i, name := range toolNames {
 		prefix := available[i%len(available)]
-		headLen := 3
-		if len(name) < 3 {
-			headLen = len(name)
-		}
+		headLen := min(len(name), 3)
 		fake := fmt.Sprintf("%s%s%02d", prefix, name[:headLen], i)
 		mapping[name] = fake
 	}

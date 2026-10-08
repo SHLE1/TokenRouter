@@ -121,10 +121,7 @@ func (c *DeadlineConn) ReadFrame(ctx context.Context) (int, []byte, error) {
 			timerCh = nil
 			return
 		}
-		remaining := time.Until(state.deadline.StartedAt.Add(state.deadline.Timeout))
-		if remaining < 0 {
-			remaining = 0
-		}
+		remaining := max(time.Until(state.deadline.StartedAt.Add(state.deadline.Timeout)), 0)
 		if timer == nil {
 			timer = time.NewTimer(remaining)
 		} else {

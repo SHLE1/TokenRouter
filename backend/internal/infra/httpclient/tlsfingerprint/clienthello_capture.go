@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -301,12 +302,7 @@ func normalizeGREASEList(values []uint16) []uint16 {
 }
 
 func containsGREASE(values []uint16) bool {
-	for _, v := range values {
-		if isGREASEValue(v) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(values, isGREASEValue)
 }
 
 func readUint8(data []byte, offset *int) (uint8, bool) {

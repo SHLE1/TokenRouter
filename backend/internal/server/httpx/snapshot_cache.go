@@ -105,7 +105,7 @@ func IfNoneMatchMatched(ifNoneMatch, etag string) bool {
 	if etag == "" || ifNoneMatch == "" {
 		return false
 	}
-	for _, token := range strings.Split(ifNoneMatch, ",") {
+	for token := range strings.SplitSeq(ifNoneMatch, ",") {
 		candidate := strings.TrimSpace(token)
 		if candidate == "*" {
 			return true

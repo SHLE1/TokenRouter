@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"maps"
 	"strings"
 	"sync"
 )
@@ -33,9 +34,7 @@ func openAITaskCopyCredentials(values map[string]any) map[string]any {
 		return nil
 	}
 	result := make(map[string]any, len(values))
-	for key, value := range values {
-		result[key] = value
-	}
+	maps.Copy(result, values)
 	return result
 }
 
@@ -99,9 +98,7 @@ func (s *OpenAITaskCoordinator) Ensure(ctx context.Context, options OpenAITaskOp
 		return err
 	}
 	credentials := make(map[string]any, len(credProvider.Credentials)+1)
-	for key, value := range credProvider.Credentials {
-		credentials[key] = value
-	}
+	maps.Copy(credentials, credProvider.Credentials)
 	credentials["task_id"] = newTaskID
 	if err := options.Persist(ctx, credProvider, credentials); err != nil {
 		return err

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
@@ -36,12 +37,8 @@ func MergeCodexToolNameReverse(c *gin.Context, reverse map[string]string) {
 		return
 	}
 	merged := make(map[string]string, len(reverse)+len(CodexToolNameReverseFromContext(c)))
-	for aliased, original := range CodexToolNameReverseFromContext(c) {
-		merged[aliased] = original
-	}
-	for aliased, original := range reverse {
-		merged[aliased] = original
-	}
+	maps.Copy(merged, CodexToolNameReverseFromContext(c))
+	maps.Copy(merged, reverse)
 	responseTools(c, true).SetCodexNames(false, merged)
 }
 

@@ -516,10 +516,7 @@ func (c *SnapshotCache) writeSnapshotMembers(ctx context.Context, bucket schedul
 	snapshotKey := schedulerSnapshotKey(bucket, version)
 	pipe := c.rdb.Pipeline()
 	for start := 0; start < len(members); start += c.writeChunkSize {
-		end := start + c.writeChunkSize
-		if end > len(members) {
-			end = len(members)
-		}
+		end := min(start+c.writeChunkSize, len(members))
 		pipe.ZAdd(ctx, snapshotKey, members[start:end]...)
 	}
 	_, err := pipe.Exec(ctx)
@@ -811,10 +808,7 @@ func (c *SnapshotCache) mgetChunked(ctx context.Context, keys []string) ([]any, 
 		chunkSize = defaultSchedulerSnapshotMGetChunkSize
 	}
 	for start := 0; start < len(keys); start += chunkSize {
-		end := start + chunkSize
-		if end > len(keys) {
-			end = len(keys)
-		}
+		end := min(start+chunkSize, len(keys))
 		part, err := c.rdb.MGet(ctx, keys[start:end]...).Result()
 		if err != nil {
 			return nil, err

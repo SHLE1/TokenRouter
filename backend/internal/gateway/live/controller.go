@@ -402,10 +402,7 @@ func (s *Service) Finalize(record *session.LiveCallRecord) {
 		return
 	}
 	s.ReleaseLease(record.ProviderID, record.UserID, record.APIKeyID, record.LeaseID)
-	duration := int(time.Since(record.CreatedAt).Milliseconds())
-	if duration < 0 {
-		duration = 0
-	}
+	duration := max(int(time.Since(record.CreatedAt).Milliseconds()), 0)
 	s.ports.RecordZeroUsage(context.Background(), record, duration)
 }
 

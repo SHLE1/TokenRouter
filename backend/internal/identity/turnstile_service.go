@@ -3,6 +3,7 @@ package identity
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
@@ -88,10 +89,8 @@ func (s *TurnstileService) ValidateSecretKey(ctx context.Context, secretKey stri
 	}
 
 	// 检查是否有 invalid-input-secret 错误
-	for _, code := range result.ErrorCodes {
-		if code == "invalid-input-secret" {
-			return ErrTurnstileInvalidSecretKey
-		}
+	if slices.Contains(result.ErrorCodes, "invalid-input-secret") {
+		return ErrTurnstileInvalidSecretKey
 	}
 
 	// 其他错误（如 invalid-input-response）说明 secret key 是有效的

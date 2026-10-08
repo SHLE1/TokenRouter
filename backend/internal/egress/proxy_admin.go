@@ -378,10 +378,7 @@ func finalizeProxyQualityResult(result *ProxyQualityCheckResult) {
 	if result == nil {
 		return
 	}
-	score := 100 - result.WarnCount*10 - result.FailedCount*22 - result.ChallengeCount*30
-	if score < 0 {
-		score = 0
-	}
+	score := max(100-result.WarnCount*10-result.FailedCount*22-result.ChallengeCount*30, 0)
 	result.Score = score
 	result.Grade = proxyQualityGrade(score)
 	result.Summary = fmt.Sprintf(

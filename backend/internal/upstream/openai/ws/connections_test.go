@@ -48,15 +48,13 @@ func TestConnectionsConcurrentUpdatesKeepOwnerAndPoolConsistent(t *testing.T) {
 	pool := owner.Pool()
 	var workers sync.WaitGroup
 	for worker := range 4 {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			for i := range 25 {
 				if err := owner.UpdateOptions(WSPoolOptions{MaxConnsPerProvider: 1 + worker*25 + i}); err != nil {
 					t.Error(err)
 				}
 			}
-		}()
+		})
 	}
 	workers.Wait()
 	require.Equal(t, *owner.Options, *pool.nativeOptions())

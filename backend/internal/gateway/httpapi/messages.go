@@ -127,8 +127,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 	// 读取请求体
 	body, err := ReadLenientJSONRequestBodyWithPrealloc(c.Request, h.options.MaxBodyBytes)
 	if err != nil {
-		var maxErr *http.MaxBytesError
-		if errors.As(err, &maxErr) {
+		if maxErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			h.errorResponse(c, http.StatusRequestEntityTooLarge, "invalid_request_error", BodyTooLargeMessage(maxErr.Limit))
 			return
 		}

@@ -224,10 +224,7 @@ func (r *PricingConfigStore) List(ctx context.Context, params pagination.Paginat
 	}
 
 	pageSize := params.Limit() // 约束在 [1, 100]
-	page := params.Page
-	if page < 1 {
-		page = 1
-	}
+	page := max(params.Page, 1)
 	offset := (page - 1) * pageSize
 
 	// 查询 pricingConfig 列表

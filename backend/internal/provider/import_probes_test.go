@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"maps"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -166,9 +167,7 @@ func (s *grokImportProbeStub) snapshot() (map[int64]int, int, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	calls := make(map[int64]int, len(s.calls))
-	for id, count := range s.calls {
-		calls[id] = count
-	}
+	maps.Copy(calls, s.calls)
 	return calls, s.maxActive, s.deadlineSeen
 }
 

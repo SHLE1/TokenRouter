@@ -3,6 +3,7 @@ package anthropic
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"unsafe"
 
 	"github.com/tidwall/gjson"
@@ -77,9 +78,7 @@ func StripEmptyTextBlocksFromSlice(blocks []any) ([]any, bool) {
 					}
 					changed = true
 					blockCopy := make(map[string]any, len(blockMap))
-					for k, v := range blockMap {
-						blockCopy[k] = v
-					}
+					maps.Copy(blockCopy, blockMap)
 					blockCopy["content"] = cleaned
 					result = append(result, blockCopy)
 					continue
@@ -322,9 +321,7 @@ func FilterThinkingBlocksForRetry(body []byte) []byte {
 						modifiedThisMsg = true
 						ensureNewContent(bi)
 						blockCopy := make(map[string]any, len(blockMap))
-						for k, v := range blockMap {
-							blockCopy[k] = v
-						}
+						maps.Copy(blockCopy, blockMap)
 						blockCopy["content"] = cleaned
 						newContent = append(newContent, blockCopy)
 						continue

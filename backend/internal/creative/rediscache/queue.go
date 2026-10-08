@@ -216,10 +216,7 @@ func (q *creativeQueue) Reserve(ctx context.Context, blockTimeout time.Duration)
 		if remaining <= 0 {
 			return creative.ReservedCreativeRun{}, creative.ErrCreativeQueueEmpty
 		}
-		wait := creativeReservePollInterval
-		if remaining < wait {
-			wait = remaining
-		}
+		wait := min(remaining, creativeReservePollInterval)
 		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():

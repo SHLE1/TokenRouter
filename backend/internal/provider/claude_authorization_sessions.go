@@ -46,8 +46,7 @@ func (s *ClaudeAuthorizationSessions) Start() {
 		return
 	}
 	s.runtimeStarted = true
-	s.runtimeWG.Add(1)
-	go func() { defer s.runtimeWG.Done(); s.cleanup() }()
+	s.runtimeWG.Go(func() { ; s.cleanup() })
 }
 
 // Stop 幂等停止并等待清理循环，未启动实例也可安全关闭。

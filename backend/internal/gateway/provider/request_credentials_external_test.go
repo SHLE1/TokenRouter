@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -536,9 +537,7 @@ func (r *tokenRefreshProviderRepo) UpdateExtra(ctx context.Context, id int64, up
 			if acc.Record.Extra == nil {
 				acc.Record.Extra = make(map[string]any, len(updates))
 			}
-			for k, v := range updates {
-				acc.Record.Extra[k] = v
-			}
+			maps.Copy(acc.Record.Extra, updates)
 		}
 	}
 	return nil

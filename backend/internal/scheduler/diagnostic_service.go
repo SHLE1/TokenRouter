@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -580,10 +581,8 @@ func diagnosticPlatformMatchesGroup(provider *DiagnosticProvider, group *Diagnos
 	if provider == nil || group == nil {
 		return false
 	}
-	for _, id := range provider.GroupIDs {
-		if id == group.ID {
-			return true
-		}
+	if slices.Contains(provider.GroupIDs, group.ID) {
+		return true
 	}
 	for _, item := range provider.ProviderGroups {
 		if item.Group != nil && item.Group.ID == group.ID {

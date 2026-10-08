@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -202,9 +203,7 @@ func (m BodyCodec) StripGrokToolOutputImages(value any, callID string) (any, []G
 		}
 
 		filtered := make(map[string]any, len(typed))
-		for key, item := range typed {
-			filtered[key] = item
-		}
+		maps.Copy(filtered, typed)
 		images := make([]GrokToolOutputImage, 0)
 		if rawImages, exists := filtered["images"]; exists {
 			if values, ok := rawImages.([]any); ok {

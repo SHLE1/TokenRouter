@@ -87,8 +87,7 @@ func DialRealtime(ctx context.Context, options RealtimeDialOptions) (*RealtimeSe
 func ProbeRealtime(ctx context.Context, options RealtimeDialOptions) error {
 	conn, err := DialRealtime(ctx, options)
 	if err != nil {
-		var failure *RealtimeDialError
-		if errors.As(err, &failure) {
+		if failure, ok := errors.AsType[*RealtimeDialError](err); ok {
 			return failure.Err
 		}
 		return err

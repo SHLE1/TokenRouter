@@ -254,8 +254,7 @@ func (p *openAIMessagesExecutionAdapter) TurnState(ctx context.Context, key stri
 
 func (p *openAIMessagesExecutionAdapter) ApplyEffort(ctx context.Context, body []byte) ([]byte, bool, error) {
 	updated, changed, err := requeststate.ApplyOpenAIReasoningEffortPolicyFromContext(ctx, body)
-	var limited *routing.ReasoningEffortOverLimitError
-	if errors.As(err, &limited) {
+	if limited, ok := errors.AsType[*routing.ReasoningEffortOverLimitError](err); ok {
 		MarkOpsClientBusinessLimited(p.c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
 		p.Error(403, "forbidden_error", limited.Error())
 	}
@@ -264,8 +263,7 @@ func (p *openAIMessagesExecutionAdapter) ApplyEffort(ctx context.Context, body [
 
 func (p *openAIMessagesExecutionAdapter) ApplyFast(ctx context.Context, model string, body []byte) ([]byte, error) {
 	updated, err := tierpolicy.ApplyBody(body, p.s.FastPolicy.Input(ctx, p.provider, model))
-	var blocked *tierpolicy.BlockedError
-	if errors.As(err, &blocked) {
+	if blocked, ok := errors.AsType[*tierpolicy.BlockedError](err); ok {
 		MarkOpsClientBusinessLimited(p.c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
 		p.Error(403, "forbidden_error", blocked.Message)
 	}

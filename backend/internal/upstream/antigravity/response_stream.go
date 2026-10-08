@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -241,8 +242,8 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 			line := ev.line
 			s.observeRaw([]byte(line))
 			trimmed := strings.TrimRight(line, "\r\n")
-			if strings.HasPrefix(trimmed, "data:") {
-				payload := strings.TrimSpace(strings.TrimPrefix(trimmed, "data:"))
+			if after, ok0 := strings.CutPrefix(trimmed, "data:"); ok0 {
+				payload := strings.TrimSpace(after)
 				if payload == "" || payload == "[DONE]" {
 					cw.Fprintf("%s\n", line)
 					continue
@@ -505,9 +506,7 @@ returnResponse:
 func GetOrCreateGeminiParts(response map[string]any) (result map[string]any, existingParts []any, setParts func([]any)) {
 	// 深拷贝 response
 	result = make(map[string]any)
-	for k, v := range response {
-		result[k] = v
-	}
+	maps.Copy(result, response)
 
 	// 获取或创建 candidates
 	candidates, ok := result["candidates"].([]any)
@@ -643,9 +642,7 @@ func MergeTextPartsToResponse(response map[string]any, textParts []string) map[s
 		if _, hasText := pm["text"]; hasText && !textUpdated {
 			// 用累积的文本替换
 			newPart := make(map[string]any)
-			for k, v := range pm {
-				newPart[k] = v
-			}
+			maps.Copy(newPart, pm)
 			newPart["text"] = mergedText
 			newParts = append(newParts, newPart)
 			textUpdated = true

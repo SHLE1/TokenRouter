@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -506,7 +507,7 @@ func waitForKeepaliveBeats() {
 // stripKeepaliveComments 去掉 SSE 注释块，返回事件文本。
 func stripKeepaliveComments(body string) string {
 	var blocks []string
-	for _, block := range strings.Split(strings.TrimSpace(body), "\n\n") {
+	for block := range strings.SplitSeq(strings.TrimSpace(body), "\n\n") {
 		if strings.HasPrefix(strings.TrimSpace(block), ":") {
 			continue
 		}
@@ -522,9 +523,7 @@ func (s *handlerInMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
 	cloned := *event
 	if event.Fields != nil {
 		cloned.Fields = make(map[string]any, len(event.Fields))
-		for k, v := range event.Fields {
-			cloned.Fields[k] = v
-		}
+		maps.Copy(cloned.Fields, event.Fields)
 	}
 	s.mu.Lock()
 	s.events = append(s.events, &cloned)
@@ -862,9 +861,7 @@ func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates
 			if value.Record.Extra == nil {
 				value.Record.Extra = make(map[string]any)
 			}
-			for key, v := range updates {
-				value.Record.Extra[key] = v
-			}
+			maps.Copy(value.Record.Extra, updates)
 		}
 	}
 
@@ -1773,7 +1770,7 @@ func assertOpenAISSEFrames(t *testing.T, body string, expectedTypes []string) {
 	t.Helper()
 	var parser protocolopenai.OpenAICompatSSEFrameParser
 	var eventTypes []string
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		frame, ok := parser.AddLine(strings.TrimSuffix(line, "\r"))
 		if !ok {
 			continue

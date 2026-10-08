@@ -93,10 +93,10 @@ func ExtractJWTFromWebSocketSubprotocol(c *gin.Context) string {
 
 	// The header is a comma-separated list of tokens. We reserve the prefix "jwt."
 	// for carrying the admin JWT.
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		p := strings.TrimSpace(part)
-		if strings.HasPrefix(p, "jwt.") {
-			token := strings.TrimSpace(strings.TrimPrefix(p, "jwt."))
+		if after, ok := strings.CutPrefix(p, "jwt."); ok {
+			token := strings.TrimSpace(after)
 			if token != "" {
 				return token
 			}

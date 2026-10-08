@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"maps"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -25,15 +26,11 @@ func TestForceOpenAIPrivacy_SkipsShadow(t *testing.T) {
 
 func applyAntigravitySubscriptionResult(provider *Record, result AntigravitySubscriptionResult) (map[string]any, map[string]any) {
 	credentials := make(map[string]any)
-	for k, v := range provider.Credentials {
-		credentials[k] = v
-	}
+	maps.Copy(credentials, provider.Credentials)
 	credentials["plan_type"] = result.PlanType
 
 	extra := make(map[string]any)
-	for k, v := range provider.Extra {
-		extra[k] = v
-	}
+	maps.Copy(extra, provider.Extra)
 	if result.SubscriptionStatus != "" {
 		extra["subscription_status"] = result.SubscriptionStatus
 	} else {

@@ -29,8 +29,7 @@ func (h *ManagementHandler) BatchUpdateCredentials(c *gin.Context) {
 	}
 	result, err := h.batch.PatchCredentials(c.Request.Context(), req.ProviderIDs, req.Field, req.Value)
 	if err != nil {
-		var missing *providercore.ManagementProviderMissing
-		if errors.As(err, &missing) {
+		if missing, ok := errors.AsType[*providercore.ManagementProviderMissing](err); ok {
 			response.Error(c, 404, missing.Error())
 		} else {
 			response.ErrorFrom(c, err)

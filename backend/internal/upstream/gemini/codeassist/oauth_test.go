@@ -466,8 +466,8 @@ func TestEffectiveOAuthConfig_AIStudio_ScopeNormalization(t *testing.T) {
 	}
 	if strings.Contains(cfg.Scopes, "auth/generative-language ") || strings.HasSuffix(cfg.Scopes, "auth/generative-language") {
 		// 返回的 scope 包含归一化后的 generative-language.retriever。
-		parts := strings.Fields(cfg.Scopes)
-		for _, p := range parts {
+		parts := strings.FieldsSeq(cfg.Scopes)
+		for p := range parts {
 			if p == "https://www.googleapis.com/auth/generative-language" {
 				t.Errorf("ai_studio 应将 generative-language 归一化为 generative-language.retriever，实际 scopes: %q", cfg.Scopes)
 			}

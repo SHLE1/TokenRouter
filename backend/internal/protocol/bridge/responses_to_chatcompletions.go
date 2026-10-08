@@ -57,8 +57,8 @@ func ResponsesToChatCompletions(runtime Runtime, resp *ResponsesResponse, model 
 		ServiceTier: resp.ServiceTier,
 	}
 
-	var contentText string
-	var reasoningText string
+	var contentText strings.Builder
+	var reasoningText strings.Builder
 	var toolCalls []ChatToolCall
 
 	for _, item := range resp.Output {
@@ -66,7 +66,7 @@ func ResponsesToChatCompletions(runtime Runtime, resp *ResponsesResponse, model 
 		case "message":
 			for _, part := range item.Content {
 				if part.Type == "output_text" && part.Text != "" {
-					contentText += part.Text
+					_, _ = contentText.WriteString(part.Text)
 				}
 			}
 		case "function_call":
@@ -81,7 +81,7 @@ func ResponsesToChatCompletions(runtime Runtime, resp *ResponsesResponse, model 
 		case "reasoning":
 			for _, s := range item.Summary {
 				if s.Type == "summary_text" && s.Text != "" {
-					reasoningText += s.Text
+					_, _ = reasoningText.WriteString(s.Text)
 				}
 			}
 		case "web_search_call":
@@ -93,12 +93,12 @@ func ResponsesToChatCompletions(runtime Runtime, resp *ResponsesResponse, model 
 	if len(toolCalls) > 0 {
 		msg.ToolCalls = toolCalls
 	}
-	if contentText != "" {
-		raw, _ := json.Marshal(contentText)
+	if contentText.String() != "" {
+		raw, _ := json.Marshal(contentText.String())
 		msg.Content = raw
 	}
-	if reasoningText != "" {
-		msg.ReasoningContent = reasoningText
+	if reasoningText.String() != "" {
+		msg.ReasoningContent = reasoningText.String()
 	}
 
 	finishReason := responsesStatusToChatFinishReason(resp.Status, resp.IncompleteDetails, toolCalls)

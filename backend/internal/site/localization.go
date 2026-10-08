@@ -2,6 +2,7 @@ package site
 
 import (
 	"encoding/json"
+	"maps"
 	"net/url"
 	"reflect"
 	"strings"
@@ -78,9 +79,7 @@ func PrepareLocalizedTexts(values map[string]string, input LocalizedTexts) (Loca
 // ResolveSiteTexts 返回独立的设置副本，权限、菜单结构和内容原文保持在持久数据中。
 func ResolveSiteTexts(values map[string]string, code string) map[string]string {
 	result := make(map[string]string, len(values))
-	for key, value := range values {
-		result[key] = value
-	}
+	maps.Copy(result, values)
 	for key, content := range ConfiguredSiteTexts(values) {
 		result[key], _ = content.Resolve(code)
 	}

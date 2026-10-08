@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -104,13 +105,7 @@ func TestForwardBaseURLs_Daily优先(t *testing.T) {
 	}
 
 	// 验证 prod URL 也在列表中
-	found := false
-	for _, u := range urls {
-		if u == antigravityProdBaseURL {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(urls, antigravityProdBaseURL)
 	if !found {
 		t.Error("ForwardBaseURLs 中缺少 prod URL")
 	}

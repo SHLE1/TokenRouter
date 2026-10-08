@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"math/rand/v2"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -476,8 +477,7 @@ func (s *OpsService) prepareErrorLogInput(ctx context.Context, entry *OpsInsertE
 
 	// 凭据获取错误归入网关提供商认证阶段。
 	// 写入前按凭据获取事件更新顶层认证字段，覆盖调用方传入的早期推理状态和文本。
-	for i := len(entry.UpstreamErrors) - 1; i >= 0; i-- {
-		last := entry.UpstreamErrors[i]
+	for _, last := range slices.Backward(entry.UpstreamErrors) {
 		if last == nil {
 			continue
 		}

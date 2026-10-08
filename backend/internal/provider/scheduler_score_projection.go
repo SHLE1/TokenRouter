@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"slices"
 	"sort"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
@@ -159,7 +160,7 @@ func (h *SchedulerScoreView) buildAdvancedProviderSchedulerScores(
 	for groupID := range advancedGroups {
 		groupIDList = append(groupIDList, groupID)
 	}
-	sort.Slice(groupIDList, func(i, j int) bool { return groupIDList[i] < groupIDList[j] })
+	slices.Sort(groupIDList)
 
 	groupPools := make(map[int64][]Record, len(groupIDList))
 	if h.adminService != nil {

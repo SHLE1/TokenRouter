@@ -679,10 +679,7 @@ func (s *PlatformSelector) BuildPlan(
 		s.now(),
 	)
 
-	plan.topK = effectiveSettings.TopK
-	if plan.topK > len(plan.candidates) {
-		plan.topK = len(plan.candidates)
-	}
+	plan.topK = min(effectiveSettings.TopK, len(plan.candidates))
 	if plan.topK <= 0 {
 		plan.topK = 1
 	}
@@ -699,10 +696,7 @@ func (s *PlatformSelector) buildOpenAISelectionOrder(
 		if len(pool) == 0 || plan.topK <= 0 {
 			return nil
 		}
-		groupTopK := plan.topK
-		if groupTopK > len(pool) {
-			groupTopK = len(pool)
-		}
+		groupTopK := min(plan.topK, len(pool))
 		ranked := platformTopK(pool, groupTopK)
 		return s.weightedOrder(ranked, req)
 	}

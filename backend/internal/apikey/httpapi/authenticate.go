@@ -61,10 +61,7 @@ func Authenticate(c *gin.Context, auth *apikey.APIKeyService, o AuthenticationOp
 	}
 	invalid := func() { auth.RecordInvalidAuthFailure(clientKey) }
 	if retry, blocked := auth.CheckInvalidAuthAbuse(clientKey); blocked {
-		seconds := int(math.Ceil(retry.Seconds()))
-		if seconds < 1 {
-			seconds = 1
-		}
+		seconds := max(int(math.Ceil(retry.Seconds())), 1)
 		c.Header("Retry-After", strconv.Itoa(seconds))
 		o.reject(c, "invalid_auth_rate_limited")
 		o.abort(c, 429, "INVALID_AUTH_RATE_LIMITED", "Too many invalid authentication attempts; retry later")

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"image"
 	"image/png"
+	"maps"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -445,9 +446,7 @@ func (s *mockUserSettingRepo) GetAll(context.Context) (map[string]string, error)
 	if s == nil || s.values == nil {
 		return out, nil
 	}
-	for key, value := range s.values {
-		out[key] = value
-	}
+	maps.Copy(out, s.values)
 	return out, nil
 }
 

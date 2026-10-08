@@ -608,7 +608,7 @@ func requireStaticInsertMatchesArgTypes(t *testing.T, query string) {
 
 	want := len(usageLogInsertArgTypes)
 	columns := 0
-	for _, col := range strings.Split(m[1], ",") {
+	for col := range strings.SplitSeq(m[1], ",") {
 		if strings.TrimSpace(col) != "" {
 			columns++
 		}

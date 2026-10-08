@@ -319,10 +319,7 @@ func ComputeTokenBreakdown(
 	}
 
 	// 分离图片输出 token 与文本输出 token
-	textOutputTokens := tokens.OutputTokens - tokens.ImageOutputTokens
-	if textOutputTokens < 0 {
-		textOutputTokens = 0
-	}
+	textOutputTokens := max(tokens.OutputTokens-tokens.ImageOutputTokens, 0)
 	bd.OutputCost = float64(textOutputTokens) * outputPrice
 
 	// 图片输出 token 费用（独立费率）

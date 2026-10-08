@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -390,12 +391,7 @@ func htmlClassToken(node *html.Node, token string) bool {
 	if !ok {
 		return false
 	}
-	for _, className := range strings.Fields(value) {
-		if className == token {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Fields(value), token)
 }
 
 func parseOllamaResetTime(value string) *time.Time {

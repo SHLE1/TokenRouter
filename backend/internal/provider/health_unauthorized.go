@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"maps"
 	"strings"
 	"time"
 
@@ -75,9 +76,7 @@ func (s *HealthService) ApplyUnauthorized(ctx context.Context, provider *Record,
 				if authProvider.Extra == nil {
 					authProvider.Extra = make(map[string]any, len(extraUpdates))
 				}
-				for k, v := range extraUpdates {
-					authProvider.Extra[k] = v
-				}
+				maps.Copy(authProvider.Extra, extraUpdates)
 				s.options.Info("antigravity_401_force_refresh_marked", "provider_id", authProvider.ID)
 			}
 		}

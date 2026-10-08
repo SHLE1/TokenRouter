@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
@@ -70,12 +71,7 @@ func ConfigProviderSupportsVisibleMethod(inst *ProviderInstance, method string) 
 		return false
 	}
 	method = NormalizeVisibleMethod(method)
-	for _, candidate := range ConfigEnabledVisibleMethodsForProvider(inst.ProviderKey, inst.SupportedTypes) {
-		if candidate == method {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ConfigEnabledVisibleMethodsForProvider(inst.ProviderKey, inst.SupportedTypes), method)
 }
 
 func ConfigFilterEnabledVisibleMethodInstances(instances []*ProviderInstance, method string) []*ProviderInstance {

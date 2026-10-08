@@ -12,6 +12,7 @@ import (
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -935,13 +936,7 @@ func (s *Public) ValidateCreateParams(ctx context.Context, userID int64, params 
 	}
 	operations = intersectCreativeOperations(operations, routes[model].Operations)
 	operation := strings.TrimSpace(params.Operation)
-	operationAllowed := false
-	for _, candidate := range operations {
-		if candidate == operation {
-			operationAllowed = true
-			break
-		}
-	}
+	operationAllowed := slices.Contains(operations, operation)
 	if !operationAllowed {
 		return nil, ErrCreativeOperationUnsupported
 	}

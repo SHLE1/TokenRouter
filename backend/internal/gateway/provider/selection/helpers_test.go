@@ -276,8 +276,7 @@ func freeQuotaFactoryForTest(t *testing.T, cfg *config.Config, source usage.Usag
 	var tasks sync.WaitGroup
 	t.Cleanup(tasks.Wait)
 	background := func(_ string, work func()) bool {
-		tasks.Add(1)
-		go func() { defer tasks.Done(); work() }()
+		tasks.Go(func() { ; work() })
 		return true
 	}
 	return func() *providercore.FreeQuotaGate { return newGrokFreeQuotaTestGate(cfg, source, background) }

@@ -277,8 +277,7 @@ func TestProxyImportDataReusesAndTriggersLatencyProbe(t *testing.T) {
 }
 
 func (f *proxyTaskFixture) Go(_ string, run func()) bool {
-	f.wg.Add(1)
-	go func() { defer f.wg.Done(); run() }()
+	f.wg.Go(func() { ; run() })
 	return true
 }
 

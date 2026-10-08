@@ -342,8 +342,7 @@ func SummarizeOpenAIWSReadCloseError(err error) (status string, reason string) {
 	}
 	closeStatus := fmt.Sprintf("%d(%s)", int(statusCode), statusCode.String())
 	closeReason := "-"
-	var closeErr coderws.CloseError
-	if errors.As(err, &closeErr) {
+	if closeErr, ok := errors.AsType[coderws.CloseError](err); ok {
 		reasonText := strings.TrimSpace(closeErr.Reason)
 		if reasonText != "" {
 			closeReason = NormalizeOpenAIWSLogValue(reasonText)

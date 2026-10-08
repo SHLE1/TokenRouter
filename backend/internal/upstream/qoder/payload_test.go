@@ -2,6 +2,7 @@ package qoder
 
 import (
 	"encoding/json"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -864,9 +865,7 @@ func TestBuildQoderThinkingPayloadBySiteAndModelCapability(t *testing.T) {
 					map[string]any{"role": "user", "content": "hello"},
 				},
 			}
-			for key, value := range tt.extra {
-				body[key] = value
-			}
+			maps.Copy(body, tt.extra)
 			raw, err := json.Marshal(body)
 			require.NoError(t, err)
 			payload, _, err := BuildQoderPayloadFromChatCompletionsForSite(raw, "personal_standard", tt.site)

@@ -107,8 +107,7 @@ func (c *clientFrameConn) ReadFrame(ctx context.Context) (int, []byte, error) {
 		c.interTurnStarted,
 		func() bool { return c.waitingForNextTurn.Load() },
 	)
-	var closeErr *ClientCloseError
-	if errors.As(err, &closeErr) {
+	if closeErr, ok := errors.AsType[*ClientCloseError](err); ok {
 		err = c.closeError(closeErr.Status, closeErr.Reason, closeErr.Cause)
 	}
 	return msgType, payload, err

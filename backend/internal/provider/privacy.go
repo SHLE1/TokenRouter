@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"maps"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
@@ -71,9 +72,7 @@ func ApplyAntigravityPrivacyMode(value *Record, mode string) {
 		return
 	}
 	extra := make(map[string]any, len(value.Extra)+1)
-	for key, v := range value.Extra {
-		extra[key] = v
-	}
+	maps.Copy(extra, value.Extra)
 	extra["privacy_mode"] = mode
 	value.Extra = extra
 }

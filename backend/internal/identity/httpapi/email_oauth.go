@@ -258,8 +258,7 @@ func (h *EmailOAuthHandler) CompleteEmailOAuthRegistration(c *gin.Context, provi
 	userProjection := user
 	request := identity.PendingAccountFinalization{Session: session, User: userProjection, InvitationCode: strings.TrimSpace(req.InvitationCode), AffiliateCode: affCode}
 	if err := h.pendingFlow().FinalizeVerifiedAccount(c.Request.Context(), request); err != nil {
-		var failure *identity.PendingWriteError
-		if errors.As(err, &failure) {
+		if failure, ok := errors.AsType[*identity.PendingWriteError](err); ok {
 			switch failure.Phase {
 			case "binding":
 				RespondPendingOAuthBindingApplyError(c, failure.Cause)

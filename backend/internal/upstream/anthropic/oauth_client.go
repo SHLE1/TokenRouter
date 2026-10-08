@@ -178,9 +178,9 @@ func (s *OAuthClient) ExchangeCodeForToken(ctx context.Context, code, codeVerifi
 	// Parse code which may contain state in format "authCode#state"
 	authCode := code
 	codeState := ""
-	if idx := strings.Index(code, "#"); idx != -1 {
-		authCode = code[:idx]
-		codeState = code[idx+1:]
+	if before, after, ok := strings.Cut(code, "#"); ok {
+		authCode = before
+		codeState = after
 	}
 
 	reqBody := map[string]any{

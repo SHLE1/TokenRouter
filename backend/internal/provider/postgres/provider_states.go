@@ -40,20 +40,21 @@ func (r *ProviderStore) BatchUpdateLastUsed(ctx context.Context, updates map[int
 
 	ids := make([]int64, 0, len(updates))
 	args := make([]any, 0, len(updates)*2+1)
-	caseSQL := "UPDATE providers SET last_used_at = CASE id"
+	var caseSQL strings.Builder
+	_, _ = caseSQL.WriteString("UPDATE providers SET last_used_at = CASE id")
 
 	idx := 1
 	for id, ts := range updates {
-		caseSQL += " WHEN $" + strconv.Itoa(idx) + " THEN $" + strconv.Itoa(idx+1) + "::timestamptz"
+		_, _ = caseSQL.WriteString(" WHEN $" + strconv.Itoa(idx) + " THEN $" + strconv.Itoa(idx+1) + "::timestamptz")
 		args = append(args, id, ts)
 		ids = append(ids, id)
 		idx += 2
 	}
 
-	caseSQL += " END, updated_at = NOW() WHERE id = ANY($" + strconv.Itoa(idx) + ") AND deleted_at IS NULL"
+	_, _ = caseSQL.WriteString(" END, updated_at = NOW() WHERE id = ANY($" + strconv.Itoa(idx) + ") AND deleted_at IS NULL")
 	args = append(args, pq.Array(ids))
 
-	_, err := r.sql.ExecContext(ctx, caseSQL, args...)
+	_, err := r.sql.ExecContext(ctx, caseSQL.String(), args...)
 	if err != nil {
 		return err
 	}

@@ -36,10 +36,7 @@ func initializeDatabaseWithRetryWithWait(
 			return err
 		}
 
-		delay := databaseInitializationRetryBase * time.Duration(1<<(attempt-1))
-		if delay > databaseInitializationRetryMax {
-			delay = databaseInitializationRetryMax
-		}
+		delay := min(databaseInitializationRetryBase*time.Duration(1<<(attempt-1)), databaseInitializationRetryMax)
 		slog.Warn("database initialization temporarily unavailable; retrying",
 			"retry", attempt,
 			"max_retries", maxDatabaseInitializationRetries,

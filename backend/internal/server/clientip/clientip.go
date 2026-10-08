@@ -102,7 +102,7 @@ func resolveCustomForwardedClientIP(c *gin.Context, headers []string) (string, s
 	var fallback string
 	for _, header := range headers {
 		for _, value := range c.Request.Header.Values(header) {
-			for _, candidate := range strings.Split(value, ",") {
+			for candidate := range strings.SplitSeq(value, ",") {
 				parsed := net.ParseIP(strings.TrimSpace(candidate))
 				if parsed == nil {
 					continue

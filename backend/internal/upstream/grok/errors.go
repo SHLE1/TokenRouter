@@ -3,6 +3,7 @@ package grok
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -48,10 +49,8 @@ func GrokStructuredProviderAccessMarker(value any) bool {
 			}
 		}
 	case []any:
-		for _, child := range node {
-			if GrokStructuredProviderAccessMarker(child) {
-				return true
-			}
+		if slices.ContainsFunc(node, GrokStructuredProviderAccessMarker) {
+			return true
 		}
 	}
 	return false
@@ -73,10 +72,8 @@ func GrokStructuredContentPolicyMarker(value any) bool {
 			}
 		}
 	case []any:
-		for _, child := range node {
-			if GrokStructuredContentPolicyMarker(child) {
-				return true
-			}
+		if slices.ContainsFunc(node, GrokStructuredContentPolicyMarker) {
+			return true
 		}
 	}
 	return false

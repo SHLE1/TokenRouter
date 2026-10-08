@@ -210,7 +210,7 @@ func (s *antigravityCompatStreamSession) result(clientDisconnect bool) *StreamRe
 
 func (s *antigravityCompatStreamSession) consumeClaudeEvents(data []byte) {
 	var eventType string
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(line, "event:"):

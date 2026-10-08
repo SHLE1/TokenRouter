@@ -271,8 +271,8 @@ func normalizeKnownBaseURLPath(raw string) (string, error) {
 func IsOfficialBaseURLHost(host string) bool {
 	host = strings.ToLower(strings.TrimSpace(host))
 	for _, allowed := range baseURLAllowedHosts {
-		if strings.HasPrefix(allowed, "*.") {
-			suffix := strings.TrimPrefix(allowed, "*.")
+		if after, ok := strings.CutPrefix(allowed, "*."); ok {
+			suffix := after
 			if host == suffix || strings.HasSuffix(host, "."+suffix) {
 				return true
 			}

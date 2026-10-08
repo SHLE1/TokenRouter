@@ -205,10 +205,7 @@ func parseRetryAfter(raw string) *int {
 		return &value
 	}
 	if t, err := http.ParseTime(raw); err == nil {
-		seconds := int(time.Until(t).Seconds())
-		if seconds < 0 {
-			seconds = 0
-		}
+		seconds := max(int(time.Until(t).Seconds()), 0)
 		return &seconds
 	}
 	return nil

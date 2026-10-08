@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -2846,14 +2847,8 @@ func (r *stubApiKeyRepo) ListByUserID(ctx context.Context, userID int64, params 
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] > ids[j] })
 
-	start := params.Offset()
-	if start > len(ids) {
-		start = len(ids)
-	}
-	end := start + params.Limit()
-	if end > len(ids) {
-		end = len(ids)
-	}
+	start := min(params.Offset(), len(ids))
+	end := min(start+params.Limit(), len(ids))
 
 	out := make([]apikey.APIKey, 0, end-start)
 	for _, id := range ids[start:end] {
@@ -2863,10 +2858,7 @@ func (r *stubApiKeyRepo) ListByUserID(ctx context.Context, userID int64, params 
 
 	total := int64(len(ids))
 	pageSize := params.Limit()
-	pages := int(math.Ceil(float64(total) / float64(pageSize)))
-	if pages < 1 {
-		pages = 1
-	}
+	pages := max(int(math.Ceil(float64(total)/float64(pageSize))), 1)
 	return out, &pagination.PaginationResult{
 		Total:    total,
 		Page:     params.Page,
@@ -3283,9 +3275,7 @@ func newStubSettingRepo() *stubSettingRepo {
 
 func (r *stubSettingRepo) SetAll(values map[string]string) {
 	r.all = make(map[string]string, len(values))
-	for k, v := range values {
-		r.all[k] = v
-	}
+	maps.Copy(r.all, values)
 }
 
 func (r *stubSettingRepo) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
@@ -3318,17 +3308,13 @@ func (r *stubSettingRepo) GetMultiple(ctx context.Context, keys []string) (map[s
 }
 
 func (r *stubSettingRepo) SetMultiple(ctx context.Context, settings map[string]string) error {
-	for k, v := range settings {
-		r.all[k] = v
-	}
+	maps.Copy(r.all, settings)
 	return nil
 }
 
 func (r *stubSettingRepo) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(r.all))
-	for k, v := range r.all {
-		out[k] = v
-	}
+	maps.Copy(out, r.all)
 	return out, nil
 }
 
@@ -3338,14 +3324,8 @@ func (r *stubSettingRepo) Delete(ctx context.Context, key string) error {
 }
 
 func paginateLogs(logs []usagecore.UsageLog, params pagination.PaginationParams) []usagecore.UsageLog {
-	start := params.Offset()
-	if start > len(logs) {
-		start = len(logs)
-	}
-	end := start + params.Limit()
-	if end > len(logs) {
-		end = len(logs)
-	}
+	start := min(params.Offset(), len(logs))
+	end := min(start+params.Limit(), len(logs))
 	out := make([]usagecore.UsageLog, 0, end-start)
 	out = append(out, logs[start:end]...)
 	return out
@@ -3353,10 +3333,7 @@ func paginateLogs(logs []usagecore.UsageLog, params pagination.PaginationParams)
 
 func paginationResult(total int64, params pagination.PaginationParams) *pagination.PaginationResult {
 	pageSize := params.Limit()
-	pages := int(math.Ceil(float64(total) / float64(pageSize)))
-	if pages < 1 {
-		pages = 1
-	}
+	pages := max(int(math.Ceil(float64(total)/float64(pageSize))), 1)
 	return &pagination.PaginationResult{
 		Total:    total,
 		Page:     params.Page,

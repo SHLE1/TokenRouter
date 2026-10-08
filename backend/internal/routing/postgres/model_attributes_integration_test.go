@@ -54,12 +54,10 @@ func TestModelAttributeMigrationAndConcurrentAssociation(t *testing.T) {
 	var wg sync.WaitGroup
 	errors := make(chan error, 2)
 	for _, name := range []string{"first", "second"} {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			value := &routing.ModelAttributeConfig{Name: name, Status: "active", Rules: []routing.ModelAttributeRule{}, GroupIDs: []int64{groupID}}
 			errors <- store.Save(ctx, value)
-		}()
+		})
 	}
 	wg.Wait()
 	close(errors)

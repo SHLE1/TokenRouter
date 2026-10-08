@@ -117,13 +117,11 @@ func (p *generationRequestAdapter) ForwardGeneration(ctx context.Context, _ gate
 		after = gatewayhttp.OpenAIImagesJSONKeepaliveAdjustedWrittenSize(p.c)
 	}
 	outcome := gatewaymedia.GenerationOutcome{Result: generationResultView(result), Err: err, OutputChanged: after != p.writerBefore}
-	var failure *forwardcore.UpstreamFailoverError
-	if errors.As(err, &failure) {
+	if failure, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		outcome.Failure = failure.RetryFailure()
 		outcome.ReportFailure = failure.ShouldReportProviderScheduleFailure()
 	}
-	var imageErr *openai.OpenAIImagesUpstreamError
-	if errors.As(err, &imageErr) {
+	if imageErr, ok := errors.AsType[*openai.OpenAIImagesUpstreamError](err); ok {
 		outcome.ImageError = true
 		outcome.ImageErrorRetryable = openai.IsOpenAIImagesRetryableUpstreamError(imageErr)
 		outcome.ImageErrorStatus = imageErr.StatusCode
@@ -373,8 +371,7 @@ func (p *generationRequestAdapter) MediaError(status int, typ, message string, s
 }
 
 func (p *generationRequestAdapter) MediaFailover(err error, stream bool) {
-	var value *forwardcore.UpstreamFailoverError
-	if errors.As(err, &value) {
+	if value, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		p.h.bindings.Common.Support.HandleFailoverExhausted(p.c, value, stream)
 	}
 }

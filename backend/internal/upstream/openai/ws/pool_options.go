@@ -70,13 +70,7 @@ func (p *WSPoolOptions) EffectiveMaxConnsByProvider(provider *WSPoolProvider) in
 	if factor <= 0 {
 		factor = 1.0
 	}
-	effective := int(math.Ceil(float64(provider.Concurrency) * factor))
-	if effective < 1 {
-		effective = 1
-	}
-	if effective > hardCap {
-		effective = hardCap
-	}
+	effective := min(max(int(math.Ceil(float64(provider.Concurrency)*factor)), 1), hardCap)
 	return effective
 }
 

@@ -3,6 +3,7 @@ package openai
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"sync"
@@ -360,9 +361,7 @@ func (c *CodexToolCorrector) GetStats() ToolCorrectionStats {
 		TotalCorrected:    c.stats.TotalCorrected,
 		CorrectionsByTool: make(map[string]int, len(c.stats.CorrectionsByTool)),
 	}
-	for k, v := range c.stats.CorrectionsByTool {
-		statsCopy.CorrectionsByTool[k] = v
-	}
+	maps.Copy(statsCopy.CorrectionsByTool, c.stats.CorrectionsByTool)
 
 	return statsCopy
 }

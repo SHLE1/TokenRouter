@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -1302,7 +1302,7 @@ func (r *UserStore) IdentityLoadAllowedGroups(ctx context.Context, userIDs []int
 	}
 
 	for userID := range out {
-		sort.Slice(out[userID], func(i, j int) bool { return out[userID][i] < out[userID][j] })
+		slices.Sort(out[userID])
 	}
 
 	return out, nil
@@ -1326,7 +1326,7 @@ func (r *UserStore) IdentityLoadDisabledPublicGroups(ctx context.Context, userID
 	}
 
 	for userID := range out {
-		sort.Slice(out[userID], func(i, j int) bool { return out[userID][i] < out[userID][j] })
+		slices.Sort(out[userID])
 	}
 
 	return out, nil
@@ -1418,7 +1418,7 @@ func (r *UserStore) IdentitySyncUserDisabledPublicGroupsWithClient(ctx context.C
 	for groupID := range unique {
 		candidateIDs = append(candidateIDs, groupID)
 	}
-	sort.Slice(candidateIDs, func(i, j int) bool { return candidateIDs[i] < candidateIDs[j] })
+	slices.Sort(candidateIDs)
 
 	publicIDs, err := client.Group.Query().
 		Where(

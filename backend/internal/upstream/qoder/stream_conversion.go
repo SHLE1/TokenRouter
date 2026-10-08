@@ -12,6 +12,7 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -2207,9 +2208,9 @@ func QoderUsageFromEvents(events []SSEEvent) upstream.TokenUsage {
 }
 
 func QoderUsageDetailsFromEvents(events []SSEEvent) UsageDetails {
-	for i := len(events) - 1; i >= 0; i-- {
-		if events[i].HasUsage {
-			return events[i].UsageDetails
+	for _, event := range slices.Backward(events) {
+		if event.HasUsage {
+			return event.UsageDetails
 		}
 	}
 	return UsageDetails{}
@@ -2257,15 +2258,15 @@ func QoderEventsWithUsage(events []SSEEvent, usage upstream.TokenUsage) []SSEEve
 func QoderTotalTokensFromEvents(events []SSEEvent, usage upstream.TokenUsage) int {
 	var lastPromptTokens int
 	var lastCompletionTokens int
-	for i := len(events) - 1; i >= 0; i-- {
-		if !events[i].HasUsage {
+	for _, event := range slices.Backward(events) {
+		if !event.HasUsage {
 			continue
 		}
-		if events[i].TotalTokens > 0 {
-			return events[i].TotalTokens
+		if event.TotalTokens > 0 {
+			return event.TotalTokens
 		}
-		lastPromptTokens = events[i].PromptTokens
-		lastCompletionTokens = events[i].CompletionTokens
+		lastPromptTokens = event.PromptTokens
+		lastCompletionTokens = event.CompletionTokens
 		break
 	}
 	if lastPromptTokens > 0 || lastCompletionTokens > 0 {
@@ -2388,17 +2389,17 @@ func ResolveQoderModelForSite(site Site, model string) QoderModelInfo {
 }
 
 func LatestQoderUserText(messages []QoderMessage) string {
-	for i := len(messages) - 1; i >= 0; i-- {
-		if messages[i].Role == "user" && strings.TrimSpace(messages[i].Text) != "" {
-			return messages[i].Text
+	for _, message := range slices.Backward(messages) {
+		if message.Role == "user" && strings.TrimSpace(message.Text) != "" {
+			return message.Text
 		}
 	}
 	return ""
 }
 
 func LatestQoderPromptText(messages []QoderMessage) string {
-	for i := len(messages) - 1; i >= 0; i-- {
-		if text := QoderPromptTextForMessage(messages[i]); text != "" {
+	for _, message := range slices.Backward(messages) {
+		if text := QoderPromptTextForMessage(message); text != "" {
 			return text
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"strings"
 )
 
@@ -178,9 +179,7 @@ func PrepareOIDCChoice(
 func OIDCVerifiedEmailIdentity(identity PendingAuthIdentityKey, compatEmail, username string, upstreamClaims map[string]any) EmailOAuthIdentityInput {
 	verifiedEmail := strings.TrimSpace(strings.ToLower(compatEmail))
 	upstreamMetadata := make(map[string]any, len(upstreamClaims)+1)
-	for k, v := range upstreamClaims {
-		upstreamMetadata[k] = v
-	}
+	maps.Copy(upstreamMetadata, upstreamClaims)
 	if syntheticEmail := PendingSessionStringValue(upstreamClaims, "email"); syntheticEmail != "" && !strings.EqualFold(syntheticEmail, verifiedEmail) {
 		upstreamMetadata["synthetic_email"] = syntheticEmail
 	}

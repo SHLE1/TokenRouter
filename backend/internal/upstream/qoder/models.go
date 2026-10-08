@@ -1,6 +1,7 @@
 package qoder
 
 import (
+	"maps"
 	"slices"
 	"strings"
 )
@@ -168,9 +169,7 @@ func AliasesForSite(site Site) map[string]string {
 		aliases = cnAliases
 	}
 	out := make(map[string]string, len(aliases))
-	for alias, route := range aliases {
-		out[alias] = route
-	}
+	maps.Copy(out, aliases)
 	return out
 }
 

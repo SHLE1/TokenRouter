@@ -205,8 +205,7 @@ func (b *genericResponsesAttemptBridge) Exhausted(err *textflow.AttemptFailure, 
 }
 
 func (b *genericResponsesAttemptBridge) PolicyFailure(err error) {
-	var original *anthropic.BetaBlockedError
-	if errors.As(err, &original) {
+	if original, ok := errors.AsType[*anthropic.BetaBlockedError](err); ok {
 		gatewayhttp.MarkOpsClientBusinessLimited(b.c, gatewayhttp.OpsClientBusinessLimitedReasonLocalPolicyDenied)
 		b.binding().responsesErrorResponse(b.c, http.StatusBadRequest, "invalid_request_error", original.Message)
 	}

@@ -104,8 +104,7 @@ func (s *ModelAttributeStore) ForGroups(ctx context.Context, ids []int64) (map[i
 }
 
 func attributeStoreError(err error) error {
-	var pg *pq.Error
-	if errors.As(err, &pg) {
+	if pg, ok := errors.AsType[*pq.Error](err); ok {
 		if pg.Code == "23505" {
 			return routing.ErrAttributeConfigConflict
 		}

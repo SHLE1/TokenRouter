@@ -461,7 +461,7 @@ func TestForwardAsRawChatCompletions_StripsEmptyToolCallIdentity(t *testing.T) {
 	// 逐条扫下游 data payload：后续参数 delta 的 tool_calls.0.id /
 	// 后续分片的 function.name 已剔除（Exists() == false），首包合法值保留。
 	followUpSeen := false
-	for _, line := range strings.Split(downstream, "\n") {
+	for line := range strings.SplitSeq(downstream, "\n") {
 		payload, ok := openaicore.ExtractSSEDataLine(line)
 		if !ok {
 			continue

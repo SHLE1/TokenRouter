@@ -32,8 +32,7 @@ func (p *openAIRawChatAdapter) ReplaceModel(b []byte, m string) []byte {
 
 func (p *openAIRawChatAdapter) FastRaw(ctx context.Context, m string, b []byte) ([]byte, error) {
 	updated, err := tierpolicy.ApplyBody(b, p.s.FastPolicy.Input(ctx, p.provider, m))
-	var blocked *tierpolicy.BlockedError
-	if errors.As(err, &blocked) {
+	if blocked, ok := errors.AsType[*tierpolicy.BlockedError](err); ok {
 		MarkOpsClientBusinessLimited(p.c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
 		WriteForwardChatError(p.c, http.StatusForbidden, "permission_error", blocked.Message)
 	}

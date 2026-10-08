@@ -206,8 +206,7 @@ func (h *GrokOAuthHandler) RefreshProviderToken(c *gin.Context) {
 	}
 	value, err := h.imports.RefreshProvider(c.Request.Context(), id)
 	if err != nil {
-		var input *providercore.GrokImportInputError
-		if errors.As(err, &input) {
+		if input, ok := errors.AsType[*providercore.GrokImportInputError](err); ok {
 			response.BadRequest(c, input.Message)
 		} else {
 			response.ErrorFrom(c, err)

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"maps"
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
@@ -74,9 +75,7 @@ func (r *MemorySettings) GetMultiple(_ context.Context, keys []string) (map[stri
 func (r *MemorySettings) SetMultiple(_ context.Context, settings map[string]string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for key, value := range settings {
-		r.values[key] = value
-	}
+	maps.Copy(r.values, settings)
 	return nil
 }
 
@@ -84,9 +83,7 @@ func (r *MemorySettings) GetAll(_ context.Context) (map[string]string, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make(map[string]string, len(r.values))
-	for key, value := range r.values {
-		out[key] = value
-	}
+	maps.Copy(out, r.values)
 	return out, nil
 }
 

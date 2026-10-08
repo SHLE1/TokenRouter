@@ -36,8 +36,8 @@ func IsAmbiguousGrokEntitlementRefreshError(value *provider.Record, err error) b
 			return false
 		}
 	}
-	if bodyIndex := strings.Index(msg, "body:"); bodyIndex >= 0 {
-		body := msg[bodyIndex+len("body:"):]
+	if _, after, ok := strings.Cut(msg, "body:"); ok {
+		body := after
 		for _, evidence := range []string{
 			"entitlement_denied",
 			"entitlement denied",

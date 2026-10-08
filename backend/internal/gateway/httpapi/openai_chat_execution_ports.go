@@ -118,8 +118,7 @@ func (p *openAIChatExecutionAdapter) NormalizeRequestTier(r *protocolopenai.Resp
 
 func (p *openAIChatExecutionAdapter) ApplyChatFast(ctx context.Context, model string, body []byte) ([]byte, error) {
 	updated, err := tierpolicy.ApplyBody(body, p.s.FastPolicy.Input(ctx, p.provider, model))
-	var blocked *tierpolicy.BlockedError
-	if errors.As(err, &blocked) {
+	if blocked, ok := errors.AsType[*tierpolicy.BlockedError](err); ok {
 		p.PolicyDenied()
 		p.ChatError(403, "permission_error", blocked.Message)
 	}

@@ -126,8 +126,7 @@ func (h *SearchHandler) WebSearch(c *gin.Context) {
 	run := h.ports.Run(c, *access.GroupID, isX)
 	result, err := searchtools.RunStandalone(c.Request.Context(), request, model, maxResults, run, lease)
 	if err != nil {
-		var failure *searchtools.StandaloneFailure
-		if errors.As(err, &failure) {
+		if failure, ok := errors.AsType[*searchtools.StandaloneFailure](err); ok {
 			switch failure.Stage {
 			case "selection":
 				searchError(c, 503, "scheduling_error", failure.Error())

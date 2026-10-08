@@ -183,8 +183,7 @@ func (s RefreshAttempts) Run(
 		if IsProviderScopedTerminalRefreshError(err) {
 			return err
 		}
-		var stateUnavailableErr *RefreshStateUnavailableError
-		if errors.As(err, &stateUnavailableErr) {
+		if _, ok := errors.AsType[*RefreshStateUnavailableError](err); ok {
 			return &ProviderCycleContainmentRefreshError{Cause: err}
 		}
 		if s.AmbiguousEntitlement(provider, err) {

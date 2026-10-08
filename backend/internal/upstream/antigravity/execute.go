@@ -117,8 +117,8 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 			priorRaw(raw)
 		}
 		data := strings.TrimSpace(string(raw))
-		if strings.HasPrefix(data, "data:") {
-			data = strings.TrimSpace(strings.TrimPrefix(data, "data:"))
+		if after, ok0 := strings.CutPrefix(data, "data:"); ok0 {
+			data = strings.TrimSpace(after)
 		}
 		body, _ := (&ResponseAdapter{}).UnwrapV1InternalResponse([]byte(data))
 		modelObserver.ObserveGemini(body)
@@ -204,10 +204,10 @@ func (s *observedSink) Emit(event upstream.OutputEvent) error {
 		event.Terminal = event.Terminal || json.Valid(event.Data)
 	}
 
-	for _, line := range strings.Split(string(event.Data), "\n") {
+	for line := range strings.SplitSeq(string(event.Data), "\n") {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "data:") {
-			line = strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if after, ok := strings.CutPrefix(line, "data:"); ok {
+			line = strings.TrimSpace(after)
 		}
 		semantic, terminal := bridge.CompatOutputMeaning([]byte("data: " + line + "\n\n"))
 		a := anthropicwire.ObserveEvent(line)

@@ -271,10 +271,7 @@ func (p *UsageRecordWorkerPool) startAutoScaler() {
 	ctx, cancel := context.WithCancel(context.Background())
 	p.autoScaleCancel = cancel
 
-	p.lifecycleWg.Add(1)
-	go func() {
-		defer p.lifecycleWg.Done()
-
+	p.lifecycleWg.Go(func() {
 		ticker := time.NewTicker(p.autoScaleInterval)
 		defer ticker.Stop()
 
@@ -286,7 +283,7 @@ func (p *UsageRecordWorkerPool) startAutoScaler() {
 				p.autoScaleTick()
 			}
 		}
-	}()
+	})
 }
 
 func (p *UsageRecordWorkerPool) autoScaleTick() {
@@ -317,10 +314,7 @@ func (p *UsageRecordWorkerPool) autoScaleTick() {
 
 	// 扩容优先：队列占用率超过阈值时，按步长提升并发上限。
 	if queuePercent >= p.autoScaleUpPercent && current < p.autoScaleMaxWorkers {
-		target := current + p.autoScaleUpStep
-		if target > p.autoScaleMaxWorkers {
-			target = p.autoScaleMaxWorkers
-		}
+		target := min(current+p.autoScaleUpStep, p.autoScaleMaxWorkers)
 		p.resizePool(current, target, queuePercent, waiting, runningPercent, queueSize, "scale_up")
 		return
 	}
@@ -329,10 +323,7 @@ func (p *UsageRecordWorkerPool) autoScaleTick() {
 	if queuePercent <= p.autoScaleDownPercent && waiting == 0 &&
 		runningPercent <= p.autoScaleDownPercent &&
 		current > p.autoScaleMinWorkers {
-		target := current - p.autoScaleDownStep
-		if target < p.autoScaleMinWorkers {
-			target = p.autoScaleMinWorkers
-		}
+		target := max(current-p.autoScaleDownStep, p.autoScaleMinWorkers)
 		p.resizePool(current, target, queuePercent, waiting, runningPercent, queueSize, "scale_down")
 	}
 }

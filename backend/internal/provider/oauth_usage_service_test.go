@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"maps"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -317,9 +318,7 @@ func (r *sessionWindowSyncRepo) UpdateExtra(_ context.Context, _ int64, updates 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	copied := make(map[string]any, len(updates))
-	for k, v := range updates {
-		copied[k] = v
-	}
+	maps.Copy(copied, updates)
 	r.extraUpdates = append(r.extraUpdates, copied)
 	return nil
 }

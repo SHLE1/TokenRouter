@@ -3,6 +3,7 @@ package provider
 import (
 	"encoding/json"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -106,12 +107,7 @@ func EvaluateAnthropicFableSchedulingThreshold(provider *Record, thresholds map[
 }
 
 func isAllowedSchedulingThresholdPlatform(platform string) bool {
-	for _, allowed := range AllowedSchedulingThresholdPlatforms {
-		if platform == allowed {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(AllowedSchedulingThresholdPlatforms, platform)
 }
 
 func resolveEffectiveProviderSchedulingThreshold(provider *Record, thresholds map[string]int, platform string) (int, bool) {

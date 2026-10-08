@@ -42,9 +42,7 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 		if copy.Extra == nil {
 			copy.Extra = map[string]any{}
 		}
-		for key, value := range extraPatch {
-			copy.Extra[key] = value
-		}
+		maps.Copy(copy.Extra, extraPatch)
 		input = &copy
 	}
 	var computeResetAt, normalizeWindowAt *time.Time
@@ -527,9 +525,7 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 			if prospective.Credentials == nil {
 				prospective.Credentials = make(map[string]any, len(input.Credentials))
 			}
-			for key, value := range input.Credentials {
-				prospective.Credentials[key] = value
-			}
+			maps.Copy(prospective.Credentials, input.Credentials)
 			if err := NormalizeCNProviderCredentials(&prospective, false); err != nil {
 				return nil, err
 			}
@@ -537,9 +533,7 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 			if prospective.Extra == nil {
 				prospective.Extra = map[string]any{}
 			}
-			for key, value := range input.Extra {
-				prospective.Extra[key] = value
-			}
+			maps.Copy(prospective.Extra, input.Extra)
 			ApplyLegacyProtocolPatch(&prospective, input.Credentials, input.Extra)
 			if err := NormalizeProviderProtocols(&prospective); err != nil {
 				return nil, err

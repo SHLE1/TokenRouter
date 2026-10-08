@@ -157,7 +157,7 @@ func responseMetadataModels(data []byte) []string {
 	if json.Valid(trimmed) {
 		payloads = append(payloads, trimmed)
 	}
-	for _, line := range bytes.Split(data, []byte("\n")) {
+	for line := range bytes.SplitSeq(data, []byte("\n")) {
 		line = bytes.TrimSpace(line)
 		if !bytes.HasPrefix(line, []byte("data:")) {
 			continue
@@ -192,8 +192,8 @@ func responseMetadataModels(data []byte) []string {
 		}
 		for _, path := range []string{"name", "response.name"} {
 			name := strings.TrimSpace(gjson.GetBytes(payload, path).String())
-			if strings.HasPrefix(name, "models/") {
-				appendModel(strings.TrimPrefix(name, "models/"))
+			if after, ok := strings.CutPrefix(name, "models/"); ok {
+				appendModel(after)
 			}
 		}
 	}

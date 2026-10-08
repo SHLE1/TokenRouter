@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 )
 
 const (
@@ -399,9 +400,7 @@ func (p *GeminiToAnthropicStreamProcessor) emitDelta(deltaType string, deltaCont
 	delta := map[string]any{
 		"type": deltaType,
 	}
-	for k, v := range deltaContent {
-		delta[k] = v
-	}
+	maps.Copy(delta, deltaContent)
 
 	event := map[string]any{
 		"type":  "content_block_delta",

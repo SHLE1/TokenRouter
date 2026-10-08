@@ -113,8 +113,7 @@ func (p openAIForwardPreludeAdapter) LiteHeader() bool {
 func (p openAIForwardPreludeAdapter) LitePayload(body []byte) ([]byte, bool, string, error) {
 	updated, changed, err := gatewayprovider.NormalizeResponsesLiteForProvider(p.provider.View(), body)
 	param := "tools"
-	var validation *openai.ResponsesLiteValidationError
-	if errors.As(err, &validation) {
+	if validation, ok := errors.AsType[*openai.ResponsesLiteValidationError](err); ok {
 		param = validation.Parameter()
 	}
 	return updated, changed, param, err

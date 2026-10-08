@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"testing"
@@ -486,9 +487,7 @@ func TestBuildSchedulerMetadataProvider_KeepsQuotaStateForCachedProviders(t *tes
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			extra := make(map[string]any, len(tc.extra)+1)
-			for key, value := range tc.extra {
-				extra[key] = value
-			}
+			maps.Copy(extra, tc.extra)
 			extra["unrelated"] = "drop me"
 			provider := providercore.Record{
 				ID: int64(46690 + i), Platform: tc.platform, Type: tc.typ, Extra: extra,

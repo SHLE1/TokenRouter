@@ -125,7 +125,7 @@ func ParseOpenAIResponsesSSEForAlphaSearch(body []byte) (string, []any) {
 	results := make([]any, 0)
 	seenURLs := make(map[string]struct{})
 
-	for _, block := range strings.Split(text, "\n\n") {
+	for block := range strings.SplitSeq(text, "\n\n") {
 		data := OpenAIAlphaSearchSSEData(block)
 		if data == "" || data == "[DONE]" {
 			continue
@@ -153,7 +153,7 @@ func ParseOpenAIResponsesSSEForAlphaSearch(body []byte) (string, []any) {
 
 func OpenAIAlphaSearchSSEData(block string) string {
 	var lines []string
-	for _, line := range strings.Split(block, "\n") {
+	for line := range strings.SplitSeq(block, "\n") {
 		line = strings.TrimRight(line, "\r")
 		if !strings.HasPrefix(line, "data:") {
 			continue

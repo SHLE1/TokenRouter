@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -274,7 +275,7 @@ func TestTokenRefreshService_ReconcileGrokOAuthApplyIsIdempotent(t *testing.T) {
 	require.Zero(t, first.Failed)
 	requests, setErrorIDs, updatedIDs, messages := repo.snapshot()
 	require.Equal(t, []int64{1}, setErrorIDs)
-	sort.Slice(updatedIDs, func(i, j int) bool { return updatedIDs[i] < updatedIDs[j] })
+	slices.Sort(updatedIDs)
 	require.Equal(t, []int64{2, 3}, updatedIDs)
 	require.Len(t, messages, 1)
 	require.NotContains(t, messages[0], "secret")
@@ -1626,7 +1627,7 @@ func TestTokenRefreshService_ProcessRefreshPagesByStableCursor(t *testing.T) {
 	require.True(t, requests[0].ActiveOnly)
 	require.True(t, requests[0].RequireRefreshToken)
 	require.True(t, requests[0].ExcludeRetryCooldown)
-	sort.Slice(updatedIDs, func(i, j int) bool { return updatedIDs[i] < updatedIDs[j] })
+	slices.Sort(updatedIDs)
 	require.Equal(t, []int64{1, 2, 3}, updatedIDs)
 	require.Zero(t, runtime.CandidatePosition(), "a short final page must wrap the next cycle to the beginning")
 }
@@ -1818,12 +1819,10 @@ func TestTokenRefreshService_SaturatedProviderPreservesConcurrencyAndActualQPSSt
 	for i := range attemptCount {
 		provider := grokPoolProvider(int64(i + 1))
 		state := providercore.NewRefreshProviderState(sharedRateGate, sharedPoolGate, svc.Tuning.FailureThreshold(), IsNonRetryableRefreshError)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			errorsCh <- svc.Attempts.Run(context.Background(), &provider, refresher, nil, time.Hour, state)
-		}()
+		})
 	}
 	close(start)
 	wg.Wait()
@@ -2417,13 +2416,7 @@ func (r *grokReconcileRepo) ListOAuthRefreshCandidatePage(_ context.Context, opt
 		if provider.ID <= options.AfterID {
 			continue
 		}
-		platformAllowed := false
-		for _, platform := range options.Platforms {
-			if provider.Platform == platform {
-				platformAllowed = true
-				break
-			}
-		}
+		platformAllowed := slices.Contains(options.Platforms, provider.Platform)
 		if !platformAllowed || options.ActiveOnly && provider.Status != providercore.StatusActive {
 			continue
 		}
@@ -2471,9 +2464,7 @@ func (r *grokReconcileRepo) UpdateExtra(_ context.Context, id int64, updates map
 		if r.providers[i].Extra == nil {
 			r.providers[i].Extra = make(map[string]any)
 		}
-		for key, value := range updates {
-			r.providers[i].Extra[key] = value
-		}
+		maps.Copy(r.providers[i].Extra, updates)
 		break
 	}
 	return nil
@@ -3114,9 +3105,7 @@ func (r *poolHealthRefresher) Refresh(ctx context.Context, _ *providercore.Recor
 	}
 	if r.newCredentials != nil {
 		credentials := make(map[string]any, len(r.newCredentials))
-		for key, value := range r.newCredentials {
-			credentials[key] = value
-		}
+		maps.Copy(credentials, r.newCredentials)
 		return credentials, nil
 	}
 	return map[string]any{"access_token": "new-token", "refresh_token": "new-refresh-token"}, nil
@@ -3168,13 +3157,7 @@ func (r *tokenRefreshCandidateRepo) ListOAuthRefreshCandidatePage(_ context.Cont
 		inRetryCooldown := provider.TempUnschedulableUntil != nil &&
 			provider.TempUnschedulableUntil.After(now) &&
 			strings.HasPrefix(provider.TempUnschedulableReason, "token refresh retry exhausted:")
-		platformAllowed := false
-		for _, platform := range options.Platforms {
-			if provider.Platform == platform {
-				platformAllowed = true
-				break
-			}
-		}
+		platformAllowed := slices.Contains(options.Platforms, provider.Platform)
 		typeAllowed := provider.Type == capability.ProviderTypeOAuth ||
 			(options.IncludeSetupToken && provider.Type == capability.ProviderTypeSetupToken) ||
 			provider.IsQoderCosy()

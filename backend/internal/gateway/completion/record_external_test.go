@@ -4225,13 +4225,6 @@ func expectedOpenAICost(t *testing.T, svc *completiontestkit.Recording, model st
 	return cost
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 // swapInOpenAILadderCatalog 换入带 above_272k 阶梯字段的测试目录，OpenAI 长上下文规则从目录读取。
 func swapInOpenAILadderCatalog(t *testing.T, svc *completiontestkit.Recording) {
 	t.Helper()

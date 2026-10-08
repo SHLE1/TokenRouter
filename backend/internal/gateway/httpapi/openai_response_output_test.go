@@ -972,7 +972,7 @@ func assertOpenAINativeLargeOpenEventTimesOutWithoutLeak(t *testing.T, line stri
 	require.True(t, failoverErr.SafeToFailoverAfterWrite)
 	require.NotContains(t, rec.Body.String(), "data:", "attempt JSON must remain private before the SSE boundary")
 	require.NotContains(t, rec.Body.String(), `"type"`, "attempt JSON must remain private before the SSE boundary")
-	for _, outputLine := range strings.Split(strings.TrimSpace(rec.Body.String()), "\n") {
+	for outputLine := range strings.SplitSeq(strings.TrimSpace(rec.Body.String()), "\n") {
 		if outputLine != "" {
 			require.True(t, strings.HasPrefix(outputLine, ":"), "only keepalive comments may precede failover: %q", outputLine)
 		}

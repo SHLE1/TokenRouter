@@ -64,10 +64,7 @@ func AnthropicToChatCompletionsRequest(req *AnthropicRequest, options RequestOpt
 	}
 
 	if req.MaxTokens > 0 {
-		v := req.MaxTokens
-		if v < minMaxOutputTokens {
-			v = minMaxOutputTokens
-		}
+		v := max(req.MaxTokens, minMaxOutputTokens)
 		out.MaxCompletionTokens = &v
 	}
 
@@ -500,10 +497,7 @@ func chatUsageToAnthropicUsage(usage *ChatUsage) AnthropicUsage {
 		}
 	}
 
-	inputTokens := usage.PromptTokens - cachedTokens - cacheCreationTokens
-	if inputTokens < 0 {
-		inputTokens = 0
-	}
+	inputTokens := max(usage.PromptTokens-cachedTokens-cacheCreationTokens, 0)
 
 	return AnthropicUsage{
 		InputTokens:              inputTokens,

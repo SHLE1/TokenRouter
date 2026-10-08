@@ -140,8 +140,7 @@ func (a LivePorts) PolicyDenied(c *gin.Context) {
 }
 
 func (a LivePorts) UpstreamStatus(err error) int {
-	var upstream *forwardcore.UpstreamFailoverError
-	if errors.As(err, &upstream) {
+	if upstream, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		return upstream.StatusCode
 	}
 	return 0

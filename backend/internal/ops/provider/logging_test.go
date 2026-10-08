@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"testing"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
@@ -87,17 +88,13 @@ func (s *runtimeSettingRepoStub) GetMultiple(_ context.Context, keys []string) (
 }
 
 func (s *runtimeSettingRepoStub) SetMultiple(_ context.Context, settings map[string]string) error {
-	for key, value := range settings {
-		s.values[key] = value
-	}
+	maps.Copy(s.values, settings)
 	return nil
 }
 
 func (s *runtimeSettingRepoStub) GetAll(_ context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(s.values))
-	for key, value := range s.values {
-		out[key] = value
-	}
+	maps.Copy(out, s.values)
 	return out, nil
 }
 

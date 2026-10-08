@@ -97,10 +97,7 @@ func Slice[T any](items []T, params PaginationParams) []T {
 	}
 
 	limit := params.Limit()
-	end := offset + limit
-	if end > len(items) {
-		end = len(items)
-	}
+	end := min(offset+limit, len(items))
 
 	return items[offset:end]
 }

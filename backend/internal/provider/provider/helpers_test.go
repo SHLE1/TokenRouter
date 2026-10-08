@@ -327,9 +327,7 @@ func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates
 		if provider.Extra == nil {
 			provider.Extra = make(map[string]any)
 		}
-		for key, value := range updates {
-			provider.Extra[key] = value
-		}
+		maps.Copy(provider.Extra, updates)
 	}
 	return nil
 }
@@ -550,9 +548,7 @@ func (u *grokQuotaSequenceUpstream) Do(req *http.Request, _ string, _ int64, _ i
 func (r *providerUsageCodexProbeRepo) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
 	if r.updateExtraCh != nil {
 		copied := make(map[string]any, len(updates))
-		for k, v := range updates {
-			copied[k] = v
-		}
+		maps.Copy(copied, updates)
 		r.updateExtraCh <- copied
 	}
 	return nil
@@ -941,9 +937,7 @@ func (r *tokenRefreshProviderRepo) UpdateExtra(ctx context.Context, id int64, up
 			if acc.Extra == nil {
 				acc.Extra = make(map[string]any, len(updates))
 			}
-			for k, v := range updates {
-				acc.Extra[k] = v
-			}
+			maps.Copy(acc.Extra, updates)
 		}
 	}
 	return nil

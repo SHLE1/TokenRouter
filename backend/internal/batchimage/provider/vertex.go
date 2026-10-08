@@ -483,8 +483,7 @@ func MapVertexClientError(err error) error {
 		errors.Is(err, core.ErrUnsupportedCleanupTarget) {
 		return err
 	}
-	var apiErr *VertexAPIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*VertexAPIError](err); ok {
 		switch apiErr.StatusCode {
 		case http.StatusUnauthorized:
 			return VertexProviderError("VERTEX_AUTH_FAILED", "Vertex authentication failed", nil)

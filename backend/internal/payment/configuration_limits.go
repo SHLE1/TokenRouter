@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
@@ -54,9 +55,7 @@ func (s *ConfigService) ConfigPcApplyEnabledVisibleMethodInstances(ctx context.C
 	}
 
 	filtered := make(map[string][]*ProviderInstance, len(typeInstances))
-	for paymentType, groupedInstances := range typeInstances {
-		filtered[paymentType] = groupedInstances
-	}
+	maps.Copy(filtered, typeInstances)
 
 	for _, method := range []string{TypeAlipay, TypeWxpay} {
 		matching := ConfigFilterEnabledVisibleMethodInstances(instances, method)

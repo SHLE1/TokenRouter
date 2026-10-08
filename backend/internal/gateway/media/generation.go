@@ -2,6 +2,7 @@ package media
 
 import (
 	"context"
+	"maps"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
@@ -312,9 +313,7 @@ func CloneGenerationResult(input *GenerationResult) *GenerationResult {
 	}
 	if input.ImageSizeBreakdown != nil {
 		output.ImageSizeBreakdown = make(map[string]int, len(input.ImageSizeBreakdown))
-		for key, value := range input.ImageSizeBreakdown {
-			output.ImageSizeBreakdown[key] = value
-		}
+		maps.Copy(output.ImageSizeBreakdown, input.ImageSizeBreakdown)
 	}
 	output.Headers = cloneGenerationHeaders(input.Headers)
 	output.ResponseHeaders = cloneGenerationHeaders(input.ResponseHeaders)

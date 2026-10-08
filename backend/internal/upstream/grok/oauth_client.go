@@ -180,8 +180,7 @@ func grokSSOConversionError(err error) error {
 	if errors.Is(err, ErrSSOAuthorizationDenied) {
 		return infraerrors.New(infraerrors.Category(http.StatusForbidden), "GROK_SSO_AUTHORIZATION_DENIED", "xAI device authorization was denied or expired")
 	}
-	var statusErr SSOHTTPError
-	if errors.As(err, &statusErr) {
+	if statusErr, ok := errors.AsType[SSOHTTPError](err); ok {
 		statusCode := http.StatusBadGateway
 		if statusErr.Status == http.StatusForbidden {
 			statusCode = http.StatusForbidden

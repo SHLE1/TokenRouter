@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"time"
@@ -374,9 +375,7 @@ func (r *Store) ClearWithTrace(ctx context.Context, trace *audit.AuditLog) (int6
 	}
 	copied := *trace
 	copied.Extra = make(map[string]any, len(trace.Extra)+1)
-	for k, v := range trace.Extra {
-		copied.Extra[k] = v
-	}
+	maps.Copy(copied.Extra, trace.Extra)
 	copied.Extra["deleted_rows"] = count
 	query := `INSERT INTO audit_logs (` + auditLogInsertColumns + `) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`
 	if _, err = tx.ExecContext(ctx, query, auditLogInsertValues(&copied)...); err != nil {

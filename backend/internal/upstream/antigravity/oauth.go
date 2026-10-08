@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -230,13 +231,7 @@ func (u *URLAvailability) GetAvailableURLsWithBase(baseURLs []string) []string {
 
 	// 如果有最近成功的 URL 且可用，放在最前面
 	if u.lastSuccess != "" {
-		found := false
-		for _, url := range baseURLs {
-			if url == u.lastSuccess {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(baseURLs, u.lastSuccess)
 		if found {
 			expiry, exists := u.unavailable[u.lastSuccess]
 			if !exists || now.After(expiry) {

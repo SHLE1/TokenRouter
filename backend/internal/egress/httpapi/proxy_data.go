@@ -64,7 +64,7 @@ func parseProxyIDs(c *gin.Context) ([]int64, error) {
 
 	ids := make([]int64, 0, len(values))
 	for _, item := range values {
-		for _, part := range strings.Split(item, ",") {
+		for part := range strings.SplitSeq(item, ",") {
 			part = strings.TrimSpace(part)
 			if part == "" {
 				continue

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -307,9 +308,9 @@ func currentOpsFailureSkipMonitoring(c *gin.Context) bool {
 	}
 	if value, ok := c.Get(OpsUpstreamErrorsKey); ok {
 		if events, ok := value.([]*ops.OpsUpstreamErrorEvent); ok {
-			for i := len(events) - 1; i >= 0; i-- {
-				if events[i] != nil {
-					return events[i].SkipMonitoring
+			for _, event := range slices.Backward(events) {
+				if event != nil {
+					return event.SkipMonitoring
 				}
 			}
 		}

@@ -258,8 +258,8 @@ func expandPricingToCache(cache *pricingConfigCache, config *PricingConfig, grou
 	for i := range config.ModelPricing {
 		entry := &config.ModelPricing[i]
 		for _, model := range entry.Models {
-			if strings.HasSuffix(model, "*") {
-				cache.wildcardByGroup[groupID] = append(cache.wildcardByGroup[groupID], &wildcardPricingEntry{prefix: normalizePriceModelName(strings.TrimSuffix(model, "*")), pricing: entry})
+			if before, ok := strings.CutSuffix(model, "*"); ok {
+				cache.wildcardByGroup[groupID] = append(cache.wildcardByGroup[groupID], &wildcardPricingEntry{prefix: normalizePriceModelName(before), pricing: entry})
 			} else {
 				cache.pricingByGroupModel[pricingModelKey{groupID: groupID, model: normalizePriceModelName(model)}] = entry
 			}

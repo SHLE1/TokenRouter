@@ -243,8 +243,7 @@ func (p mediaHTTPAdapter) EndVoice(c *gin.Context, f *media.VoiceFailure) {
 	if f == nil {
 		return
 	}
-	var last *forwardcore.UpstreamFailoverError
-	if errors.As(f.Last, &last) {
+	if last, ok := errors.AsType[*forwardcore.UpstreamFailoverError](f.Last); ok {
 		p.h.bindings.Common.Support.HandleFailoverExhausted(c, last, false)
 	} else if f.NoProviders {
 		gatewayhttp.DefaultOpenAIErrorOutput().WriteError(c, 503, "api_error", "No available Grok providers")

@@ -2,6 +2,7 @@ package googleforward_test
 
 import (
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -85,9 +86,7 @@ func (s *inMemoryLogSink) WriteLogEvent(event *logging.LogEvent) {
 	cloned := *event
 	if event.Fields != nil {
 		cloned.Fields = make(map[string]any, len(event.Fields))
-		for k, v := range event.Fields {
-			cloned.Fields[k] = v
-		}
+		maps.Copy(cloned.Fields, event.Fields)
 	}
 	s.mu.Lock()
 	s.events = append(s.events, &cloned)

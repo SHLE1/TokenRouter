@@ -74,8 +74,7 @@ func (h *QoderChatHandler) ChatCompletions(c *gin.Context) {
 	}
 	body, err := httpx.ReadRequestBodyWithPrealloc(c.Request)
 	if err != nil {
-		var maxErr *http.MaxBytesError
-		if errors.As(err, &maxErr) {
+		if maxErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			h.writeError(c, &HTTPFailure{Status: 413, Type: "invalid_request_error", Message: BodyTooLargeMessage(maxErr.Limit)}, false)
 			return
 		}
@@ -140,8 +139,7 @@ func (h *QoderChatHandler) fail(c *gin.Context, err error, stream bool) {
 			return
 		}
 	} else {
-		var typed *HTTPFailure
-		if errors.As(err, &typed) {
+		if typed, ok := errors.AsType[*HTTPFailure](err); ok {
 			failure = typed
 		}
 	}

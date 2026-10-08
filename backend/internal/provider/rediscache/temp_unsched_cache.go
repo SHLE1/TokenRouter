@@ -83,10 +83,7 @@ func (c *tempUnschedCache) SetTempUnsched(ctx context.Context, providerID int64,
 		return nil // 已过期，不设置
 	}
 
-	ttlSeconds := int(ttl.Seconds())
-	if ttlSeconds < 1 {
-		ttlSeconds = 1
-	}
+	ttlSeconds := max(int(ttl.Seconds()), 1)
 
 	_, err = tempUnschedSetScript.Run(ctx, c.rdb, []string{key}, state.UntilUnix, string(stateJSON), ttlSeconds).Result()
 	return err

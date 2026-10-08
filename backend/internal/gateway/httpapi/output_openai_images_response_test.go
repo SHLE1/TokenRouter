@@ -151,8 +151,7 @@ func TestImagesOAuthNonStreaming_ContentRefusalReturns400NoRetry(t *testing.T) {
 	if err == nil {
 		t.Fatal("content refusal should return an error")
 	}
-	var failoverErr *forwardcore.UpstreamFailoverError
-	if errors.As(err, &failoverErr) {
+	if failoverErr, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		t.Fatalf("content refusal must not be a retryable failover error, got %v", failoverErr)
 	}
 	var imgErr *upstreamopenai.OpenAIImagesUpstreamError

@@ -201,10 +201,7 @@ func (s *AntigravityAuthorization) refreshToken(ctx context.Context, refreshToke
 
 	for attempt := range 4 {
 		if attempt > 0 {
-			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
-			if backoff > 30*time.Second {
-				backoff = 30 * time.Second
-			}
+			backoff := min(time.Duration(1<<uint(attempt-1))*time.Second, 30*time.Second)
 			time.Sleep(backoff)
 		}
 
@@ -360,10 +357,7 @@ func (s *AntigravityAuthorization) loadProjectIDWithRetry(ctx context.Context, a
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
-			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
-			if backoff > 8*time.Second {
-				backoff = 8 * time.Second
-			}
+			backoff := min(time.Duration(1<<uint(attempt-1))*time.Second, 8*time.Second)
 			time.Sleep(backoff)
 		}
 

@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"maps"
 	"math/rand/v2"
 	"time"
 
@@ -208,9 +209,7 @@ func cloneOrderValue(value any) any {
 			return map[string]string(nil)
 		}
 		out := make(map[string]string, len(typed))
-		for k, v := range typed {
-			out[k] = v
-		}
+		maps.Copy(out, typed)
 		return out
 	default:
 		return value

@@ -11,6 +11,7 @@ import (
 	"image"
 	"image/png"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -1000,9 +1001,7 @@ func TestContentModerationRuntimeSnapshotConcurrentReadAndReplace(t *testing.T) 
 	var wg sync.WaitGroup
 	errs := make(chan error, 8)
 	for range 8 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range 100 {
 				decision, checkErr := svc.Check(context.Background(), runtimeCacheTestInput("clean prompt"))
 				if checkErr != nil {
@@ -1014,7 +1013,7 @@ func TestContentModerationRuntimeSnapshotConcurrentReadAndReplace(t *testing.T) 
 					return
 				}
 			}
-		}()
+		})
 	}
 	for i := 1; i <= 20; i++ {
 		keywords := []string{"blocked-" + time.Duration(i).String()}
@@ -2821,9 +2820,7 @@ func (r *contentModerationRuntimeSettingRepo) SetMultiple(_ context.Context, val
 	if r.values == nil {
 		r.values = make(map[string]string)
 	}
-	for key, value := range values {
-		r.values[key] = value
-	}
+	maps.Copy(r.values, values)
 	return nil
 }
 
@@ -2831,9 +2828,7 @@ func (r *contentModerationRuntimeSettingRepo) GetAll(_ context.Context) (map[str
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	out := make(map[string]string, len(r.values))
-	for key, value := range r.values {
-		out[key] = value
-	}
+	maps.Copy(out, r.values)
 	return out, nil
 }
 
@@ -2928,17 +2923,13 @@ func (r *contentModerationTestSettingRepo) SetMultiple(ctx context.Context, sett
 	if r.values == nil {
 		r.values = map[string]string{}
 	}
-	for key, value := range settings {
-		r.values[key] = value
-	}
+	maps.Copy(r.values, settings)
 	return nil
 }
 
 func (r *contentModerationTestSettingRepo) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(r.values))
-	for key, value := range r.values {
-		out[key] = value
-	}
+	maps.Copy(out, r.values)
 	return out, nil
 }
 

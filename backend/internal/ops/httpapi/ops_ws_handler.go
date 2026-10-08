@@ -156,9 +156,7 @@ func handleQPSWebSocket(parentCtx context.Context, conn *websocket.Conn, rt *ops
 	closeFrameCh := make(chan []byte, 1)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		defer cancel()
 
 		conn.SetReadLimit(qpsWSMaxReadBytes)
@@ -187,7 +185,7 @@ func handleQPSWebSocket(parentCtx context.Context, conn *websocket.Conn, rt *ops
 				return
 			}
 		}
-	}()
+	})
 
 	// Push QPS data every 2 seconds (values are globally cached and refreshed at most once per qpsWSRefreshInterval).
 	pushTicker := time.NewTicker(qpsWSPushInterval)
@@ -431,7 +429,7 @@ func defaultTrustedProxies() []netip.Prefix {
 }
 
 func parseTrustedProxyList(raw string) (prefixes []netip.Prefix, invalid []string) {
-	for _, token := range strings.Split(raw, ",") {
+	for token := range strings.SplitSeq(raw, ",") {
 		item := strings.TrimSpace(token)
 		if item == "" {
 			continue

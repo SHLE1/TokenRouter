@@ -163,8 +163,7 @@ func (b *geminiMessageAttemptBridge) Forward(state textflow.AttemptState) textfl
 	out := textflow.Outcome{Attempt: messageObservedAttempt(b.result, err), Err: err, HasResult: b.result != nil, OutputChanged: b.c.Writer.Size() != b.writerSizeBeforeForward}
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
 	out.Attempt.RetryCommitted = out.OutputChanged
-	var retry *forwardcore.UpstreamFailoverError
-	if errors.As(err, &retry) {
+	if retry, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		out.Failure = &textflow.AttemptFailure{Cause: retry, Policy: retry.RetryFailure()}
 	}
 	return out

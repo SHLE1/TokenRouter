@@ -546,8 +546,7 @@ func (w *CreativeRunWorker) handleExecuteError(ctx context.Context, runID string
 
 // creativeExecuteErrorParts 把执行错误映射为落库的错误码与消息。
 func creativeExecuteErrorParts(err error) (string, string) {
-	var upstreamErr *CreativeUpstreamError
-	if errors.As(err, &upstreamErr) {
+	if upstreamErr, ok := errors.AsType[*CreativeUpstreamError](err); ok {
 		if upstreamErr.Code != "" {
 			return upstreamErr.Code, upstreamErr.Message
 		}
@@ -634,10 +633,7 @@ func (w *CreativeRunWorker) runJobHeartbeat(ctx context.Context, runID, leaseTok
 }
 
 func (w *CreativeRunWorker) heartbeatInterval() time.Duration {
-	interval := w.opts.JobLockTTL
-	if w.opts.StaleActiveAfter < interval {
-		interval = w.opts.StaleActiveAfter
-	}
+	interval := min(w.opts.StaleActiveAfter, w.opts.JobLockTTL)
 	interval /= 3
 	if interval < time.Second {
 		interval = time.Second

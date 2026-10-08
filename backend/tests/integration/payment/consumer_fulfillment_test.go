@@ -3,6 +3,7 @@ package payment_test
 import (
 	"context"
 	"errors"
+	"maps"
 	"strconv"
 	"testing"
 	"time"
@@ -183,9 +184,7 @@ func (s *paymentFulfillmentSettingRepoStub) SetMultiple(_ context.Context, value
 	if s.values == nil {
 		s.values = map[string]string{}
 	}
-	for key, value := range values {
-		s.values[key] = value
-	}
+	maps.Copy(s.values, values)
 	return nil
 }
 

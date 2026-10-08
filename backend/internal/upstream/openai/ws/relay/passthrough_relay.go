@@ -638,10 +638,7 @@ func runIdleWatchdog(
 	if idleTimeout <= 0 {
 		return
 	}
-	checkInterval := minDuration(idleTimeout/4, 5*time.Second)
-	if checkInterval < time.Second {
-		checkInterval = time.Second
-	}
+	checkInterval := max(minDuration(idleTimeout/4, 5*time.Second), time.Second)
 	ticker := time.NewTicker(checkInterval)
 	defer ticker.Stop()
 
@@ -861,10 +858,7 @@ func finalizeObservedRelayTerminal(state *relayState, observed observedUpstreamE
 			observed.responseServiceTier = turnTiming.terminalResponseServiceTier
 			state.lastResponseServiceTier = observed.responseServiceTier
 			observed.startedAt = turnTiming.startAt
-			duration := now.Sub(turnTiming.startAt)
-			if duration < 0 {
-				duration = 0
-			}
+			duration := max(now.Sub(turnTiming.startAt), 0)
 			observed.duration = duration
 			observed.firstToken = openAIWSRelayCloneIntPtr(turnTiming.firstTokenMs)
 		}

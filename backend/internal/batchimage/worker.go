@@ -175,10 +175,7 @@ func (w *BatchImageWorker) RunOnce(ctx context.Context) error {
 }
 
 func (w *BatchImageWorker) heartbeatInterval() time.Duration {
-	interval := w.opts.JobLockTTL
-	if w.opts.StaleActiveAfter < interval {
-		interval = w.opts.StaleActiveAfter
-	}
+	interval := min(w.opts.StaleActiveAfter, w.opts.JobLockTTL)
 	interval /= 3
 	if interval < time.Second {
 		interval = time.Second

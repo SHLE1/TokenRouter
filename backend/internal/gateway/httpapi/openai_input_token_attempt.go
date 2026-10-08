@@ -80,8 +80,7 @@ func (p *inputTokensAttemptBridge) Forward(_ textflow.Selection) *textflow.Attem
 	if err == nil {
 		return nil
 	}
-	var original *forwardcore.UpstreamFailoverError
-	if errors.As(err, &original) {
+	if original, ok := errors.AsType[*forwardcore.UpstreamFailoverError](err); ok {
 		return &textflow.AttemptFailure{Cause: err, Policy: original.RetryFailure()}
 	}
 	return &textflow.AttemptFailure{Cause: err}

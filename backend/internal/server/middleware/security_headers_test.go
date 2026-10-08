@@ -486,7 +486,7 @@ func TestGoogleIdentityCSPPreservesOfficialAccountsOrigins(t *testing.T) {
 	}
 	for _, policy := range []string{config.DefaultCSPPolicy, enhanceCSPPolicy("default-src 'self'; script-src 'self'")} {
 		directives := map[string][]string{}
-		for _, part := range strings.Split(policy, ";") {
+		for part := range strings.SplitSeq(policy, ";") {
 			fields := strings.Fields(part)
 			if len(fields) > 0 {
 				directives[fields[0]] = fields[1:]
@@ -500,7 +500,7 @@ func TestGoogleIdentityCSPPreservesOfficialAccountsOrigins(t *testing.T) {
 }
 
 func countDirectiveValue(policy, directive, value string) int {
-	for _, rawDirective := range strings.Split(policy, ";") {
+	for rawDirective := range strings.SplitSeq(policy, ";") {
 		fields := strings.Fields(strings.TrimSpace(rawDirective))
 		if len(fields) == 0 || fields[0] != directive {
 			continue

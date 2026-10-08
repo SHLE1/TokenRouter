@@ -987,8 +987,7 @@ func generateAffiliateCode() (string, error) {
 }
 
 func isAffiliateUniqueViolation(err error) bool {
-	var pqErr *pq.Error
-	if errors.As(err, &pqErr) {
+	if pqErr, ok := errors.AsType[*pq.Error](err); ok {
 		return string(pqErr.Code) == "23505"
 	}
 	return false
@@ -1145,10 +1144,7 @@ func nullableInt64Arg(v *int64) any {
 // 空 search 时拼接出的 LIKE 模式为 "%%"，匹配所有行；非空时按 ILIKE 子串匹配。
 // 这避免了为两种情况维护两份 SQL 模板。
 func (r *affiliateRepository) ListUsersWithCustomSettings(ctx context.Context, filter promotion.AffiliateAdminFilter) ([]promotion.AffiliateAdminEntry, int64, error) {
-	page := filter.Page
-	if page < 1 {
-		page = 1
-	}
+	page := max(filter.Page, 1)
 	pageSize := filter.PageSize
 	if pageSize <= 0 || pageSize > 200 {
 		pageSize = 20

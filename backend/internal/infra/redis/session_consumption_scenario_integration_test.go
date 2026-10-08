@@ -34,12 +34,10 @@ func TestRedisSessionConcurrentConsumption(t *testing.T) {
 	results := make(chan result, 16)
 	var group sync.WaitGroup
 	for range 16 {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			claimed, err := second.TryConsume(t.Context(), "id")
 			results <- result{claimed, err}
-		}()
+		})
 	}
 	group.Wait()
 	close(results)

@@ -386,8 +386,7 @@ func (r *Store) ensureCreateBatcher() {
 	r.createBatchOnce.Do(func() {
 		if r.createBatchCh == nil {
 			r.createBatchCh = make(chan usageLogCreateRequest, usageLogCreateBatchQueueCap)
-			r.batchWG.Add(1)
-			go func() { defer r.batchWG.Done(); r.runCreateBatcher(r.db) }()
+			r.batchWG.Go(func() { ; r.runCreateBatcher(r.db) })
 		}
 	})
 }
@@ -400,8 +399,7 @@ func (r *Store) ensureBestEffortBatcher() {
 	r.bestEffortBatchOnce.Do(func() {
 		if r.bestEffortBatchCh == nil {
 			r.bestEffortBatchCh = make(chan usageLogBestEffortRequest, usageLogBestEffortBatchQueueCap)
-			r.batchWG.Add(1)
-			go func() { defer r.batchWG.Done(); r.runBestEffortBatcher(r.db) }()
+			r.batchWG.Go(func() { ; r.runBestEffortBatcher(r.db) })
 		}
 	})
 }

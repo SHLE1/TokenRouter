@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html"
 	"log/slog"
+	"maps"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -662,8 +663,7 @@ func ShouldFallbackNotificationEmail(err error) bool {
 	if err == nil {
 		return false
 	}
-	var templateErr notificationEmailTemplateError
-	if errors.As(err, &templateErr) {
+	if _, ok := errors.AsType[notificationEmailTemplateError](err); ok {
 		return true
 	}
 	var configErr notificationEmailConfigError
@@ -808,9 +808,7 @@ func (s *NotificationEmailService) PreviewTemplate(ctx context.Context, input No
 		return NotificationEmailPreview{}, err
 	}
 	variables := s.sampleVariables(ctx, normalizedEvent, normalizedLocale)
-	for key, value := range input.Variables {
-		variables[key] = value
-	}
+	maps.Copy(variables, input.Variables)
 	return RenderNotificationEmail(normalizedEvent, subject, htmlBody, variables, nil)
 }
 
@@ -967,9 +965,7 @@ func (s *NotificationEmailService) sampleVariables(ctx context.Context, event, l
 	ctx = locale.WithLanguage(ctx, languageCode)
 	info := notificationEmailEventDefinitions[event]
 	variables := make(map[string]string, len(info.Placeholders))
-	for key, value := range notificationEmailSampleVariables(languageCode) {
-		variables[key] = value
-	}
+	maps.Copy(variables, notificationEmailSampleVariables(languageCode))
 	if event == NotificationEmailEventBalanceLow {
 		variables["recharge_url"] = locale.ReadSettingText(ctx, s.settingRepo, "balance_low_notify_recharge_url", variables["recharge_url"])
 	}
@@ -983,9 +979,7 @@ func (s *NotificationEmailService) sampleVariables(ctx context.Context, event, l
 func (s *NotificationEmailService) runtimeVariables(ctx context.Context, event, languageCode string, input NotificationEmailSendInput) map[string]string {
 	ctx = locale.WithLanguage(ctx, languageCode)
 	variables := s.sampleVariables(ctx, event, languageCode)
-	for key, value := range input.Variables {
-		variables[key] = value
-	}
+	maps.Copy(variables, input.Variables)
 	if event == NotificationEmailEventOpsScheduledReport {
 		// 集成方可能只提供 report_html；此时不能让预览样例值混入真实邮件。
 		if _, ok := input.Variables["report_html"]; !ok {

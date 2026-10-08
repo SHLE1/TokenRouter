@@ -776,9 +776,7 @@ func (s *BackupService) StartBackup(ctx context.Context, triggeredBy string, exp
 	// 在启动 goroutine 前完成拷贝，避免数据竞争
 	result := *record
 
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		defer releaseMaintenance()
 		defer func() {
 			s.opMu.Lock()
@@ -796,7 +794,7 @@ func (s *BackupService) StartBackup(ctx context.Context, triggeredBy string, exp
 			}
 		}()
 		s.executeBackup(record, objectStore, s3Cfg, dumpOptions)
-	}()
+	})
 
 	return &result, nil
 }
@@ -927,9 +925,7 @@ func (s *BackupService) StartRestore(ctx context.Context, backupID string) (*Bac
 	launched = true
 	result := *record
 
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
+	s.wg.Go(func() {
 		defer releaseMaintenance()
 		defer func() {
 			s.opMu.Lock()
@@ -945,7 +941,7 @@ func (s *BackupService) StartRestore(ctx context.Context, backupID string) (*Bac
 			}
 		}()
 		s.executeRestore(record, objectStore)
-	}()
+	})
 
 	return &result, nil
 }

@@ -176,9 +176,7 @@ func TestUpstreamPoolConcurrentRelease(t *testing.T) {
 	var group sync.WaitGroup
 	errs := make(chan error, 64)
 	for range 16 {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			opts := poolTestOptions(1, nil)
 			opts.MaxClients = 1
 			resp, err := pool.Do(poolTestRequest(t), opts)
@@ -192,7 +190,7 @@ func TestUpstreamPoolConcurrentRelease(t *testing.T) {
 			if err = resp.Body.Close(); err != nil {
 				errs <- err
 			}
-		}()
+		})
 	}
 	group.Wait()
 	close(errs)

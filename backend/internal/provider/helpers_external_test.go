@@ -3,6 +3,8 @@ package provider_test
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -158,12 +160,9 @@ func (s *sparkShadowRepoStub) BindGroups(_ context.Context, providerID int64, gr
 func (s *sparkShadowRepoStub) ListSchedulableByGroupID(_ context.Context, groupID int64) ([]providercore.Record, error) {
 	var result []providercore.Record
 	for accID, groups := range s.groupsOf {
-		for _, gid := range groups {
-			if gid == groupID {
-				if acc, ok := s.providers[accID]; ok {
-					result = append(result, *acc)
-				}
-				break
+		if slices.Contains(groups, groupID) {
+			if acc, ok := s.providers[accID]; ok {
+				result = append(result, *acc)
 			}
 		}
 	}
@@ -290,9 +289,7 @@ func (r *providerServiceTestRepo) UpdateExtra(_ context.Context, id int64, updat
 	if provider.Extra == nil {
 		provider.Extra = make(map[string]any)
 	}
-	for key, value := range updates {
-		provider.Extra[key] = value
-	}
+	maps.Copy(provider.Extra, updates)
 	if r.updates == nil {
 		r.updates = make(map[int64][]map[string]any)
 	}

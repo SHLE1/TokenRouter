@@ -18,8 +18,7 @@ func TestLeaseConcurrentReleaseOwnership(t *testing.T) {
 	l := NewLease(ctx, ReleaseOnCancel, func() { order = append(order, "user") }, func() { order = append(order, "provider") })
 	var wg sync.WaitGroup
 	for range 16 {
-		wg.Add(1)
-		go func() { defer wg.Done(); l.Release() }()
+		wg.Go(func() { ; l.Release() })
 	}
 	cancel()
 	wg.Wait()

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -593,17 +594,13 @@ func (s *adminUserFixture) BindUserAuthIdentity(ctx context.Context, userID int6
 	copied := input
 	if input.Metadata != nil {
 		copied.Metadata = map[string]any{}
-		for key, value := range input.Metadata {
-			copied.Metadata[key] = value
-		}
+		maps.Copy(copied.Metadata, input.Metadata)
 	}
 	if input.Channel != nil {
 		channel := *input.Channel
 		if input.Channel.Metadata != nil {
 			channel.Metadata = map[string]any{}
-			for key, value := range input.Channel.Metadata {
-				channel.Metadata[key] = value
-			}
+			maps.Copy(channel.Metadata, input.Channel.Metadata)
 		}
 		copied.Channel = &channel
 	}

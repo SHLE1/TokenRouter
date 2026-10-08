@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -204,17 +205,12 @@ func enhanceCSPPolicy(policy string) string {
 }
 
 func directiveHasValue(policy, directive, value string) bool {
-	for _, rawDirective := range strings.Split(policy, ";") {
+	for rawDirective := range strings.SplitSeq(policy, ";") {
 		fields := strings.Fields(strings.TrimSpace(rawDirective))
 		if len(fields) == 0 || fields[0] != directive {
 			continue
 		}
-		for _, field := range fields[1:] {
-			if field == value {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(fields[1:], value)
 	}
 	return false
 }

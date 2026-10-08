@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -148,10 +149,5 @@ func CreativeOperationsForModel(settings map[string][]string, groupID int64, mod
 }
 
 func ContainsCreativeOperation(values []string, target string) bool {
-	for _, value := range values {
-		if value == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, target)
 }

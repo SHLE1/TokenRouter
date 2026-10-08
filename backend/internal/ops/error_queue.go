@@ -98,21 +98,9 @@ func PrepareErrorLogInput(entry *OpsInsertErrorLogInput) (bool, error) {
 }
 
 func opsErrorLogConfig(processors int) (workerCount int, queueSize int) {
-	workerCount = processors * 2
-	if workerCount < opsErrorLogMinWorkerCount {
-		workerCount = opsErrorLogMinWorkerCount
-	}
-	if workerCount > opsErrorLogMaxWorkerCount {
-		workerCount = opsErrorLogMaxWorkerCount
-	}
+	workerCount = min(max(processors*2, opsErrorLogMinWorkerCount), opsErrorLogMaxWorkerCount)
 
-	queueSize = workerCount * opsErrorLogQueueSizePerWorker
-	if queueSize < opsErrorLogMinQueueSize {
-		queueSize = opsErrorLogMinQueueSize
-	}
-	if queueSize > opsErrorLogMaxQueueSize {
-		queueSize = opsErrorLogMaxQueueSize
-	}
+	queueSize = min(max(workerCount*opsErrorLogQueueSizePerWorker, opsErrorLogMinQueueSize), opsErrorLogMaxQueueSize)
 
 	return workerCount, queueSize
 }

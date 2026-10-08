@@ -213,8 +213,7 @@ func (s *AntigravityOutput) MappedAntigravityCompatError(
 }
 
 func (s *AntigravityOutput) MapAntigravityCollectionError(err error) error {
-	var failoverError *protocolforward.UpstreamFailoverError
-	if errors.As(err, &failoverError) {
+	if _, ok := errors.AsType[*protocolforward.UpstreamFailoverError](err); ok {
 		return err
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {

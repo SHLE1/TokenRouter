@@ -21,8 +21,7 @@ func ReadOpenAIWSClientMessageWithTimeoutStart(ctx context.Context, conn *coderw
 		input = WSClientFrames{Conn: conn}
 	}
 	typ, body, err := gatewayws.ReadClientMessageWithTimeoutStart(ctx, input, timeout, int(status), reason, start, active)
-	var closeErr *gatewayws.ClientCloseError
-	if errors.As(err, &closeErr) {
+	if closeErr, ok := errors.AsType[*gatewayws.ClientCloseError](err); ok {
 		err = NewOpenAIWSClientCloseError(coderws.StatusCode(closeErr.Status), closeErr.Reason, closeErr.Cause)
 	}
 	return coderws.MessageType(typ), body, err

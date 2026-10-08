@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -211,17 +212,13 @@ func TestBatchUpdateCredentials_AccountUUID_NullValue(t *testing.T) {
 func (s *credentialFieldRaceAdmin) GetProvider(context.Context, int64) (*provider.Record, error) {
 	v := s.current
 	v.Credentials = make(map[string]any, len(s.current.Credentials))
-	for k, x := range s.current.Credentials {
-		v.Credentials[k] = x
-	}
+	maps.Copy(v.Credentials, s.current.Credentials)
 	return &v, nil
 }
 
 func (s *credentialFieldRaceAdmin) UpdateProvider(_ context.Context, _ int64, input *provider.UpdateProviderInput) (*provider.Record, error) {
 	s.current.Credentials = map[string]any{"refresh_token": "rotated", "base_url": "https://new.invalid", "org_uuid": "old-org"}
-	for key, value := range input.Credentials {
-		s.current.Credentials[key] = value
-	}
+	maps.Copy(s.current.Credentials, input.Credentials)
 	return &s.current, nil
 }
 

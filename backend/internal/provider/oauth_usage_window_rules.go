@@ -30,10 +30,7 @@ func BuildPassiveUsageWindow(extra map[string]any, utilKey, resetKey string, now
 	if resetRaw > 0 {
 		t := time.Unix(int64(resetRaw), 0)
 		resetAt = &t
-		remaining = int(t.Sub(now()).Seconds())
-		if remaining < 0 {
-			remaining = 0
-		}
+		remaining = max(int(t.Sub(now()).Seconds()), 0)
 	}
 	return &UsageProgress{
 		Utilization:      util * 100,
@@ -90,10 +87,7 @@ func BuildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 	if resetAtRaw, ok := extra[resetAtKey]; ok {
 		if resetAt, err := ParseUsageTime(fmt.Sprint(resetAtRaw)); err == nil {
 			progress.ResetsAt = &resetAt
-			progress.RemainingSeconds = int(resetAt.Sub(clock()).Seconds())
-			if progress.RemainingSeconds < 0 {
-				progress.RemainingSeconds = 0
-			}
+			progress.RemainingSeconds = max(int(resetAt.Sub(clock()).Seconds()), 0)
 		}
 	}
 	if progress.ResetsAt == nil {
@@ -106,10 +100,7 @@ func BuildCodexUsageProgressFromExtra(extra map[string]any, window string, now t
 			}
 			resetAt := base.Add(time.Duration(resetAfterSeconds) * time.Second)
 			progress.ResetsAt = &resetAt
-			progress.RemainingSeconds = int(resetAt.Sub(clock()).Seconds())
-			if progress.RemainingSeconds < 0 {
-				progress.RemainingSeconds = 0
-			}
+			progress.RemainingSeconds = max(int(resetAt.Sub(clock()).Seconds()), 0)
 		}
 	}
 
@@ -221,10 +212,7 @@ func EstimateSetupTokenUsage(provider *Record, now func() time.Time) *UsageInfo 
 
 	// 如果有 session_window 信息
 	if provider.SessionWindowEnd != nil {
-		remaining := int(provider.SessionWindowEnd.Sub(now()).Seconds())
-		if remaining < 0 {
-			remaining = 0
-		}
+		remaining := max(int(provider.SessionWindowEnd.Sub(now()).Seconds()), 0)
 
 		// 优先使用响应头记录的 utilization，将 0 到 1 的小数转换为百分比。
 		var utilization float64
@@ -283,10 +271,7 @@ func BuildGeminiUsageProgress(used, limit int64, resetAt time.Time, tokens int64
 		return nil
 	}
 	utilization := (float64(used) / float64(limit)) * 100
-	remainingSeconds := int(resetAt.Sub(now).Seconds())
-	if remainingSeconds < 0 {
-		remainingSeconds = 0
-	}
+	remainingSeconds := max(int(resetAt.Sub(now).Seconds()), 0)
 	resetCopy := resetAt
 	return &UsageProgress{
 		Utilization:      utilization,
@@ -309,10 +294,7 @@ func RecalcAntigravityRemainingSeconds(info *UsageInfo, now func() time.Time) {
 		return
 	}
 	if info.FiveHour != nil && info.FiveHour.ResetsAt != nil {
-		remaining := int(info.FiveHour.ResetsAt.Sub(now()).Seconds())
-		if remaining < 0 {
-			remaining = 0
-		}
+		remaining := max(int(info.FiveHour.ResetsAt.Sub(now()).Seconds()), 0)
 		info.FiveHour.RemainingSeconds = remaining
 	}
 }

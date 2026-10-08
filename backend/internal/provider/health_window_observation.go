@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"maps"
 	"strconv"
 	"time"
 )
@@ -200,9 +201,7 @@ func (s *HealthService) PersistPassiveUsage(ctx context.Context, value *Record, 
 		return
 	}
 	updates := make(map[string]any, len(fields)+1)
-	for key, field := range fields {
-		updates[key] = field
-	}
+	maps.Copy(updates, fields)
 	updates["passive_usage_sampled_at"] = s.options.Now().UTC().Format(time.RFC3339)
 	if err := s.options.SessionWindows.UpdateExtra(ctx, value.ID, updates); err != nil {
 		s.options.Warn("passive_usage_update_failed", "provider_id", value.ID, "error", err)

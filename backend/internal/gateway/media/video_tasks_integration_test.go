@@ -75,13 +75,11 @@ func TestVideoTasksRedisOwnershipAndCompletion(t *testing.T) {
 	var winners atomic.Int32
 	var wg sync.WaitGroup
 	for range 12 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if tasks.PrepareCompletion(ctx, 2, 3, task, status, time.Now, nil) != nil {
 				winners.Add(1)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	require.EqualValues(t, 1, winners.Load())

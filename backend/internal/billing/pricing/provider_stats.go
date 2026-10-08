@@ -1,6 +1,7 @@
 package pricing
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -60,17 +61,10 @@ func MatchProviderStatsRule(rule *ProviderStatsPricingRule, providerID, groupID 
 	if len(rule.ProviderIDs) == 0 && len(rule.GroupIDs) == 0 {
 		return false
 	}
-	for _, id := range rule.ProviderIDs {
-		if id == providerID {
-			return true
-		}
+	if slices.Contains(rule.ProviderIDs, providerID) {
+		return true
 	}
-	for _, id := range rule.GroupIDs {
-		if id == groupID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(rule.GroupIDs, groupID)
 }
 
 // FindEffectivePricingForModel 用于提供商统计成本规则。

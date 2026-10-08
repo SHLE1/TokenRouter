@@ -133,8 +133,7 @@ func (p *openAIPassthroughExecutionAdapter) NormalizeLite(body []byte) ([]byte, 
 
 func (p *openAIPassthroughExecutionAdapter) ApplyFastPass(ctx context.Context, model string, body []byte) ([]byte, error) {
 	updated, err := tierpolicy.ApplyBody(body, p.s.FastPolicy.Input(ctx, p.provider, model))
-	var blocked *tierpolicy.BlockedError
-	if errors.As(err, &blocked) {
+	if blocked, ok := errors.AsType[*tierpolicy.BlockedError](err); ok {
 		WriteFastPolicyBlockedResponse(p.c, blocked)
 	}
 	return updated, err

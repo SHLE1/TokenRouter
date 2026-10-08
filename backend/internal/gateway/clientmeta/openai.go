@@ -111,16 +111,16 @@ func isCodexOfficialClientRequest(userAgent string, strict bool) bool {
 // 例如 cccc 前缀下可提取 codex-tui。输入需要先去除两侧空白，解析失败时返回空字符串。
 // 函数按大小写无关方式解析，匹配调用方传入小写 UA，PairCodexClientIdentity 则传入原大小写以生成配套 originator。
 func codexUATrailerName(ua string) string {
-	last := strings.LastIndex(ua, "(")
-	if last < 0 {
+	_, after0, ok0 := strings.CutLast(ua, "(")
+	if !ok0 {
 		return ""
 	}
-	rest := ua[last+1:]
-	closeIdx := strings.Index(rest, ")")
-	if closeIdx < 0 {
+	rest := after0
+	before, _, ok := strings.Cut(rest, ")")
+	if !ok {
 		return ""
 	}
-	inner := strings.TrimSpace(rest[:closeIdx])
+	inner := strings.TrimSpace(before)
 	if semi := strings.Index(inner, ";"); semi >= 0 {
 		inner = strings.TrimSpace(inner[:semi])
 	}
