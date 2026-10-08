@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/lib/pq"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 type GroupAvailabilityProbeStore struct {

@@ -8,8 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
 // 设置键对应数据库中的运行参数记录。

@@ -242,5 +242,3 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 	}
 	return filtered
 }
-
-// AcquireBucketLease 使用调度 Redis 获取重建租约，释放句柄校验持有者令牌。

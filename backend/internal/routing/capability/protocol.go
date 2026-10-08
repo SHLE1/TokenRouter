@@ -1,8 +1,12 @@
 package capability
 
-import "slices"
+import (
+	"slices"
 
-// Protocol 描述协议能力，不拥有 HTTP 路径或具体转换实现。
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+)
+
+// Protocol 描述协议标识、名称、适用平台及是否专供上游使用。
 // @project-doc docs/interfaces/protocol_capabilities.md#protocol_catalog
 type Protocol struct {
 	ID           ProtocolID `json:"id"`
@@ -105,7 +109,7 @@ func NativeProtocolOptions(platform, providerType, authMode string) []ProtocolID
 	return out
 }
 
-// ProtocolFallbackTargets 仅列出已有适配器支持的单步目标；原生直通不作为转换项。
+// ProtocolFallbackTargets 返回适配器支持的单步转换目标，并跳过与来源相同的协议。
 func ProtocolFallbackTargets(platform string, source ProtocolID) []ProtocolID {
 	if !platformSupportsClientProtocol(platform, source) {
 		return []ProtocolID{}
@@ -147,7 +151,7 @@ func ProtocolFallbackTargets(platform string, source ProtocolID) []ProtocolID {
 	return out
 }
 
-// SupportsProtocolConversion 在候选提供商层收窄转换边，禁止把 OAuth 专属适配套用到 API Key。
+// SupportsProtocolConversion 根据提供商平台、认证类型和认证模式判断是否支持单步转换。
 func SupportsProtocolConversion(platform, providerType, authMode string, source, target ProtocolID) bool {
 	if !slices.Contains(ProtocolFallbackTargets(platform, source), target) {
 		return false
@@ -192,3 +196,54 @@ func AutomaticProtocolFallbackTargets(source ProtocolID) []ProtocolID {
 	}
 	return targets
 }
+
+// ProtocolID 引用 protocol 包的协议标识类型。
+type ProtocolID = protocol.ProtocolID
+
+const ProtocolAnthropicMessages = protocol.ProtocolAnthropicMessages
+
+const ProtocolOpenAIResponses = protocol.ProtocolOpenAIResponses
+
+const ProtocolOpenAIChatCompletions = protocol.ProtocolOpenAIChatCompletions
+
+const ProtocolGeminiGenerateContent = protocol.ProtocolGeminiGenerateContent
+
+const ProtocolEmbeddings = protocol.ProtocolEmbeddings
+
+const ProtocolImagesGenerations = protocol.ProtocolImagesGenerations
+
+const ProtocolImagesEdits = protocol.ProtocolImagesEdits
+
+const ProtocolImageBatches = protocol.ProtocolImageBatches
+
+const ProtocolVideosGenerations = protocol.ProtocolVideosGenerations
+
+const ProtocolVideosEdits = protocol.ProtocolVideosEdits
+
+const ProtocolVideosExtensions = protocol.ProtocolVideosExtensions
+
+const ProtocolTTS = protocol.ProtocolTTS
+
+const ProtocolSTT = protocol.ProtocolSTT
+
+const ProtocolCustomVoices = protocol.ProtocolCustomVoices
+
+const ProtocolVoiceRealtime = protocol.ProtocolVoiceRealtime
+
+const ProtocolResponsesWebSocket = protocol.ProtocolResponsesWebSocket
+
+const ProtocolLive = protocol.ProtocolLive
+
+const ProtocolResponsesCompact = protocol.ProtocolResponsesCompact
+
+const ProtocolAlphaSearch = protocol.ProtocolAlphaSearch
+
+const ProtocolWebSearch = protocol.ProtocolWebSearch
+
+const ProtocolXSearch = protocol.ProtocolXSearch
+
+const ProtocolQoderChat = protocol.ProtocolQoderChat
+
+const ProtocolGeminiBatch = protocol.ProtocolGeminiBatch
+
+const ProtocolVertexBatch = protocol.ProtocolVertexBatch

@@ -6,9 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	"github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // RequestableModel 描述客户端可请求的模型，以及模型广场应使用的定价模型。

@@ -28,3 +28,5 @@ type DefaultPricingSnapshot struct {
 	Prices    []pricing.DefaultModelPrice
 	UpdatedAt time.Time
 }
+
+type ModelPricing = pricing.ModelPricing

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
-
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 

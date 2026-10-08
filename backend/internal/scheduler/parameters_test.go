@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
 func TestParameters_DBOverridesConfig(t *testing.T) {

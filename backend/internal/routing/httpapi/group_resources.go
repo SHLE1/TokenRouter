@@ -5,12 +5,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	keydto "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	groupdto "github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 // GetLiveCapability 返回当前服务端是否具备生成 Live attestation 的运行环境。

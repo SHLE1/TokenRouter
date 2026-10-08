@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lib/pq"
+
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/lib/pq"
 )
 
 type PricingConfigStore struct {

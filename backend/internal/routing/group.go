@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
@@ -17,7 +18,7 @@ type GroupAdvancedSchedulerOverrides = policy.GroupAdvancedSchedulerOverrides
 type GroupSchedulerType = accessview.GroupSchedulerType
 
 const (
-	// GroupSchedulerTypeBasic 保持当前默认调度路径。
+	// GroupSchedulerTypeBasic 使用默认调度器。
 	GroupSchedulerTypeBasic GroupSchedulerType = "basic"
 	// GroupSchedulerTypeAdvanced 使用通用高级调度器。
 	GroupSchedulerTypeAdvanced GroupSchedulerType = "advanced"
@@ -50,7 +51,7 @@ func (g *Group) IsActive() bool {
 	return g.Status == StatusActive
 }
 
-// IsGroupContextValid reports whether a group from context has the fields required for routing decisions.
+// IsGroupContextValid 检查上下文中的分组是否具有路由所需字段。
 func IsGroupContextValid(group *Group) bool {
 	if group == nil {
 		return false
@@ -103,4 +104,30 @@ func MatchModelPattern(pattern, model string) bool {
 	}
 
 	return false
+}
+
+// CloneGroup 复制分组及其嵌套配置。
+func CloneGroup(g *Group) *Group {
+	return (*Group)(accessview.CloneGroupConfig((*accessview.GroupConfig)(g)))
+}
+
+const (
+	StatusActive                 = "active"
+	StatusDisabled               = "disabled"
+	PlatformOpenAI               = capability.PlatformOpenAI
+	PlatformAnthropic            = capability.PlatformAnthropic
+	PlatformGemini               = capability.PlatformGemini
+	PlatformAntigravity          = capability.PlatformAntigravity
+	PlatformQoder                = capability.PlatformQoder
+	PlatformGrok                 = capability.PlatformGrok
+	PlatformKimi                 = capability.PlatformKimi
+	PlatformZhipu                = capability.PlatformZhipu
+	PlatformDeepseek             = capability.PlatformDeepseek
+	featureKeyBedrockCCCompat    = "bedrock_cc_compat"
+	featureKeyWebSearchEmulation = "web_search_emulation"
+)
+
+// GroupAllowsResponsesImages 检查 Responses 图片策略，空分组默认允许，未设置策略时读取 AllowImageGeneration。
+func GroupAllowsResponsesImages(group *Group) bool {
+	return group == nil || group.ResponsesImagePolicy != "" || group.AllowImageGeneration
 }

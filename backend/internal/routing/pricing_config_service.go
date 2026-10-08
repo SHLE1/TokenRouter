@@ -8,11 +8,29 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
-	"golang.org/x/sync/singleflight"
 )
+
+// GroupAuthInvalidator 在分组提交后失效认证缓存。
+type (
+	GroupAuthInvalidator interface{ InvalidateAuthCacheByGroupID(context.Context, int64) }
+	PricingConfigOptions struct {
+		ReadGroup func(context.Context, int64) (*Group, error)
+		// Warn 接收读取失败诊断，日志后端由外层装配。
+		Warn         func(string, ...any)
+		Now          func() time.Time
+		LoadLocation func(string) (*time.Location, error)
+	}
+)
+
+// PricingConfigValidation 提供价格条目、冲突和时间规则校验。
+type PricingConfigValidation struct {
+	LoadLocation func(string) (*time.Location, error)
+}
 
 var (
 	ErrPricingConfigNotFound       = infraerrors.NotFound("PRICING_CONFIG_NOT_FOUND", "price configuration not found")
@@ -86,7 +104,7 @@ type GroupMappingResult struct {
 	PricingConfigID        int64  // 价格配置 ID（0 = 无价格配置关联）
 	Mapped                 bool   // 是否发生了映射
 	BillingModelSource     string // 计费模型来源（"requested" / "upstream" / "group_mapped"）
-	// ClientModel 仅用于展示和映射链；计费仍以调用方传入的 reqModel 为准。
+	// ClientModel 用于展示和模型映射记录。计费使用调用方传入的 reqModel。
 	ClientModel      string
 	APIKeyRedirected bool
 }
@@ -195,7 +213,7 @@ func newEmptyPricingConfigCache() *pricingConfigCache {
 	}
 }
 
-// expandPricingToCache 以分组和模型建立精确及通配符索引，不读取提供商平台。
+// expandPricingToCache 按分组和模型建立精确及通配符索引。
 func expandPricingToCache(cache *pricingConfigCache, config *PricingConfig, groupID int64) {
 	for i := range config.ModelPricing {
 		entry := &config.ModelPricing[i]
@@ -234,7 +252,7 @@ func (s *PricingConfigService) buildCache(ctx context.Context) (*pricingConfigCa
 	return cache, nil
 }
 
-// fetchPricingConfigData 一次读取价格配置及关联分组，不查询分组平台。
+// fetchPricingConfigData 一次读取价格配置及关联分组。
 func (s *PricingConfigService) fetchPricingConfigData(ctx context.Context) ([]PricingConfig, error) {
 	configs, err := s.repo.ListAll(ctx)
 	if err != nil {
@@ -245,7 +263,7 @@ func (s *PricingConfigService) fetchPricingConfigData(ctx context.Context) ([]Pr
 	return configs, nil
 }
 
-// populatePricingConfigCache 发布独立副本，避免管理输入修改热路径价卡。
+// populatePricingConfigCache 复制价格配置并建立查询缓存。
 func populatePricingConfigCache(configs []PricingConfig) *pricingConfigCache {
 	cache := newEmptyPricingConfigCache()
 	cache.loadedAt = time.Now()
@@ -271,7 +289,7 @@ func (s *PricingConfigService) invalidateCache() {
 	s.cache.Store((*pricingConfigCache)(nil))
 	s.cacheSF.Forget("pricing_config_cache")
 
-	// 主动重建缓存，确保 CRUD 后立即生效
+	// 写入完成后重建缓存。
 	if _, err := s.buildCache(context.Background()); err != nil {
 		s.warn("failed to rebuild pricing configuration cache after invalidation", "error", err)
 	}
@@ -399,7 +417,7 @@ func (s *PricingConfigService) ResolveGroupMapping(ctx context.Context, groupID 
 	return result
 }
 
-// IsModelRestricted 只检查分组白名单，策略读取失败时保持拒绝。
+// IsModelRestricted 检查分组白名单，策略读取失败时拒绝请求。
 func (s *PricingConfigService) IsModelRestricted(ctx context.Context, groupID int64, model string) bool {
 	policy, err := s.GetGroupPolicy(ctx, groupID)
 	if err != nil {
@@ -987,11 +1005,25 @@ func (s *PricingConfigService) ResolveRoutingModel(ctx context.Context, groupID 
 	return requestedModel
 }
 
-// GetEffectiveBillingSettings 不依赖模型条目，只有配置级开关的价表也能生效。
+// GetEffectiveBillingSettings 返回价格配置中的计费设置。
 func (s *PricingConfigService) GetEffectiveBillingSettings(ctx context.Context, groupID int64) pricing.BillingSettings {
 	config, err := s.GetPricingConfigForGroup(ctx, groupID)
 	if err != nil || config == nil {
 		return pricing.DefaultBillingSettings()
 	}
 	return config.BillingSettings.Clone()
+}
+
+// BillingModelForPrice 按价格配置的计费模型来源选择价格模型，且最早只从 Key 重定向目标开始。
+func BillingModelForPrice(mapping GroupMappingResult, requestedModel, groupMappedModel, upstreamModel string) string {
+	switch mapping.BillingModelSource {
+	case BillingModelSourceRequested:
+		return strings.TrimSpace(requestedModel)
+	case BillingModelSourceUpstream:
+		return strings.TrimSpace(upstreamModel)
+	case BillingModelSourceGroupMapped:
+		return strings.TrimSpace(groupMappedModel)
+	default:
+		return strings.TrimSpace(groupMappedModel)
+	}
 }

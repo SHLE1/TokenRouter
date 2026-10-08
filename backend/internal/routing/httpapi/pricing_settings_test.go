@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
 // TestBillingSettingsRequestPreservesNullablePrices 验证JSON null 需要清除覆盖，不能与更新时省略混为一谈。

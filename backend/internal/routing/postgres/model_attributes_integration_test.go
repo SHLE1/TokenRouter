@@ -8,11 +8,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/testutil/postgrescontainer"
 	"github.com/TokenFlux/TokenRouter/migrations"
-	"github.com/stretchr/testify/require"
 )
 
 // TestModelAttributeBatchLookup 验证真实数据库中的共享、停用和未关联分组。

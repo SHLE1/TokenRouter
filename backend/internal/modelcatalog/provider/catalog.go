@@ -36,6 +36,13 @@ func (s *Service) AttributesSnapshot() AttributeSnapshot {
 	return result
 }
 
+// BillingDefaults 返回当前目录版本的操作价格副本。
+func (s *Service) BillingDefaults() pricing.OperationPrices {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.billingDefaults.Clone()
+}
+
 // ModelAttributes 按完整的模型身份读取属性。
 func (s *Service) ModelAttributes(model string) modelcatalog.Attributes {
 	candidates := []string{model}
@@ -124,6 +131,21 @@ func applyModelSupplements(raw map[string]json.RawMessage, catalog *modelcatalog
 		}
 	}
 	return nil
+}
+
+// supplementFields 定义本地补充可填写的计费字段。
+var supplementFields = map[string]string{
+	"input_cost_per_token": "input", "output_cost_per_token": "output",
+	"input_cost_per_token_priority": "priority_input", "output_cost_per_token_priority": "priority_output",
+	"cache_read_input_token_cost": "cache_read", "cache_read_input_token_cost_priority": "priority_cache_read",
+	"cache_creation_input_token_cost": "cache_write", "cache_creation_input_token_cost_priority": "priority_cache_write",
+	"cache_creation_input_token_cost_above_1hr": "cache_write_1h",
+	"input_cost_per_image_token":                "image_input", "output_cost_per_image_token": "image_output", "output_cost_per_image": "image",
+	"image_prices": "image_prices", "video_prices": "video_prices",
+	"fast_multiplier": "fast_multiplier", "flex_multiplier": "flex_multiplier",
+	"max_reasoning_effort_multiplier": "max_reasoning_effort_multiplier",
+	"cache_write_multiplier":          "cache_write_multiplier", "cache_write_1h_multiplier": "cache_write_1h_multiplier",
+	"time_pricing": "time_pricing", "source_url": "source_url", "verified_at": "verified_at",
 }
 
 // mergeMediaSupplement 只填补允许的计费字段，目录已有值和零价均优先。

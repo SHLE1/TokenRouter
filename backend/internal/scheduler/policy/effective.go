@@ -332,3 +332,9 @@ func (w ScoreWeights) TotalWeightSum() float64 {
 func (w ScoreWeights) ValidGlobal() bool {
 	return ValidateEffectiveWeights(w) == nil && w.BaseWeightSum() > 0
 }
+
+// 消息串行和节流模式使用配置中的字符串值。
+const (
+	MessageQueueSerialize = "serialize"
+	MessageQueueThrottle  = "throttle"
+)

@@ -3,11 +3,11 @@ package httpapi
 import (
 	"maps"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	"github.com/gin-gonic/gin"
 )
 
 // ProtocolProviderProfile 描述可展示的原生选项，不包含令牌或提供商标识。

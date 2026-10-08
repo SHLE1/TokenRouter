@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/lib/pq"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 // batchLoadProviderStatsPricingRules 批量加载多个共享价格配置的提供商统计定价规则（含模型定价）

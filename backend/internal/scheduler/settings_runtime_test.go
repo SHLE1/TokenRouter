@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
 // runtimeSettingFixture 记录批量读取失败后逐键读取的完整键序列。

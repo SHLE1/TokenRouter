@@ -87,12 +87,12 @@ func WrapRelease(ctx context.Context, mode ReleaseMode, release func()) func() {
 	return NewLease(ctx, mode, release).Release
 }
 
-// AttemptOutcome 中 Served 包括既有可结算部分结果；它决定空闲会话是否继续保留。
+// AttemptOutcome 中 Served 包括可结算的部分结果，决定空闲会话是否继续保留。
 type AttemptOutcome struct {
 	Served bool
 }
 
-// AttemptLease 独立管理本次提供商尝试，父请求仍可在其结束后按旧规则尝试其他提供商。
+// AttemptLease 管理本次提供商尝试的资源，父请求可在其结束后继续尝试其他提供商。
 type AttemptLease struct {
 	resources *Lease
 	finish    func(AttemptOutcome)
@@ -123,3 +123,26 @@ func (a *AttemptLease) Finish(outcome AttemptOutcome) {
 
 // Release 将尚未完成的尝试按失败结果结束。
 func (a *AttemptLease) Release() { a.Finish(AttemptOutcome{}) }
+
+// requestLeaseKey 标识 context 中管理当前请求资源的 Lease。
+type requestLeaseKey struct{}
+
+// WithRequestLease 将已经取得的用户租约传递给后续提供商尝试，执行层继续决定释放时机。
+func WithRequestLease(ctx context.Context, lease *Lease) context.Context {
+	return context.WithValue(ctx, requestLeaseKey{}, lease)
+}
+
+func RequestLease(ctx context.Context) *Lease {
+	if ctx == nil {
+		return nil
+	}
+	lease, _ := ctx.Value(requestLeaseKey{}).(*Lease)
+	return lease
+}
+
+// ownRequestResource 登记请求异常返回时的清理函数，attempt 完成和请求清理共用一次释放。
+func ownRequestResource(ctx context.Context, release func()) {
+	if owner := RequestLease(ctx); owner != nil {
+		owner.Own(release)
+	}
+}

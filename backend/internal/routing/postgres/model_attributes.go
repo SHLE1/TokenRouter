@@ -7,11 +7,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+	"github.com/lib/pq"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/lib/pq"
 )
 
 // ModelAttributeStore 独立保存属性档案，所有写操作在事务内替换分组关联。

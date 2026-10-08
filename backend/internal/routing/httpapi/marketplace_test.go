@@ -5,9 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 // marketplaceHTTPGroups 提供带可见模型的公开分组。

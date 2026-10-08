@@ -3,9 +3,10 @@ package routing_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/stretchr/testify/require"
 )
 
 // TestGroupClientProtocolsDoNotRecoverLegacyPolicy 锁定空集合即全部禁用，不读取旧开关恢复协议。

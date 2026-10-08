@@ -5,13 +5,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/gin-gonic/gin"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 func NewPricingHandler(pricingConfigs *routing.PricingConfigService, catalog *routing.PricingCatalog) *PricingHandler {
