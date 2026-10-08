@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
@@ -15,6 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )

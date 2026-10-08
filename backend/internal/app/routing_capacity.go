@@ -5,13 +5,10 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
-
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // provideGroupCapacity 绑定提供商存储及并发、会话和 RPM 实例，查询时读取动态设置。

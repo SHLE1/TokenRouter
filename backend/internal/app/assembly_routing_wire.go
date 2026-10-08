@@ -3,12 +3,11 @@
 package app
 
 import (
-	routinghttp "github.com/TokenFlux/TokenRouter/internal/routing/httpapi"
-
-	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
+	"github.com/google/wire"
 
 	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
-	"github.com/google/wire"
+	routinghttp "github.com/TokenFlux/TokenRouter/internal/routing/httpapi"
+	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 )
 
 // routingAssemblyProviders 汇总 routing 模块的 Wire provider。

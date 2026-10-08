@@ -3,19 +3,14 @@ package app
 import (
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/notification"
-
 	"github.com/TokenFlux/TokenRouter/internal/config"
-
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
-
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-
 	identityadapter "github.com/TokenFlux/TokenRouter/internal/identity/provider"
-
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/notification"
 )
 
 // provideTotp 绑定身份存储、通知接口和设置接口。

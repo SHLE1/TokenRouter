@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
+
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	keydto "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi/dto"
 	billinghttp "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
@@ -19,8 +22,6 @@ import (
 	routinghttp "github.com/TokenFlux/TokenRouter/internal/routing/httpapi"
 	routingdto "github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 	usagehttp "github.com/TokenFlux/TokenRouter/internal/usage/httpapi/admin"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
 )
 
 // TestIdempotencyHTTPUsesExplicitApplicationCoordinator 检查写入口共享协调器，以及各次装配的处理期限独立生效。

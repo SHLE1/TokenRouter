@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	egresspg "github.com/TokenFlux/TokenRouter/internal/egress/postgres"
@@ -22,7 +24,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/redis/go-redis/v9"
 )
 
 func provideModerationStore(db *sql.DB) moderation.ContentModerationRepository {

@@ -5,33 +5,22 @@ import (
 	"net/http"
 	"time"
 
-	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
-	"github.com/TokenFlux/TokenRouter/internal/ops"
+	"github.com/gin-gonic/gin"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-
-	identitysettings "github.com/TokenFlux/TokenRouter/internal/identity"
-
+	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/app/bootstrap"
-
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
-
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
-
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	identitysettings "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
-
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
-
 	"github.com/TokenFlux/TokenRouter/internal/site"
-
-	"github.com/gin-gonic/gin"
 )
 
 // provideSecretEncryptor 使用启动配置创建 AES 加密器。

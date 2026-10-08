@@ -1,6 +1,6 @@
 //go:build integration
 
-package app_test
+package app
 
 import (
 	"context"
@@ -11,14 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/app"
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providerhttp "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
-	"github.com/stretchr/testify/require"
 )
 
 type antigravityProbeBody struct {
@@ -56,14 +56,14 @@ func TestNativeAntigravityProbeAssembly(t *testing.T) {
 	f := newDatabaseFixture(t)
 	store := providerpostgres.NewProviderStore(f.client, f.db, providerpostgres.ProviderStoreOptions{})
 	cfg := &config.Config{}
-	runtime := app.NewProviderHealthRuntimeForTest(store, nil, cfg, nil, nil, nil, nil, nil)
+	runtime := NewProviderHealthRuntimeForTest(store, nil, cfg, nil, nil, nil, nil, nil)
 	tokens := &provider.AntigravityTokenSource{}
 	transport := &antigravityProbeTransport{}
-	retry := app.NewAntigravityRetryForTest(store, nil, runtime, nil, transport, cfg)
+	retry := NewAntigravityRetryForTest(store, nil, runtime, nil, transport, cfg)
 	manager := lifecycle.New()
-	activity := app.NewGatewayActivityForTest(manager)
-	probe := app.NewAntigravityProbeForTest(tokens, retry, activity)
-	core := app.NewProviderTestsForTest(store, nil, nil, nil, probe, transport, cfg, nil, nil, nil, nil, manager)
+	activity := NewGatewayActivityForTest(manager)
+	probe := NewAntigravityProbeForTest(tokens, retry, activity)
+	core := NewProviderTestsForTest(store, nil, nil, nil, probe, transport, cfg, nil, nil, nil, nil, manager)
 	require.Empty(t, transport.requests)
 
 	row, err := f.client.Provider.Create().SetName("test-antigravity-probe").SetPlatform(provider.PlatformAntigravity).SetType(provider.ProviderTypeOAuth).SetCredentials(map[string]any{
@@ -101,3 +101,10 @@ func TestNativeAntigravityProbeAssembly(t *testing.T) {
 	require.Error(t, err)
 	require.Len(t, transport.requests, before, "关闭屏障后不再开始供应商推理")
 }
+
+// 这些构造函数供集成测试组合平台探测和应用任务跟踪器。
+var (
+	NewAntigravityRetryForTest = provideAntigravityRetry
+	NewAntigravityProbeForTest = provideAntigravityProbe
+	NewGatewayActivityForTest  = provideGatewayRequestActivity
+)

@@ -4,24 +4,18 @@ import (
 	"context"
 	"time"
 
+	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/notification"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/site"
-
-	dbent "github.com/TokenFlux/TokenRouter/ent"
-
-	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
-
-	"github.com/TokenFlux/TokenRouter/internal/config"
-
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-
-	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
 // identityAuthSettings 组合各模块的身份设置读取接口。

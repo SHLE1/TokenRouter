@@ -5,10 +5,9 @@ import (
 	"fmt"
 
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
+	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-
-	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
 type opsRuntimeReady struct{}

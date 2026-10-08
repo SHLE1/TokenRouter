@@ -3,11 +3,10 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/payment"
-
-	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
-
 	"github.com/google/wire"
+
+	"github.com/TokenFlux/TokenRouter/internal/payment"
+	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
 )
 
 // paymentAssemblyProviders 汇总 payment 模块的 Wire provider。

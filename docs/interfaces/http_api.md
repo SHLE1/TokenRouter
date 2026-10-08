@@ -52,10 +52,10 @@ RequestLogger
 | --- | --- | --- |
 | `/health`、`/setup/status` | 无 | `server/router.go`；进程健康检查和正常模式下的 setup 状态 |
 | `/api/event_logging/batch` | 无 | 兼容 Claude Code 遥测的空接收端，固定返回成功 |
-| `/api/v1/auth/*` | 大多公开，账户管理的子流程按路由加 JWT 或短期状态 | `app/http_routes_auth.go`；注册、登录、刷新、找回密码、OAuth、Passkey 登录和身份补全 |
-| `/api/v1/user/*`、`/keys`、`/team`、`/groups`、`/subscriptions`、`/redeem` 等 | 用户 JWT | `app/http_routes_user.go`；用户面板的资源、团队、Key、用量和权益查询 |
+| `/api/v1/auth/*` | 大多公开，账户管理的子流程按路由加 JWT 或短期状态 | `app/http_routes.go`；注册、登录、刷新、找回密码、OAuth、Passkey 登录和身份补全 |
+| `/api/v1/user/*`、`/keys`、`/team`、`/groups`、`/subscriptions`、`/redeem` 等 | 用户 JWT | `app/http_routes.go`；用户面板的资源、团队、Key、用量和权益查询 |
 | `/api/v1/admin/*` | 管理员 JWT 或受限的管理密钥；部分操作还需要 step-up | `app/http_routes_admin.go`；用户、分组、提供商、价格配置、设置、运维、备份、支付和安全管理 |
-| `/api/v1/payment/*` | 用户 JWT | `app/http_routes_payment.go`；读取配置和套餐、下单、查单、取消、invoice 和申请退款 |
+| `/api/v1/payment/*` | 用户 JWT | `app/http_routes.go`；读取配置和套餐、下单、查单、取消、invoice 和申请退款 |
 | `/api/v1/payment/public/*` | 签名的 resume token，或旧订单的验证约束 | 恢复支付结果；这组接口只服务已知订单，匿名列举订单是不允许的 |
 | `/api/v1/payment/webhook/*` | 提供商验签 | EasyPay、Alipay、WeChat Pay、Stripe、Airwallex 的通知 |
 | `/v1/*` 和兼容的裸路径别名 | TokenRouter API Key | Anthropic 和 OpenAI 兼容的消息、Responses、Chat、图片、视频、模型、用量和批任务 |
@@ -124,7 +124,7 @@ One Tap 设置或 Google OAuth 配置无效、backend mode、启用了腾讯或�
 
 ## 创作台接口
 
-创作台（Creative Studio）使用 `/api/v1/creative/*` 路由族，需要用户 JWT（在 `app/http_routes_user.go` 注册，返回统一 envelope），用于个人的图片生成、编辑和局部重绘任务：
+创作台（Creative Studio）使用 `/api/v1/creative/*` 路由族，需要用户 JWT（在 `app/http_routes.go` 注册，返回统一 envelope），用于个人的图片生成、编辑和局部重绘任务：
 
 ```text
 GET  /api/v1/creative/models

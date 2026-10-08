@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	egresspg "github.com/TokenFlux/TokenRouter/internal/egress/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/search"
@@ -10,7 +12,6 @@ import (
 	searchadapter "github.com/TokenFlux/TokenRouter/internal/search/provider"
 	"github.com/TokenFlux/TokenRouter/internal/search/rediscache"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
-	"github.com/redis/go-redis/v9"
 )
 
 func provideSearchRegistry() *search.Registry {

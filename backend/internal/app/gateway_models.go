@@ -3,19 +3,19 @@ package app
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
-	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+	"github.com/gin-gonic/gin"
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/config"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
-	"github.com/gin-gonic/gin"
 )
 
 // provideModelsHTTP 构造四个模型目录查询入口。
@@ -69,4 +69,12 @@ func (p geminiModelReadTarget) Read(ctx context.Context, path string) (*gatewayh
 		return nil, err
 	}
 	return &gatewayhttp.ModelHTTPResponse{StatusCode: value.StatusCode, Headers: value.Headers, Body: value.Body}, err
+}
+
+// resolveModelsListReadLimit 返回模型目录读取上限，缺省或非正值使用默认值。
+func resolveModelsListReadLimit(cfg *config.Config) int64 {
+	if cfg != nil && cfg.Gateway.ModelsListReadMaxBytes > 0 {
+		return cfg.Gateway.ModelsListReadMaxBytes
+	}
+	return config.DefaultModelsListReadMaxBytes
 }

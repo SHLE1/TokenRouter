@@ -3,13 +3,8 @@ package app
 import (
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/textattempt"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/telemetry"
-	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
-
-	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -18,14 +13,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/textattempt"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/telemetry"
+	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	openaiwire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-	"go.uber.org/zap"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
 // provideMessageHTTPBindings 为消息 HTTP 入口绑定依赖，执行组件由单独的构造函数提供。

@@ -10,28 +10,104 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
-	catalogtest "github.com/TokenFlux/TokenRouter/internal/modelcatalog/testkit"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing/testkit"
-
-	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
-
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	"github.com/TokenFlux/TokenRouter/internal/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	"github.com/TokenFlux/TokenRouter/internal/config"
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
+	catalogtest "github.com/TokenFlux/TokenRouter/internal/modelcatalog/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/TokenFlux/TokenRouter/internal/routing/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
+
+// TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases 检查 Gemini 与普通模型目录共用候选，自定义列表及 Key 别名取可用候选的交集。
+func TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases(t *testing.T) {
+	groupID := int64(42)
+	source := &gatewayModelsProviderRepoStub{byGroup: map[int64][]provider.Record{groupID: {
+		{ID: 1, Platform: "gemini", Type: "apikey", Credentials: map[string]any{"model_whitelist": []string{"gemini-2.5-pro", "gemini-custom", "gemini-2.5-flash"}}},
+		{ID: 2, Platform: "anthropic", Type: "apikey", Credentials: map[string]any{"model_whitelist": []string{"claude-sonnet-4-6"}}},
+	}}}
+	handler := newGatewayModelsHandlerForTest(source)
+	key := &apikey.APIKey{GroupID: &groupID, Group: &routing.Group{ID: groupID, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolGeminiGenerateContent}, ModelsListConfig: routing.GroupModelsListConfig{Enabled: true, Models: []string{"gemini-2.5-pro", "gemini-custom", "phantom", "claude-sonnet-4-6"}}}, ModelMapping: map[string]string{"my-gemini": "gemini-2.5-pro", "custom-alias": "gemini-custom", "unlisted-alias": "gemini-2.5-flash", "wildcard-*": "gemini-2.5-pro"}}
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1beta/models", nil)
+	c.Set(string(keyhttp.ContextKeyAPIKey), key)
+	handler.GeminiV1BetaListModels(c)
+	require.Equal(t, 200, rec.Code)
+	var got gemini.ModelsListResponse
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Len(t, got.Models, 4)
+	pro := gemini.Model{Name: "models/gemini-2.5-pro", DisplayName: "gemini-2.5-pro", SupportedGenerationMethods: []string{"generateContent", "streamGenerateContent"}}
+	custom := gemini.Model{Name: "models/gemini-custom", DisplayName: "gemini-custom", SupportedGenerationMethods: []string{"generateContent", "streamGenerateContent"}}
+	require.Equal(t, []gemini.Model{pro, custom}, got.Models[:2])
+	pro.Name, pro.DisplayName = "models/my-gemini", "my-gemini"
+	custom.Name, custom.DisplayName = "models/custom-alias", "custom-alias"
+	require.ElementsMatch(t, []gemini.Model{pro, custom}, got.Models[2:])
+	for _, test := range []struct {
+		name   string
+		status int
+	}{{"my-gemini", 200}, {"gemini-2.5-pro", 200}, {"phantom", 404}, {"gemini-2.5-flash", 404}, {"claude-sonnet-4-6", 404}} {
+		rec := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(rec)
+		c.Request = httptest.NewRequest(http.MethodGet, "/v1beta/models/"+test.name, nil)
+		c.Params = gin.Params{{Key: "model", Value: "/" + test.name}}
+		c.Set(string(keyhttp.ContextKeyAPIKey), key)
+		handler.GeminiV1BetaGetModel(c)
+		require.Equal(t, test.status, rec.Code, test.name)
+	}
+}
+
+func TestGeminiV1BetaCustomListCannotInventProviders(t *testing.T) {
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1beta/models", nil)
+	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{Group: &routing.Group{ID: 42, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolGeminiGenerateContent}, ModelsListConfig: routing.GroupModelsListConfig{Enabled: true, Models: []string{"gemini-2.5-pro"}}}})
+	provideModelsHTTP(nil, nil, nil, nil, nil).GeminiV1BetaListModels(c)
+	require.Equal(t, 200, rec.Code)
+	require.JSONEq(t, `{"models":[]}`, rec.Body.String())
+}
+
+func TestGeminiV1BetaForcedAntigravityKeepsGroupRestrictions(t *testing.T) {
+	groupID := int64(43)
+	source := &gatewayModelsProviderRepoStub{byGroup: map[int64][]provider.Record{groupID: {
+		{ID: 1, Platform: "antigravity", Type: "oauth", Credentials: map[string]any{"model_whitelist": []string{"gemini-3-flash"}}},
+		{ID: 2, Platform: "gemini", Type: "apikey", Credentials: map[string]any{"model_whitelist": []string{"gemini-2.5-pro"}}},
+	}}}
+	handler := newGatewayModelsHandlerForTest(source)
+	group := &routing.Group{ID: groupID, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolGeminiGenerateContent}, ModelsListConfig: routing.GroupModelsListConfig{Enabled: true, Models: []string{"gemini-3-flash", "gemini-2.5-pro"}}}
+	for _, allowed := range []bool{true, false} {
+		if !allowed {
+			group.AllowedProtocols = nil
+		}
+		rec := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(rec)
+		c.Request = httptest.NewRequest(http.MethodGet, "/antigravity/v1beta/models", nil)
+		c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{GroupID: &groupID, Group: group})
+		c.Set(string(keyhttp.ContextKeyForcePlatform), "antigravity")
+		handler.GeminiV1BetaListModels(c)
+		if !allowed {
+			require.Equal(t, 403, rec.Code)
+			continue
+		}
+		require.Equal(t, 200, rec.Code)
+		var got gemini.ModelsListResponse
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+		require.Len(t, got.Models, 1)
+		require.Equal(t, "models/gemini-3-flash", got.Models[0].Name)
+	}
+}
 
 // 夹具提供模型目录查询所需的数据。
 type modelHTTPProviderRows interface {
@@ -1203,15 +1279,6 @@ func modelIDsForTest(models []gatewayModelItemForTest) []string {
 	return ids
 }
 
-// modelCatalogueEmptyPrices 让仅测试提供商目录的夹具提供合法的空价格仓储。
-type modelCatalogueEmptyPrices struct {
-	routing.PricingConfigRepository
-}
-
-func (modelCatalogueEmptyPrices) ListAll(context.Context) ([]routing.PricingConfig, error) {
-	return nil, nil
-}
-
 // gatewayModelCatalogFixture 为网关目录测试声明明确的可查询元数据。
 func gatewayModelCatalogFixture() *catalogtest.Catalog {
 	c := catalogtest.New("claude-opus-4-6", "claude-opus-4-8", "gpt-5", "gpt-5.5", "claude-fable-5", "claude-sonnet-4-6", "claude-sonnet-4-5-20250929", "gpt-5.4", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gemini-2.5-flash", "gemini-3.1-flash-image", "grok-4.5", "grok-4.6")
@@ -1231,4 +1298,103 @@ func gatewayModelCatalogFixture() *catalogtest.Catalog {
 	name := "Claude Fable 5"
 	c.Entries["claude-fable-5"] = modelcatalog.Entry{Model: "claude-fable-5", Provider: "anthropic", Attributes: modelcatalog.Attributes{DisplayName: &name}}
 	return c
+}
+
+func TestResolveModelsListReadLimit(t *testing.T) {
+	t.Run("nil config uses default", func(t *testing.T) {
+		require.Equal(t, config.DefaultModelsListReadMaxBytes, resolveModelsListReadLimit(nil))
+	})
+
+	t.Run("configured limit wins", func(t *testing.T) {
+		cfg := &config.Config{}
+		cfg.Gateway.ModelsListReadMaxBytes = 16 << 20
+		require.Equal(t, int64(16<<20), resolveModelsListReadLimit(cfg))
+	})
+
+	t.Run("non-positive limit uses default", func(t *testing.T) {
+		cfg := &config.Config{}
+		require.Equal(t, config.DefaultModelsListReadMaxBytes, resolveModelsListReadLimit(cfg))
+	})
+}
+
+// codexModelsRemovalProviderRepo 提供仅含 API Key 提供商的分组模型数据。
+type codexModelsRemovalProviderRepo struct {
+	modelHTTPProviderRows
+	providers []provider.Record
+}
+
+func (r *codexModelsRemovalProviderRepo) ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error) {
+	return append([]provider.Record(nil), r.providers...), nil
+}
+
+// TestGatewayRoutesModelsWithClientVersionUsesLocalList 验证带 client_version 的模型请求应继续返回纯 API Key 分组的本地模型列表。
+func TestGatewayRoutesModelsWithClientVersionUsesLocalList(t *testing.T) {
+	repo := &codexModelsRemovalProviderRepo{
+		providers: []provider.Record{
+			{
+				ID:       1,
+				Platform: capability.PlatformOpenAI,
+				Type:     capability.ProviderTypeAPIKey,
+				Credentials: map[string]any{
+					"api_key":         "sk-test",
+					"model_whitelist": []string{"local-api-key-model"},
+					"model_mapping": map[string]any{
+						"local-api-key-model": "local-api-key-model",
+					},
+				},
+			},
+		},
+	}
+	router := newGatewayRoutesTestRouterWithGroup(&config.Config{}, &routing.Group{
+		ID: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions},
+	}, newGatewayModelsHandlerForTest(repo))
+	paths := []string{
+		"/v1/models?client_version=0.144.0",
+		"/models?client_version=0.144.0",
+	}
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			recorder := httptest.NewRecorder()
+
+			router.ServeHTTP(recorder, req)
+
+			require.Equal(t, http.StatusOK, recorder.Code)
+			require.NotContains(t, recorder.Body.String(), "No available OpenAI OAuth providers")
+			var response struct {
+				Object string `json:"object"`
+				Data   []struct {
+					ID string `json:"id"`
+				} `json:"data"`
+			}
+			require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &response))
+			require.Equal(t, "list", response.Object)
+			require.Len(t, response.Data, 1)
+			require.Equal(t, "local-api-key-model", response.Data[0].ID)
+		})
+	}
+}
+
+// TestGatewayRoutesCodexModelsManifestPathIsRemoved 检查 Codex manifest 路径返回 404，Responses 兼容路由仍可访问。
+func TestGatewayRoutesCodexModelsManifestPathIsRemoved(t *testing.T) {
+	router := newGatewayRoutesTestRouter(capability.PlatformOpenAI)
+
+	req := httptest.NewRequest(http.MethodGet, "/backend-api/codex/models?client_version=0.144.0", nil)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+	require.Equal(t, http.StatusNotFound, recorder.Code)
+
+	// 合法 Live call 动态段进入 Sideband handler。
+	req = httptest.NewRequest(http.MethodGet, "/backend-api/codex/call_test", nil)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+	require.NotEqual(t, http.StatusNotFound, recorder.Code)
+
+	registered := make(map[string]string)
+	for _, route := range router.Routes() {
+		registered[route.Method+" "+route.Path] = route.Handler
+	}
+	require.NotEmpty(t, registered[http.MethodPost+" /backend-api/codex/responses"])
+	require.Empty(t, registered[http.MethodGet+" /backend-api/codex/models"])
+	require.Equal(t, registered[http.MethodGet+" /v1/models"], registered[http.MethodGet+" /models"])
 }

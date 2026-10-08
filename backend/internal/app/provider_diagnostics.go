@@ -4,11 +4,10 @@ import (
 	"context"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	schedulerhttp "github.com/TokenFlux/TokenRouter/internal/scheduler/httpapi"
 )
 

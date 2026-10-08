@@ -4,11 +4,7 @@ import (
 	"context"
 	"time"
 
-	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"go.uber.org/zap"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
@@ -16,18 +12,21 @@ import (
 	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
+	creativehttp "github.com/TokenFlux/TokenRouter/internal/creative/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"go.uber.org/zap"
 )
 
 // provideCreativePublic 绑定创作任务、资金及查询接口，共享应用存储实例。
@@ -209,4 +208,9 @@ func creativeObserve(event string, values ...any) {
 		fields = append(fields, zap.Any(key, values[i+1]))
 	}
 	logging.L().Warn(event, fields...)
+}
+
+// provideCreativeSettingsHTTP 直接读取唯一创作运行时与模型目录。
+func provideCreativeSettingsHTTP(public *creative.Public, worker *creative.CreativeWorkerRuntime) *creativehttp.SettingsHandler {
+	return creativehttp.NewSettingsHandler(public, worker.Status)
 }
