@@ -18,9 +18,29 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"github.com/TokenFlux/TokenRouter/internal/notification/contract"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+	"github.com/TokenFlux/TokenRouter/internal/settings"
+)
+
+// SettingRepository 读写通知设置。
+type SettingRepository = settings.Repository
+
+// ErrSettingNotFound 表示通知设置不存在。
+var ErrSettingNotFound = settings.ErrSettingNotFound
+
+type (
+	NotificationEmailSendInput = SendRequest
+	Sender                     interface {
+		SendEmail(context.Context, string, string, string) error
+	}
+)
+
+const (
+	defaultSiteName       = "TokenRouter"
+	SettingKeySiteName    = "site_name"
+	SettingKeyAPIBaseURL  = "api_base_url"
+	SettingKeyFrontendURL = "frontend_url"
 )
 
 const (

@@ -32,6 +32,7 @@ func IsValidUsageRankingSortBy(value string) bool {
 		return false
 	}
 }
+
 func NormalizeUsageRankingSortByInternal(value string) UsageRankingSortBy {
 	if IsValidUsageRankingSortBy(value) {
 		return UsageRankingSortBy(strings.TrimSpace(value))
@@ -58,6 +59,7 @@ func NormalizeUsageRankingSettings(settings UsageRankingSettings) UsageRankingSe
 	}
 	return settings
 }
+
 func NormalizeUsageRankingLimit(value int) int {
 	if value <= 0 {
 		return DefaultUsageRankingLimit
@@ -67,6 +69,7 @@ func NormalizeUsageRankingLimit(value int) int {
 	}
 	return value
 }
+
 func NormalizeUsageRankingLimitString(raw string) int {
 	value, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil {

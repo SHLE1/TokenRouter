@@ -5,11 +5,11 @@ import (
 	"html"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/notification"
 	"github.com/TokenFlux/TokenRouter/internal/notification/httpapi/dto"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	"github.com/gin-gonic/gin"
 )
 
 // TestSMTPRequest 测试SMTP连接请求
@@ -366,4 +366,15 @@ type (
 
 func New(email *notification.Mailer, n *notification.NotificationEmailService, site SiteNameReader) *Handler {
 	return &Handler{emailService: email, notificationEmailService: n, settingService: site}
+}
+
+// RegisterSettingsRoutes 登记 SMTP 测试和通知模板管理路由。
+func RegisterSettingsRoutes(adminSettings *gin.RouterGroup, endpoint *Handler) {
+	adminSettings.POST("/test-smtp", endpoint.TestSMTPConnection)
+	adminSettings.POST("/send-test-email", endpoint.SendTestEmail)
+	adminSettings.GET("/email-templates", endpoint.ListEmailTemplates)
+	adminSettings.POST("/email-template-preview", endpoint.PreviewEmailTemplate)
+	adminSettings.GET("/email-templates/:event/:locale", endpoint.GetEmailTemplate)
+	adminSettings.PUT("/email-templates/:event/:locale", endpoint.UpdateEmailTemplate)
+	adminSettings.POST("/email-templates/:event/:locale/restore-official", endpoint.RestoreOfficialEmailTemplate)
 }

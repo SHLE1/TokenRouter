@@ -96,10 +96,7 @@ func scanLayout(root string) ([]layoutViolation, error) {
 					return nil, fmt.Errorf("%s: %w", file.path, err)
 				}
 				eval := func(integration bool) bool {
-					if expr == nil {
-						return true
-					}
-					return expr.Eval(func(tag string) bool { return tag != "integration" || integration })
+					return layoutConstraintPossible(expr, map[string]bool{"integration": integration})
 				}
 				if strings.HasSuffix(file.name, "_integration_test.go") {
 					if eval(false) || !eval(true) {
@@ -168,6 +165,67 @@ func scanLayout(root string) ([]layoutViolation, error) {
 		return a.Rule+"\t"+a.Path < b.Rule+"\t"+b.Path
 	})
 	return violations, nil
+}
+
+// layoutConstraintPossible 固定 integration 后查找可满足的构建标签组合。
+// 平台与工具标签也可取 false，因此 !windows 等约束能参与检查。
+func layoutConstraintPossible(expr constraint.Expr, values map[string]bool) bool {
+	value, unknown := layoutConstraintValue(expr, values)
+	if unknown == "" {
+		return value
+	}
+	defer delete(values, unknown)
+	values[unknown] = true
+	if layoutConstraintPossible(expr, values) {
+		return true
+	}
+	values[unknown] = false
+	return layoutConstraintPossible(expr, values)
+}
+
+// layoutConstraintValue 返回已确定的结果，或一个还需赋值的标签。
+func layoutConstraintValue(expr constraint.Expr, values map[string]bool) (bool, string) {
+	switch node := expr.(type) {
+	case nil:
+		return true, ""
+	case *constraint.TagExpr:
+		value, ok := values[node.Tag]
+		if !ok {
+			return false, node.Tag
+		}
+		return value, ""
+	case *constraint.NotExpr:
+		value, unknown := layoutConstraintValue(node.X, values)
+		return !value, unknown
+	case *constraint.AndExpr:
+		left, unknownLeft := layoutConstraintValue(node.X, values)
+		if unknownLeft == "" && !left {
+			return false, ""
+		}
+		right, unknownRight := layoutConstraintValue(node.Y, values)
+		if unknownRight == "" && !right {
+			return false, ""
+		}
+		if unknownLeft != "" {
+			return false, unknownLeft
+		}
+		return left && right, unknownRight
+	case *constraint.OrExpr:
+		left, unknownLeft := layoutConstraintValue(node.X, values)
+		if unknownLeft == "" && left {
+			return true, ""
+		}
+		right, unknownRight := layoutConstraintValue(node.Y, values)
+		if unknownRight == "" && right {
+			return true, ""
+		}
+		if unknownLeft != "" {
+			return false, unknownLeft
+		}
+		return left || right, unknownRight
+	default:
+		panic(fmt.Sprintf("未支持的构建约束类型：%T", expr))
+	}
 }
 
 // layoutTestName 允许一个文件名按任一有效后缀匹配源文件。

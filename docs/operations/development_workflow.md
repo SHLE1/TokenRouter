@@ -157,8 +157,8 @@ GoLand 把 `X_test.go` 折叠在 `X.go` 下面，读者也靠这个名字从源�
 
 | 文件名 | 内容 | 要求 |
 | --- | --- | --- |
-| `X_test.go` | `X.go` 的单元测试、基准测试和模糊测试 | 同目录有 `X.go`；没有构建标签，或者只有 `!integration` |
-| `X_integration_test.go` | `X.go` 的集成测试 | 同目录有 `X.go`；`//go:build integration` |
+| `X_test.go` | `X.go` 的单元测试、基准测试和模糊测试 | 同目录有 `X.go`；存在不启用 `integration` 的构建组合 |
+| `X_integration_test.go` | `X.go` 的集成测试 | 同目录有 `X.go`；构建需要 `integration`，可附加平台等约束 |
 | `X_external_test.go` | `X.go` 的外部测试包（`package <包名>_test`）单元测试 | `X_test.go` 是包内测试，两者无法合并时使用 |
 | `X_external_integration_test.go` | 上一行的集成测试版本 | `//go:build integration` |
 | `main_test.go` | 包的 `TestMain` | 包里另有集成测试的 `TestMain` 时，加 `//go:build !integration` |
@@ -183,7 +183,7 @@ GoLand 把 `X_test.go` 折叠在 `X.go` 下面，读者也靠这个名字从源�
 
 `X_integration_test.go` 等三种带后缀的测试文件，需要在 GoLand 里加一条折叠规则：打开 Project 视图选项菜单里的 Appearance → File Nesting，找到父文件后缀为 `.go` 的规则（没有就新建一条），把子文件后缀改成 `_test.go; _integration_test.go; _external_test.go; _external_integration_test.go`。
 
-布局检查在 `tools/architecture/layout.go`，由 `make lint-go`、推送前快检和 CI 运行。检查规则为 `test-name`、`test-tag`、`test-external`、`test-main`、`file-stutter`、`file-vague`、`package-doc` 和 `package-comment`，分别检查测试命名、构建标签、外部测试包、TestMain 位置、重复包名前缀、模糊源文件名、包说明及包注释位置。迁移基线 `tools/architecture/layout_baseline.txt` 只能变短，修好的条目需要删除。
+布局检查在 `tools/architecture/layout.go`，由 `make lint-go`、推送前快检和 CI 运行。检查规则为 `test-name`、`test-tag`、`test-external`、`test-main`、`file-stutter`、`file-vague`、`package-doc` 和 `package-comment`，分别检查测试命名、构建标签、外部测试包、TestMain 位置、重复包名前缀、模糊源文件名、包说明及包注释位置。迁移基线 `tools/architecture/layout_baseline.txt` 只能变短，修好的条目需要删除。 构建标签检查固定 `integration` 的取值，再检查其他标签是否存在可满足的组合，因此支持 `!windows` 等平台约束。集成文件在关闭 `integration` 时的所有组合都需要排除，启用时至少有一种组合能参与构建。
 
 ## 生成代码与迁移
 
@@ -212,7 +212,7 @@ Ent schema 不是生产环境的迁移器。数据库的变更需要新建 `back
 
 后端测试按构建标签分三层：
 
-- 单元测试没有构建标签，`make test-go` 执行 `go test ./...`。外部依赖用 SQLite、miniredis、sqlmock 或本地 HTTP 夹具代替。
+- 单元测试可在关闭 `integration` 的构建组合中运行，也可按平台添加约束。`make test-go` 执行 `go test ./...`。外部依赖用 SQLite、miniredis、sqlmock 或本地 HTTP 夹具代替。
 - 集成测试带 `//go:build integration`，通过 Testcontainers 启动 PostgreSQL 和 Redis。`make test-integration` 用 grep 找出含这个标签的包，只编译和运行这些包，包级并发为 4。集成构建同时编译同包的无标签测试，这些包的单元测试会再运行一次。
 - embed 测试带 `//go:build embed`，读取前端生产构建的产物。`make test-embed` 对 `internal/web` 和 `cmd/server` 运行 lint 和测试。
 

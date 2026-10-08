@@ -5,11 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/lib/pq"
+
+	infra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/ops"
 )
 
 type Store struct {
@@ -175,8 +178,8 @@ func opsInsertErrorLogArgs(input *ops.OpsInsertErrorLogInput) []any {
 	}
 }
 
-// opsErrorLogsOrderBy 按白名单构建 ORDER BY 子句，与 usageLogOrderBy 的语义一致。
-// 未知 SortBy 回退到 created_at，并始终追加 e.id 作为稳定分页的决胜字段。
+// opsErrorLogsOrderBy 按白名单构建 ORDER BY 子句。
+// 未知 SortBy 回退到 created_at，末尾追加 e.id 以稳定分页顺序。
 func opsErrorLogsOrderBy(filter *ops.OpsErrorLogFilter) string {
 	sortBy := ""
 	sortOrder := ""
@@ -894,7 +897,7 @@ INSERT INTO ops_system_log_cleanup_audits (
 
 var likePatternReplacer = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
-// escapeLikePattern 转义 LIKE/ILIKE 通配符（\ % _），避免用户输入被当作通配符。
+// escapeLikePattern 转义 LIKE/ILIKE 中的反斜杠、百分号和下划线。
 // Postgres 默认以反斜杠为转义符，无需额外 ESCAPE 子句。
 func escapeLikePattern(s string) string {
 	return likePatternReplacer.Replace(s)
@@ -916,7 +919,7 @@ func buildOpsErrorLogsWhere(filter *ops.OpsErrorLogFilter) (string, []any) {
 	if filter != nil {
 		resolvedFilter = filter.Resolved
 	}
-	// 默认只展示客户端可见错误；Ops 上游健康列表可显式包含 upstream/provider_auth 恢复记录。
+	// 默认展示客户端可见错误，Ops 上游健康列表可包含 upstream/provider_auth 恢复记录。
 	// cyber_policy 流式命中可能是 200，但仍是对用户可见的拒绝，因此始终豁免。
 	if !opsFilterIncludesRecoveredProviderRows(filter, phaseFilter) {
 		clauses = append(clauses, "(COALESCE(e.status_code, 0) >= 400 OR e.error_type = 'cyber_policy')")
@@ -969,7 +972,7 @@ func buildOpsErrorLogsWhere(filter *ops.OpsErrorLogFilter) (string, []any) {
 	}
 
 	// View filter: errors vs excluded vs all.
-	// 过滤业务限制类错误和配置的客户端侧状态码，保持 SLA 口径只统计服务侧问题。
+	// SLA 统计排除业务限制类错误和配置的客户端侧状态码。
 	// Upstream 429/529 are included in errors view to match SLA calculation.
 	ignoredStatusCodes := []int(nil)
 	if filter != nil {
@@ -1239,8 +1242,8 @@ func opsNullInt(v any) any {
 	}
 }
 
-// opsNullableIntPointer 区分缺失值和显式观察到的零值，适用于状态码、连接池计数等零值有意义的字段。
-// 凭据阶段失败没有发起推理请求时，上游状态 0 也需要按同样语义持久化。
+// opsNullableIntPointer 区分缺失值和零值，适用于状态码、连接池计数等字段。
+// 凭据阶段失败且没有发起推理请求时，上游状态 0 也会写入数据库。
 func opsNullableIntPointer(v *int) any {
 	if v == nil {
 		return sql.NullInt64{}
@@ -1254,3 +1257,9 @@ func opsNullInt16(v *int16) any {
 	}
 	return sql.NullInt64{Int64: int64(*v), Valid: true}
 }
+
+// itoa 将 SQL 参数序号转换为字符串。
+func itoa(v int) string { return strconv.Itoa(v) }
+
+// nullInt64 将可选整数转换为 SQL 可空整数。
+func nullInt64(v *int64) sql.NullInt64 { return infra.NullableInt64(v) }

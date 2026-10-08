@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/lib/pq"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
 type AggregationStore struct {

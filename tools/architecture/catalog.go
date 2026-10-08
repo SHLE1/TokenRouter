@@ -384,11 +384,11 @@ var pureFileStandard = map[string]string{
 }
 
 var ioFileExceptions = map[string]string{
-	"internal/provider/health_spark.go":                          "net/http",
-	"internal/backup/backup_test.go":                             "database/sql",
-	"internal/gateway/httpapi/live_moderation_fixture_test.go":   "database/sql",
-	"internal/moderation/legacy_fixture_test.go":                 "database/sql",
-	"internal/usage/httpapi/admin/usage_cleanup_handler_test.go": "database/sql",
+	"internal/provider/health_spark.go":                        "net/http",
+	"internal/backup/backup_external_test.go":                  "database/sql",
+	"internal/gateway/httpapi/live_moderation_fixture_test.go": "database/sql",
+	"internal/moderation/legacy_fixture_test.go":               "database/sql",
+	"internal/usage/httpapi/admin/usage_handler_test.go":       "database/sql",
 }
 
 // 窄权限属于指定文件，不能由相邻文件或目标子包继承。
@@ -398,21 +398,21 @@ var filePermissions = []filePermission{
 	{Scope: "internal/provider/httpapi", Imports: "internal/modelcatalog/testkit", Files: "management_models_contract_test.go"},
 	// 容器启动等待由共用测试入口提供，许可限定到接入该入口的文件。
 	{Scope: "internal/infra/redis", Imports: "internal/testutil/rediscontainer", Files: "fixed_window_integration_test.go"},
-	{Scope: "internal/ops/postgres", Imports: "internal/testutil/rediscontainer", Files: "integration_harness_test.go"},
-	{Scope: "internal/ops/rediscache", Imports: "internal/testutil/rediscontainer", Files: "integration_harness_test.go"},
+	{Scope: "internal/ops/postgres", Imports: "internal/testutil/rediscontainer", Files: "main_integration_test.go"},
+	{Scope: "internal/ops/rediscache", Imports: "internal/testutil/rediscontainer", Files: "main_integration_test.go"},
 	{Scope: "internal/scheduler/rediscache", Imports: "internal/testutil/rediscontainer", Files: "main_integration_test.go"},
 	{Scope: "internal/search/provider", Imports: "internal/testutil/rediscontainer", Files: "redis_integration_test.go"},
-	{Scope: "internal/usage/postgres", Imports: "internal/testutil/rediscontainer", Files: "integration_harness_test.go"},
+	{Scope: "internal/usage/postgres", Imports: "internal/testutil/rediscontainer", Files: "main_integration_test.go"},
 	{Scope: "internal/usage/rediscache", Imports: "internal/testutil/rediscontainer", Files: "dashboard_integration_test.go"},
 	{Scope: "internal/testutil/rediscontainer", Imports: "github.com/testcontainers/testcontainers-go github.com/testcontainers/testcontainers-go/wait", Files: "run.go"},
 	{Scope: "migrations", Imports: "internal/billing/pricing", Files: "pricing_preview_fixture_test.go pricing_merge_fixture_test.go pricing_merge_test.go"},
 	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go provider_names_integration_test.go product_brand_integration_test.go antigravity_retirement_integration_test.go user_localization_integration_test.go responses_ws_integration_test.go"},
-	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_integration_test.go"},
+	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_scenario_integration_test.go"},
 	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: `admin_editor_fixture_test.go admin_legacy_extra_test.go
 admin_shadow_test.go`},
 	{Scope: "internal/apikey", Imports: "internal/apikey/postgres", Files: "admin_external_test.go"},
 	{Scope: "internal/apikey/postgres", Imports: "internal/billing/postgres internal/usage/postgres/query", Files: "key_store.go"},
-	{Scope: "internal/backup", Imports: "internal/backup/provider internal/infra/postgres", Files: "backup_test.go"},
+	{Scope: "internal/backup", Imports: "internal/backup/provider internal/infra/postgres", Files: "backup_external_test.go"},
 	{Scope: "internal/batchimage", Imports: "internal/batchimage/provider", Files: `cleanup_test.go download_test.go mvp_test.go pipeline_fixture_test.go
 processor_test.go public_fixture_test.go public_test.go
 result_usecase_fixture_test.go settlement_test.go`},
@@ -450,8 +450,8 @@ result_usecase_fixture_test.go settlement_test.go`},
 	{Scope: "internal/team/postgres", Imports: "internal/apikey/postgres internal/billing/postgres", Files: "team_test.go"},
 	{Scope: "internal/team/postgres", Imports: "internal/usage/postgres/query", Files: "team.go"},
 	{Scope: "internal/upstream/usagecontract", Imports: "net/http", Files: "request.go"},
-	{Scope: "internal/usage/postgres", Imports: "internal/audit/postgres", Files: "aggregation_audit_transactions_integration_test.go"},
-	{Scope: "internal/usage/postgres", Imports: "internal/billing/postgres", Files: "aggregation_fixture_test.go support.go"},
+	{Scope: "internal/usage/postgres", Imports: "internal/audit/postgres", Files: "aggregation_transactions_scenario_integration_test.go"},
+	{Scope: "internal/usage/postgres", Imports: "internal/billing/postgres", Files: "helpers_test.go support.go"},
 	{Scope: "internal/usage/postgres", Imports: "internal/apikey/postgres internal/identity/postgres internal/routing/postgres", Files: "support.go"},
 }
 

@@ -4,50 +4,18 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
-
-type GitHubReleaseServiceSuite struct {
-	suite.Suite
-	srv     *httptest.Server
-	client  *githubReleaseClient
-	tempDir string
-}
-
-// testTransport redirects requests to the test server
-type testTransport struct {
-	testServerURL string
-}
-
-func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Rewrite the URL to point to our test server
-	testURL := t.testServerURL + req.URL.Path
-	if req.URL.RawQuery != "" {
-		testURL += "?" + req.URL.RawQuery
-	}
-	//nolint:gosec // 测试 transport 只会重写到 httptest.Server 的固定地址。
-	newReq, err := http.NewRequestWithContext(req.Context(), req.Method, testURL, req.Body)
-	if err != nil {
-		return nil, err
-	}
-	newReq.Header = req.Header
-	return http.DefaultTransport.RoundTrip(newReq)
-}
-
-func newTestGitHubReleaseClient() *githubReleaseClient {
-	return &githubReleaseClient{
-		httpClient:         &http.Client{},
-		downloadHTTPClient: &http.Client{},
-	}
-}
 
 func TestGitHubReleaseClientAPIRequestAuthorization(t *testing.T) {
 	tests := []struct {
@@ -139,23 +107,6 @@ func TestGitHubReleaseClientDoesNotAuthorizeDownloads(t *testing.T) {
 	require.Len(t, headers, 2)
 	for _, header := range headers {
 		require.Empty(t, header.Get("Authorization"))
-	}
-}
-
-type githubReleaseRoundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f githubReleaseRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
-
-func (s *GitHubReleaseServiceSuite) SetupTest() {
-	s.tempDir = s.T().TempDir()
-}
-
-func (s *GitHubReleaseServiceSuite) TearDownTest() {
-	if s.srv != nil {
-		s.srv.Close()
-		s.srv = nil
 	}
 }
 
@@ -490,7 +441,86 @@ func TestGitHubReleaseServiceSuite(t *testing.T) {
 	suite.Run(t, new(GitHubReleaseServiceSuite))
 }
 
+type GitHubReleaseServiceSuite struct {
+	suite.Suite
+	srv     *httptest.Server
+	client  *githubReleaseClient
+	tempDir string
+}
+
+// testTransport redirects requests to the test server
+type testTransport struct {
+	testServerURL string
+}
+
+func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Rewrite the URL to point to our test server
+	testURL := t.testServerURL + req.URL.Path
+	if req.URL.RawQuery != "" {
+		testURL += "?" + req.URL.RawQuery
+	}
+	//nolint:gosec // 测试 transport 只会重写到 httptest.Server 的固定地址。
+	newReq, err := http.NewRequestWithContext(req.Context(), req.Method, testURL, req.Body)
+	if err != nil {
+		return nil, err
+	}
+	newReq.Header = req.Header
+	return http.DefaultTransport.RoundTrip(newReq)
+}
+
+func newTestGitHubReleaseClient() *githubReleaseClient {
+	return &githubReleaseClient{
+		httpClient:         &http.Client{},
+		downloadHTTPClient: &http.Client{},
+	}
+}
+
+type githubReleaseRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f githubReleaseRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func (s *GitHubReleaseServiceSuite) SetupTest() {
+	s.tempDir = s.T().TempDir()
+}
+
+func (s *GitHubReleaseServiceSuite) TearDownTest() {
+	if s.srv != nil {
+		s.srv.Close()
+		s.srv = nil
+	}
+}
+
 // NewGitHubReleaseClient 旧构造形状用于原环境变量测试。
 func NewGitHubReleaseClient(proxy string, allow bool) ReleaseClient {
 	return NewReleaseClient(ReleaseOptions{ProxyURL: proxy, AllowDirectOnProxyError: allow, GitHubToken: os.Getenv("UPDATE_GITHUB_TOKEN")})
+}
+
+var (
+	canListenOnce sync.Once
+	canListen     bool
+	canListenErr  error
+)
+
+func localListenerAvailable() bool {
+	canListenOnce.Do(func() {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			canListenErr = err
+			canListen = false
+			return
+		}
+		_ = ln.Close()
+		canListen = true
+	})
+	return canListen
+}
+
+func newLocalTestServer(tb testing.TB, handler http.Handler) *httptest.Server {
+	tb.Helper()
+	if !localListenerAvailable() {
+		tb.Skipf("local listeners are not permitted in this environment: %v", canListenErr)
+	}
+	return httptest.NewServer(handler)
 }

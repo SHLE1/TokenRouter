@@ -6,9 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"github.com/TokenFlux/TokenRouter/internal/notification/contract"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
 type Mailer struct {
@@ -136,3 +135,11 @@ func (s *Mailer) SendUserNotification(ctx context.Context, input SendRequest) er
 	}
 	return sender.Send(ctx, input)
 }
+
+type (
+	SMTPConfig    = contract.SMTPConfig
+	SMTPTransport interface {
+		Send(context.Context, *SMTPConfig, string, string, string) error
+		Test(context.Context, *SMTPConfig) error
+	}
+)
