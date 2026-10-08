@@ -16,16 +16,16 @@ const (
 )
 
 // ResponsesWSConnectionMode 返回已保存的连接方式，缺省时复用连接。
-func (a *Record) ResponsesWSConnectionMode() string {
-	if a != nil && a.Extra[ResponsesWSConnectionModeKey] == ResponsesWSPerSession {
+func (r *Record) ResponsesWSConnectionMode() string {
+	if r != nil && r.Extra[ResponsesWSConnectionModeKey] == ResponsesWSPerSession {
 		return ResponsesWSPerSession
 	}
 	return ResponsesWSPooled
 }
 
 // SupportsResponsesWS 根据上游协议集合判断是否可以直接建立 Responses WS。
-func (a *Record) SupportsResponsesWS() bool {
-	return a != nil && a.IsOpenAI() && slices.Contains(a.UpstreamProtocols(), capability.ProtocolResponsesWebSocket)
+func (r *Record) SupportsResponsesWS() bool {
+	return r != nil && r.IsOpenAI() && slices.Contains(r.UpstreamProtocols(), capability.ProtocolResponsesWebSocket)
 }
 
 // parseResponsesWSConnectionMode 校验所有保存入口使用的连接方式。

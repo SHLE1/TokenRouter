@@ -186,10 +186,7 @@ func TestBatchImageMVPFlow(t *testing.T) {
 }
 
 func batchImageSmokeResultJSONL() string {
-	return strings.Join([]string{
-		`{"key":"cover_001","response":{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"c21va2UtcG5n"}}]}}]}}`,
-		`{"key":"cover_002","status":{"code":3,"message":"blocked by safety policy"}}`,
-	}, "\n") + "\n"
+	return `{"key":"cover_001","response":{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"c21va2UtcG5n"}}]}}]}}` + "\n" + `{"key":"cover_002","status":{"code":3,"message":"blocked by safety policy"}}` + "\n"
 }
 
 func mustMarshalBatchImageSmokeJSON(t *testing.T, value any) string {

@@ -36,31 +36,26 @@ func newTestGatewayHandler(t *testing.T, group *routing.Group, providers []*gate
 	schedulerSnapshot := scheduler.NewSnapshotService(schedulerCache, nil, nil, nil, nil, scheduler.SnapshotBindings{})
 
 	gwSvc, gwSvcChoices, messages := newGenericExecutionAndSelectionFixture(
-		nil,                               // providerRepo (not used: scheduler snapshot hit)
-		&fakeGroupRepo{group: group}, nil, // usageLogRepo
-		// usageBillingRepo
-		// userRepo
-		// userSubRepo
-		// userGroupRateRepo
-		nil, // cache (disable sticky)
+		nil, // providerRepo：调度快照命中，不读取仓库。
+		&fakeGroupRepo{group: group},
+		nil, // usageLogRepo
+		nil, // cache：关闭粘性会话。
 		nil, // cfg
 		schedulerSnapshot,
-		nil, // concurrencyService (disable load-aware; tryAcquire always acquired)
-		// billingService
+		nil, // concurrencyService：关闭负载感知，获取并发槽位总是成功。
 		nil, // healthObserver
-		// billingCacheService
-		nil,      // identityService
-		nil, nil, // httpUpstream
-		// deferredService
-		nil,      // claudeTokenProvider
-		nil, nil, // sessionLimitCache
+		nil, // identityService
+		nil, // httpUpstream
+		nil, // deferredService
+		nil, // messageCredentials
+		nil, // sessionLimitCache
+		nil, // windowCostCache
 		nil, // rpmCache
 		nil, // digestStore
 		nil, // settingService
 		nil, // tlsFPProfileService
-		nil, // channelService
+		nil, // pricingConfigService
 		nil, // resolver
-		// balanceNotifyService
 		responseHeaderFilterForTest(nil),
 	)
 	// 预热用例直接绑定完成器。

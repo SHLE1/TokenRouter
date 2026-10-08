@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	utls "github.com/refraction-networking/utls"
+	utls "github.com/refraction-networking/utls" //nolint:revive // 包名是 tls，别名用来和 crypto/tls 区分。
 )
 
 // CapturedFingerprint 解码 tls-fingerprint-web 抓包服务返回的 JSON 指纹。

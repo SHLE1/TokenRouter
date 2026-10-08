@@ -317,11 +317,11 @@ func parseDashboardSnapshotV2Filters(c *gin.Context) (*dashboardSnapshotV2Filter
 		bt := int8(v)
 		filters.BillingType = &bt
 	}
-	if nativeCompactionV2, err := parseOptionalBoolDashboardFilter(c, "native_compaction_v2"); err != nil {
+	nativeCompactionV2, err := parseOptionalBoolDashboardFilter(c, "native_compaction_v2")
+	if err != nil {
 		return nil, err
-	} else {
-		filters.NativeCompactionV2 = nativeCompactionV2
 	}
+	filters.NativeCompactionV2 = nativeCompactionV2
 
 	return filters, nil
 }

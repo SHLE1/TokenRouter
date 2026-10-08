@@ -15,20 +15,20 @@ type ProtocolTarget struct {
 }
 
 // ConfiguredAPIProtocol 从提供商配置读取 API 协议。
-func (a *Record) ConfiguredAPIProtocol() string {
-	if a == nil || !a.IsCNProvider() {
+func (r *Record) ConfiguredAPIProtocol() string {
+	if r == nil || !r.IsCNProvider() {
 		return APIProtocolChatCompletions
 	}
-	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified {
+	if _, unified := r.Credentials[UpstreamProtocolsKey]; unified {
 		return APIProtocolAdaptive
 	}
-	switch strings.TrimSpace(a.GetCredential("api_protocol")) {
+	switch strings.TrimSpace(r.GetCredential("api_protocol")) {
 	case APIProtocolAdaptive:
 		return APIProtocolAdaptive
 	case APIProtocolAnthropic:
 		return APIProtocolAnthropic
 	case APIProtocolResponses:
-		if a.SupportsNativeCNResponses() {
+		if r.SupportsNativeCNResponses() {
 			return APIProtocolResponses
 		}
 	case APIProtocolChatCompletions:

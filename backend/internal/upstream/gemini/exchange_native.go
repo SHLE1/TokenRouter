@@ -49,11 +49,10 @@ func ExchangeNative(ctx context.Context, options ExchangeOptions) (ExchangeResul
 		}
 
 		// 错误策略优先：匹配则跳过重试直接处理。
-		if matched, rebuilt := options.CheckPolicy(ctx, resp); matched {
-			resp = rebuilt
+		matched, rebuilt := options.CheckPolicy(ctx, resp)
+		resp = rebuilt
+		if matched {
 			break
-		} else {
-			resp = rebuilt
 		}
 
 		if resp.StatusCode >= 400 && options.ShouldRetry(resp.StatusCode) {

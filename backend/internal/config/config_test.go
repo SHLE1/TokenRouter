@@ -1352,7 +1352,7 @@ func TestGenerateJWTSecretDefaultLength(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generateJWTSecret error: %v", err)
 	}
-	if len(secret) == 0 {
+	if secret == "" {
 		t.Fatalf("generateJWTSecret returned empty string")
 	}
 }
@@ -1440,7 +1440,7 @@ func TestGenerateJWTSecretWithLength(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generateJWTSecret error: %v", err)
 	}
-	if len(secret) == 0 {
+	if secret == "" {
 		t.Fatalf("generateJWTSecret returned empty string")
 	}
 }

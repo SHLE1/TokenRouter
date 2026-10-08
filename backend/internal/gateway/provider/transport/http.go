@@ -134,10 +134,7 @@ func (s *Client) validateRequestHost(req *http.Request) error {
 	if host == "" {
 		return errors.New("request host is empty")
 	}
-	if err := httpclient.ValidateResolvedIP(host); err != nil {
-		return err
-	}
-	return nil
+	return httpclient.ValidateResolvedIP(host)
 }
 
 func (s *Client) redirectChecker(req *http.Request, via []*http.Request) error {

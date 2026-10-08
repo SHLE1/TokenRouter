@@ -625,12 +625,12 @@ func (h *DashboardHandler) GetUserBreakdown(c *gin.Context) {
 			dim.Stream = &s
 		}
 	}
-	if nativeCompactionV2, err := parseOptionalBoolDashboardFilter(c, "native_compaction_v2"); err != nil {
+	nativeCompactionV2, err := parseOptionalBoolDashboardFilter(c, "native_compaction_v2")
+	if err != nil {
 		response.BadRequest(c, err.Error())
 		return
-	} else {
-		dim.NativeCompactionV2 = nativeCompactionV2
 	}
+	dim.NativeCompactionV2 = nativeCompactionV2
 	if v := c.Query("billing_type"); v != "" {
 		if bt, err := strconv.ParseInt(v, 10, 8); err == nil {
 			btVal := int8(bt)

@@ -3,12 +3,12 @@
 package billing_test
 
 import (
-	context "context"
-	fmt "fmt"
-	testing "testing"
-	time "time"
+	"context"
+	"fmt"
+	"testing"
+	"time"
 
-	require "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/identity/postgres"

@@ -137,7 +137,7 @@ func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Recor
 			// 检测可能的毫秒时间戳（秒级约为 1e9，毫秒约为 1e12）
 			if ts > 1e11 {
 				s.options.Warn("provider_session_window_header_millis_detected", "provider_id", provider.ID, "raw_reset", resetStr)
-				ts = ts / 1000
+				ts /= 1000
 			}
 			end := time.Unix(ts, 0)
 			// 校验时间戳是否在合理范围内（不早于 5h 前，不晚于 7 天后）

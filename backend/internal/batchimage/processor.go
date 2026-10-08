@@ -660,9 +660,9 @@ func (i *ResultIndexer) warn(event string, values ...any) {
 }
 
 // now 保持各原取时点，构造时可注入同一时钟来源。
-func (s *ResultIndexer) now() time.Time {
-	if s.Now != nil {
-		return s.Now()
+func (i *ResultIndexer) now() time.Time {
+	if i.Now != nil {
+		return i.Now()
 	}
 	return time.Now()
 }

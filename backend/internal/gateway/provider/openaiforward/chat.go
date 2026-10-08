@@ -59,14 +59,14 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 			return p.DispatchChat(ctx, DispatchGrok, body, promptCacheKey, defaultMappedModel)
 		}
 		if profile.GrokOAuth {
-			if eligible, reason := p.GrokBridgeEligible(body); eligible {
+			eligible, reason := p.GrokBridgeEligible(body)
+			if eligible {
 				return p.DispatchChat(ctx, DispatchGrok, body, promptCacheKey, defaultMappedModel)
-			} else {
-				p.Debug("grok chat_completions: using raw fallback",
-					zap.Int64("provider_id", profile.ID),
-					zap.String("reason", reason),
-				)
 			}
+			p.Debug("grok chat_completions: using raw fallback",
+				zap.Int64("provider_id", profile.ID),
+				zap.String("reason", reason),
+			)
 		}
 		return p.DispatchChat(ctx, DispatchRawChat, body, promptCacheKey, defaultMappedModel)
 	}

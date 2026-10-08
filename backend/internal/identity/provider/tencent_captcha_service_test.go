@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	capcha "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/captcha/v20190722"
 
-	identity "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
 type tencentCaptchaAPIStub struct {

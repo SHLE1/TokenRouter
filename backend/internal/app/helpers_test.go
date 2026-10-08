@@ -433,17 +433,16 @@ type settingHandlerRepoStub struct {
 // newGenericExecutionAndSelectionFixture 组合执行入口与选择器，窗口和调度规则使用生产实现。
 func newGenericExecutionAndSelectionFixture(
 	providerRepo gatewayprovider.ExecutionProviderStore,
-	groupRepo routing.GroupRepository, usageLogRepo usage.UsageLogRepository,
-
+	groupRepo routing.GroupRepository,
+	usageLogRepo usage.UsageLogRepository,
 	cache session.GatewayCache,
 	cfg *config.Config,
 	schedulerSnapshot *scheduler.SnapshotService,
 	concurrencyService *scheduler.ConcurrencyService,
-
 	healthObserver *provideradapter.UpstreamHealth,
 	identityService *claude.RequestFingerprint,
-	httpUpstream httpclient.UpstreamTransport, deferredService *providercore.DeferredService,
-
+	httpUpstream httpclient.UpstreamTransport,
+	deferredService *providercore.DeferredService,
 	messageCredentials *providercore.MessageCredentialSource,
 	sessionLimitCache scheduler.SessionLimitCache,
 	windowCostCache billing.WindowCostCache,
@@ -453,7 +452,6 @@ func newGenericExecutionAndSelectionFixture(
 	tlsFPProfileService *egressadapter.TLSProfiles,
 	pricingConfigService *routing.PricingConfigService,
 	resolver *billing.PriceResolver,
-
 	headerFilter *egress.CompiledHeaderFilter,
 ) (*messageExecutionFixture, *selection.Generic, *gatewayhttp.MessagesExecutor) {
 	var retryStore providercore.RetryCooldownStore

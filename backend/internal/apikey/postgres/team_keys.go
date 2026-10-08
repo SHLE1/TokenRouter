@@ -143,18 +143,18 @@ func batchImageNullTimePtr(v sql.NullTime) *time.Time {
 }
 
 // DisableMemberInTx 参与成员移除，不取得或结束事务。
-func (k *TeamKeys) DisableMemberInTx(ctx context.Context, tx *sql.Tx, teamID, userID int64, now time.Time) error {
+func (r *TeamKeys) DisableMemberInTx(ctx context.Context, tx *sql.Tx, teamID, userID int64, now time.Time) error {
 	_, err := tx.ExecContext(ctx, `UPDATE api_keys SET status = 'disabled', updated_at = $3 WHERE team_id = $1 AND user_id = $2 AND deleted_at IS NULL`, teamID, userID, now)
 	return err
 }
 
 // DisableHistoricalMemberInTx 禁用成员重新加入前创建的团队 Key。
-func (k *TeamKeys) DisableHistoricalMemberInTx(ctx context.Context, tx *sql.Tx, teamID, userID int64, now time.Time) error {
+func (r *TeamKeys) DisableHistoricalMemberInTx(ctx context.Context, tx *sql.Tx, teamID, userID int64, now time.Time) error {
 	_, err := tx.ExecContext(ctx, `UPDATE api_keys SET status = 'disabled', updated_at = $3 WHERE team_id = $1 AND user_id = $2 AND created_at < $3 AND deleted_at IS NULL`, teamID, userID, now)
 	return err
 }
 
-func (k *TeamKeys) DisableTeamInTx(ctx context.Context, tx *sql.Tx, teamID int64, now time.Time) error {
+func (r *TeamKeys) DisableTeamInTx(ctx context.Context, tx *sql.Tx, teamID int64, now time.Time) error {
 	_, err := tx.ExecContext(ctx, `UPDATE api_keys SET status = 'disabled', updated_at = $2 WHERE team_id = $1 AND deleted_at IS NULL`, teamID, now)
 	return err
 }

@@ -231,10 +231,7 @@ func (s *RedeemAdmin) UpdateRedeemCode(ctx context.Context, id int64, input *Upd
 			code.Status = StatusUnused
 		}
 		code.Status = code.PersistedStatus()
-		if err := s.redeemCodeRepo.Update(opCtx, code); err != nil {
-			return err
-		}
-		return nil
+		return s.redeemCodeRepo.Update(opCtx, code)
 	})
 	if err != nil {
 		return nil, err

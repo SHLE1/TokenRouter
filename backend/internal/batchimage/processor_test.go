@@ -90,10 +90,7 @@ func TestParseBatchImageResultLine_RejectsMissingCustomIDAndDoesNotLeakData(t *t
 }
 
 func TestBatchImageResultIndexer_WritesCountsAndReplacesItems(t *testing.T) {
-	output := strings.Join([]string{
-		`{"key":"ok","response":{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"` + batchImageTestData + `"}}]}}]}}`,
-		`{"key":"bad","error":{"code":"SAFETY","message":"blocked by safety policy"}}`,
-	}, "\n") + "\n"
+	output := `{"key":"ok","response":{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"` + batchImageTestData + `"}}]}}]}}` + "\n" + `{"key":"bad","error":{"code":"SAFETY","message":"blocked by safety policy"}}` + "\n"
 	repo := newFakeBatchImageRepository()
 	outputRef := "files/output"
 	job := &batchimage.BatchImageJob{BatchID: "imgbatch_index", ProviderOutputRef: &outputRef}

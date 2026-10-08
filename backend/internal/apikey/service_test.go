@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	atomic "sync/atomic"
+	"sync/atomic"
 	"testing"
 	"time"
 

@@ -127,9 +127,9 @@ func (d ResultDelivery) Lost(ctx context.Context, id string, outputs []*Creative
 }
 
 // now 保持各原取时点，构造时可注入同一时钟来源。
-func (s ResultDelivery) now() time.Time {
-	if s.Now != nil {
-		return s.Now()
+func (d ResultDelivery) now() time.Time {
+	if d.Now != nil {
+		return d.Now()
 	}
 	return time.Now()
 }

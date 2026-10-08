@@ -190,7 +190,7 @@ func CollectGeminiSSE(body io.Reader, isOAuth bool, observers ...func([]byte)) (
 
 	for {
 		line, err := reader.ReadString('\n')
-		if len(line) > 0 {
+		if line != "" {
 			trimmed := strings.TrimRight(line, "\r\n")
 			if strings.HasPrefix(trimmed, "data:") {
 				payload := strings.TrimSpace(strings.TrimPrefix(trimmed, "data:"))
@@ -408,7 +408,7 @@ func (s *ResponseAdapter) HandleNativeStreamingResponse(c *upstream.OutputContex
 
 	for {
 		line, err := reader.ReadString('\n')
-		if len(line) > 0 {
+		if line != "" {
 			trimmed := strings.TrimRight(line, "\r\n")
 			if strings.HasPrefix(trimmed, "data:") {
 				payload := strings.TrimSpace(strings.TrimPrefix(trimmed, "data:"))

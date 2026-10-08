@@ -93,7 +93,7 @@ func FindPricingForModelByPredicate(pricingList []ModelPricingEntry, modelLower 
 			continue
 		}
 		for _, m := range p.Models {
-			if strings.ToLower(m) == modelLower {
+			if strings.EqualFold(m, modelLower) {
 				return p
 			}
 		}

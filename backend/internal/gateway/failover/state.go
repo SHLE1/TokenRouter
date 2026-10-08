@@ -116,7 +116,7 @@ func SameProviderRetryDeadlineAllows(failoverErr *FailureInfo) bool {
 }
 
 // NewFailoverState 创建 failover 状态。
-func NewFailoverState[E Failure](maxSwitches int, HasBoundSession bool, observers ...Observe) *FailoverState[E] {
+func NewFailoverState[E Failure](maxSwitches int, hasBoundSession bool, observers ...Observe) *FailoverState[E] {
 	var observe Observe
 	if len(observers) > 0 {
 		observe = observers[0]
@@ -126,7 +126,7 @@ func NewFailoverState[E Failure](maxSwitches int, HasBoundSession bool, observer
 		MaxSwitches:            maxSwitches,
 		FailedProviderIDs:      make(map[int64]struct{}),
 		SameProviderRetryCount: make(map[int64]int),
-		HasBoundSession:        HasBoundSession,
+		HasBoundSession:        hasBoundSession,
 	}
 }
 

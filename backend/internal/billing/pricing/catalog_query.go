@@ -13,10 +13,7 @@ type CatalogQuery struct {
 // GetModelPricing 按完整模型身份查询目录，不借用其它型号的价格。
 func (s *CatalogQuery) GetModelPricing(modelName string) *CatalogModelPricing {
 	candidates := s.modelLookupCandidates(modelName)
-	if entry := s.LookupModelCatalogEntry(candidates); entry != nil {
-		return entry
-	}
-	return nil
+	return s.LookupModelCatalogEntry(candidates)
 }
 
 // GetModelModalities 从完整型号的目录条目读取模态。

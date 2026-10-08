@@ -158,7 +158,7 @@ func IsResponsesFunctionCallItemType(itemType string) bool {
 }
 
 func DedupeRepeatedJSONArgumentString(arguments string) (string, bool) {
-	if len(arguments) == 0 || len(arguments)%2 != 0 {
+	if arguments == "" || len(arguments)%2 != 0 {
 		return "", false
 	}
 	halfLen := len(arguments) / 2
@@ -604,7 +604,7 @@ func BoundedJSONNonNegativeInt(value gjson.Result) (int, bool) {
 		return 0, false
 	}
 	raw := value.Raw
-	if len(raw) == 0 || len(raw) > 64 || raw[0] == '-' {
+	if raw == "" || len(raw) > 64 || raw[0] == '-' {
 		return 0, false
 	}
 
@@ -641,11 +641,11 @@ func BoundedJSONNonNegativeInt(value gjson.Result) (int, bool) {
 	if mantissaEnd < len(raw) {
 		exponentRaw := raw[mantissaEnd+1:]
 		negative := false
-		if len(exponentRaw) > 0 && (exponentRaw[0] == '+' || exponentRaw[0] == '-') {
+		if exponentRaw != "" && (exponentRaw[0] == '+' || exponentRaw[0] == '-') {
 			negative = exponentRaw[0] == '-'
 			exponentRaw = exponentRaw[1:]
 		}
-		if len(exponentRaw) == 0 {
+		if exponentRaw == "" {
 			return 0, false
 		}
 		for len(exponentRaw) > 1 && exponentRaw[0] == '0' {

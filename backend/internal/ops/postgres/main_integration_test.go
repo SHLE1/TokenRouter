@@ -118,13 +118,11 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	code := m.Run()
+	m.Run()
 
 	_ = integrationEntClient.Close()
 	_ = integrationRedis.Close()
 	_ = integrationDB.Close()
-
-	os.Exit(code)
 }
 
 func dockerIsAvailable(ctx context.Context) bool {

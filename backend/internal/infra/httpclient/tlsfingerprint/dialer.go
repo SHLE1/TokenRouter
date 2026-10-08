@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	utls "github.com/refraction-networking/utls"
+	utls "github.com/refraction-networking/utls" //nolint:revive // 包名是 tls，别名用来和 crypto/tls 区分。
 	"golang.org/x/net/proxy"
 )
 

@@ -13,45 +13,45 @@ type ModelPlatformRules struct {
 }
 
 // IsModelSupported 在提供商映射后检查白名单和平台执行资格。
-func (a *Record) IsModelSupported(requestedModel string, defaults ModelMappingDefaults, rules ModelPlatformRules) bool {
-	if a == nil {
+func (r *Record) IsModelSupported(requestedModel string, defaults ModelMappingDefaults, rules ModelPlatformRules) bool {
+	if r == nil {
 		return false
 	}
-	mapping := ResolveModelMapping(a, defaults)
+	mapping := ResolveModelMapping(r, defaults)
 	model, _ := ResolveMappedModel(mapping, requestedModel)
-	scope := a.effectiveModelScope(defaults, mapping)
-	if !ModelInFinalWhitelist(a.Platform, model, scope, rules.NormalizeQoder) {
+	scope := r.effectiveModelScope(defaults, mapping)
+	if !ModelInFinalWhitelist(r.Platform, model, scope, rules.NormalizeQoder) {
 		return false
 	}
-	if a.Platform == PlatformQoder && rules.QoderCompatible != nil && !rules.QoderCompatible(model) {
+	if r.Platform == PlatformQoder && rules.QoderCompatible != nil && !rules.QoderCompatible(model) {
 		return false
 	}
-	if a.IsOpenAIOAuth() && rules.OpenAIOAuthServable != nil {
+	if r.IsOpenAIOAuth() && rules.OpenAIOAuthServable != nil {
 		return rules.OpenAIOAuthServable(model)
 	}
 	return true
 }
 
 // FinalModelWhitelisted 直接检查已映射的上游模型名是否在白名单中。
-func (a *Record) FinalModelWhitelisted(model string, defaults ModelMappingDefaults, rules ModelPlatformRules) bool {
-	if a == nil {
+func (r *Record) FinalModelWhitelisted(model string, defaults ModelMappingDefaults, rules ModelPlatformRules) bool {
+	if r == nil {
 		return false
 	}
-	if a.Platform == PlatformQoder && rules.QoderCompatible != nil && !rules.QoderCompatible(model) {
+	if r.Platform == PlatformQoder && rules.QoderCompatible != nil && !rules.QoderCompatible(model) {
 		return false
 	}
-	return ModelInFinalWhitelist(a.Platform, model, a.effectiveModelScope(defaults, ResolveModelMapping(a, defaults)), rules.NormalizeQoder)
+	return ModelInFinalWhitelist(r.Platform, model, r.effectiveModelScope(defaults, ResolveModelMapping(r, defaults)), rules.NormalizeQoder)
 }
 
 // effectiveModelScope 空白名单允许任意型号，Spark 影子使用独立的硬限制。
-func (a *Record) effectiveModelScope(defaults ModelMappingDefaults, mapping map[string]string) map[string]struct{} {
-	whitelist, explicit := ResolveFinalModelWhitelist(a.Platform, a.Credentials, mapping)
+func (r *Record) effectiveModelScope(defaults ModelMappingDefaults, mapping map[string]string) map[string]struct{} {
+	whitelist, explicit := ResolveFinalModelWhitelist(r.Platform, r.Credentials, mapping)
 	// Spark 影子只有独立模型配额，明确的通配符也不能扩大其硬能力。
-	if a.IsShadow() && a.Platform == PlatformOpenAI {
+	if r.IsShadow() && r.Platform == PlatformOpenAI {
 		scope := make(map[string]struct{})
 		if defaults.Models != nil {
-			for _, model := range defaults.Models(a) {
-				if len(whitelist) == 0 || ModelInFinalWhitelist(a.Platform, model, whitelist, nil) {
+			for _, model := range defaults.Models(r) {
+				if len(whitelist) == 0 || ModelInFinalWhitelist(r.Platform, model, whitelist, nil) {
 					scope[model] = struct{}{}
 				}
 			}
@@ -65,12 +65,12 @@ func (a *Record) effectiveModelScope(defaults ModelMappingDefaults, mapping map[
 }
 
 // GetConfiguredRequestModels 枚举配置中的具体型号和执行路由别名。
-func (a *Record) GetConfiguredRequestModels(defaults ModelMappingDefaults) []string {
-	if a == nil {
+func (r *Record) GetConfiguredRequestModels(defaults ModelMappingDefaults) []string {
+	if r == nil {
 		return nil
 	}
-	mapping := ResolveModelMapping(a, defaults)
-	scope := a.effectiveModelScope(defaults, mapping)
+	mapping := ResolveModelMapping(r, defaults)
+	scope := r.effectiveModelScope(defaults, mapping)
 	models := make(map[string]struct{})
 	for model := range scope {
 		if !strings.Contains(model, "*") {
@@ -78,17 +78,17 @@ func (a *Record) GetConfiguredRequestModels(defaults ModelMappingDefaults) []str
 		}
 	}
 	if defaults.Models != nil {
-		for _, model := range defaults.Models(a) {
-			if ModelInFinalWhitelist(a.Platform, model, scope, nil) {
+		for _, model := range defaults.Models(r) {
+			if ModelInFinalWhitelist(r.Platform, model, scope, nil) {
 				models[model] = struct{}{}
 			}
 		}
 	}
 	for source, target := range mapping {
-		if target != "" && !strings.Contains(target, "*") && ModelInFinalWhitelist(a.Platform, target, scope, nil) {
+		if target != "" && !strings.Contains(target, "*") && ModelInFinalWhitelist(r.Platform, target, scope, nil) {
 			models[target] = struct{}{}
 		}
-		if !strings.Contains(source, "*") && ModelInFinalWhitelist(a.Platform, target, scope, nil) {
+		if !strings.Contains(source, "*") && ModelInFinalWhitelist(r.Platform, target, scope, nil) {
 			models[source] = struct{}{}
 		}
 	}
@@ -137,10 +137,10 @@ func ModelInFinalWhitelist(platform, model string, whitelist map[string]struct{}
 }
 
 // HasUnrestrictedModelScope 判断当前提供商是否允许任意型号。
-func (a *Record) HasUnrestrictedModelScope(defaults ModelMappingDefaults) bool {
-	if a == nil {
+func (r *Record) HasUnrestrictedModelScope(defaults ModelMappingDefaults) bool {
+	if r == nil {
 		return false
 	}
-	_, all := a.effectiveModelScope(defaults, ResolveModelMapping(a, defaults))["*"]
+	_, all := r.effectiveModelScope(defaults, ResolveModelMapping(r, defaults))["*"]
 	return all
 }

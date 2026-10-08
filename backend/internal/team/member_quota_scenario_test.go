@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	team "github.com/TokenFlux/TokenRouter/internal/team"
+	"github.com/TokenFlux/TokenRouter/internal/team"
 )
 
 func TestCheckTeamMemberLimitSnapshot(t *testing.T) {

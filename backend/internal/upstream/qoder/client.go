@@ -433,7 +433,7 @@ func (c *Client) jsonRequestContextWithDoer(
 	if statusCode >= http.StatusBadRequest {
 		return ParseAPIErrorBody(statusCode, string(decodedBody))
 	}
-	if out == nil || len(strings.TrimSpace(string(decodedBody))) == 0 {
+	if out == nil || strings.TrimSpace(string(decodedBody)) == "" {
 		return nil
 	}
 	if err := json.Unmarshal(decodedBody, out); err != nil {

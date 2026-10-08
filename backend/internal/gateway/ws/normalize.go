@@ -57,11 +57,11 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 		policyRequestModel = s.State.OriginalModel
 	}
 	requestedReasoningEffort := p.RequestedEffort(normalized, strings.TrimSpace(values[1].String()))
-	if next, policyErr := p.Reasoning(normalized, policyRequestModel); policyErr != nil {
+	next, policyErr := p.Reasoning(normalized, policyRequestModel)
+	if policyErr != nil {
 		return ClientPayload{}, p.CloseError(1008, policyErr.Error(), policyErr)
-	} else {
-		normalized = next
 	}
+	normalized = next
 	responsesLite := p.IsLite(normalized)
 	if compatibilityBody, compatibilityChanged, compatibilityErr := p.Compatibility(normalized, responsesLite); compatibilityErr != nil {
 		return ClientPayload{}, p.CloseError(1008, "invalid websocket request payload", compatibilityErr)

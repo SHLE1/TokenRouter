@@ -314,7 +314,7 @@ func readUint8(data []byte, offset *int) (uint8, bool) {
 		return 0, false
 	}
 	v := data[*offset]
-	*offset += 1
+	*offset++
 	return v, true
 }
 

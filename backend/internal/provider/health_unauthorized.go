@@ -91,13 +91,12 @@ func (s *HealthService) ApplyUnauthorized(ctx context.Context, provider *Record,
 			s.options.Warn("oauth_401_set_temp_unschedulable_failed", "provider_id", authProvider.ID, "error", err)
 		}
 		return true
-	} else {
-		// 非 OAuth：保持 SetError 行为
-		msg := "Authentication failed (401): invalid or expired credentials"
-		if observation.Message != "" {
-			msg = "Authentication failed (401): " + observation.Message
-		}
-		s.ApplyAuthenticationFailure(ctx, authProvider, msg)
-		return true
 	}
+	// 非 OAuth：保持 SetError 行为
+	msg := "Authentication failed (401): invalid or expired credentials"
+	if observation.Message != "" {
+		msg = "Authentication failed (401): " + observation.Message
+	}
+	s.ApplyAuthenticationFailure(ctx, authProvider, msg)
+	return true
 }

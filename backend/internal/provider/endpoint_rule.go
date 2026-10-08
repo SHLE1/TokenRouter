@@ -25,18 +25,18 @@ const (
 
 type OpenAIEndpointCapability string
 
-func (a *Record) SupportsOpenAIEndpointCapability(requested OpenAIEndpointCapability, grokMedia func() (bool, string)) bool {
-	if a == nil {
+func (r *Record) SupportsOpenAIEndpointCapability(requested OpenAIEndpointCapability, grokMedia func() (bool, string)) bool {
+	if r == nil {
 		return false
 	}
 	if requested == "" {
 		return true
 	}
-	if !a.IsOpenAICompatible() {
+	if !r.IsOpenAICompatible() {
 		return false
 	}
-	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified && !a.IsGrok() {
-		enabled := a.UpstreamProtocols()
+	if _, unified := r.Credentials[UpstreamProtocolsKey]; unified && !r.IsGrok() {
+		enabled := r.UpstreamProtocols()
 		has := func(p capability.ProtocolID) bool { return slices.Contains(enabled, p) }
 		switch requested {
 		case OpenAIEndpointCapabilityTextGeneration:
@@ -56,12 +56,12 @@ func (a *Record) SupportsOpenAIEndpointCapability(requested OpenAIEndpointCapabi
 				return false
 			}
 		case OpenAIEndpointCapabilityAlphaSearch:
-			if !has(capability.ProtocolAlphaSearch) && (!a.IsOpenAIPersonalAccessToken() || !has(capability.ProtocolOpenAIResponses)) {
+			if !has(capability.ProtocolAlphaSearch) && (!r.IsOpenAIPersonalAccessToken() || !has(capability.ProtocolOpenAIResponses)) {
 				return false
 			}
 		}
 	}
-	if a.IsGrok() {
+	if r.IsGrok() {
 		switch requested {
 		case OpenAIEndpointCapabilityTextGeneration:
 			return true
@@ -80,20 +80,20 @@ func (a *Record) SupportsOpenAIEndpointCapability(requested OpenAIEndpointCapabi
 	switch requested {
 	case OpenAIEndpointCapabilityTextGeneration:
 	case OpenAIEndpointCapabilityLive:
-		return a.Platform == PlatformOpenAI &&
-			a.Type == ProviderTypeOAuth &&
-			!a.IsOpenAIPersonalAccessToken() &&
-			!a.IsOpenAIAgentIdentity()
+		return r.Platform == PlatformOpenAI &&
+			r.Type == ProviderTypeOAuth &&
+			!r.IsOpenAIPersonalAccessToken() &&
+			!r.IsOpenAIAgentIdentity()
 	case OpenAIEndpointCapabilityRemoteCompactionV2:
-		if !a.AllowsOpenAINativeCompactionV2() {
+		if !r.AllowsOpenAINativeCompactionV2() {
 			return false
 		}
 		fallthrough
 	case OpenAIEndpointCapabilityResponses:
 		// 生图等原生 Responses 路径不能降级；使用 Responses 首选协议解析后，
 		// 管理员只启用 Chat 的 APIKey 提供商必须排除。
-		if a.Type == ProviderTypeAPIKey && ResolveUpstreamTextProtocol(
-			a.Extra,
+		if r.Type == ProviderTypeAPIKey && ResolveUpstreamTextProtocol(
+			r.Extra,
 			TextProtocolResponses,
 		) != TextProtocolResponses {
 			return false
@@ -106,18 +106,18 @@ func (a *Record) SupportsOpenAIEndpointCapability(requested OpenAIEndpointCapabi
 		// chatgpt.com/backend-api/codex/alpha/search，API key 走
 		// {base_url}/v1/alpha/search（见 openAIAlphaSearchURL），两类提供商
 		// 都可承接独立搜索请求，上游拒绝该端点时由转发层切换提供商。
-		if a.Type != ProviderTypeOAuth && a.Type != ProviderTypeAPIKey {
+		if r.Type != ProviderTypeOAuth && r.Type != ProviderTypeAPIKey {
 			return false
 		}
 	case OpenAIEndpointCapabilityEmbeddings:
-		if a.Type != ProviderTypeAPIKey {
+		if r.Type != ProviderTypeAPIKey {
 			return false
 		}
 	default:
 		return false
 	}
 
-	configured, found := a.OpenAIWorkloadCapabilitySet()
+	configured, found := r.OpenAIWorkloadCapabilitySet()
 	if !found {
 		return true
 	}

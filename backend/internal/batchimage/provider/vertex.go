@@ -318,24 +318,24 @@ func (p *VertexBatchImageProvider) AccessToken(ctx context.Context, provider *Pr
 	return provideradapter.VertexServiceAccountAccessToken(ctx, p.tokenCache, provider)
 }
 
-func (p *VertexBatchImageProvider) DeleteManagedInput(ctx context.Context, AccessToken string, job *core.BatchImageJob, uri string) error {
+func (p *VertexBatchImageProvider) DeleteManagedInput(ctx context.Context, accessToken string, job *core.BatchImageJob, uri string) error {
 	if strings.TrimSpace(uri) == "" {
 		return nil
 	}
 	if !p.IsSafeManagedInput(job, uri) {
 		return core.ErrBatchImageProviderUnsafeCleanupPath
 	}
-	return MapVertexClientError(p.objectStore.DeleteObject(ctx, AccessToken, uri))
+	return MapVertexClientError(p.objectStore.DeleteObject(ctx, accessToken, uri))
 }
 
-func (p *VertexBatchImageProvider) DeleteManagedOutput(ctx context.Context, AccessToken string, job *core.BatchImageJob, uri string) error {
+func (p *VertexBatchImageProvider) DeleteManagedOutput(ctx context.Context, accessToken string, job *core.BatchImageJob, uri string) error {
 	if strings.TrimSpace(uri) == "" {
 		return nil
 	}
 	if !p.IsSafeManagedOutput(job, uri) {
 		return core.ErrBatchImageProviderUnsafeCleanupPath
 	}
-	return MapVertexClientError(p.objectStore.DeletePrefix(ctx, AccessToken, uri))
+	return MapVertexClientError(p.objectStore.DeletePrefix(ctx, accessToken, uri))
 }
 
 func (p *VertexBatchImageProvider) IsSafeManagedInput(job *core.BatchImageJob, uri string) bool {

@@ -80,7 +80,7 @@ func parseResetTimestamp(raw string, now time.Time, maxAge time.Duration) (time.
 		return time.Time{}, false
 	}
 	if ts > 1e11 {
-		ts = ts / 1000
+		ts /= 1000
 	}
 	resetAt := time.Unix(ts, 0)
 	if !resetAt.After(now) || resetAt.After(now.Add(maxAge)) {

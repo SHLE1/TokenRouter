@@ -158,8 +158,8 @@ type BackupS3Config struct {
 	Region            string `json:"region"`   // R2 用 "auto"
 	Bucket            string `json:"bucket"`
 	AccessKeyID       string `json:"access_key_id"`
-	SecretAccessKey   string `json:"secret_access_key,omitempty"` //nolint:revive // 字段名沿用 AWS 约定
-	Prefix            string `json:"prefix"`                      // S3 key 前缀，如 "backups/"
+	SecretAccessKey   string `json:"secret_access_key,omitempty"`
+	Prefix            string `json:"prefix"` // S3 key 前缀，如 "backups/"
 	ForcePathStyle    bool   `json:"force_path_style"`
 	UploadConcurrency int    `json:"upload_concurrency"`
 	UploadPartSizeMB  int    `json:"upload_part_size_mb"`

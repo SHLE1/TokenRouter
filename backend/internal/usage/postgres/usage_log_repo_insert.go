@@ -323,9 +323,8 @@ func (r *Store) createSingle(ctx context.Context, sqlq sqlExecutor, log *usage.U
 			}
 			log.RateMultiplier = prepared.rateMultiplier
 			return false, nil
-		} else {
-			return false, err
 		}
+		return false, err
 	}
 	log.RateMultiplier = prepared.rateMultiplier
 	return true, nil

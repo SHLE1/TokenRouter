@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
-	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 

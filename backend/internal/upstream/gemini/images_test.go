@@ -38,7 +38,7 @@ func TestGenerateImagesLocalWireAndLastOutput(t *testing.T) {
 			res.Body = &executeBody{ReadCloser: res.Body, closes: &closes}
 		}
 		return res, err
-	}, HTTPError: func(status int, message string) error { return fmt.Errorf("http %d: %s", status, message) }, Invalid: func(format string, args ...any) error { return fmt.Errorf(format, args...) }, ErrorMessage: func(b []byte) string { return string(b) }, Enter: func() (func(), error) { return func() { releases.Add(1) }, nil }}
+	}, HTTPError: func(status int, message string) error { return fmt.Errorf("http %d: %s", status, message) }, Invalid: fmt.Errorf, ErrorMessage: func(b []byte) string { return string(b) }, Enter: func() (func(), error) { return func() { releases.Add(1) }, nil }}
 	outputs, err := GenerateImages(context.Background(), BuildImageRequest(ImageRequestInput{Prompt: "fixture", ImageSize: "2K", ThinkingLevel: "low"}), options)
 	require.NoError(t, err)
 	require.Len(t, outputs, 1)

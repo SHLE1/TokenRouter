@@ -176,7 +176,7 @@ func TestGetOpenAIUsage_SparkShadow_WritesExtraAndReturnsNonEmptyWindows(t *test
 		},
 	}})
 
-	usage, err := svc.GetOpenAIUsage(ctx, shadow, true /*force*/)
+	usage, err := svc.GetOpenAIUsage(ctx, shadow, true /* force */)
 	require.NoError(t, err)
 
 	// 断言 A-1: 上游收到母提供商的 chatgpt-account-id。

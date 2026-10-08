@@ -304,14 +304,8 @@ func cleanJSONSchemaRecursive(value any) any {
 			}
 			schemaMap["type"] = selectedType
 		} else {
-			// 默认 object 如果有 properties (虽然上面白名单过滤可能删了 type 如果它不在... 但 type 必在 allowlist)
-			// 如果没有 type，但有 properties，补一个
-			if hasKey(schemaMap, "properties") {
-				schemaMap["type"] = "object"
-			} else {
-				// 默认为 string ? or object? Gemini 通常需要明确 type
-				schemaMap["type"] = "object"
-			}
+			// Gemini 需要明确的 type，没有 type 的 schema 按 object 处理。
+			schemaMap["type"] = "object"
 		}
 
 		if isEffectivelyNullable {

@@ -916,7 +916,7 @@ func TestSchedulerBulkProviderEventMissingProviderFallsBackToAllPlatforms(t *tes
 
 	require.NoError(t, err)
 	platforms := schedulerSnapshotPlatforms()
-	require.ElementsMatch(t, schedulerBucketsForTest([]int64{31, 32}, platforms[:]...), cache.capturedBuckets())
+	require.ElementsMatch(t, schedulerBucketsForTest([]int64{31, 32}, platforms...), cache.capturedBuckets())
 	set, deleted := cache.providerWrites()
 	require.Equal(t, []int64{3}, set)
 	require.Equal(t, []int64{4}, deleted)
@@ -931,7 +931,7 @@ func TestSchedulerBulkProviderEventUnknownPlatformFallsBackToAllPlatforms(t *tes
 
 	require.NoError(t, err)
 	platforms := schedulerSnapshotPlatforms()
-	require.ElementsMatch(t, schedulerBucketsForTest([]int64{41, 42}, platforms[:]...), cache.capturedBuckets())
+	require.ElementsMatch(t, schedulerBucketsForTest([]int64{41, 42}, platforms...), cache.capturedBuckets())
 }
 
 func TestSchedulerFullRebuildActiveTombstoneDoesNotBlockFollowingGroupEvent(t *testing.T) {

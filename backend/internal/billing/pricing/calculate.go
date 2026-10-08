@@ -82,13 +82,13 @@ func ConfiguredServiceTierMultiplier(serviceTier string, pricing *ModelPricing) 
 }
 
 // ApplyConfigFastModeMultiplier 将价卡 Fast 倍率写入最终定价元数据。
-func ApplyConfigFastModeMultiplier(pricing *ModelPricing, ConfigPricing *ModelPricingEntry) {
-	if pricing == nil || ConfigPricing == nil {
+func ApplyConfigFastModeMultiplier(pricing *ModelPricing, configPricing *ModelPricingEntry) {
+	if pricing == nil || configPricing == nil {
 		return
 	}
-	multiplierPtr := ConfigPricing.FastMultiplier
+	multiplierPtr := configPricing.FastMultiplier
 	if multiplierPtr == nil {
-		multiplierPtr = ConfigPricing.FastModeMultiplier
+		multiplierPtr = configPricing.FastModeMultiplier
 	}
 	if multiplierPtr == nil {
 		return
@@ -101,11 +101,11 @@ func ApplyConfigFastModeMultiplier(pricing *ModelPricing, ConfigPricing *ModelPr
 	pricing.FastMultiplier = &multiplier
 }
 
-func ApplyConfigFlexMultiplier(pricing *ModelPricing, ConfigPricing *ModelPricingEntry) {
-	if pricing == nil || ConfigPricing == nil || ConfigPricing.FlexMultiplier == nil {
+func ApplyConfigFlexMultiplier(pricing *ModelPricing, configPricing *ModelPricingEntry) {
+	if pricing == nil || configPricing == nil || configPricing.FlexMultiplier == nil {
 		return
 	}
-	multiplier := *ConfigPricing.FlexMultiplier
+	multiplier := *configPricing.FlexMultiplier
 	if multiplier < 0 {
 		multiplier = 0
 	}
@@ -148,8 +148,8 @@ func ConfigTierOverridePrice(baseStandard, baseTier, configStandard float64) flo
 }
 
 // ApplyConfigTokenPriceOverrides 应用普通与图片 token 价格，同时保留模型内置层级比例。
-func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelPricingEntry) {
-	if pricing == nil || ConfigPricing == nil {
+func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, configPricing *ModelPricingEntry) {
+	if pricing == nil || configPricing == nil {
 		return
 	}
 	// 显式价卡覆盖同时应用到每个目录阶梯，保留未覆盖的独立单价。
@@ -157,43 +157,43 @@ func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelP
 		tiers := make([]ContextModelPrice, len(pricing.ContextPrices))
 		for i, tier := range pricing.ContextPrices {
 			value := *tier.Pricing
-			ApplyConfigTokenPriceOverrides(&value, ConfigPricing)
+			ApplyConfigTokenPriceOverrides(&value, configPricing)
 			tiers[i] = ContextModelPrice{Threshold: tier.Threshold, Pricing: &value}
 		}
 		pricing.ContextPrices = tiers
 	}
-	if ConfigPricing.InputPrice != nil {
-		priority := ConfigTierOverridePrice(pricing.InputPricePerToken, pricing.InputPricePerTokenPriority, *ConfigPricing.InputPrice)
-		pricing.InputPricePerToken = *ConfigPricing.InputPrice
+	if configPricing.InputPrice != nil {
+		priority := ConfigTierOverridePrice(pricing.InputPricePerToken, pricing.InputPricePerTokenPriority, *configPricing.InputPrice)
+		pricing.InputPricePerToken = *configPricing.InputPrice
 		pricing.InputPricePerTokenPriority = priority
 	}
-	if ConfigPricing.OutputPrice != nil {
-		priority := ConfigTierOverridePrice(pricing.OutputPricePerToken, pricing.OutputPricePerTokenPriority, *ConfigPricing.OutputPrice)
-		pricing.OutputPricePerToken = *ConfigPricing.OutputPrice
+	if configPricing.OutputPrice != nil {
+		priority := ConfigTierOverridePrice(pricing.OutputPricePerToken, pricing.OutputPricePerTokenPriority, *configPricing.OutputPrice)
+		pricing.OutputPricePerToken = *configPricing.OutputPrice
 		pricing.OutputPricePerTokenPriority = priority
 	}
-	if ConfigPricing.CacheWritePrice != nil {
+	if configPricing.CacheWritePrice != nil {
 		basePriority := pricing.CacheCreationPricePerTokenPriority
-		priority := ConfigTierOverridePrice(pricing.CacheCreationPricePerToken, basePriority, *ConfigPricing.CacheWritePrice)
-		pricing.CacheCreationPricePerToken = *ConfigPricing.CacheWritePrice
+		priority := ConfigTierOverridePrice(pricing.CacheCreationPricePerToken, basePriority, *configPricing.CacheWritePrice)
+		pricing.CacheCreationPricePerToken = *configPricing.CacheWritePrice
 		pricing.CacheCreationPricePerTokenPriority = priority
 		pricing.CacheCreationPriceExplicit = true
-		pricing.CacheCreation5mPrice = *ConfigPricing.CacheWritePrice
-		if ConfigPricing.CacheWrite1hPrice == nil {
+		pricing.CacheCreation5mPrice = *configPricing.CacheWritePrice
+		if configPricing.CacheWrite1hPrice == nil {
 			// 兼容旧配置：未拆分时继续让 cache_write_price 覆盖两个 TTL 档位。
-			pricing.CacheCreation1hPrice = *ConfigPricing.CacheWritePrice
+			pricing.CacheCreation1hPrice = *configPricing.CacheWritePrice
 		}
 	}
-	if ConfigPricing.CacheWrite1hPrice != nil {
-		pricing.CacheCreation1hPrice = *ConfigPricing.CacheWrite1hPrice
+	if configPricing.CacheWrite1hPrice != nil {
+		pricing.CacheCreation1hPrice = *configPricing.CacheWrite1hPrice
 		pricing.SupportsCacheBreakdown = true
 	}
-	if ConfigPricing.CacheReadPrice != nil {
-		priority := ConfigTierOverridePrice(pricing.CacheReadPricePerToken, pricing.CacheReadPricePerTokenPriority, *ConfigPricing.CacheReadPrice)
-		pricing.CacheReadPricePerToken = *ConfigPricing.CacheReadPrice
+	if configPricing.CacheReadPrice != nil {
+		priority := ConfigTierOverridePrice(pricing.CacheReadPricePerToken, pricing.CacheReadPricePerTokenPriority, *configPricing.CacheReadPrice)
+		pricing.CacheReadPricePerToken = *configPricing.CacheReadPrice
 		pricing.CacheReadPricePerTokenPriority = priority
 	}
-	applyConfigImagePriceOverrides(pricing, ConfigPricing)
+	applyConfigImagePriceOverrides(pricing, configPricing)
 }
 
 // CalculateTokenCost 按 token 区间计费。

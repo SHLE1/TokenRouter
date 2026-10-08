@@ -633,10 +633,7 @@ func TestHandleNonStreamingResponse_PathBasedCompactStaysJSON(t *testing.T) {
 func TestHandleSSEToJSON_CompactClientStreamBridgesToSSE(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, true)
-	upstreamSSE := strings.Join([]string{
-		`data: {"type":"response.completed","response":{"id":"resp_compact_sse","object":"response","model":"gpt-5.1-codex","status":"completed","output":[{"id":"cmp_sse_1","type":"compaction","status":"completed","encrypted_content":"compact-sse-payload"}],"usage":{"input_tokens":3,"output_tokens":2,"total_tokens":5}}}`,
-		"",
-	}, "\n")
+	upstreamSSE := `data: {"type":"response.completed","response":{"id":"resp_compact_sse","object":"response","model":"gpt-5.1-codex","status":"completed","output":[{"id":"cmp_sse_1","type":"compaction","status":"completed","encrypted_content":"compact-sse-payload"}],"usage":{"input_tokens":3,"output_tokens":2,"total_tokens":5}}}` + "\n" + ""
 	resp := &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -745,10 +742,7 @@ func TestReconstructResponseOutputFromSSE_PrefersRawDoneItems(t *testing.T) {
 
 // TestReconstructResponseOutputFromSSE_CompactionAddedFallback 验证无任何 done 事件时，退回收集 output_item.added 中的 compaction 类 item。
 func TestReconstructResponseOutputFromSSE_CompactionAddedFallback(t *testing.T) {
-	bodyText := strings.Join([]string{
-		`data: {"type":"response.output_item.added","output_index":0,"item":{"id":"cmp_add","type":"compaction","encrypted_content":"added-only"}}`,
-		`data: {"type":"response.completed","response":{"id":"resp_1","output":[]}}`,
-	}, "\n")
+	bodyText := `data: {"type":"response.output_item.added","output_index":0,"item":{"id":"cmp_add","type":"compaction","encrypted_content":"added-only"}}` + "\n" + `data: {"type":"response.completed","response":{"id":"resp_1","output":[]}}`
 
 	outputJSON, ok := bridge.ReconstructResponseOutputFromSSE(bodyText)
 	require.True(t, ok)
@@ -2574,11 +2568,8 @@ func TestOpenAIStreamingNormalizesTerminalOutputToEmptyArray(t *testing.T) {
 
 	resp := &http.Response{
 		StatusCode: http.StatusOK,
-		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
-			`data: {"type":"response.completed","response":{"id":"resp_empty","status":"completed","output":null,"usage":{"input_tokens":1,"output_tokens":0}}}`,
-			"",
-		}, "\n"))),
-		Header: http.Header{"X-Request-Id": []string{"rid-empty-output"}},
+		Body:       io.NopCloser(strings.NewReader(`data: {"type":"response.completed","response":{"id":"resp_empty","status":"completed","output":null,"usage":{"input_tokens":1,"output_tokens":0}}}` + "\n" + "")),
+		Header:     http.Header{"X-Request-Id": []string{"rid-empty-output"}},
 	}
 
 	result, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")

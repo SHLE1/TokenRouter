@@ -206,10 +206,7 @@ func (s *AuthState) AuthCreateRegisteredUser(ctx context.Context, user *identity
 	if err := run(txCtx); err != nil {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	return nil
+	return tx.Commit()
 }
 
 func (s *AuthState) AuthEnsureEmailAuthIdentity(ctx context.Context, user *identitycore.User, source string) (*dbent.AuthIdentity, bool) {

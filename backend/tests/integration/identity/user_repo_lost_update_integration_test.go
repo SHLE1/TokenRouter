@@ -4,7 +4,7 @@ package identity_test
 
 import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	identity "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
 // 这一组用例覆盖用户行上的 lost update：调用方手里的快照可能早于并发发生的

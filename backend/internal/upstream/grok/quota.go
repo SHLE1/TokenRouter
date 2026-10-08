@@ -174,7 +174,7 @@ func parseResetHeader(raw string) *int64 {
 		// 因此按数量级区分，避免把相对值 60 误解为 1970 年的时间戳。
 		switch {
 		case value >= 1_000_000_000_000: // milliseconds epoch → seconds
-			value = value / 1000
+			value /= 1000
 		case value >= 1_000_000_000: // already a plausible unix-seconds epoch (>= 2001-09)
 			// 已是合理的 Unix 秒时间戳，保持原值。
 		default: // relative seconds from now

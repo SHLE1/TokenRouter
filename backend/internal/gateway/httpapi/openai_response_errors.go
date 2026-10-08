@@ -604,8 +604,8 @@ func (p *OpenAIResponseOutput) ApplyHTTPFailure(ctx context.Context, resp *http.
 
 // ReadReplayableError 读取并关闭上游错误体，再把 resp.Body 回卷为可重读的副本。
 // 返回值包含原始错误体和脱敏后的错误消息。
-func (s *OpenAIResponseOutput) ReadReplayableError(resp *http.Response) ([]byte, string) {
-	respBody := s.ReadErrorBody(resp)
+func (p *OpenAIResponseOutput) ReadReplayableError(resp *http.Response) ([]byte, string) {
+	respBody := p.ReadErrorBody(resp)
 	_ = resp.Body.Close()
 	resp.Body = io.NopCloser(bytes.NewReader(respBody))
 

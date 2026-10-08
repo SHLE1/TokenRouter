@@ -77,12 +77,12 @@ func NewGroupStore(client *dbent.Client, db postgresinfra.Executor, options Grou
 }
 
 // Mutate 在可用时为分组变更开启事务，保证分组及关联变更原子化。
-func (s *GroupStore) Mutate(ctx context.Context, fn func(context.Context) error) error {
-	if dbent.TxFromContext(ctx) != nil || s.client == nil {
+func (r *GroupStore) Mutate(ctx context.Context, fn func(context.Context) error) error {
+	if dbent.TxFromContext(ctx) != nil || r.client == nil {
 		return fn(ctx)
 	}
 
-	tx, err := s.client.Tx(ctx)
+	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return fmt.Errorf("begin group mutation transaction: %w", err)
 	}

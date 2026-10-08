@@ -197,10 +197,7 @@ func (s *Results) ReconcileCreativeProvision(ctx context.Context, run *CreativeR
 	if err := s.Queue.Enqueue(ctx, run.RunID); err != nil && !errors.Is(err, ErrCreativeAlreadyQueued) {
 		return err
 	}
-	if err := s.Repo.SetCreativeRunProvisioningPhase(ctx, run.RunID, CreativeProvisioningPhaseEnqueued); err != nil {
-		return err
-	}
-	return nil
+	return s.Repo.SetCreativeRunProvisioningPhase(ctx, run.RunID, CreativeProvisioningPhaseEnqueued)
 }
 
 // RunCreativeOutboxReconciler 启动创作台 outbox 周期恢复循环。
@@ -474,10 +471,7 @@ func (s *Results) CancelRunByWorker(ctx context.Context, runID string) error {
 	if err := s.EnsureCreativeOutbox(ctx, runID, CreativeRunOutboxRelease); err != nil {
 		return err
 	}
-	if err := s.ReleaseRun(ctx, runID); err != nil {
-		return err
-	}
-	return nil
+	return s.ReleaseRun(ctx, runID)
 }
 
 // MarkResultLost 把任务标记为 result_lost。

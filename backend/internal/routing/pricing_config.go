@@ -78,7 +78,7 @@ func (c *PricingConfig) GetModelPricing(model string) *ModelPricingEntry {
 
 	for i := range c.ModelPricing {
 		for _, m := range c.ModelPricing[i].Models {
-			if strings.ToLower(m) == modelLower {
+			if strings.EqualFold(m, modelLower) {
 				cp := c.ModelPricing[i].Clone()
 				return &cp
 			}

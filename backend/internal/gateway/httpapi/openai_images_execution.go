@@ -231,6 +231,6 @@ func (s *OpenAIImagesExecutor) buildOpenAIImagesRequest(
 	}
 
 	options := s.Requests.ResponseOptions(ctx, c, provider, token, targetURL, false, tlsRouterMatch...)
-	options.AllowHeader = func(name string) bool { return AllowOpenAIPassthroughHeader(name) }
+	options.AllowHeader = AllowOpenAIPassthroughHeader
 	return upstreamopenai.BuildImagesRequest(ctx, body, contentType, options)
 }

@@ -61,9 +61,9 @@ func ShouldEnsureCodexFingerprintSeedForExtraUpdates(updates map[string]any) boo
 }
 
 // GetCodexFingerprintMode 返回 OAuth 提供商的指纹模式，其他类型返回关闭。
-func (a *Record) GetCodexFingerprintMode() CodexFingerprintMode {
-	if a == nil || !a.IsOpenAIOAuthLike() {
+func (r *Record) GetCodexFingerprintMode() CodexFingerprintMode {
+	if r == nil || !r.IsOpenAIOAuthLike() {
 		return CodexFingerprintOff
 	}
-	return CodexFingerprintModeFromExtra(a.Extra)
+	return CodexFingerprintModeFromExtra(r.Extra)
 }

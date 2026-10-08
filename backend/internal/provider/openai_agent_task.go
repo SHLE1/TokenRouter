@@ -20,11 +20,11 @@ type OpenAITaskOptions struct {
 // OpenAITaskCoordinator 延续原进程内按提供商共享锁，不增加跨进程协调协议。
 type OpenAITaskCoordinator struct{ locks sync.Map }
 
-func (a *Record) IsOpenAIAgentIdentity() bool {
-	if a == nil || !a.IsOpenAIOAuth() {
+func (r *Record) IsOpenAIAgentIdentity() bool {
+	if r == nil || !r.IsOpenAIOAuth() {
 		return false
 	}
-	return strings.EqualFold(strings.TrimSpace(a.GetCredential(OpenAIAuthModeCredentialKey)), OpenAIAuthModeAgentIdentity)
+	return strings.EqualFold(strings.TrimSpace(r.GetCredential(OpenAIAuthModeCredentialKey)), OpenAIAuthModeAgentIdentity)
 }
 
 // openAITaskCopyCredentials 浅拷贝任务更新需要的凭据 map。

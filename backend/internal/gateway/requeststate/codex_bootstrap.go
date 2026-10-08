@@ -225,7 +225,7 @@ func CodexAutomationHeaderValue(line, prefix string) (string, bool) {
 }
 
 func ValidCodexAutomationID(value string) bool {
-	if len(value) == 0 || len(value) > 128 || value == "." || value == ".." {
+	if value == "" || len(value) > 128 || value == "." || value == ".." {
 		return false
 	}
 	for i := range len(value) {

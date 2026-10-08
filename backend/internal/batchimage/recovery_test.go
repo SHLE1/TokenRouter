@@ -112,7 +112,7 @@ func TestBatchImageBillingRecoveryService_EnqueuesRetryWhenReleaseFails(t *testi
 
 	released, err := svc.ReleaseStaleUnsubmittedOnce(context.Background())
 	// job 已转 failed、不会再出现在 stale 列表：释放失败必须入队重试
-	//（由 worker 的 releaseTerminalHold 兜底），否则冻结余额永久泄漏。
+	// （由 worker 的 releaseTerminalHold 兜底），否则冻结余额永久泄漏。
 	require.Error(t, err)
 	require.Equal(t, 0, released)
 	require.Equal(t, batchimage.BatchImageJobStatusFailed, repo.jobs[stale.BatchID].Status)

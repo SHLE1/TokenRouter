@@ -572,7 +572,7 @@ func summarizeEasyPayResponse(body []byte) string {
 	}
 	if len(summary) > maxEasypayErrorSummary {
 		truncated := summary[:maxEasypayErrorSummary]
-		for len(truncated) > 0 && !utf8.ValidString(truncated) {
+		for truncated != "" && !utf8.ValidString(truncated) {
 			truncated = truncated[:len(truncated)-1]
 		}
 		return truncated + "..."

@@ -1,12 +1,12 @@
 package httpapi
 
 import (
-	testing "testing"
-	time "time"
+	"testing"
+	"time"
 
-	require "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 
-	routing "github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 func float64Ptr(v float64) *float64 { return &v }
@@ -296,8 +296,7 @@ func TestPricingRequestToService_Defaults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := pricingRequestToService([]modelPricingRequest{tt.req})
 			require.Len(t, result, 1)
-			switch tt.wantField {
-			case "BillingMode":
+			if tt.wantField == "BillingMode" {
 				require.Equal(t, routing.BillingMode(tt.wantValue), result[0].BillingMode)
 			}
 		})

@@ -509,10 +509,7 @@ func (c *WSConn) pingWithTimeout(timeout time.Duration) error {
 	}
 	pingCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if err := c.ws.Ping(pingCtx); err != nil {
-		return err
-	}
-	return nil
+	return c.ws.Ping(pingCtx)
 }
 
 func (c *WSConn) supportsIdlePingWithoutReader() bool {

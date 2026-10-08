@@ -56,11 +56,11 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	if firstRequestModel == "" && hooks != nil {
 		firstRequestModel = strings.TrimSpace(hooks.InitialRequestModel)
 	}
-	if next, policyErr := p.Reasoning(firstClientMessage, firstRequestModel); policyErr != nil {
+	next, policyErr := p.Reasoning(firstClientMessage, firstRequestModel)
+	if policyErr != nil {
 		return p.CloseError(1008, policyErr.Error(), policyErr)
-	} else {
-		firstClientMessage = next
 	}
+	firstClientMessage = next
 	requestModel := strings.TrimSpace(gjson.GetBytes(firstClientMessage, "model").String())
 	requestPreviousResponseID := strings.TrimSpace(gjson.GetBytes(firstClientMessage, "previous_response_id").String())
 	initialRequestModel := ""
@@ -328,11 +328,11 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 			originalResponseCreate := payload
 			if isResponseCreate {
 				requestModelForPolicy := usageMeta.RequestModelForFrame(payload)
-				if next, policyErr := p.Reasoning(payload, requestModelForPolicy); policyErr != nil {
+				next, policyErr := p.Reasoning(payload, requestModelForPolicy)
+				if policyErr != nil {
 					return payload, nil, p.CloseError(1008, policyErr.Error(), policyErr)
-				} else {
-					payload = next
 				}
+				payload = next
 			}
 			if isResponseCreate {
 				usageMeta.CaptureRequestedReasoningEffort(originalResponseCreate)

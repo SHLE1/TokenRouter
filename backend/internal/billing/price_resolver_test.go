@@ -3,7 +3,7 @@ package billing_test
 import (
 	"context"
 	"errors"
-	slog "log/slog"
+	"log/slog"
 	"testing"
 	"time"
 

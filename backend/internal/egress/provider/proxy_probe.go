@@ -168,7 +168,7 @@ func (s *proxyProbeService) parseIPAPI(body []byte, latencyMs int64) (*egress.Pr
 		}
 		return nil, latencyMs, fmt.Errorf("failed to parse response: %w (body: %s)", err, preview)
 	}
-	if strings.ToLower(ipInfo.Status) != "success" {
+	if !strings.EqualFold(ipInfo.Status, "success") {
 		if ipInfo.Message == "" {
 			ipInfo.Message = "ip-api request failed"
 		}

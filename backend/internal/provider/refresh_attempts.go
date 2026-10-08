@@ -211,18 +211,17 @@ func (s RefreshAttempts) Run(
 					return &ProviderConfigurationRefreshError{
 						Cause: errors.New("grok OAuth conditional refresh mutation repository is not configured"),
 					}
-				} else {
-					persistentlyBlocked, setErr = conditionalRepo.SetGrokOAuthRefreshErrorIfCredentialsUnchanged(
-						ctx,
-						provider.ID,
-						provider.Credentials,
-						provider.ProxyID,
-						errorMsg,
-					)
-					if setErr == nil && !persistentlyBlocked {
-						s.Info("token_refresh.grok_error_status_skipped_stale_credentials", "provider_id", provider.ID)
-						return ErrRefreshSkipped
-					}
+				}
+				persistentlyBlocked, setErr = conditionalRepo.SetGrokOAuthRefreshErrorIfCredentialsUnchanged(
+					ctx,
+					provider.ID,
+					provider.Credentials,
+					provider.ProxyID,
+					errorMsg,
+				)
+				if setErr == nil && !persistentlyBlocked {
+					s.Info("token_refresh.grok_error_status_skipped_stale_credentials", "provider_id", provider.ID)
+					return ErrRefreshSkipped
 				}
 			} else {
 				if failureProvider == nil {
@@ -340,13 +339,12 @@ func (s RefreshAttempts) Run(
 		} else if !applied {
 			s.Info("token_refresh.grok_temp_unschedulable_skipped_stale_credentials", "provider_id", provider.ID)
 			return ErrRefreshSkipped
-		} else {
-			publishFailure(until, "token_refresh_retry_exhausted")
-			s.Info("token_refresh.temp_unschedulable_set",
-				"provider_id", provider.ID,
-				"until", until.Format(time.RFC3339),
-			)
 		}
+		publishFailure(until, "token_refresh_retry_exhausted")
+		s.Info("token_refresh.temp_unschedulable_set",
+			"provider_id", provider.ID,
+			"until", until.Format(time.RFC3339),
+		)
 		return lastErr
 	}
 

@@ -26,5 +26,5 @@ func TestMain(m *testing.M) {
 		geminiAPIKeyEnv,
 		geminiKeySet,
 	)
-	os.Exit(m.Run())
+	m.Run()
 }

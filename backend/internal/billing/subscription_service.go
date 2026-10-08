@@ -705,11 +705,7 @@ func (s *SubscriptionService) setSubscriptionValidityDaysLocked(ctx context.Cont
 		} else {
 			status = SubscriptionStatusActive
 		}
-		if err := s.userSubRepo.UpdateStatus(txCtx, subscriptionID, status); err != nil {
-			return err
-		}
-
-		return nil
+		return s.userSubRepo.UpdateStatus(txCtx, subscriptionID, status)
 	})
 	if err != nil {
 		return nil, err

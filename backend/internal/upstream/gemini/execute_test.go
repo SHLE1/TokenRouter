@@ -54,7 +54,7 @@ func localTarget(server *httptest.Server, mode ResponseMode, stream bool, closes
 			res.Body = &executeBody{ReadCloser: res.Body, closes: closes}
 		}
 		return res, err
-	}, CheckPolicy: func(_ context.Context, res *http.Response) (bool, *http.Response) { return false, res }, ShouldRetry: func(int) bool { return false }, ReadError: func(res *http.Response) []byte { body, _ := io.ReadAll(res.Body); return body }, Observe: func(ExchangeNotice) {}, SetError: func(int, string, string) {}, Sanitize: func(s string) string { return s }, Message: func(b []byte) string { return string(b) }, Detail: func([]byte) string { return "" }, BuildError: func(err error) error { return err }, FinalError: func(message string) error { return errors.New(message) }}, Response: ResponseOptions{ReadBody: io.ReadAll, WriteHeaders: func(dst, src http.Header) {
+	}, CheckPolicy: func(_ context.Context, res *http.Response) (bool, *http.Response) { return false, res }, ShouldRetry: func(int) bool { return false }, ReadError: func(res *http.Response) []byte { body, _ := io.ReadAll(res.Body); return body }, Observe: func(ExchangeNotice) {}, SetError: func(int, string, string) {}, Sanitize: func(s string) string { return s }, Message: func(b []byte) string { return string(b) }, Detail: func([]byte) string { return "" }, BuildError: func(err error) error { return err }, FinalError: errors.New}, Response: ResponseOptions{ReadBody: io.ReadAll, WriteHeaders: func(dst, src http.Header) {
 		for key, values := range src {
 			dst[key] = append([]string(nil), values...)
 		}

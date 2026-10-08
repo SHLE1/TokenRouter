@@ -4,7 +4,7 @@ import (
 	"net"
 	"strings"
 
-	utls "github.com/refraction-networking/utls"
+	utls "github.com/refraction-networking/utls" //nolint:revive // 包名是 tls，别名用来和 crypto/tls 区分。
 )
 
 // SupportsHTTP2 返回模板是否会通过 ALPN 声明 h2。

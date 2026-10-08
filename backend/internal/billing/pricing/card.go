@@ -134,7 +134,7 @@ func FindMatchingInterval(intervals []PricingInterval, totalTokens int) *Pricing
 func (p *ModelPricingEntry) GetTierByLabel(label string) *PricingInterval {
 	labelLower := strings.ToLower(label)
 	for i := range p.Intervals {
-		if strings.ToLower(p.Intervals[i].TierLabel) == labelLower {
+		if strings.EqualFold(p.Intervals[i].TierLabel, labelLower) {
 			return &p.Intervals[i]
 		}
 	}

@@ -184,13 +184,10 @@ func (s *Queries) MarkRunResultLost(ctx context.Context, run *CreativeRun) error
 	if run == nil || run.Status != CreativeRunStatusSucceeded {
 		return nil
 	}
-	if err := s.Repo.TransitionCreativeRunStatus(ctx, run.RunID, CreativeRunStatusResultLost, CreativeRunTransitionOptions{
+	return s.Repo.TransitionCreativeRunStatus(ctx, run.RunID, CreativeRunStatusResultLost, CreativeRunTransitionOptions{
 		ErrorCode:    CreativeStringPtr("RESULT_EXPIRED"),
 		ErrorMessage: CreativeStringPtr("transient output expired before client acknowledgment"),
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
 // AckOutput 在客户端确认保存后删除临时输出并标记 acked，幂等。

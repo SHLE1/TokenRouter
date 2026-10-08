@@ -33,8 +33,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	integrationRedis = redisclient.NewClient(&redisclient.Options{Addr: host + ":" + port.Port()})
-	code := m.Run()
+	m.Run()
 	_ = integrationRedis.Close()
 	_ = container.Terminate(ctx)
-	os.Exit(code)
 }

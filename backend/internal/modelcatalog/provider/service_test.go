@@ -243,11 +243,7 @@ func TestCatalogLookupOpenAIDedicatedFallbackBeforeGenericBase(t *testing.T) {
 	}})
 	for _, model := range []string{"gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.5-pro", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra"} {
 		for _, suffix := range []string{"", "-high", "-20260905", "-2026-09-05"} {
-			if suffix == "" {
-				require.Nil(t, svc.GetModelPricing(model+suffix))
-			} else {
-				require.Nil(t, svc.GetModelPricing(model+suffix))
-			}
+			require.Nil(t, svc.GetModelPricing(model+suffix))
 			input, output := svc.GetModelModalities(model + suffix)
 			require.Nil(t, input)
 			require.Nil(t, output)

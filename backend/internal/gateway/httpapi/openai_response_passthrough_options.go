@@ -83,6 +83,7 @@ func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Co
 	}
 	nonstream := p.NonStreamOptions(ctx, c, provider)
 	nonstream.TerminalFailover = func(resp *http.Response, event string, body []byte, message, model string) error {
+		//nolint:revive // 函数返回具体指针类型，直接 return 会把 nil 指针包成非 nil 的 error。
 		if failure := p.nonStreamingTerminalFailure(c, resp, provider, true, event, body, message, model); failure != nil {
 			return failure
 		}

@@ -398,7 +398,7 @@ func (s *Service) ListModelNamesByProvider(provider string) []string {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	names := make([]string, 0)
 	for name, p := range s.pricingData {
-		if strings.ToLower(p.Provider) == provider {
+		if strings.EqualFold(p.Provider, provider) {
 			names = append(names, name)
 		}
 	}

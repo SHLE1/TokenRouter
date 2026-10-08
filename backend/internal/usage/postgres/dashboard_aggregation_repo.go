@@ -98,10 +98,7 @@ func (r *AggregationStore) aggregateRangeInTx(ctx context.Context, hourStart, ho
 	if err := r.upsertHourlyAggregates(ctx, hourStart, hourEnd); err != nil {
 		return err
 	}
-	if err := r.upsertDailyAggregates(ctx, dayStart, dayEnd); err != nil {
-		return err
-	}
-	return nil
+	return r.upsertDailyAggregates(ctx, dayStart, dayEnd)
 }
 
 func (r *AggregationStore) RecomputeRange(ctx context.Context, start, end time.Time) error {
@@ -163,10 +160,7 @@ func (r *AggregationStore) recomputeRangeInTx(ctx context.Context, hourStart, ho
 	if err := r.upsertHourlyAggregates(ctx, hourStart, hourEnd); err != nil {
 		return err
 	}
-	if err := r.upsertDailyAggregates(ctx, dayStart, dayEnd); err != nil {
-		return err
-	}
-	return nil
+	return r.upsertDailyAggregates(ctx, dayStart, dayEnd)
 }
 
 func (r *AggregationStore) GetAggregationWatermark(ctx context.Context) (time.Time, error) {

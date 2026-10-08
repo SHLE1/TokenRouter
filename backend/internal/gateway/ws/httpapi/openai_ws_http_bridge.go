@@ -927,7 +927,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 				defaultFailover = true
 			} else if provider.Record.Platform == capability.PlatformGrok {
 				// SSE 错误事件不携带 HTTP 状态码，本地映射会把未知 xAI 错误码
-				//（例如 new_sensitive）默认映射为 502；应用基于状态码的故障转移或
+				// （例如 new_sensitive）默认映射为 502；应用基于状态码的故障转移或
 				// 提供商状态变更前，先按请求级 403 内容拒绝检查响应体。
 				if grok.IsGrokContentPolicyRejection(http.StatusForbidden, upstreamMessage) {
 					requestScopedError = true

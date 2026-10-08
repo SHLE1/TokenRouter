@@ -178,7 +178,7 @@ func (h *AdminAnnouncementHandler) Update(c *gin.Context) {
 
 	if req.StartsAt != nil {
 		if *req.StartsAt == 0 {
-			var cleared *time.Time = nil
+			var cleared *time.Time
 			input.StartsAt = &cleared
 		} else {
 			t := time.Unix(*req.StartsAt, 0)
@@ -189,7 +189,7 @@ func (h *AdminAnnouncementHandler) Update(c *gin.Context) {
 
 	if req.EndsAt != nil {
 		if *req.EndsAt == 0 {
-			var cleared *time.Time = nil
+			var cleared *time.Time
 			input.EndsAt = &cleared
 		} else {
 			t := time.Unix(*req.EndsAt, 0)

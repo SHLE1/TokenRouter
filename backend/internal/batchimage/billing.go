@@ -106,8 +106,8 @@ func BuildHoldCommand(job *BatchImageJob, requestID string, actualAmount float64
 	return command, nil
 }
 
-func (funding Funding) Reserve(ctx context.Context, job *BatchImageJob, groupID *int64, payloadHash string) error {
-	if funding.Store == nil {
+func (f Funding) Reserve(ctx context.Context, job *BatchImageJob, groupID *int64, payloadHash string) error {
+	if f.Store == nil {
 		return ErrBatchImageBillingHoldFailed.WithCause(errors.New("batch image billing repository is not configured"))
 	}
 	cmd, err := BuildHoldCommand(job, BatchImageHoldRequestID(job.BatchID), 0, payloadHash)
@@ -118,7 +118,7 @@ func (funding Funding) Reserve(ctx context.Context, job *BatchImageJob, groupID 
 		return nil
 	}
 	cmd.GroupID = CloneInt64Ptr(groupID)
-	result, err := funding.Store.Reserve(ctx, cmd)
+	result, err := f.Store.Reserve(ctx, cmd)
 	if err != nil {
 		if errors.Is(err, ErrBatchImageInsufficientBalance) {
 			return ErrBatchImageInsufficientBalance
@@ -146,15 +146,15 @@ func (funding Funding) Reserve(ctx context.Context, job *BatchImageJob, groupID 
 	return nil
 }
 
-func (funding Funding) Capture(ctx context.Context, job *BatchImageJob, actualAmount float64, payloadHash string) (*billing.TaskFundsResult, error) {
-	if funding.Store == nil {
+func (f Funding) Capture(ctx context.Context, job *BatchImageJob, actualAmount float64, payloadHash string) (*billing.TaskFundsResult, error) {
+	if f.Store == nil {
 		return nil, ErrBatchImageSettlementBillingFailed.WithCause(errors.New("batch image billing repository is not configured"))
 	}
 	cmd, err := BuildHoldCommand(job, BatchImageCaptureRequestID(job.BatchID), actualAmount, payloadHash)
 	if err != nil {
 		return nil, err
 	}
-	result, err := funding.Store.Capture(ctx, cmd)
+	result, err := f.Store.Capture(ctx, cmd)
 	if err != nil {
 		return nil, ErrBatchImageSettlementBillingFailed.WithCause(err)
 	}
@@ -162,8 +162,8 @@ func (funding Funding) Capture(ctx context.Context, job *BatchImageJob, actualAm
 	return result, nil
 }
 
-func (funding Funding) Release(ctx context.Context, job *BatchImageJob, payloadHash string) error {
-	if funding.Store == nil || job == nil {
+func (f Funding) Release(ctx context.Context, job *BatchImageJob, payloadHash string) error {
+	if f.Store == nil || job == nil {
 		return nil
 	}
 	cmd, err := BuildHoldCommand(job, BatchImageReleaseRequestID(job.BatchID), 0, payloadHash)
@@ -173,12 +173,12 @@ func (funding Funding) Release(ctx context.Context, job *BatchImageJob, payloadH
 	if cmd.HoldAmount <= 0 {
 		return nil
 	}
-	if _, err := funding.Store.Release(ctx, cmd); err != nil {
+	if _, err := f.Store.Release(ctx, cmd); err != nil {
 		// 同一 release request id 出现指纹冲突，说明此前已有一次携带不同
 		// payloadHash 的释放成功提交（资金已归还）。视为幂等成功，
 		// 避免历史指纹不一致的 job 永远卡在释放失败的毒消息循环里。
 		if errors.Is(err, billing.ErrUsageBillingRequestConflict) {
-			funding.warn("batch_image.release_fingerprint_conflict_treated_as_released",
+			f.warn("batch_image.release_fingerprint_conflict_treated_as_released",
 				"batch_id", job.BatchID,
 			)
 			return nil

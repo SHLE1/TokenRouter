@@ -74,10 +74,7 @@ func (s *Admin) DeleteProvider(ctx context.Context, id int64) error {
 			return fmt.Errorf("cascade delete spark shadow %d: %w", shadow.ID, err)
 		}
 	}
-	if err := s.providerRepo.Delete(ctx, id); err != nil {
-		return err
-	}
-	return nil
+	return s.providerRepo.Delete(ctx, id)
 }
 
 func (s *Admin) ClearProviderError(ctx context.Context, id int64) (*Record, error) {

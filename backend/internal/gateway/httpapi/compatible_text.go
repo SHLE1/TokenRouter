@@ -163,13 +163,13 @@ func (h *CompatibleTextHandler) Responses(c *gin.Context) {
 	}
 
 	// 在协议转换前应用客户端指定档位的策略，审计保存改写前的值。
-	if policyBody, _, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
+	policyBody, _, policyErr := h.backend.Reasoning(c, apiKey, body)
+	if policyErr != nil {
 		h.backend.PolicyDenied(c)
 		h.responsesErrorResponse(c, http.StatusForbidden, "permission_error", policyErr.Error())
 		return
-	} else {
-		body = policyBody
 	}
+	body = policyBody
 	reqStream, ok := ParseOpenAICompatibleStream(body)
 	if !ok {
 		h.responsesErrorResponse(c, http.StatusBadRequest, "invalid_request_error", InvalidStreamFieldTypeMessage)
@@ -345,13 +345,13 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 	}
 
 	// 兼容入口按 Messages/Responses 的策略检查分组上限。
-	if policyBody, _, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
+	policyBody, _, policyErr := h.backend.Reasoning(c, apiKey, body)
+	if policyErr != nil {
 		h.backend.PolicyDenied(c)
 		h.chatCompletionsErrorResponse(c, http.StatusForbidden, "permission_error", policyErr.Error())
 		return
-	} else {
-		body = policyBody
 	}
+	body = policyBody
 	reqStream, ok := ParseOpenAICompatibleStream(body)
 	if !ok {
 		h.chatCompletionsErrorResponse(c, http.StatusBadRequest, "invalid_request_error", InvalidStreamFieldTypeMessage)

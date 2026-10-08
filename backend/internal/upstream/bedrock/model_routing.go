@@ -341,6 +341,6 @@ func (p BedrockInferenceProfile) Supports(region string) bool {
 }
 
 // BedrockProfile 仅在初始化规则表时拆分来源区域，请求路径不分配区域列表。
-func BedrockProfile(Id, SourceRegions string) BedrockInferenceProfile {
-	return BedrockInferenceProfile{Id: Id, SourceRegions: strings.Fields(SourceRegions)}
+func BedrockProfile(id, sourceRegions string) BedrockInferenceProfile {
+	return BedrockInferenceProfile{Id: id, SourceRegions: strings.Fields(sourceRegions)}
 }

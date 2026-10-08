@@ -3,7 +3,6 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	coderws "github.com/coder/websocket"
@@ -43,7 +42,7 @@ func (p *wsRequestAdapter) Mutate(current []byte, path, value string) ([]byte, e
 	case "type", "model":
 		payload[path] = value
 	case "client_metadata." + openai.WSTurnMetadataHeader:
-		openai.SetOpenAIWSTurnMetadata(payload, fmt.Sprintf("%v", value))
+		openai.SetOpenAIWSTurnMetadata(payload, value)
 	default:
 		return nil, err
 	}

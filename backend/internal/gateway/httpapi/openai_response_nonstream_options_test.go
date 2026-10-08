@@ -86,10 +86,7 @@ func TestHandleSSEToJSON_NoFinalResponseKeepsSSEBody(t *testing.T) {
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 	}
-	body := []byte(strings.Join([]string{
-		`data: {"type":"response.in_progress","response":{"id":"resp_3"}}`,
-		`data: [DONE]`,
-	}, "\n"))
+	body := []byte(`data: {"type":"response.in_progress","response":{"id":"resp_3"}}` + "\n" + `data: [DONE]`)
 
 	usage, err := openai.ReadSSEAsJSON(context.Background(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.NonStreamOptions(context.Background(), c, nil), body, "gpt-4o", "gpt-4o")
 	require.NoError(t, err)
@@ -109,10 +106,7 @@ func TestHandleSSEToJSON_ResponseFailedReturnsFailoverBeforeWrite(t *testing.T) 
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 	}
-	body := []byte(strings.Join([]string{
-		`data: {"type":"response.failed","error":{"message":"upstream rejected request"}}`,
-		`data: [DONE]`,
-	}, "\n"))
+	body := []byte(`data: {"type":"response.failed","error":{"message":"upstream rejected request"}}` + "\n" + `data: [DONE]`)
 
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeAPIKey, Platform: capability.PlatformOpenAI}}
 	usage, err := openai.ReadSSEAsJSON(context.Background(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.NonStreamOptions(context.Background(), c, provider), body, "gpt-4o", "gpt-4o")

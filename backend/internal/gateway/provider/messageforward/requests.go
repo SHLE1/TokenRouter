@@ -132,6 +132,7 @@ func (r *Runtime) requestOptions(ctx context.Context, output HTTPBoundary, state
 		return provideradapter.HeaderOverrideValue(gatewayadapter.ExecutionProtocolRecord(target), "anthropic-beta")
 	}
 	options.CheckFastBeta = func(ctx context.Context) error {
+		//nolint:revive // checkBetaTokens 返回具体指针类型，直接 return 会把 nil 指针包成非 nil 的 error。
 		if err := r.checkBetaTokens(ctx, []string{anthropic.BetaFastMode}, target, model); err != nil {
 			return err
 		}

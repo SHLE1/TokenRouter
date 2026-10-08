@@ -158,18 +158,18 @@ func (s *Calculator) CalculateCostWithServiceTier(model string, tokens UsageToke
 	return s.CalculateCostInternal(model, tokens, rateMultiplier, serviceTier, nil)
 }
 
-func (s *Calculator) CalculateCostInternal(model string, tokens UsageTokens, rateMultiplier float64, serviceTier string, ConfigPricing *ModelPricingEntry) (*CostBreakdown, error) {
+func (s *Calculator) CalculateCostInternal(model string, tokens UsageTokens, rateMultiplier float64, serviceTier string, configPricing *ModelPricingEntry) (*CostBreakdown, error) {
 	var pricing *ModelPricing
 	var err error
-	if ConfigPricing != nil {
-		pricing, err = s.GetModelPricingWithConfig(model, ConfigPricing)
+	if configPricing != nil {
+		pricing, err = s.GetModelPricingWithConfig(model, configPricing)
 	} else {
 		pricing, err = s.GetModelPricing(model)
 	}
 	if err != nil {
 		return nil, err
 	}
-	if ConfigPricing == nil {
+	if configPricing == nil {
 		pricing = s.applyCatalogTimePricing(pricing, s.options.Now())
 	}
 

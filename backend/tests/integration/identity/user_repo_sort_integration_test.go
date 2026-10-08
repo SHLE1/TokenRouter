@@ -11,7 +11,7 @@ import (
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	dbprovider "github.com/TokenFlux/TokenRouter/ent/provider"
-	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"

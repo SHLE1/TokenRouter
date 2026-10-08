@@ -88,13 +88,11 @@ func (b *openAIChatAttemptBridge) SelectionFailure(err error, excludedCount int,
 		}
 		b.binding().handleStreamingAwareError(b.c, cls.Status, cls.ErrType, cls.Message, *b.streamStarted)
 		return
+	}
+	if lastFailoverErr != nil {
+		b.binding().handleFailoverExhausted(b.c, lastFailoverErr, *b.streamStarted)
 	} else {
-		if lastFailoverErr != nil {
-			b.binding().handleFailoverExhausted(b.c, lastFailoverErr, *b.streamStarted)
-		} else {
-			b.binding().handleStreamingAwareError(b.c, http.StatusBadGateway, "api_error", "Upstream request failed", *b.streamStarted)
-		}
-		return
+		b.binding().handleStreamingAwareError(b.c, http.StatusBadGateway, "api_error", "Upstream request failed", *b.streamStarted)
 	}
 }
 

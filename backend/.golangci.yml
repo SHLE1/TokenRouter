@@ -9,12 +9,14 @@ linters:
     - decorder
     - errcheck
     - funcorder
+    - gocritic
     - godot
     - gosec
     - govet
     - ineffassign
     - intrange
     - nolintlint
+    - revive
     - staticcheck
     - unconvert
     - unused
@@ -82,9 +84,34 @@ linters:
       # 构造函数放在所属类型的方法前面，方法之间按调用关系排列。
       constructor: true
       struct-method: false
+    revive:
+      # 只开命名和控制流写法上的规则，其余 revive 默认规则不启用。
+      rules:
+        - name: comment-spacings
+        - name: identical-branches
+        - name: if-return
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: receiver-naming
+        - name: redundant-import-alias
+        - name: redundant-test-main-exit
+        - name: superfluous-else
+        - name: unnecessary-stmt
+        - name: var-declaration
     usestdlibvars:
       # 架构规则禁止部分核心包引用 net/http，状态码在这些包里写成数字。
       http-status-code: false
+    gocritic:
+      # 只开影响可读性、又有明确改法的检查。
+      disable-all: true
+      enabled-checks:
+        - assignOp
+        - captLocal
+        - emptyStringTest
+        - equalFold
+        - redundantSprint
+        - stringConcatSimplify
+        - unslice
     godot:
       # 顶层声明的文档注释以句号结尾，中文用“。”，英文用“.”。
       scope: declarations
