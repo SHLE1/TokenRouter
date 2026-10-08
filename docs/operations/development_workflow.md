@@ -7,7 +7,7 @@
 - [工具链与本地运行](#工具链与本地运行)：准备环境或更新依赖时读取。
 - [依赖规则](#backend_dependency_rules)：新增后端模块、调整 import 或文件许可时读取。
 - [编码约定](#编码约定)：写注释、修改前端时读取。
-- [后端文件组织](#backend_file_layout)：新增、拆分、合并或改名后端 Go 文件和测试文件时读取。
+- [后端文件组织](#backend_file_layout)：新增、拆分、合并或改名后端 Go 文件和测试文件时读取，文件内的声明顺序也在这一节。
 - [生成代码与迁移](#生成代码与迁移)：修改 Ent schema、Wire 或数据库时读取。
 - [验证策略](#验证策略)：实现完成、提交之前读取。
 - [提交与文档](#提交与文档)：形成提交或维护 Project Doc 时读取。
@@ -24,6 +24,7 @@
 | golangci-lint | `.golangci-version` | 本地和 CI 使用同一个完整版本，配置在 `backend/.golangci.yml` |
 | gofumpt | golangci-lint 内置 | 使用默认规则，不开启 extra，不单独维护版本 |
 | arch-go | `tools/architecture/go.mod` | `v2.1.2`；通过 Go API 使用，由独立的工具模块运行 |
+| dst | `tools/declorder/go.mod` | `tools/declorder` 用它改写声明顺序并保留注释，独立的工具模块 |
 | PostgreSQL、Redis | Compose 和集成测试 | 生产必需；测试可以由 Testcontainers 或 Compose 提供 |
 
 本地安装和 CI 相同版本的 lint，以免规则集不同，导致问题只在 CI 上出现：
@@ -126,6 +127,21 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 - 源文件的名字要能看出主题。`helper.go`、`helpers.go`、`util.go`、`utils.go`、`common.go`、`misc.go`、`shared.go` 和 `other.go` 都看不出主题，换成具体名字。`helpers` 留给测试辅助文件。
 - 去掉空行、注释和 import 后不到 30 行的源文件，如果没有自己的主题，就并进主题相同或者使用它最多的文件。几个常量、一两个错误变量、一个几行的小函数、一个只有一处调用的转换函数，都属于这种情况。`doc.go`、`wire.go`、带平台后缀或 `//go:build` 约束的文件，以及包里唯一的源文件，再小也单独保留。
 - 大包按主题给文件加统一前缀，让同一主题的文件在目录里排在一起，例如 app 包的 `gateway_*` 和 `provider_*`。新文件沿用已有前缀。
+
+<a id="backend_declaration_order"></a>
+### 文件内的声明顺序
+
+手写 Go 文件的顶层声明依次是 import、const、var、type、func：
+
+- const 和 var 各写成一个括号块。块里不同用途的声明用空行隔开，每组上方写注释。iota 按块内序号计数，一个文件有多个 iota 枚举时，第二个起单独成块，块前加 `//nolint:decorder` 并写明原因。
+- type 可以分开声明，也可以写成块。
+- func 里 init 排在最前，构造函数（以 `New` 或 `Must` 开头、返回 `T` 或 `*T` 的导出函数）排在 `T` 的第一个方法前面。其余函数按调用关系排列，调用方在前。
+
+`make fmt` 对改动的文件运行 `tools/declorder`，按上面的规则移动声明、合并 const 和 var，再交给 gofumpt 和 gci 格式化。它保持同类声明的相对顺序，var 的初始化顺序随之不变。和下一条声明隔着空行的注释会跟着那条声明移动，工具在 stderr 里列出这些位置，需要人工确认注释仍然放在对的地方。`make lint-go` 用 golangci-lint 的 decorder 检查声明顺序和块数，用 funcorder 检查构造函数的位置。
+
+decorder 把初始化表达式里函数字面量内的 `var` 当成顶层声明计数，`var x = func() T { var y T; ... }()` 会被误报。这种初始化写成具名函数，例如 `var catalog = loadCatalog()`。
+
+合并文件时，把源文件的声明直接放进目标文件，再运行 `make fmt`，声明会移到对应的位置。
 
 ### 包说明 doc.go
 
@@ -251,7 +267,7 @@ Redis 测试通过 `rediscontainer.Run` 启动独立容器，等待监听就绪�
 | `frontend` 下的其他文件 | 依赖文件改动时先冻结安装，再跑完整 lint、typecheck 和 Vitest |
 | `backend/internal/pkg/locale/*.json` | 引用这些文件的前端测试 |
 | `deploy/`、`tools/goreleaser*` | `make test-scripts` |
-| `tools/*.py`、`.githooks/` | `make test-tools` |
+| `tools/*.py`、`tools/declorder/`、`.githooks/` | `make test-tools` |
 
 快检使用 Go 测试缓存，没有改动的包直接复用上次结果。集成测试、前端生产构建和改动包的下游使用方由 CI 检查。快检失败会阻止推送，修复后重新推送；确需跳过时使用 `git push --no-verify`。手动执行 `make check` 时，基准默认取上游分支的共同祖先，也可以传 `BASE=<提交>`。
 
@@ -343,9 +359,11 @@ Vue 的最低版本为 `3.5.42`，该版本修复了 `@vue/server-renderer` 属�
 
 检查已经提交的改动，使用 `make fmt-check BASE=<基准提交>`，它按基准和 HEAD 的差异选择文件，工作区干净时也会检查。CI 的 PR 检出源提交，以目标分支和源提交的共同祖先为基准；普通 push 比较推送前后的提交，新分支第一次推送比较默认分支的共同祖先，默认分支第一次推送比较空树。基准无法解析时检查失败，不会悄悄跳过。
 
-格式规则由 `golangci-lint fmt` 的改动文件入口检查。全量 lint 检查错误处理、未使用代码和静态分析：`make lint-go` 带 integration 标签检查无标签和集成文件，`make test-embed` 检查 embed 文件。
+`make fmt` 先用 `tools/declorder` 重排[文件内的声明顺序](#backend_declaration_order)，再运行 `golangci-lint fmt`。golangci-lint 开始前，入口先校验版本，版本不符时任何文件都不会被改写。
 
-`tools/test_format_go.py` 在临时 Git 仓库里验证文件筛选、生成代码排除、暂存区保护、干净工作区下的提交差异，以及两种格式化规则同时生效。CI 的 go-lint job 通过 `make test-tools` 运行它。
+`make lint-go` 对全部手写文件运行格式检查、声明顺序检查和静态分析，带 integration 标签覆盖无标签和集成文件，`make test-embed` 检查 embed 文件。除了 errcheck、gosec、govet、staticcheck 这类错误检查，lint 还启用 whitespace、unconvert、copyloopvar、usestdlibvars、intrange 和 nolintlint。nolintlint 要求每条 `//nolint` 写出 linter 名和原因。
+
+`tools/test_format_go.py` 在临时 Git 仓库里验证文件筛选、生成代码排除、暂存区保护、干净工作区下的提交差异、声明重排，以及两种格式化规则同时生效。`tools/declorder` 的 Go 测试覆盖合并、iota、构造函数和单行方法的间距。CI 的 go-lint job 通过 `make test-tools` 运行这两组测试。
 
 ### 本地文件和文档
 

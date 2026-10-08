@@ -5,20 +5,20 @@ version: "2"
 linters:
   default: none
   enable:
+    - copyloopvar
+    - decorder
     - errcheck
+    - funcorder
     - gosec
     - govet
     - ineffassign
+    - intrange
+    - nolintlint
     - staticcheck
+    - unconvert
     - unused
-
-  exclusions:
-    rules:
-      # gofumpt 和 gci 由改动文件格式检查负责，历史文件在修改时整理。
-      - linters:
-          - gofumpt
-          - gci
-        path: '.*'
+    - usestdlibvars
+    - whitespace
 
   settings:
     gosec:
@@ -69,6 +69,25 @@ linters:
       # Display function signature instead of selector.
       # Default: false
       verbose: true
+    decorder:
+      # 文件内依次是 const、var、type、func，const 和 var 各用一个括号块，init 排在函数最前。
+      # 新代码由 make fmt 调用 tools/declorder 自动调整。
+      dec-order: [const, var, type, func]
+      disable-dec-order-check: false
+      disable-init-func-first-check: false
+      disable-dec-num-check: false
+      disable-type-dec-num-check: true
+    funcorder:
+      # 构造函数放在所属类型的方法前面，方法之间按调用关系排列。
+      constructor: true
+      struct-method: false
+    usestdlibvars:
+      # 架构规则禁止部分核心包引用 net/http，状态码在这些包里写成数字。
+      http-status-code: false
+    nolintlint:
+      # 每条 nolint 写明被关闭的 linter 和原因。
+      require-specific: true
+      require-explanation: true
     ineffassign:
       # Check escaping variables of type error, may cause false positives.
       # Default: false

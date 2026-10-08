@@ -38,6 +38,7 @@
 - 测试文件按被测源文件命名：`X_test.go`，集成测试 `X_integration_test.go`，必须放进外部测试包时 `X_external_test.go`。测试函数直接调用的函数在哪个文件，测试就归哪个文件。
 - 多个测试文件共用的辅助代码放 `helpers_test.go`，包内外都需要共享夹具时，外部测试包使用 `helpers_external_test.go`，`TestMain` 放 `main_test.go`。确实跨多个源文件的场景测试命名为 `<场景>_scenario_test.go`。
 - 手写源文件达到 15 个的包维护 `doc.go`，写包的职责、阅读入口和文件分组。
+- 文件内依次写 const、var、type、func。const 和 var 各用一个括号块，块内按用途用空行和注释分组。init 排在所有函数前面，构造函数排在所属类型的方法前面。`make fmt` 自动调整顺序，lint 用 decorder 和 funcorder 检查。
 - 布局检查在 `make lint-go` 和推送前快检里运行，命名不合规的文件会让检查失败；改名或合并文件时，引用这些文件名的文档、架构许可和注释同步更新。
 
 ## 验证与推送
@@ -51,11 +52,11 @@
 
 ## Go 格式化
 
-- 每次提交前，在仓库根目录运行 `make fmt`。它用 `golangci-lint fmt` 格式化本次改动的手写 Go 文件，并跳过生成文件。
+- 每次提交前，在仓库根目录运行 `make fmt`。它对本次改动的手写 Go 文件先用 `tools/declorder` 重排顶层声明，再用 `golangci-lint fmt` 格式化，生成文件跳过。
 - 格式规则维护在 `backend/.golangci.yml`：启用 `gofumpt` 默认规则，同时保留现有的 `gofmt` 重写规则。import 由 gci 按标准库、第三方、本仓库分三组。工具版本以 `.golangci-version` 为准，本地和 CI 使用同一版本；`gofumpt` 使用 golangci-lint 内置的版本。
 - 命令处理暂存、未暂存和未跟踪的 Go 文件。生成文件按 `package` 声明前的 `// Code generated ... DO NOT EDIT.` 标记识别，格式化工具只对手写文件运行。
 - 格式化以整个改动文件为单位。执行后检查 diff，把属于本次提交的格式化结果重新暂存。暂存需要手动 `git add`，部分暂存的文件要逐块确认。
-- 提交前运行 `make fmt-check`，确认格式差异已经清零。没有 Go 文件改动时，命令直接通过。
+- 提交前运行 `make fmt-check`，确认声明顺序和格式差异已经清零。没有 Go 文件改动时，命令直接通过。`make lint-go` 对全部手写文件检查同样的规则。
 - 检查已提交的代码时，比较的是提交之间的差异，命令为 `make fmt-check BASE=<基准提交>`。CI 中 PR 的基准是目标分支和源提交的共同祖先，push 的基准是推送前的提交。
 
 ## 计划模式
