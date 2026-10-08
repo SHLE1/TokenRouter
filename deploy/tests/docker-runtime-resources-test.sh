@@ -10,11 +10,12 @@ fail() {
   exit 1
 }
 
-# 使用完整行匹配，避免相似配置掩盖路径或参数错误。
+# 去掉行首缩进后按完整行匹配，避免相似配置掩盖路径或参数错误。
+# go:embed 指令写在 var 块里时带缩进。
 assert_line() {
   file=$1
   line=$2
-  grep -Fqx "$line" "$file" || fail "$file is missing: $line"
+  sed 's/^[[:space:]]*//' "$file" | grep -Fqx "$line" || fail "$file is missing: $line"
 }
 
 test -s backend/internal/modelcatalog/model_pricing_supplements.json || \

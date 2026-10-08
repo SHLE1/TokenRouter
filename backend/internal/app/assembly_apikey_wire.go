@@ -5,7 +5,7 @@ package app
 import (
 	"github.com/google/wire"
 
-	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 	keyredis "github.com/TokenFlux/TokenRouter/internal/apikey/rediscache"
 )

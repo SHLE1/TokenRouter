@@ -5,7 +5,7 @@ package app
 import (
 	"github.com/google/wire"
 
-	identity "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 	identityprovider "github.com/TokenFlux/TokenRouter/internal/identity/provider"

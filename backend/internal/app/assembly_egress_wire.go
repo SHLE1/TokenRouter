@@ -5,10 +5,10 @@ package app
 import (
 	"github.com/google/wire"
 
-	egress "github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egresshttp "github.com/TokenFlux/TokenRouter/internal/egress/httpapi"
 	egresspostgres "github.com/TokenFlux/TokenRouter/internal/egress/postgres"
-	provider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	egressredis "github.com/TokenFlux/TokenRouter/internal/egress/rediscache"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )

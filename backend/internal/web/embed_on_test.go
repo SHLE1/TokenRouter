@@ -923,7 +923,7 @@ func BenchmarkReplaceNoncePlaceholder(b *testing.B) {
 	nonce := "abcdefghijklmnop123456=="
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		replaceNoncePlaceholder(html, nonce)
 	}
 }
@@ -936,7 +936,7 @@ func BenchmarkFrontendServerServeIndexHTML(b *testing.B) {
 	server, _ := NewFrontendServer(provider)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
@@ -954,7 +954,7 @@ func TestFrontendServerLateHTMLPublication(t *testing.T) {
 	call := func() *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest("GET", "/", nil)
+		c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 		s.serveIndexHTML(c)
 		return w
 	}

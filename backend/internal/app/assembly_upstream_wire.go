@@ -6,7 +6,7 @@ import (
 	"github.com/google/wire"
 
 	gatewaytransport "github.com/TokenFlux/TokenRouter/internal/gateway/provider/transport"
-	httpclient "github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	anthropicredis "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic/rediscache"
 )
 
