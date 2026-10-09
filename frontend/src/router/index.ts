@@ -283,18 +283,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/requests',
-    name: 'Requests',
-    component: () => import('@/views/RequestsView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'Request Lookup',
-      titleKey: 'requests.title',
-      descriptionKey: 'requests.description'
-    }
-  },
-  {
     path: '/usage-ranking',
     name: 'UsageRanking',
     component: () => import('@/views/user/UsageRankingView.vue'),

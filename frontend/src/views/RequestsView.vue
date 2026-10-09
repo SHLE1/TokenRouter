@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -8,7 +8,6 @@ import Skeleton from '@/components/common/Skeleton.vue'
 import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
 import RequestDetailCard from '@/components/requests/RequestDetailCard.vue'
-import UserErrorDetailModal from '@/components/user/UserErrorDetailModal.vue'
 import OpsErrorDetailModal from '@/views/admin/ops/components/OpsErrorDetailModal.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { findRequests, type RequestDetail } from '@/api/requests'
@@ -26,7 +25,6 @@ const items = ref<RequestDetail[]>([])
 const hasMore = ref(false)
 const selectedError = ref<number | null>(null)
 const showError = ref(false)
-const admin = computed(() => route.path.startsWith('/admin'))
 let controller: AbortController | undefined
 
 // load 按地址栏里的 ID 查询，新的查询会取消还没返回的旧查询。
@@ -45,7 +43,7 @@ async function load() {
   }
   loading.value = true
   try {
-    const response = await findRequests(id, admin.value, current.signal)
+    const response = await findRequests(id, current.signal)
     if (current.signal.aborted) return
     items.value = response.items || []
     hasMore.value = response.has_more
@@ -144,13 +142,11 @@ onBeforeUnmount(() => controller?.abort())
           v-for="item in items"
           :key="`${item.request_id}:${item.usage?.[0]?.id ?? ''}:${item.errors?.[0]?.id ?? ''}:${item.audit_ids?.[0] ?? ''}`"
           :item="item"
-          :admin="admin"
           @open-error="openError"
         />
       </template>
     </div>
 
-    <OpsErrorDetailModal v-if="admin" v-model:show="showError" :error-id="selectedError" error-type="request" />
-    <UserErrorDetailModal v-else v-model:show="showError" :error-id="selectedError" />
+    <OpsErrorDetailModal v-model:show="showError" :error-id="selectedError" error-type="request" />
   </AppLayout>
 </template>

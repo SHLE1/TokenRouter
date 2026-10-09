@@ -42,7 +42,7 @@ RequestLogger
   -> embedded frontend and API routes
 ```
 
-`X-Request-ID` 由全局入口生成，网关复用这个 ID。`X-TokenRouter-Request-ID` 和兼容头返回同一个值，响应提交时固定为本地 ID。调用方传入的 ID 和供应商 ID保存为可查询的外部别名。合法的 `X-Client-Request-ID` 继续回显，缺失时使用本地 ID。完整的生成、计费关联、留存和查询规则见[请求 ID 与请求查询](../operations/request_lookup.md)。
+`X-Request-ID` 由全局入口生成，网关复用这个 ID。`X-TokenRouter-Request-ID` 和兼容头返回同一个值，响应提交时固定为本地 ID。调用方传入的 ID 和供应商 ID 保存为可查询的外部别名。合法的 `X-Client-Request-ID` 继续回显，缺失时使用本地 ID。完整的生成、计费关联、留存和查询规则见[请求 ID 与请求查询](../operations/request_lookup.md)。
 
 请求体大小限制和错误采集按路由族分别设置。网关在读取 JSON 或 multipart 之前，依次应用通用或文本的 body limit、client request ID、Ops error logger、endpoint 归一化和 API Key 认证。面板接口使用全局限流、重查询限流和审计；高风险的公开认证接口使用单独的 Redis 限流，依赖故障时拒绝请求（fail-close）。
 
@@ -324,9 +324,9 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器绑定同一个协�
 
 ## 请求关联
 
-本地请求 ID贯穿 HTTP 响应、日志、使用记录、错误、审核和审计。`usage_logs.billing_key` 保存资金去重值，账本和资金去重表的既有字段继续保存历史动作键。客户端重试会生成新的调用 ID；任务重放通过业务动作键去重。
+本地请求 ID 贯穿 HTTP 响应、日志、使用记录、错误、审核和审计。`usage_logs.billing_key` 保存资金去重值，账本和资金去重表的既有字段继续保存历史动作键。客户端重试会生成新的调用 ID；任务重放通过业务动作键去重。
 
-用户和管理员分别通过 `/api/v1/requests` 与 `/api/v1/admin/requests` 按 `request_id` 查询详情。调用方与供应商的 ID 可以作为搜索别名，记录归属决定访问权限。后台完成任务携带请求快照，在独立超时内写入用量和请求摘要。
+管理员通过 `/api/v1/admin/requests` 按 `request_id` 查询诊断详情，写入状态接口同样要求管理员身份。调用方与供应商的 ID 可以作为搜索别名。普通用户在使用记录里筛选和复制请求 ID。后台完成任务携带请求快照，在独立超时内写入用量和请求摘要。
 
 协议、兼容响应头和查询权限见[请求 ID 与请求查询](../operations/request_lookup.md)。
 
@@ -336,6 +336,7 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器绑定同一个协�
 
 | 路径或字段 | 返回 | 替代 |
 | --- | --- | --- |
+| `GET /api/v1/requests`、`GET /api/v1/requests/:request_id` | `404` | 管理员使用 `/api/v1/admin/requests`，普通用户通过使用记录查看用量 |
 | `GET`、`PUT /api/v1/admin/settings/openai-oauth-import-defaults` | `404` | 在提供商创建表单或导入文件中填写配置 |
 | `GET /v1/sub2api/billing` | `404` | 无；这个路径不再享有 API Key 非消费请求的豁免 |
 | `GET`、`PUT /api/v1/admin/providers/upstream-billing-probe/settings`、`POST .../upstream-billing-probe/batch`、`PUT`、`POST /api/v1/admin/providers/:id/upstream-billing-probe` | `404` | 无 |

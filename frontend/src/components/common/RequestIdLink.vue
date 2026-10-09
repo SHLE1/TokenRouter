@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { getActivePinia } from 'pinia'
+import { useAuthStore } from '@/stores'
 import { useI18n } from 'vue-i18n'
 import { useClipboard } from '@/composables/useClipboard'
 import { COPY_FEEDBACK_MS } from '@/constants/ui'
@@ -18,15 +19,16 @@ const props = withDefaults(defineProps<{
   full: false,
 })
 
-const route = useRoute()
+const authStore = getActivePinia() ? useAuthStore() : null
 const { t } = useI18n()
 const { copyToClipboard } = useClipboard()
 const copiedValue = ref('')
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
 
-// 管理端页面跳到管理端查询页，其余跳到用户查询页。
+// 管理员可以打开诊断详情，其他身份显示可复制的 ID。
+const canOpenDetails = computed(() => props.link && authStore?.isAdmin === true)
 const destination = computed(() => ({
-  path: route?.path.startsWith('/admin') ? '/admin/requests' : '/requests',
+  path: '/admin/requests',
   query: { request_id: props.value || undefined },
 }))
 
@@ -50,7 +52,7 @@ onBeforeUnmount(() => clearTimeout(copiedTimer))
   <span v-if="value" class="inline-flex min-w-0 items-center gap-1.5 align-middle" :class="full ? 'max-w-full' : 'max-w-56'">
     <IdBadge />
     <RouterLink
-      v-if="link"
+      v-if="canOpenDetails"
       :to="destination"
       :title="value"
       :class="full ? 'break-all' : 'truncate'"

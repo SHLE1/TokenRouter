@@ -23,9 +23,9 @@ export interface RequestDetail {
   audit_ids?: number[]
 }
 
-// findRequests 按请求 ID 查询当前身份可见的请求与业务记录。
-export async function findRequests(requestId: string, admin = false, signal?: AbortSignal) {
-  const { data } = await apiClient.get<{ items: RequestDetail[]; has_more: boolean }>(admin ? '/admin/requests' : '/requests', {
+// findRequests 调用管理员接口查询请求诊断记录。
+export async function findRequests(requestId: string, signal?: AbortSignal) {
+  const { data } = await apiClient.get<{ items: RequestDetail[]; has_more: boolean }>('/admin/requests', {
     params: { request_id: requestId },
     signal,
   })

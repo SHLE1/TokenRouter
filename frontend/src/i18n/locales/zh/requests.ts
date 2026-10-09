@@ -10,7 +10,7 @@ export default {
   "emptyTitle": "输入请求 ID 查看请求",
   "emptyDescription": "请求 ID 在接口响应头 X-Request-ID 里。使用记录和错误记录里的请求 ID 可以直接点进来。",
   "notFoundTitle": "没有找到这个请求",
-  "notFound": "记录可能还在写入、已经过了保留期，或者只有管理员能看。",
+  "notFound": "记录可能还在写入，或已超过保留期。",
   "matchCount": "找到 {count} 个匹配的请求",
   "allTimeRange": "按请求 ID 查询，不限时间范围",
   "loadFailed": "请求详情加载失败",

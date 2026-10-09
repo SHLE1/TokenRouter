@@ -17,7 +17,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/requestlog"
-	requesthttp "github.com/TokenFlux/TokenRouter/internal/requestlog/httpapi"
 	routinghttpapi "github.com/TokenFlux/TokenRouter/internal/routing/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/server"
 	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
@@ -25,7 +24,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 	sitehttp "github.com/TokenFlux/TokenRouter/internal/site/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/TokenFlux/TokenRouter/internal/web"
 )
 
@@ -33,7 +31,7 @@ import (
 type httpRouteMount func(*gin.Engine, httpRouteSecurity, gin.HandlerFunc, func(*gin.RouterGroup))
 
 // provideRouterRuntime 为路由器绑定公开数据和 HTTP 处理函数，规则和状态由各模块管理。
-func provideRouterRuntime(requests *requestlog.Service, usageSettings *usage.RuntimeSettings, public *site.PublicService, pages *sitehttp.PageHandler, backendMode *admission.BackendMode, store *settings.Store, redisClient *redis.Client, manager *lifecycle.Manager, cfg *config.Config, mount httpRouteMount, panelSettings *runtimeconfig.PanelSettings, opsService *ops.OpsService, jwtAuth identityhttp.JWTAuthMiddleware, adminAuth identityhttp.AdminAuthMiddleware, auditLog middleware.AuditLogMiddleware, stepUpAuth identityhttp.StepUpAuthMiddleware,
+func provideRouterRuntime(requests *requestlog.Service, public *site.PublicService, pages *sitehttp.PageHandler, backendMode *admission.BackendMode, store *settings.Store, redisClient *redis.Client, manager *lifecycle.Manager, cfg *config.Config, mount httpRouteMount, panelSettings *runtimeconfig.PanelSettings, opsService *ops.OpsService, jwtAuth identityhttp.JWTAuthMiddleware, adminAuth identityhttp.AdminAuthMiddleware, auditLog middleware.AuditLogMiddleware, stepUpAuth identityhttp.StepUpAuthMiddleware,
 ) (*server.RouterRuntime, error) {
 	manager.Register(lifecycle.Hook{Name: "SettingsUpdateAdmission", StopOrder: 14, Stop: func(context.Context) error { store.Updates().Seal(); return nil }})
 	manager.Register(lifecycle.Hook{Name: "SettingsUpdates", StopOrder: 17, Stop: store.Updates().Stop})
@@ -101,14 +99,7 @@ func provideRouterRuntime(requests *requestlog.Service, usageSettings *usage.Run
 	rt.Register = []func(*gin.Engine){func(r *gin.Engine) {
 		mount(r, httpRouteSecurity{JWT: gin.HandlerFunc(jwtAuth), Admin: gin.HandlerFunc(adminAuth), Audit: gin.HandlerFunc(auditLog), StepUp: gin.HandlerFunc(stepUpAuth), BackendAuth: identityhttp.BackendModeAuthGuard(backendMode), BackendUser: identityhttp.BackendModeUserGuard(backendMode), Panel: panelLimiter, AuthLimiter: authLimiter}, protocolCatalog, func(v1 *gin.RouterGroup) {
 			pages.Register(v1, gin.HandlerFunc(jwtAuth), gin.HandlerFunc(adminAuth))
-			handler := requesthttp.NewHandler(requests, usageSettings.IsUserErrorViewAllowed)
-			userRequests := v1.Group("/requests", gin.HandlerFunc(jwtAuth), identityhttp.BackendModeUserGuard(backendMode), panelLimiter.Global(), panelLimiter.Heavy())
-			userRequests.GET("", handler.Find)
-			userRequests.GET("/:request_id", handler.Find)
-			adminRequests := v1.Group("/admin/requests", gin.HandlerFunc(adminAuth), gin.HandlerFunc(auditLog), panelLimiter.Heavy())
-			adminRequests.GET("", handler.FindAdmin)
-			adminRequests.GET("/health", handler.Health)
-			adminRequests.GET("/:request_id", handler.FindAdmin)
+			registerRequestLogRoutes(v1, requests, gin.HandlerFunc(adminAuth), gin.HandlerFunc(auditLog), panelLimiter.Heavy())
 		})
 	}}
 

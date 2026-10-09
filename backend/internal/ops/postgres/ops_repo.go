@@ -1008,7 +1008,7 @@ func buildOpsErrorLogsWhere(filter *ops.OpsErrorLogFilter) (string, []any) {
 	// Exact correlation keys (preferred for request↔upstream linkage).
 	if rid := strings.TrimSpace(filter.RequestID); rid != "" {
 		args = append(args, rid)
-		clauses = append(clauses, "(e.request_id IN (SELECT id FROM request_lookup_ids($"+itoa(len(args))+")) OR e.client_request_id IN (SELECT id FROM request_lookup_ids($"+itoa(len(args))+")))")
+		clauses = append(clauses, "(e.request_id IN (SELECT id FROM request_lookup_ids($"+itoa(len(args))+")) OR (e.client_request_id IN (SELECT id FROM request_lookup_ids($"+itoa(len(args))+")) AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$"+itoa(len(args))+")))")
 	}
 	if crid := strings.TrimSpace(filter.ClientRequestID); crid != "" {
 		args = append(args, crid)
@@ -1122,7 +1122,7 @@ func buildOpsSystemLogsWhere(filter *ops.OpsSystemLogFilter) (string, []any, boo
 		}
 		if v := strings.TrimSpace(filter.RequestID); v != "" {
 			args = append(args, v)
-			clauses = append(clauses, "(l.request_id IN (SELECT id FROM request_lookup_ids($"+itoa(len(args))+")) OR l.client_request_id IN (SELECT id FROM request_lookup_ids($"+itoa(len(args))+")))")
+			clauses = append(clauses, "(l.request_id IN (SELECT id FROM request_lookup_ids($"+itoa(len(args))+")) OR (l.client_request_id IN (SELECT id FROM request_lookup_ids($"+itoa(len(args))+")) AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$"+itoa(len(args))+")))")
 			hasConstraint = true
 		}
 		if v := strings.TrimSpace(filter.ClientRequestID); v != "" {

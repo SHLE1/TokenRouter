@@ -24,9 +24,11 @@ ON usage_logs ((COALESCE(billing_key, request_id)), api_key_id);
 -- 请求 ID 的每列查询分别使用等值关联，历史日志通过已有 B-tree 索引定位。
 CREATE FUNCTION request_lookup_ids(search_id TEXT) RETURNS TABLE(id TEXT)
 LANGUAGE SQL STABLE AS $$
-WITH base AS (
-    SELECT btrim(search_id) AS value
-    UNION SELECT regexp_replace(btrim(search_id), '^(client:|local:|generated:)', '')
+WITH exact AS MATERIALIZED (
+    SELECT request_id, aliases, record FROM request_records WHERE request_id=btrim(search_id)
+), base AS (
+    SELECT btrim(search_id) AS value WHERE NOT EXISTS (SELECT 1 FROM exact)
+    UNION SELECT regexp_replace(btrim(search_id), '^(client:|local:|generated:)', '') WHERE NOT EXISTS (SELECT 1 FROM exact)
 ), variants AS (
     SELECT value FROM base
     UNION SELECT 'client:' || value FROM base
@@ -51,11 +53,13 @@ WITH base AS (
     UNION SELECT client_request_id FROM legacy
     UNION SELECT 'client:' || client_request_id FROM legacy
 ), matched AS (
+    SELECT request_id, aliases, record FROM exact
+    UNION
     SELECT r.request_id, r.aliases, r.record
     FROM candidates c JOIN request_records r ON r.request_id=c.value
     UNION
     SELECT r.request_id, r.aliases, r.record FROM request_records r
-    WHERE NOT EXISTS (SELECT 1 FROM request_records exact WHERE exact.request_id=btrim(search_id))
+    WHERE NOT EXISTS (SELECT 1 FROM exact)
       AND r.aliases && ARRAY(SELECT value FROM candidates)
 )
 SELECT value FROM candidates WHERE value IS NOT NULL AND value <> ''

@@ -42,7 +42,7 @@ backend/
 │   │   ├── bootstrap/                                   数据库与 Redis 引导、迁移、密钥、时区及初始数据
 │   │   └── lifecycle/                                   分阶段启停、请求屏障、派生任务等待与重启
 │   ├── requestlog/                                      请求摘要、内存批写与查询
-│   │   ├── httpapi/                                     用户与管理员请求详情
+│   │   ├── httpapi/                                     管理员请求诊断详情
 │   │   └── postgres/                                    摘要、历史关联与归属查询
 │   ├── audit/                                           管理员操作审计与审计数据清理
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配

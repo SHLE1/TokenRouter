@@ -136,7 +136,7 @@ func (r *Store) ListWithFilters(ctx context.Context, params pagination.Paginatio
 		conditions = append(conditions, "team_id IS NULL")
 	}
 	if requestID := strings.TrimSpace(filters.RequestID); requestID != "" {
-		conditions = append(conditions, fmt.Sprintf("(request_id IN (SELECT id FROM request_lookup_ids($%d)) OR upstream_request_id = $%d)", len(args)+1, len(args)+1))
+		conditions = append(conditions, fmt.Sprintf("(request_id IN (SELECT id FROM request_lookup_ids($%d)) OR (upstream_request_id = $%d AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)))", len(args)+1, len(args)+1, len(args)+1))
 		args = append(args, requestID)
 	}
 	conditions, args = appendUsageLogModelWhereCondition(conditions, args, filters.Model, filters.ModelFilterSource)

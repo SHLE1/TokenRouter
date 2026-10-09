@@ -13,7 +13,6 @@ import type { RequestDetail } from '@/api/requests'
 
 const props = defineProps<{
   item: RequestDetail
-  admin: boolean
 }>()
 const emit = defineEmits<{
   (event: 'openError', id: number): void
@@ -76,7 +75,7 @@ const formatCost = (value: number) => formatBalanceAmount(value, { fractionDigit
 
 const usageRows = computed(() => props.item.usage ?? [])
 const errorRows = computed(() => props.item.errors ?? [])
-const aliasRows = computed(() => (props.admin ? props.item.aliases ?? [] : []))
+const aliasRows = computed(() => props.item.aliases ?? [])
 </script>
 
 <template>

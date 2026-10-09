@@ -221,3 +221,68 @@ ANALYZE usage_logs;`)
 		require.True(t, seen["ops_error_logs"])
 	}
 }
+
+// TestStoreExactIDIgnoresExternalCollisions 检查共享调用方 ID 和上游 ID 同名时的精确查询。
+func TestStoreExactIDIgnoresExternalCollisions(t *testing.T) {
+	db := postgrescontainer.New(t)
+	ctx := t.Context()
+	_, err := db.ExecContext(ctx, `
+INSERT INTO users(id,email,password_hash) VALUES (101,'exact@requests.test','hash'),(202,'collision@requests.test','hash');
+INSERT INTO api_keys(id,user_id,key,name) VALUES (101,101,'exact-key','exact'),(202,202,'collision-key','collision');
+INSERT INTO providers(id,name,platform,type) VALUES (101,'exact','openai','apikey');
+INSERT INTO usage_logs(user_id,billing_user_id,api_key_id,provider_id,request_id,upstream_request_id,model)
+VALUES (101,101,101,101,'local-first','supplier-first','model'),(202,202,202,101,'local-second','local-first','model');
+INSERT INTO ops_system_logs(request_id,client_request_id,level,message)
+VALUES ('local-first','shared','info','first'),('local-second','shared','info','second');
+INSERT INTO ops_error_logs(request_id,client_request_id,user_id,error_phase,error_type,status_code)
+VALUES ('local-first','shared',101,'upstream','api_error',502),
+       ('local-second','shared',202,'upstream','api_error',502),
+       ('local-second','local-first',202,'upstream','api_error',502);
+INSERT INTO audit_logs(request_id,actor_user_id,status_code)
+VALUES ('local-first',101,502),('local-second',202,502);`)
+	require.NoError(t, err)
+	store := NewStore(db)
+	now := time.Now().UTC()
+	require.NoError(t, store.Save(ctx, []telemetry.RequestRecord{
+		{RequestID: "local-first", UserID: 101, APIKeyID: 101, StartedAt: now, UpdatedAt: now, State: "failed", Aliases: []telemetry.RequestAlias{{Kind: "caller", Value: "shared"}}},
+		{RequestID: "local-second", UserID: 202, APIKeyID: 202, StartedAt: now, UpdatedAt: now, State: "failed", Aliases: []telemetry.RequestAlias{{Kind: "caller", Value: "shared"}, {Kind: "caller", Value: "local-first"}}},
+	}))
+	var candidates []string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT ARRAY(SELECT id FROM request_lookup_ids('local-first'))`).Scan(pq.Array(&candidates)))
+	require.Equal(t, []string{"local-first"}, candidates)
+	for _, search := range []string{"local-first", " local-first "} {
+		items, err := store.Find(ctx, search, 0, true)
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		require.Equal(t, "local-first", items[0].RequestID)
+		require.Len(t, items[0].Usage, 1)
+		require.Len(t, items[0].Errors, 1)
+		require.Len(t, items[0].AuditIDs, 1)
+	}
+	items, err := store.Find(ctx, "local-first", 202, false)
+	require.NoError(t, err)
+	require.Empty(t, items)
+	items, err = store.Find(ctx, "shared", 0, true)
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	items, err = store.Find(ctx, "shared", 101, false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, "local-first", items[0].RequestID)
+
+	// 父子关联来自请求摘要，查询子请求时保持自己的 ID 范围。
+	require.NoError(t, store.Save(ctx, []telemetry.RequestRecord{{
+		RequestID: "child", ParentRequestID: "local-first", UserID: 101, StartedAt: now, UpdatedAt: now,
+		State: "completed", Aliases: []telemetry.RequestAlias{{Kind: "caller", Value: "shared"}},
+	}}))
+	items, err = store.Find(ctx, "local-first", 0, true)
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	for _, item := range items {
+		require.Contains(t, []string{"local-first", "child"}, item.RequestID)
+	}
+	items, err = store.Find(ctx, "child", 0, true)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, "child", items[0].RequestID)
+}

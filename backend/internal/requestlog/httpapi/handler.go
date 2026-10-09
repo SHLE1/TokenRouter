@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"context"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -11,23 +10,20 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// Handler 返回当前调用者可见的请求摘要。
+// Handler 提供管理员请求诊断查询。
 type Handler struct {
-	service    *requestlog.Service
-	userErrors func(context.Context) bool
+	service *requestlog.Service
 }
 
-func NewHandler(service *requestlog.Service, userErrors func(context.Context) bool) *Handler {
-	return &Handler{service: service, userErrors: userErrors}
+func NewHandler(service *requestlog.Service) *Handler {
+	return &Handler{service: service}
 }
 
-func (h *Handler) Find(c *gin.Context)      { h.find(c, false) }
-func (h *Handler) FindAdmin(c *gin.Context) { h.find(c, true) }
-
-func (h *Handler) find(c *gin.Context, admin bool) {
-	subject, ok := authctx.GetAuthSubjectFromContext(c)
+// Find 按请求 ID 返回管理员可见的诊断记录。
+// @project-doc docs/operations/request_lookup.md#request_query
+func (h *Handler) Find(c *gin.Context) {
+	subject, ok := requireAdmin(c)
 	if !ok {
-		httpx.Unauthorized(c, "User not authenticated")
 		return
 	}
 	id := strings.TrimSpace(c.Query("request_id"))
@@ -38,7 +34,7 @@ func (h *Handler) find(c *gin.Context, admin bool) {
 		httpx.BadRequest(c, "Invalid request_id")
 		return
 	}
-	items, err := h.service.Find(c.Request.Context(), id, subject.UserID, admin)
+	items, err := h.service.Find(c.Request.Context(), id, subject.UserID, true)
 	if err != nil {
 		httpx.ErrorFrom(c, err)
 		return
@@ -47,29 +43,34 @@ func (h *Handler) find(c *gin.Context, admin bool) {
 	if more {
 		items = items[:100]
 	}
-	if !admin {
-		allowErrors := h.userErrors != nil && h.userErrors(c.Request.Context())
-		for i := range items {
-			if !allowErrors {
-				items[i].Errors = nil
-			}
-			items[i].ProviderID = 0
-			items[i].Aliases = nil
-			items[i].AuditIDs = nil
-			for j := range items[i].Attempts {
-				items[i].Attempts[j].ProviderID = 0
-				items[i].Attempts[j].RequestID = ""
-			}
-		}
-	}
+
 	httpx.Success(c, gin.H{"items": items, "has_more": more})
 }
 
+// Health 返回请求记录写入状态。
 func (h *Handler) Health(c *gin.Context) {
+	if _, ok := requireAdmin(c); !ok {
+		return
+	}
 	health, err := h.service.Health()
 	if err != nil {
 		httpx.ErrorFrom(c, err)
 		return
 	}
 	httpx.Success(c, health)
+}
+
+// requireAdmin 从认证上下文检查身份，查询参数无法改变访问权限。
+func requireAdmin(c *gin.Context) (authctx.AuthSubject, bool) {
+	subject, ok := authctx.GetAuthSubjectFromContext(c)
+	if !ok || subject.UserID <= 0 {
+		httpx.Unauthorized(c, "User not authenticated")
+		return authctx.AuthSubject{}, false
+	}
+	role, ok := authctx.GetUserRoleFromContext(c)
+	if !ok || role != "admin" {
+		httpx.Forbidden(c, "Admin access required")
+		return authctx.AuthSubject{}, false
+	}
+	return subject, true
 }

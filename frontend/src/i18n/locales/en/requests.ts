@@ -10,7 +10,7 @@ export default {
   "emptyTitle": "Enter a request ID",
   "emptyDescription": "API responses return the request ID in the X-Request-ID header. Request IDs in usage and error records link here.",
   "notFoundTitle": "Request not found",
-  "notFound": "The record may still be saving, may have expired, or may be visible to administrators only.",
+  "notFound": "The record may still be saving or may be past its retention period.",
   "matchCount": "{count} matching requests",
   "allTimeRange": "Searching by request ID across all retained records",
   "loadFailed": "Could not load request details",
