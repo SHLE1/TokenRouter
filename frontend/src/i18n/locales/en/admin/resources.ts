@@ -294,6 +294,7 @@ export default {
       customCode: 'Custom Code',
       customCodePlaceholder: 'Leave empty to auto-generate',
       customCodeHint: 'Custom codes can only be created one at a time and must be 32 characters or fewer.',
+      customCodeTooLong: 'Redeem codes must be 32 characters or fewer',
       customCodeCountHint: 'When a custom code is set, the count is fixed at 1.',
       codeType: 'Code Type',
       amount: 'Amount',

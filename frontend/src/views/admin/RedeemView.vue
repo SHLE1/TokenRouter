@@ -276,7 +276,6 @@
           <input
             v-model="generateForm.code"
             type="text"
-            maxlength="32"
             class="input"
             :placeholder="t('admin.redeem.customCodePlaceholder')"
           />
@@ -1060,6 +1059,11 @@ const handleGenerateCodes = async () => {
   }
 
   const customCode = generateForm.code.trim()
+  // 按 Unicode 码点计数，与后端的 rune 长度校验一致。
+  if ([...customCode].length > 32) {
+    appStore.showError(t('admin.redeem.customCodeTooLong'))
+    return
+  }
   const expiresAt = parseDateTimeLocalInput(generateForm.expires_at_str)
 
   generating.value = true
