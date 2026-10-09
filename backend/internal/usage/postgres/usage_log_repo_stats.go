@@ -745,7 +745,7 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 		conditions = append(conditions, "team_id IS NULL")
 	}
 	if id := strings.TrimSpace(filters.RequestID); id != "" {
-		conditions = append(conditions, fmt.Sprintf("(request_id IN (SELECT id FROM request_lookup_ids($%d)) OR (upstream_request_id = $%d AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)))", len(args)+1, len(args)+1, len(args)+1))
+		conditions = append(conditions, usageRequestIDCondition("", len(args)+1))
 		args = append(args, id)
 	}
 	conditions, args = appendUsageLogModelWhereCondition(conditions, args, filters.Model, filters.ModelFilterSource)
@@ -935,7 +935,7 @@ func (r *Store) getEndpointStatsByColumnWithFilters(ctx context.Context, endpoin
 	`, endpointColumn, source)
 
 	if requestID != "" {
-		query += fmt.Sprintf(" AND (request_id IN (SELECT id FROM request_lookup_ids($%d)) OR (upstream_request_id = $%d AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)))", len(args)+1, len(args)+1, len(args)+1)
+		query += " AND " + usageRequestIDCondition("", len(args)+1)
 		args = append(args, requestID)
 	}
 
@@ -1024,7 +1024,7 @@ func (r *Store) getEndpointPathStatsWithFilters(ctx context.Context, startTime, 
 	`, source)
 
 	if requestID != "" {
-		query += fmt.Sprintf(" AND (request_id IN (SELECT id FROM request_lookup_ids($%d)) OR (upstream_request_id = $%d AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)))", len(args)+1, len(args)+1, len(args)+1)
+		query += " AND " + usageRequestIDCondition("", len(args)+1)
 		args = append(args, requestID)
 	}
 

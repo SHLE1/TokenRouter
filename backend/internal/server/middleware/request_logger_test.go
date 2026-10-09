@@ -117,3 +117,22 @@ func TestRequestLoggerPreservesIDAcrossStreaming(t *testing.T) {
 		})
 	}
 }
+
+// TestRequestLoggerUnknownPathCanBeStored 覆盖 URL 解码后含空字符的未知路由。
+func TestRequestLoggerUnknownPathCanBeStored(t *testing.T) {
+	var records []telemetry.RequestRecord
+	router := gin.New()
+	router.Use(RequestLogger(func(record telemetry.RequestRecord) {
+		records = append(records, telemetry.NormalizeRequestRecord(record))
+	}))
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/invalid%00path", nil))
+	if response.Code != http.StatusNotFound || len(records) < 2 {
+		t.Fatalf("unexpected response: status=%d records=%d", response.Code, len(records))
+	}
+	for _, record := range records {
+		if record.Path != "/invalidpath" {
+			t.Fatalf("unstorable path: %q", record.Path)
+		}
+	}
+}

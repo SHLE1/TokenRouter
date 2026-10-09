@@ -350,6 +350,8 @@ func NormalizeRequestRecord(record RequestRecord) RequestRecord {
 
 func requestText(value string, limit int) string {
 	value = strings.ToValidUTF8(value, "")
+	// PostgreSQL 的文本和 JSONB 字段无法保存空字符，URL 解码后的路径可能包含它。
+	value = strings.ReplaceAll(value, "\x00", "")
 	if len(value) <= limit {
 		return value
 	}

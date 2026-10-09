@@ -2,12 +2,62 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	"github.com/TokenFlux/TokenRouter/internal/requestlog"
 )
+
+// TestSaveClassifiesInvalidRecords 数据错误可丢弃，连接故障和数据库约束错误保留重试。
+func TestSaveClassifiesInvalidRecords(t *testing.T) {
+	for _, test := range []struct {
+		code    string
+		invalid bool
+	}{
+		{"22P05", true},
+		{"22001", true},
+		{"08006", false},
+		{"23514", false},
+		{"40001", false},
+	} {
+		t.Run(test.code, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			require.NoError(t, err)
+			defer func() { _ = db.Close() }()
+			failure := fmt.Errorf("write: %w", &pq.Error{Code: pq.ErrorCode(test.code)})
+			mock.ExpectBegin()
+			mock.ExpectPrepare("INSERT INTO request_records").ExpectExec().WillReturnError(failure)
+			mock.ExpectRollback()
+			err = NewStore(db).Save(t.Context(), []telemetry.RequestRecord{{RequestID: "id"}})
+			require.ErrorIs(t, err, failure)
+			if test.invalid {
+				require.ErrorIs(t, err, requestlog.ErrInvalidRecord)
+			} else {
+				require.NotErrorIs(t, err, requestlog.ErrInvalidRecord)
+			}
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+// TestSaveRejectsUnencodableRecord 超出 JSON 时间范围的快照可以被队列识别为无效。
+func TestSaveRejectsUnencodableRecord(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+	mock.ExpectBegin()
+	mock.ExpectPrepare("INSERT INTO request_records")
+	mock.ExpectRollback()
+	err = NewStore(db).Save(t.Context(), []telemetry.RequestRecord{{RequestID: "id", StartedAt: time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC)}})
+	require.ErrorIs(t, err, requestlog.ErrInvalidRecord)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
 
 // TestFindResolvesIDsOnce 检查同一详情查询共用候选 ID，并保留各来源的权限参数。
 func TestFindResolvesIDsOnce(t *testing.T) {

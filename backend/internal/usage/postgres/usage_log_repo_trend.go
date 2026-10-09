@@ -311,7 +311,7 @@ func (r *Store) getUsageTrendWithFilters(ctx context.Context, startTime, endTime
 	`, dateFormat, source)
 
 	if requestID != "" {
-		query += fmt.Sprintf(" AND (request_id IN (SELECT id FROM request_lookup_ids($%d)) OR (upstream_request_id = $%d AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)))", len(args)+1, len(args)+1, len(args)+1)
+		query += " AND " + usageRequestIDCondition("", len(args)+1)
 		args = append(args, requestID)
 	}
 
@@ -508,7 +508,7 @@ func (r *Store) getModelStatsWithFiltersBySource(ctx context.Context, startTime,
 	`, modelExpr, providerCostExpr, usageSource)
 
 	if requestID != "" {
-		query += fmt.Sprintf(" AND (request_id IN (SELECT id FROM request_lookup_ids($%d)) OR (upstream_request_id = $%d AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)))", len(args)+1, len(args)+1, len(args)+1)
+		query += " AND " + usageRequestIDCondition("", len(args)+1)
 		args = append(args, requestID)
 	}
 
@@ -615,7 +615,7 @@ func (r *Store) getGroupStatsWithFilters(ctx context.Context, startTime, endTime
 	`, usageSource)
 
 	if requestID != "" {
-		query += fmt.Sprintf(" AND (ul.request_id IN (SELECT id FROM request_lookup_ids($%d)) OR (ul.upstream_request_id = $%d AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)))", len(args)+1, len(args)+1, len(args)+1)
+		query += " AND " + usageRequestIDCondition("ul.", len(args)+1)
 		args = append(args, requestID)
 	}
 

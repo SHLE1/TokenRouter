@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -44,7 +45,7 @@ func (s *Store) Save(ctx context.Context, records []telemetry.RequestRecord) err
 	for _, record := range records {
 		body, err := json.Marshal(record)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w: %w", requestlog.ErrInvalidRecord, err)
 		}
 		aliases := make([]string, 0, len(record.Aliases))
 		for _, alias := range record.Aliases {
@@ -54,6 +55,10 @@ func (s *Store) Save(ctx context.Context, records []telemetry.RequestRecord) err
 		}
 		if _, err = stmt.ExecContext(ctx, record.RequestID, record.ParentRequestID, record.UserID, record.TeamID,
 			record.StartedAt, record.UpdatedAt, pq.Array(aliases), body, record.UpdatedAt.UnixNano()); err != nil {
+			// SQLSTATE 22 表示字段值无法转换或超出列范围，批写器会逐条定位无效快照。
+			if pgErr, ok := errors.AsType[*pq.Error](err); ok && pgErr.Code.Class() == "22" {
+				return fmt.Errorf("%w: %w", requestlog.ErrInvalidRecord, err)
+			}
 			return err
 		}
 	}

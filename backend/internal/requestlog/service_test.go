@@ -88,6 +88,65 @@ func TestFlushFallsBackPerRecord(t *testing.T) {
 	require.Len(t, repo.records(), 2)
 }
 
+// TestFlushDiscardsInvalidRecords 覆盖单条和批量中的永久错误，其他快照可以继续写入。
+func TestFlushDiscardsInvalidRecords(t *testing.T) {
+	for _, withValid := range []bool{false, true} {
+		t.Run(fmt.Sprint(withValid), func(t *testing.T) {
+			attempts := 0
+			var messages []string
+			repo := &testRepository{save: func(_ context.Context, records []telemetry.RequestRecord) error {
+				attempts++
+				for _, record := range records {
+					if record.RequestID == "invalid" {
+						return fmt.Errorf("malformed data: %w", ErrInvalidRecord)
+					}
+				}
+				return nil
+			}}
+			service := NewService(repo, 30, func(format string, args ...any) {
+				messages = append(messages, fmt.Sprintf(format, args...))
+			})
+			service.Observe(telemetry.RequestRecord{RequestID: "invalid"})
+			if withValid {
+				service.Observe(telemetry.RequestRecord{RequestID: "valid"})
+			}
+			require.NoError(t, service.Flush(t.Context()))
+			health, err := service.Health()
+			require.NoError(t, err)
+			require.Zero(t, health.Pending)
+			require.Positive(t, health.Failures)
+			require.Contains(t, messages[len(messages)-1], "discard invalid request invalid")
+			if withValid {
+				require.Len(t, repo.records(), 1)
+				require.Equal(t, "valid", repo.records()[0].RequestID)
+			}
+			before := attempts
+			require.NoError(t, service.Flush(t.Context()))
+			require.Equal(t, before, attempts)
+			require.NoError(t, service.Stop(t.Context()))
+		})
+	}
+}
+
+// TestDiscardInvalidPreservesNewVersion 无效版本写入期间收到的修正快照需要继续保存。
+func TestDiscardInvalidPreservesNewVersion(t *testing.T) {
+	repo := &testRepository{}
+	service := NewService(repo, 30, nil)
+	now := time.Now()
+	service.Observe(telemetry.RequestRecord{RequestID: "id", UpdatedAt: now})
+	repo.save = func(context.Context, []telemetry.RequestRecord) error {
+		service.Observe(telemetry.RequestRecord{RequestID: "id", UpdatedAt: now.Add(time.Second), State: "completed"})
+		return ErrInvalidRecord
+	}
+	require.NoError(t, service.Flush(t.Context()))
+	health, err := service.Health()
+	require.NoError(t, err)
+	require.Equal(t, 1, health.Pending)
+	repo.save = nil
+	require.NoError(t, service.Flush(t.Context()))
+	require.Equal(t, "completed", repo.records()[0].State)
+}
+
 // TestObserveCoalescesSnapshots 检查快照的版本、终态和别名合并，以及调用方数据的独立性。
 func TestObserveCoalescesSnapshots(t *testing.T) {
 	repo := &testRepository{}

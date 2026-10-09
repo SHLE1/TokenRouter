@@ -19,6 +19,9 @@ const (
 	requestWriteTimeout   = 5 * time.Second
 )
 
+// ErrInvalidRecord 表示快照内容无法存储，重复写入同一版本仍会失败。
+var ErrInvalidRecord = errors.New("invalid request record")
+
 // Repository 保存请求摘要，并按调用者权限查询现存记录。
 type Repository interface {
 	Save(context.Context, []telemetry.RequestRecord) error
@@ -223,7 +226,13 @@ func (s *Service) Flush(ctx context.Context) error {
 	writeCtx, cancel := context.WithTimeout(ctx, requestWriteTimeout)
 	defer cancel()
 	if err := s.repo.Save(writeCtx, batch); err != nil {
-		if len(batch) == 1 || writeCtx.Err() != nil {
+		if len(batch) == 1 {
+			if s.discardInvalid(batch[0], err) {
+				return nil
+			}
+			return err
+		}
+		if writeCtx.Err() != nil {
 			return err
 		}
 		s.report("batch write request records", err)
@@ -233,7 +242,9 @@ func (s *Service) Flush(ctx context.Context) error {
 				return errors.Join(append(failures, err)...)
 			}
 			if err := s.repo.Save(writeCtx, []telemetry.RequestRecord{record}); err != nil {
-				failures = append(failures, fmt.Errorf("request %s: %w", record.RequestID, err))
+				if !s.discardInvalid(record, err) {
+					failures = append(failures, fmt.Errorf("request %s: %w", record.RequestID, err))
+				}
 			} else {
 				s.ack(record)
 			}
@@ -246,7 +257,17 @@ func (s *Service) Flush(ctx context.Context) error {
 	return nil
 }
 
-// ack 仅移除已写入的版本，写库期间收到的更新继续等待下一批。
+// discardInvalid 移除已确认无效的版本，并通过日志和故障计数报告丢弃。
+func (s *Service) discardInvalid(record telemetry.RequestRecord, err error) bool {
+	if !errors.Is(err, ErrInvalidRecord) {
+		return false
+	}
+	s.ack(record)
+	s.report("discard invalid request "+record.RequestID, err)
+	return true
+}
+
+// ack 移除指定版本，写库期间收到的更新继续等待下一批。
 func (s *Service) ack(record telemetry.RequestRecord) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
