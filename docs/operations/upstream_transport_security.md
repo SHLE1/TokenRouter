@@ -41,6 +41,8 @@ HTTP client 池可以按 `proxy`、`provider` 或 `provider_proxy` 隔离，有�
 
 普通的和 TLS 指纹的上游传输，都明确限制 DNS 和 TCP 建连、TLS 握手的时间，目前默认各 10 秒；TCP keepalive 探测的间隔是 30 秒。HTTP 代理使用调用方的建连拨号器；SOCKS5 和 SOCKS5H 会覆盖 `Transport.DialContext`，所以它们的 forward dialer 需要自己带上同样的上限，并响应请求的 context。`ResponseHeaderTimeout` 从连接建立后开始计时，只约束等待响应头的时间，建连阶段由上面这些超时控制。
 
+普通 HTTP/2 传输通过标准库 `http.Protocols` 和 `http.HTTP2Config` 配置协商与空闲 PING。TLS 指纹连接返回 uTLS 的 `ConnectionState` 类型，使用 `x/net/http2.Transport` 的裸连接拨号接口接入，并检查实际协商到的 ALPN 为 `h2`。两个路径的空闲 PING 间隔和响应超时均为 15 秒。
+
 直连、HTTP 和 SOCKS 都可以使用 TLS profile。HTTPS 代理对 transport 有单独的限制；OpenAI 等路径在代理不支持 HTTP/2 时，可以使用受控的 HTTP/1 回退。任何回退都只改变传输协商，目标 allowlist、认证和提供商归属保持不变。
 
 <a id="upstream_tls_routing"></a>
