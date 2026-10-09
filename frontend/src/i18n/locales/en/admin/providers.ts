@@ -75,7 +75,7 @@ export default {
       syncFromCrsTitle: 'Sync Providers from CRS',
       syncFromCrsDesc:
         'Sync providers from claude-relay-service (CRS) into this system (CRS is called server-to-server).',
-      crsVersionRequirement: '⚠️ Note: CRS version must be ≥ v1.1.240 to support this feature',
+      crsVersionRequirement: 'Note: CRS version must be ≥ v1.1.240 to support this feature',
       crsBaseUrl: 'CRS Base URL',
       crsBaseUrlPlaceholder: 'e.g. http://127.0.0.1:3000',
       crsUsername: 'Username',

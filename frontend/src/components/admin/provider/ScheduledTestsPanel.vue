@@ -45,11 +45,6 @@
               <label class="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                 {{ t('admin.scheduledTests.cronExpression') }}
                 <HelpTooltip>
-                  <template #trigger>
-                    <span class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-gray-400/70 text-xs font-semibold text-gray-400 transition-colors hover:border-primary-500 hover:text-primary-600 dark:border-gray-500 dark:text-gray-500 dark:hover:border-primary-400 dark:hover:text-primary-400">
-                      ?
-                    </span>
-                  </template>
                   <div class="space-y-1.5">
                     <p class="font-medium">{{ t('admin.scheduledTests.cronTooltipTitle') }}</p>
                     <p>{{ t('admin.scheduledTests.cronTooltipMeaning') }}</p>
@@ -71,11 +66,6 @@
               <label class="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                 {{ t('admin.scheduledTests.maxResults') }}
                 <HelpTooltip>
-                  <template #trigger>
-                    <span class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-gray-400/70 text-xs font-semibold text-gray-400 transition-colors hover:border-primary-500 hover:text-primary-600 dark:border-gray-500 dark:text-gray-500 dark:hover:border-primary-400 dark:hover:text-primary-400">
-                      ?
-                    </span>
-                  </template>
                   <div class="space-y-1.5">
                     <p class="font-medium">{{ t('admin.scheduledTests.maxResultsTooltipTitle') }}</p>
                     <p>{{ t('admin.scheduledTests.maxResultsTooltipMeaning') }}</p>
@@ -261,11 +251,6 @@
                 <label class="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                   {{ t('admin.scheduledTests.cronExpression') }}
                   <HelpTooltip>
-                    <template #trigger>
-                      <span class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-gray-400/70 text-xs font-semibold text-gray-400 transition-colors hover:border-primary-500 hover:text-primary-600 dark:border-gray-500 dark:text-gray-500 dark:hover:border-primary-400 dark:hover:text-primary-400">
-                        ?
-                      </span>
-                    </template>
                     <div class="space-y-1.5">
                       <p class="font-medium">{{ t('admin.scheduledTests.cronTooltipTitle') }}</p>
                       <p>{{ t('admin.scheduledTests.cronTooltipMeaning') }}</p>
@@ -287,11 +272,6 @@
                 <label class="mb-1 flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-400">
                   {{ t('admin.scheduledTests.maxResults') }}
                   <HelpTooltip>
-                    <template #trigger>
-                      <span class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-gray-400/70 text-xs font-semibold text-gray-400 transition-colors hover:border-primary-500 hover:text-primary-600 dark:border-gray-500 dark:text-gray-500 dark:hover:border-primary-400 dark:hover:text-primary-400">
-                        ?
-                      </span>
-                    </template>
                     <div class="space-y-1.5">
                       <p class="font-medium">{{ t('admin.scheduledTests.maxResultsTooltipTitle') }}</p>
                       <p>{{ t('admin.scheduledTests.maxResultsTooltipMeaning') }}</p>

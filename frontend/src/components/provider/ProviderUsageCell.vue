@@ -297,12 +297,14 @@
           color="amber"
         />
 
-        <div v-if="aiCreditsDisplay" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          💳 {{ t('admin.providers.aiCreditsBalance') }}: {{ aiCreditsDisplay }}
+        <div v-if="aiCreditsDisplay" class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+          <Icon name="creditCard" size="xs" />
+          {{ t('admin.providers.aiCreditsBalance') }}: {{ aiCreditsDisplay }}
         </div>
       </div>
-      <div v-else-if="aiCreditsDisplay" class="text-xs text-gray-500 dark:text-gray-400">
-        💳 {{ t('admin.providers.aiCreditsBalance') }}: {{ aiCreditsDisplay }}
+      <div v-else-if="aiCreditsDisplay" class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+        <Icon name="creditCard" size="xs" />
+        {{ t('admin.providers.aiCreditsBalance') }}: {{ aiCreditsDisplay }}
       </div>
       <div v-else class="text-xs text-gray-400">-</div>
     </template>

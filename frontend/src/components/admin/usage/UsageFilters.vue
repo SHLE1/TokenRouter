@@ -23,10 +23,10 @@
                 v-if="filters.user_id"
                 type="button"
                 @click="clearUser"
-                class="absolute right-2 top-0 flex h-9 items-center text-gray-400"
+                class="absolute right-2 top-0 flex h-9 items-center text-gray-400 hover:text-gray-600 dark:text-dark-400 dark:hover:text-dark-200"
                 aria-label="Clear user filter"
               >
-                ✕
+                <Icon name="x" size="sm" />
               </button>
               <MotionTransition name="dropdown-fade">
                 <div
@@ -63,10 +63,10 @@
                 v-if="filters.api_key_id"
                 type="button"
                 @click="onClearApiKey"
-                class="absolute right-2 top-0 flex h-9 items-center text-gray-400"
+                class="absolute right-2 top-0 flex h-9 items-center text-gray-400 hover:text-gray-600 dark:text-dark-400 dark:hover:text-dark-200"
                 aria-label="Clear API key filter"
               >
-                ✕
+                <Icon name="x" size="sm" />
               </button>
               <MotionTransition name="dropdown-fade">
                 <div
@@ -108,10 +108,10 @@
                 v-if="filters.provider_id"
                 type="button"
                 @click="clearProvider"
-                class="absolute right-2 top-0 flex h-9 items-center text-gray-400"
+                class="absolute right-2 top-0 flex h-9 items-center text-gray-400 hover:text-gray-600 dark:text-dark-400 dark:hover:text-dark-200"
                 aria-label="Clear provider filter"
               >
-                ✕
+                <Icon name="x" size="sm" />
               </button>
               <MotionTransition name="dropdown-fade">
                 <div
