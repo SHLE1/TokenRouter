@@ -12,6 +12,7 @@ func (s *Recorder) WriteUsage(ctx context.Context, usageLog *UsageLog, logKey st
 	if s.logs == nil || usageLog == nil {
 		return
 	}
+	applyClientModel(ctx, usageLog)
 	if s.requestRecords != nil {
 		now := time.Now().UTC()
 		record := telemetry.RequestRecord{RequestID: usageLog.RequestID, StartedAt: usageLog.CreatedAt, UpdatedAt: now, FinishedAt: &now, State: "completed", UserID: usageLog.UserID, APIKeyID: usageLog.APIKeyID, ProviderID: usageLog.ProviderID, Model: usageLog.RequestedModel, Platform: usageLog.Platform}
@@ -33,9 +34,25 @@ func (s *Recorder) WriteUsage(ctx context.Context, usageLog *UsageLog, logKey st
 		if usageLog.UpstreamRequestID != nil {
 			record.Aliases = append(record.Aliases, telemetry.RequestAlias{Kind: "upstream", Value: *usageLog.UpstreamRequestID})
 		}
-		s.requestRecords(record)
+		// HTTP 请求和 WS 轮次由入口记录起止时间，后台用量写入补充模型与关联标识。
+		if telemetry.UpdateRequestForID(ctx, record.RequestID, func(current *telemetry.RequestRecord) {
+			if record.Model != "" {
+				current.Model = record.Model
+			}
+			if record.ProviderID > 0 {
+				current.ProviderID = record.ProviderID
+			}
+			if record.Platform != "" {
+				current.Platform = record.Platform
+			}
+		}) {
+			for _, alias := range record.Aliases {
+				telemetry.AddRequestAlias(ctx, alias.Kind, alias.Value)
+			}
+		} else {
+			s.requestRecords(record)
+		}
 	}
-	applyClientModel(ctx, usageLog)
 	usageCtx, cancel := detachedBillingContext(ctx)
 	defer cancel()
 

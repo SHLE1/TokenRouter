@@ -127,6 +127,18 @@ func UpdateRequest(ctx context.Context, update func(*RequestRecord)) {
 	}
 }
 
+// UpdateRequestForID 更新指定请求的记录器，返回是否找到对应请求。
+func UpdateRequestForID(ctx context.Context, id string, update func(*RequestRecord)) bool {
+	matched := false
+	UpdateRequest(ctx, func(record *RequestRecord) {
+		if record.RequestID == id {
+			matched = true
+			update(record)
+		}
+	})
+	return matched
+}
+
 // AddRequestAlias 把外部或历史标识登记为可检索的别名。
 func AddRequestAlias(ctx context.Context, kind, value string) {
 	value = strings.TrimSpace(value)
@@ -188,7 +200,7 @@ func RecordRelatedRequest(ctx context.Context, record RequestRecord) {
 		record.StartedAt = time.Now().UTC()
 	}
 	record.UpdatedAt = time.Now().UTC()
-	if record.State == "completed" {
+	if record.FinishedAt == nil && (record.State == "completed" || record.State == "failed" || record.State == "canceled") {
 		finished := record.UpdatedAt
 		record.FinishedAt = &finished
 	}

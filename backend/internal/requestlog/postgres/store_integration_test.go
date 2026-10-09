@@ -14,6 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 	"github.com/TokenFlux/TokenRouter/internal/requestlog"
 	"github.com/TokenFlux/TokenRouter/internal/testutil/postgrescontainer"
+	"github.com/TokenFlux/TokenRouter/migrations"
 )
 
 // lookupPlanNode 读取 PostgreSQL 执行计划中的扫描方式与表名。
@@ -21,6 +22,47 @@ type lookupPlanNode struct {
 	Type     string           `json:"Node Type"`
 	Relation string           `json:"Relation Name"`
 	Plans    []lookupPlanNode `json:"Plans"`
+}
+
+// TestStoreFindIncludesChildBillingAliases 父请求按子记录的 API Key 查找升级前的费用，并排除外部同名记录。
+func TestStoreFindIncludesChildBillingAliases(t *testing.T) {
+	db := postgrescontainer.New(t)
+	ctx := t.Context()
+	_, err := db.ExecContext(ctx, `
+INSERT INTO users(id,email,password_hash) VALUES(101,'child-billing@requests.test','hash'),(202,'unrelated@requests.test','hash');
+INSERT INTO api_keys(id,user_id,key,name) VALUES(101,101,'child-billing-key','lookup'),(202,202,'unrelated-key','lookup');
+INSERT INTO providers(id,name,platform,type) VALUES(101,'child-billing','grok','apikey');
+INSERT INTO usage_logs(user_id,billing_user_id,api_key_id,provider_id,request_id,billing_key,model)
+VALUES(101,101,101,101,'grok-video:old-task',NULL,'model'),(202,202,202,101,'other-request','grok-video:old-task','model');`)
+	require.NoError(t, err)
+	store := NewStore(db)
+	now := time.Now().UTC()
+	require.NoError(t, store.Save(ctx, []telemetry.RequestRecord{
+		{RequestID: "created", UserID: 101, StartedAt: now, UpdatedAt: now, State: "completed"},
+		{RequestID: "poll", UserID: 101, StartedAt: now, UpdatedAt: now, State: "completed", Aliases: []telemetry.RequestAlias{{Kind: "related", Value: "child"}}},
+		{RequestID: "child", ParentRequestID: "created", UserID: 101, APIKeyID: 101, StartedAt: now, UpdatedAt: now, State: "completed", Aliases: []telemetry.RequestAlias{{Kind: "billing", Value: "grok-video:old-task"}}},
+		{RequestID: "unrelated", UserID: 202, StartedAt: now, UpdatedAt: now, State: "completed", Aliases: []telemetry.RequestAlias{{Kind: "caller", Value: "created"}}},
+	}))
+	// 函数替换可重复执行，已建立的父子关系继续可查。
+	migration, err := migrations.FS.ReadFile("294_request_lookup_child_billing.sql")
+	require.NoError(t, err)
+	for range 2 {
+		_, err = db.ExecContext(ctx, string(migration))
+		require.NoError(t, err)
+	}
+	for _, search := range []string{"created", "poll", "child"} {
+		items, err := store.Find(ctx, search, 0, true)
+		require.NoError(t, err)
+		var total int
+		for _, item := range items {
+			require.NotEqual(t, "unrelated", item.RequestID)
+			for range item.Usage {
+				total++
+				require.Equal(t, int64(101), item.APIKeyID)
+			}
+		}
+		require.Equal(t, 1, total, search)
+	}
 }
 
 // TestStoreLookupIsolationAndReplay 在实际迁移后的 PostgreSQL 上检查别名、归属和重放。
