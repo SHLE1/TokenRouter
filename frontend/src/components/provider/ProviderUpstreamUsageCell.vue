@@ -12,8 +12,8 @@
     </div>
     <!-- 移动端卡片整体右对齐，骨架条需与查询结果保持同侧。 -->
     <div v-if="queryEnabled && loading" class="flex flex-col items-end gap-1 lg:items-start" data-testid="upstream-usage-skeleton">
-      <div class="h-3 w-28 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
-      <div class="h-3 w-36 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
+      <div class="skeleton h-3 w-28"></div>
+      <div class="skeleton h-3 w-36"></div>
     </div>
     <div v-else-if="queryEnabled && error" class="flex items-center justify-end gap-1 text-xs text-amber-600 dark:text-amber-400 lg:justify-start">
       <span class="truncate" :title="error.message || error.code || ''">

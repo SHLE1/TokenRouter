@@ -180,7 +180,7 @@ const platformClass = computed(() => {
     return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400'
   }
   if (props.platform === 'grok') {
-    return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+    return 'bg-zinc-100 text-zinc-700 dark:bg-dark-700 dark:text-dark-200'
   }
   if (props.platform === 'kimi') {
     return 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
@@ -208,7 +208,7 @@ const typeClass = computed(() => {
     return 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
   }
   if (props.platform === 'grok') {
-    return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+    return 'bg-zinc-100 text-zinc-600 dark:bg-dark-700 dark:text-dark-200'
   }
   if (props.platform === 'kimi') {
     return 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400'
@@ -232,7 +232,7 @@ const planBadgeClass = computed(() => {
     normalizedPlanType.value === 'basic' ||
     normalizedPlanType.value === 'xbasic'
   ) {
-    return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+    return 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-200'
   }
   if (props.platform === 'grok' && normalizedPlanType.value) {
     // Heavy 与 SuperGrok Heavy 使用紫色。

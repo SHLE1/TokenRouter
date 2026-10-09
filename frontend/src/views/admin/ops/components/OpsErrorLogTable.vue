@@ -159,7 +159,7 @@
         <template #cell-actions="{ row }">
           <button
             type="button"
-            class="rounded-compact p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-600 dark:hover:text-primary-400"
+            class="rounded-compact p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
             :title="t('admin.ops.errorLog.details')"
             @click.stop="emit('openErrorDetail', row.id)"
           >

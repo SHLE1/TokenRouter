@@ -43,10 +43,10 @@
       <!-- Loading / Redirecting -->
       <div v-else class="flex items-center justify-center py-8">
         <div
-          class="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
-          :style="{ borderColor: methodColor, borderTopColor: 'transparent' }"
+          class="spinner h-8 w-8"
+          :style="{ color: methodColor }"
         />
-        <span class="ml-3 text-sm text-gray-500 dark:text-slate-400">{{ hint }}</span>
+        <span class="ml-3 text-sm text-gray-500 dark:text-dark-300">{{ hint }}</span>
       </div>
     </div>
   </div>

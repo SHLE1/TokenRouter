@@ -431,7 +431,7 @@ onUnmounted(() => {
 }
 
 .toc-close-btn {
-  @apply p-1 rounded-compact text-gray-400 hover:text-gray-600 dark:hover:text-dark-200 hover:bg-gray-200 dark:hover:bg-dark-600 transition-colors;
+  @apply p-1 rounded-compact text-gray-400 hover:text-gray-600 dark:hover:text-dark-200 hover:bg-gray-200 dark:hover:bg-dark-700 transition-colors;
 }
 
 .toc-nav {
@@ -440,7 +440,7 @@ onUnmounted(() => {
 
 .toc-item {
   @apply block px-2 py-1.5 text-sm rounded-compact transition-colors truncate;
-  @apply text-gray-600 dark:text-dark-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-dark-600;
+  @apply text-gray-600 dark:text-dark-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-dark-700;
 }
 
 .toc-item.toc-active {
@@ -455,7 +455,7 @@ onUnmounted(() => {
 .toc-toggle-btn {
   @apply absolute left-2 top-2 z-10 flex items-center px-2 py-1.5 rounded-control text-sm;
   @apply bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-500;
-  @apply text-gray-600 dark:text-dark-300 hover:bg-gray-100 dark:hover:bg-dark-600;
+  @apply text-gray-600 dark:text-dark-300 hover:bg-gray-100 dark:hover:bg-dark-700;
   @apply shadow-sm transition-colors cursor-pointer;
 }
 

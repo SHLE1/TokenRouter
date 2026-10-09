@@ -269,7 +269,7 @@
             <button
               v-if="row.detailed_timing"
               type="button"
-              class="group relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-primary-100 hover:text-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:bg-gray-700 dark:text-gray-500 dark:hover:bg-primary-500/8 dark:hover:text-primary-500"
+              class="group relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-primary-100 hover:text-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:bg-dark-700 dark:text-gray-500 dark:hover:bg-primary-500/8 dark:hover:text-primary-500"
               :aria-label="t('usage.detailedTiming')"
               :title="t('usage.detailedTiming')"
               @mouseenter="showTimingTooltip($event, row)"
@@ -947,7 +947,7 @@ const getRequestTypeBadgeClass = (row: AdminUsageLog): string => {
   if (requestType === 'live') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
   if (requestType === 'ws_v2') return 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200'
   if (requestType === 'stream') return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-  if (requestType === 'sync') return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+  if (requestType === 'sync') return 'bg-gray-100 text-gray-800 dark:bg-dark-700 dark:text-dark-100'
   return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
 }
 

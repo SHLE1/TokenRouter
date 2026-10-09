@@ -37,7 +37,7 @@
                   v-for="user in searchResults"
                   :key="user.id"
                   type="button"
-                  class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-dark-600"
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-dark-800"
                   @click="selectUser(user)"
                 >
                   <span class="text-gray-400">#{{ user.id }}</span>
