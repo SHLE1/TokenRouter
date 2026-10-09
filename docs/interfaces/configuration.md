@@ -55,6 +55,10 @@
 
 时区的优先级：标准的 `TZ`、兼容的 `TIMEZONE`、配置文件、默认值 `Asia/Shanghai`。`TZ` 非空时覆盖 `TIMEZONE`，容器运行时、应用的本地日统计和 PostgreSQL 连接的时区因此保持一致；无效的 IANA 名称在启动校验时失败。
 
+### 请求记录
+
+`request_log.retention_days` 控制请求摘要保留天数，默认 30。`request_log.spool_dir` 指定数据库批写前的持久待写目录，环境变量分别为 `REQUEST_LOG_RETENTION_DAYS` 和 `REQUEST_LOG_SPOOL_DIR`。目录默认路径、实例锁和故障恢复见[请求 ID 与请求查询](../operations/request_lookup.md#request_storage)。
+
 ### 模型目录与价格补充
 
 模型目录使用 `pricing.remote_url`（默认 `https://models.dev/catalog.json`）和 `pricing.check_interval_minutes`（默认 10 分钟），自动同步价格和展示属性。旧的 `pricing.hash_check_interval_minutes` 和对应的环境变量，按下面的兼容键优先级映射到新键。

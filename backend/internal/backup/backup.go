@@ -70,6 +70,7 @@ var (
 			"public.usage_analytics_aggregation_state",
 		},
 		"ops_logs": {
+			"public.request_records",
 			"public.ops_system_logs",
 			"public.ops_error_logs",
 			"public.ops_retry_attempts",

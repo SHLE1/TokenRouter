@@ -210,6 +210,7 @@ const userNavItems = computed((): NavItem[] => {
     { path: '/batch-image', label: t('nav.batchImage'), icon: 'batchImage' as const, featureFlag: flagBatchImageAccess },
     { path: '/creative', label: t('nav.creative'), icon: 'creative' as const, featureFlag: flagCreativeStudioAccess },
     { path: '/usage', label: t('nav.usage'), icon: 'chart' as const },
+    { path: '/requests', label: t('requests.title'), icon: 'search' as const },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: 'creditCard' as const },
     ...(appStore.cachedPublicSettings?.payment_enabled
       ? [
@@ -262,6 +263,7 @@ const personalNavItems = computed((): NavItem[] => {
     { path: '/batch-image', label: t('nav.batchImage'), icon: 'batchImage' as const, featureFlag: flagBatchImageAccess },
     { path: '/creative', label: t('nav.creative'), icon: 'creative' as const, featureFlag: flagCreativeStudioAccess },
     { path: '/usage', label: t('nav.usage'), icon: 'chart' as const },
+    { path: '/requests', label: t('requests.title'), icon: 'search' as const },
     { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: 'creditCard' as const },
     ...(appStore.cachedPublicSettings?.payment_enabled
       ? [
@@ -385,6 +387,7 @@ const adminNavItems = computed((): NavItem[] => {
         ]
       : []),
     { path: '/admin/usage', label: t('nav.usage'), icon: 'chart' as const },
+    { path: '/admin/requests', label: t('requests.title'), icon: 'search' as const },
     { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: 'shieldCheck' as const }
   ]
 

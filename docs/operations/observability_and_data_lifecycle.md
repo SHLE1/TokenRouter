@@ -19,6 +19,7 @@
 
 | 数据 | 主要持久化 | 作用 | 要点 |
 | --- | --- | --- | --- |
+| 请求摘要 | `request_records` 与本地待写目录 | 按统一请求 ID 查询调用结果与关联记录 | 独立于 Ops 开关和采样，默认保留 30 天 |
 | 进程日志 | stdout、stderr | 启动、运行和异常诊断 | 最终的留存由部署的日志系统负责 |
 | Ops 系统日志 | `ops_system_logs` | 索引 warning、error、HTTP access 和 audit 类事件 | 有界的异步队列，拥塞时可以丢弃，并累计健康计数 |
 | Ops 错误与指标 | `ops_error_logs`，以及 metrics、alert、heartbeat 表 | 上游错误、窗口指标、告警、任务状态 | 监控可以关闭；这是观测数据，不是资金账本 |
@@ -43,7 +44,7 @@
 
 ## 关联与脱敏
 
-请求 ID 的生成和透传规则见 [HTTP 接口](../interfaces/http_api.md#请求关联)。网关把归一化的 endpoint、platform、requested 和 upstream model、用户、API Key、提供商和团队等维度，写进允许的用量和 Ops 记录。入站的 `X-Client-Request-ID` 只作为受限的 `parent_client_request_id` 保存，用于跨 Sub2API 和 TokenRouter 链路的排查，和权限、路由、结算幂等无关。客户端提供的 session ID 只作为明确的关联字段，不会从 prompt 或缓存键推导。调用方的 ID 和内部 ID 都会写进访问日志，只有内部 ID 可以作为结算幂等的来源。
+请求 ID 的生成、别名、计费关联和查询规则见[请求 ID 与请求查询](request_lookup.md)。入口生成的 ID贯穿各类诊断记录。供应商和调用方的 ID保存为外部别名，权限由认证主体和记录归属决定。使用记录的 `billing_key` 负责兼容历史资金去重值，用户界面展示 `request_id`。
 
 流式网关的 `http.access` 记录，还会尽力写入以下阶段字段：`request_content_length`、`provider_slot_acquired_ms`、`upstream_get_conn_ms`、`upstream_got_conn_ms`、`upstream_wrote_request_ms`、`upstream_first_response_byte_ms`、`upstream_first_sse_data_ms`、`first_visible_output_ms` 和 `first_downstream_flush_ms`。`upstream_attempt_count`、各阶段的计数、连接复用和写入错误字段，用来识别连接池等待、重试和传输异常。这些字段只有时间、计数和连接复用状态，不包含请求体和凭据。
 

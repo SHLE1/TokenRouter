@@ -289,6 +289,7 @@
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.result" :options="resultOptions" @change="reloadLogsFromFirstPage" />
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.group_id" :options="groupFilterOptions" @change="reloadLogsFromFirstPage" />
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.endpoint" :options="endpointOptions" @change="reloadLogsFromFirstPage" />
+              <RequestIdSearch v-model="filters.request_id" @search="reloadLogsFromFirstPage" />
               <input v-model.trim="filters.search" type="search" class="input" :placeholder="t('admin.riskControl.filters.search')" @keyup.enter="reloadLogsFromFirstPage" />
               <input v-model="filters.from" type="datetime-local" class="input" :title="t('admin.riskControl.filters.from')" @change="reloadLogsFromFirstPage" />
               <input v-model="filters.to" type="datetime-local" class="input" :title="t('admin.riskControl.filters.to')" @change="reloadLogsFromFirstPage" />
@@ -1288,6 +1289,7 @@
         width="wide"
         @close="closeInputDetail"
       >
+        <RequestIdLink v-if="inputDetailRow" :value="inputDetailRow.request_id" />
         <div v-if="inputDetailRow" class="space-y-5">
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div class="rounded-surface border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/70">
@@ -1387,6 +1389,7 @@
         width="wide"
         @close="closeCyberDetail"
       >
+        <RequestIdLink v-if="cyberDetailRow" :value="cyberDetailRow.request_id" />
         <div v-if="cyberDetailRow" class="space-y-5">
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div class="rounded-surface border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/70">
@@ -1479,6 +1482,8 @@
 </template>
 
 <script setup lang="ts">
+import RequestIdLink from '@/components/common/RequestIdLink.vue'
+import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import { vSegmented } from '@/directives/segmented'
 import Skeleton from '@/components/common/Skeleton.vue'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
@@ -1667,6 +1672,7 @@ const pagination = reactive({
 })
 
 const filters = reactive({
+  request_id: '',
   result: '',
   group_id: 0,
   endpoint: '',
@@ -2297,6 +2303,7 @@ async function loadLogs() {
       result: filters.result || undefined,
       group_id: filters.group_id || undefined,
       endpoint: filters.endpoint || undefined,
+      request_id: filters.request_id || undefined,
       search: filters.search || undefined,
       from: normalizeDateTimeLocal(filters.from),
       to: normalizeDateTimeLocal(filters.to),
@@ -2320,6 +2327,7 @@ async function loadCyberWarnings() {
     const params = {
       page: pagination.page,
       page_size: pagination.page_size,
+      request_id: filters.request_id || undefined,
       search: filters.search || undefined,
       from: normalizeDateTimeLocal(filters.from),
       to: normalizeDateTimeLocal(filters.to),

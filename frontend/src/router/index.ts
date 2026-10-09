@@ -21,6 +21,8 @@ initializeTfCliImportSession()
  * Route definitions with lazy loading
  */
 const routes: RouteRecordRaw[] = [
+  { path: '/requests', name: 'Requests', component: () => import('@/views/RequestsView.vue'), meta: { requiresAuth: true, requiresAdmin: false, titleKey: 'requests.title', descriptionKey: 'requests.description' } },
+  { path: '/admin/requests', name: 'AdminRequests', component: () => import('@/views/RequestsView.vue'), meta: { requiresAuth: true, requiresAdmin: true, titleKey: 'requests.title', descriptionKey: 'requests.description' } },
   // ==================== Setup Routes ====================
   {
     path: '/setup',

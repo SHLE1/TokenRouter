@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import RequestIdLink from '@/components/common/RequestIdLink.vue'
+import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
@@ -50,6 +52,7 @@ const runtimeConfig = reactive<OpsRuntimeLogConfig>({
   retention_days: 30
 })
 
+const requestTimeRange = ref(false)
 const filters = reactive({
   time_range: '1h' as '5m' | '30m' | '1h' | '6h' | '24h' | '7d' | '30d',
   start_time: '',
@@ -202,6 +205,7 @@ const buildQuery = () => {
   if (filters.platform.trim()) query.platform = filters.platform.trim()
   if (filters.model.trim()) query.model = filters.model.trim()
   if (filters.q.trim()) query.q = filters.q.trim()
+  if (filters.request_id.trim() && !requestTimeRange.value) { delete query.time_range; delete query.start_time; delete query.end_time }
   return query
 }
 
@@ -450,15 +454,15 @@ onMounted(async () => {
     <div class="mb-4 grid grid-cols-1 gap-2 md:grid-cols-5">
       <label class="text-xs text-gray-600 dark:text-gray-300">
         时间范围
-        <Select v-model="filters.time_range" class="mt-1" :options="timeRangeOptions" />
+        <Select v-model="filters.time_range" @change="requestTimeRange = true" class="mt-1" :options="timeRangeOptions" />
       </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         开始时间（可选）
-        <input v-model="filters.start_time" type="datetime-local" class="input mt-1" />
+        <input v-model="filters.start_time" @change="requestTimeRange = true" type="datetime-local" class="input mt-1" />
       </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         结束时间（可选）
-        <input v-model="filters.end_time" type="datetime-local" class="input mt-1" />
+        <input v-model="filters.end_time" @change="requestTimeRange = true" type="datetime-local" class="input mt-1" />
       </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         级别
@@ -472,14 +476,7 @@ onMounted(async () => {
         {{ t('admin.ops.systemLogs.host') }}
         <input v-model="filters.host" type="text" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
-        request_id
-        <input v-model="filters.request_id" type="text" class="input mt-1" />
-      </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
-        client_request_id
-        <input v-model="filters.client_request_id" type="text" class="input mt-1" />
-      </label>
+      <div class="md:col-span-2"><RequestIdSearch v-model="filters.request_id" v-model:within-time-range="requestTimeRange" show-time-range @search="applyFilters" /></div>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         user_id
         <input v-model="filters.user_id" type="text" class="input mt-1" />
@@ -528,6 +525,7 @@ onMounted(async () => {
             {{ row.host }}
           </div>
           <div class="whitespace-normal break-all text-xs text-gray-700 dark:text-gray-300">
+            <RequestIdLink v-if="row.request_id || row.client_request_id" :value="row.request_id || row.client_request_id" />
             {{ formatSystemLogDetail(row) }}
           </div>
         </div>
@@ -554,7 +552,8 @@ onMounted(async () => {
                 </span>
               </td>
               <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-normal break-all">
-                {{ formatSystemLogDetail(row) }}
+                <RequestIdLink v-if="row.request_id || row.client_request_id" :value="row.request_id || row.client_request_id" />
+            {{ formatSystemLogDetail(row) }}
               </td>
             </tr>
           </tbody>

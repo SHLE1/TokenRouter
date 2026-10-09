@@ -109,6 +109,7 @@ var usageLogInsertArgTypes = [...]string{
 	"text",        // 实际执行平台快照
 	"text",        // upstream_response_model
 	"boolean",     // upstream_model_mismatch
+	"text",        // billing_key
 }
 
 type usageLogCreateRequest struct {
@@ -302,23 +303,28 @@ func (r *Store) createSingle(ctx context.Context, sqlq sqlExecutor, log *usage.U
 			native_compaction_v2,
 			platform,
 			upstream_response_model,
-			upstream_model_mismatch
+			upstream_model_mismatch,
+			billing_key
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9,
 			$10, $11,
 			$12, $13, $14, $15,
 			$16, $17, $18, $19,
 			$20, $21, $22, $23, $24, $25,
-			$26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68
+			$26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69
 		)
-		ON CONFLICT (request_id, api_key_id) DO NOTHING
+		ON CONFLICT DO NOTHING
 		RETURNING id, created_at
 	`
 
 	if err := scanSingleRow(ctx, sqlq, query, prepared.args, &log.ID, &log.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) && prepared.requestID != "" {
-			selectQuery := "SELECT id, created_at FROM usage_logs WHERE request_id = $1 AND api_key_id = $2"
-			if err := scanSingleRow(ctx, sqlq, selectQuery, []any{prepared.requestID, log.APIKeyID}, &log.ID, &log.CreatedAt); err != nil {
+			billingKey := log.BillingKey
+			if billingKey == "" {
+				billingKey = prepared.requestID
+			}
+			selectQuery := "SELECT id, created_at FROM usage_logs WHERE (request_id = $1 OR COALESCE(billing_key, request_id) = $3) AND api_key_id = $2"
+			if err := scanSingleRow(ctx, sqlq, selectQuery, []any{prepared.requestID, log.APIKeyID, billingKey}, &log.ID, &log.CreatedAt); err != nil {
 				return false, err
 			}
 			log.RateMultiplier = prepared.rateMultiplier
@@ -814,7 +820,8 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 			native_compaction_v2,
 			platform,
 			upstream_response_model,
-			upstream_model_mismatch
+			upstream_model_mismatch,
+			billing_key
 		) AS (VALUES `)
 
 	args := make([]any, 0, len(keys)*(len(usageLogInsertArgTypes)+1))
@@ -913,7 +920,8 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				native_compaction_v2,
 				platform,
 				upstream_response_model,
-				upstream_model_mismatch
+				upstream_model_mismatch,
+				billing_key
 			)
 			SELECT
 				user_id,
@@ -983,10 +991,11 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				native_compaction_v2,
 				platform,
 				upstream_response_model,
-				upstream_model_mismatch
+				upstream_model_mismatch,
+				billing_key
 			FROM input
-			ON CONFLICT (request_id, api_key_id) DO NOTHING
-			RETURNING request_id, api_key_id, id, created_at
+			ON CONFLICT DO NOTHING
+			RETURNING request_id, billing_key, api_key_id, id, created_at
 		),
 		resolved AS (
 			SELECT
@@ -995,13 +1004,13 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				input.api_key_id,
 				COALESCE(inserted.id, existing.id) AS id,
 				COALESCE(inserted.created_at, existing.created_at) AS created_at,
-				(inserted.id IS NOT NULL) AS inserted
+				(inserted.request_id = input.request_id) AS inserted
 			FROM input
 			LEFT JOIN inserted
-				ON inserted.request_id = input.request_id
+				ON (inserted.request_id = input.request_id OR COALESCE(inserted.billing_key, inserted.request_id) = COALESCE(input.billing_key, input.request_id))
 				AND inserted.api_key_id = input.api_key_id
 			LEFT JOIN usage_logs existing
-				ON existing.request_id = input.request_id
+				ON (existing.request_id = input.request_id OR COALESCE(existing.billing_key, existing.request_id) = COALESCE(input.billing_key, input.request_id))
 				AND existing.api_key_id = input.api_key_id
 		)
 		SELECT COALESCE(
@@ -1093,7 +1102,8 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 				native_compaction_v2,
 				platform,
 				upstream_response_model,
-				upstream_model_mismatch
+				upstream_model_mismatch,
+				billing_key
 		) AS (VALUES `)
 
 	args := make([]any, 0, len(preparedList)*len(usageLogInsertArgTypes))
@@ -1189,7 +1199,8 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 				native_compaction_v2,
 				platform,
 				upstream_response_model,
-				upstream_model_mismatch
+				upstream_model_mismatch,
+				billing_key
 		)
 		SELECT
 			user_id,
@@ -1259,9 +1270,10 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			native_compaction_v2,
 			platform,
 			upstream_response_model,
-			upstream_model_mismatch
+			upstream_model_mismatch,
+			billing_key
 		FROM input
-		ON CONFLICT (request_id, api_key_id) DO NOTHING
+		ON CONFLICT DO NOTHING
 	`)
 
 	return query.String(), args
@@ -1337,16 +1349,17 @@ func execUsageLogInsertNoResult(ctx context.Context, sqlq sqlExecutor, prepared 
 			native_compaction_v2,
 			platform,
 			upstream_response_model,
-			upstream_model_mismatch
+			upstream_model_mismatch,
+			billing_key
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9,
 			$10, $11,
 			$12, $13, $14, $15,
 			$16, $17, $18, $19,
 			$20, $21, $22, $23, $24, $25,
-			$26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68
+			$26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69
 		)
-		ON CONFLICT (request_id, api_key_id) DO NOTHING
+		ON CONFLICT DO NOTHING
 	`, prepared.args...)
 	return err
 }
@@ -1488,6 +1501,7 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 			usagePlatformSnapshot(log.Platform),
 			nullString(log.UpstreamResponseModel),
 			log.UpstreamModelMismatch,
+			nullStringValue(log.BillingKey),
 		},
 	}
 }
@@ -1520,4 +1534,12 @@ func usagePlatformSnapshot(platform string) string {
 		return value
 	}
 	return "unknown"
+}
+
+// nullStringValue 把缺失的计费键写为 SQL NULL，供历史去重表达式回退。
+func nullStringValue(value string) any {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return strings.TrimSpace(value)
 }

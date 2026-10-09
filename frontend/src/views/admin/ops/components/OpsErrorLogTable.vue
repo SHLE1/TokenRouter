@@ -20,6 +20,7 @@
         @sort="onSort"
         @rowClick="(row) => emit('openErrorDetail', row.id)"
       >
+        <template #cell-request_id="{ row }"><RequestIdLink :value="row.request_id || row.client_request_id" /></template>
         <template #cell-created_at="{ row }">
           <span
             class="text-sm text-gray-600 dark:text-gray-400"
@@ -183,6 +184,7 @@
 </template>
 
 <script setup lang="ts">
+import RequestIdLink from '@/components/common/RequestIdLink.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -202,6 +204,7 @@ const { t } = useI18n()
 // 列序对齐管理端用量明细:身份(用户→Key→提供商)→请求形态(平台→模型→端点→分组→类型)
 // →结果(状态→消息)→时间→UA→IP→操作。
 const allColumns = computed<Column[]>(() => [
+  { key: 'request_id', label: t('requests.id') },
   { key: 'user', label: t('admin.ops.errorLog.user') },
   { key: 'api_key', label: t('admin.ops.errorLog.apiKey') },
   { key: 'provider', label: t('admin.ops.errorLog.provider') },

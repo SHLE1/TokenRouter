@@ -10,6 +10,7 @@
 
     <!-- 详情内容 -->
     <div v-else-if="detail" class="space-y-4 text-sm">
+      <RequestIdLink :value="detail.request_id" />
       <div class="grid grid-cols-2 gap-x-6 gap-y-3">
         <!-- 时间 -->
         <div>
@@ -66,6 +67,7 @@
 </template>
 
 <script setup lang="ts">
+import RequestIdLink from '@/components/common/RequestIdLink.vue'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

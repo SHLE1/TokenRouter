@@ -303,6 +303,7 @@ const menuNavGroups = computed(() => {
         { path: '/profile', label: t('nav.profile'), icon: 'userCircle' },
         { path: '/dashboard', label: t('nav.dashboard'), icon: 'dashboard' },
         { path: '/usage', label: t('nav.usage'), icon: 'chart' },
+    { path: '/requests', label: t('requests.title'), icon: 'search' as const },
         { path: '/keys', label: t('nav.apiKeys'), icon: 'key' },
         settings?.team_enabled !== false && { path: '/team', label: t('nav.team'), icon: 'users' }
       ]

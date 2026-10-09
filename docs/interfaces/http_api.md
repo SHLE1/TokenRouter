@@ -42,7 +42,7 @@ RequestLogger
   -> embedded frontend and API routes
 ```
 
-`X-Request-ID` 是服务端的请求关联 ID：客户端传来的值长度和字符合法时直接使用，否则生成 UUID，并写回响应和 request context。网关路由另外安装 `ClientRequestID`，它总是为本服务生成内部请求 ID。合法的 `X-Client-Request-ID` 只作为调用方的关联 ID 保存和回显，和权限、结算幂等都无关；缺失或不安全时，响应里的 `X-Client-Request-ID` 使用内部 ID。内部 ID 另外通过 `X-TokenRouter-Request-ID` 返回。服务生成的关联 ID 不会加进上游请求，网关的内部头因此不会发给供应商。
+`X-Request-ID` 由全局入口生成，网关复用这个 ID。`X-TokenRouter-Request-ID` 和兼容头返回同一个值，响应提交时固定为本地 ID。调用方传入的 ID 和供应商 ID保存为可查询的外部别名。合法的 `X-Client-Request-ID` 继续回显，缺失时使用本地 ID。完整的生成、计费关联、留存和查询规则见[请求 ID 与请求查询](../operations/request_lookup.md)。
 
 请求体大小限制和错误采集按路由族分别设置。网关在读取 JSON 或 multipart 之前，依次应用通用或文本的 body limit、client request ID、Ops error logger、endpoint 归一化和 API Key 认证。面板接口使用全局限流、重查询限流和审计；高风险的公开认证接口使用单独的 Redis 限流，依赖故障时拒绝请求（fail-close）。
 
@@ -324,13 +324,11 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器绑定同一个协�
 
 ## 请求关联
 
-- `X-Request-ID` 用于关联一次 HTTP 调用的日志和审计，持久化时有最大长度。
-- `X-Client-Request-ID` 是调用方提供的跨服务关联 ID。服务把它限制为安全的 ASCII 标识，并保留在日志链路里；它不是内部结算的幂等 ID。缺失或不安全时，响应里的这个头使用服务生成的内部 ID。
-- `X-TokenRouter-Request-ID` 是服务生成的内部请求 ID，用于本服务的日志、结算幂等和下游诊断；它只写进响应，上游请求里没有它。
-- 上游的 request ID 是供应商的观测字段，单独保存，和本地 ID 互不替代。
-- 后台 worker 从请求里取出需要的 metadata 后，使用一个有超时的新 Context；已经取消的请求的 body 和 Gin context 不再被持有。
+本地请求 ID贯穿 HTTP 响应、日志、使用记录、错误、审核和审计。`usage_logs.billing_key` 保存资金去重值，账本和资金去重表的既有字段继续保存历史动作键。客户端重试会生成新的调用 ID；任务重放通过业务动作键去重。
 
-客户端允许重试时，应保留同一个业务 request ID，服务端结合 API Key 和请求指纹识别冲突。只按请求 ID 字符串判断"重复"，会把不同用户或不同 payload 的请求混在一起。
+用户和管理员分别通过 `/api/v1/requests` 与 `/api/v1/admin/requests` 按 `request_id` 查询详情。调用方与供应商的 ID 可以作为搜索别名，记录归属决定访问权限。后台完成任务携带请求快照，在独立超时内写入用量和请求摘要。
+
+协议、兼容响应头和查询权限见[请求 ID 与请求查询](../operations/request_lookup.md)。
 
 ## 已移除的接口
 

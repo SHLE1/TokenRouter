@@ -4,7 +4,8 @@
       <UsageStatsCards :stats="usageStats" :show-provider-cost="false" :show-standard-cost="false" />
 
       <div class="space-y-4">
-        <div class="card p-4">
+        <div class="card space-y-4 p-4">
+        <RequestIdSearch v-model="filters.request_id" v-model:within-time-range="requestTimeRange" show-time-range @search="applyFilters" />
           <div class="time-controls flex flex-wrap items-center justify-between gap-2">
             <div class="flex min-w-0 items-center gap-2">
               <span class="time-control-label text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.dashboard.timeRange') }}:</span>
@@ -23,7 +24,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div v-if="!filters.request_id" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ModelDistributionChart
             v-model:metric="modelDistributionMetric"
             :model-stats="requestedModelStats"
@@ -50,7 +51,7 @@
           />
         </div>
 
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div v-if="!filters.request_id" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <EndpointDistributionChart
             v-model:source="endpointDistributionSource"
             v-model:metric="endpointDistributionMetric"
@@ -70,7 +71,7 @@
           <TokenUsageTrend :trend-data="trendData" :loading="chartsLoading" :granularity="granularity" :show-standard-cost="false" />
         </div>
 
-        <div v-if="isTeamOwner" data-tour="team-member-usage-charts">
+        <div v-if="isTeamOwner && !filters.request_id" data-tour="team-member-usage-charts">
           <TeamMemberUsageCharts
             :series="teamMemberSeries"
             :loading="teamChartsLoading"
@@ -241,6 +242,7 @@
 </template>
 
 <script setup lang="ts">
+import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import { useLocaleRefresh } from '@/composables/useLocaleRefresh'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { vContentReveal } from '@/directives/contentReveal'
@@ -404,6 +406,7 @@ type UsageFilterState = Omit<UsageQueryParams, 'api_key_id' | 'group_id' | 'mode
   request_type: UsageRequestType | null
 }
 
+const requestTimeRange = ref(false)
 const filters = ref<UsageFilterState>({
   start_date: startDate.value,
   end_date: endDate.value,
@@ -484,8 +487,8 @@ const normalizedFilters = computed<UsageQueryParams>(() => {
     group_id: filters.value.group_id ?? undefined,
     model: filters.value.model || undefined,
     request_type: requestType ?? undefined,
-    start_date: startDate.value,
-    end_date: endDate.value,
+    start_date: filters.value.request_id && !requestTimeRange.value ? undefined : startDate.value,
+    end_date: filters.value.request_id && !requestTimeRange.value ? undefined : endDate.value,
     stream: legacyStream === null ? undefined : legacyStream,
   }
 })
@@ -542,6 +545,7 @@ const loadStats = async () => {
 }
 
 const loadModelStats = async () => {
+  if (filters.value.request_id?.trim()) return
   const seq = ++modelStatsReqSeq
   modelStatsLoading.value = true
   try {
@@ -562,6 +566,7 @@ const loadModelStats = async () => {
 }
 
 const loadChartData = async () => {
+  if (filters.value.request_id?.trim()) return
   const seq = ++chartReqSeq
   chartsLoading.value = true
   try {
@@ -596,6 +601,7 @@ const refreshModelOptions = (models: ModelStat[]) => {
 }
 
 const applyFilters = () => {
+  if (activeTab.value === 'errors') { void loadStats(); applyErrorFilters(); return }
   pagination.page = 1
   void loadLogs()
   void loadStats()
@@ -607,6 +613,8 @@ const applyFilters = () => {
 
 // 重置只清空当前标签页的筛选条件，日期范围保持不变。
 const resetCurrentFilters = () => {
+  filters.value.request_id = undefined
+  requestTimeRange.value = false
   if (activeTab.value === 'errors') {
     errorFilter.value = { model: '', category: '', api_key_id: null, status_code: null }
     applyErrorFilters()
@@ -635,6 +643,7 @@ const refreshData = () => {
 }
 
 const onDateRangeChange = (range: { startDate: string; endDate: string; preset: string | null }) => {
+  requestTimeRange.value = true
   startDate.value = range.startDate
   endDate.value = range.endDate
   filters.value.start_date = range.startDate
@@ -770,6 +779,7 @@ const DEFAULT_HIDDEN_COLUMNS = ['user_agent']
 const HIDDEN_COLUMNS_KEY = 'user-usage-hidden-columns'
 
 const allColumns = computed<Column[]>(() => [
+  { key: 'request_id', label: t('requests.id'), sortable: false },
   ...(isTeamOwner.value ? [{ key: 'user', label: t('team.member'), sortable: false, class: 'w-36 min-w-36 max-w-36' }] : []),
   { key: 'api_key', label: t('usage.apiKeyFilter'), sortable: false },
   { key: 'model', label: t('usage.model'), sortable: true },
@@ -814,6 +824,7 @@ const ERR_HIDDEN_COLUMNS_KEY = 'user-usage-error-hidden-columns'
 
 // key 须与 UserErrorRequestsTable 的 allColumns 一致
 const errAllColumns = computed<Column[]>(() => [
+  { key: 'request_id', label: t('requests.id') },
   { key: 'key_name', label: t('usage.errors.keyName') },
   { key: 'model', label: t('usage.errors.model') },
   { key: 'endpoint', label: t('usage.errors.endpoint') },
@@ -912,6 +923,7 @@ const loadFilterOptions = async () => {
 
 // Owner 通过聚合接口读取当前和历史成员，图表总额包含离队成员的用量。
 const loadTeamMemberUsage = async () => {
+  if (filters.value.request_id?.trim()) return
   if (!isTeamOwner.value) {
     teamMemberSeries.value = []
     return
@@ -954,8 +966,9 @@ const loadErrors = async () => {
     const resp = await usageAPI.listMyErrorRequests({
       page: errorPage.value,
       page_size: errorPageSize.value,
-      start_date: startDate.value,
-      end_date: endDate.value,
+      request_id: filters.value.request_id?.trim() || undefined,
+      start_date: filters.value.request_id && !requestTimeRange.value ? undefined : startDate.value,
+      end_date: filters.value.request_id && !requestTimeRange.value ? undefined : endDate.value,
       model: (errorFilter.value.model ?? '').trim() || undefined,
       category: errorFilter.value.category || undefined,
       api_key_id: errorFilter.value.api_key_id ?? undefined,

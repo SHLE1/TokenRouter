@@ -21,6 +21,7 @@ import (
 	"golang.org/x/image/webp"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -782,6 +783,7 @@ func (s *Public) CreateRun(ctx context.Context, scope CreativeRunScope, params C
 	if err != nil {
 		return nil, err
 	}
+	telemetry.RecordRelatedRequest(ctx, telemetry.RequestRecord{RequestID: telemetry.StableRequestID(CreativeSettlementRequestID(run.RunID)), State: "running", Model: run.Model, StartedAt: run.CreatedAt, Aliases: []telemetry.RequestAlias{{Kind: "task", Value: run.RunID}, {Kind: "billing", Value: CreativeSettlementRequestID(run.RunID)}}})
 	if err := s.Results.EnsureCreativeOutbox(ctx, run.RunID, CreativeRunOutboxProvision); err != nil {
 		return nil, err
 	}
@@ -1219,10 +1221,10 @@ func (s *Public) ModerateCreativeRequest(ctx context.Context, userID int64, vali
 	if err != nil {
 		return err
 	}
-	requestID := "creative_mod:" + validated.Fingerprint
+	requestID := telemetry.NewRequestID()
 	if s.RequestID != nil {
 		if clientRequestID := strings.TrimSpace(s.RequestID(ctx)); clientRequestID != "" {
-			requestID = "creative_mod:" + clientRequestID
+			requestID = clientRequestID
 		}
 	}
 	decision, err := s.Moderation.Check(ctx, ModerationInput{

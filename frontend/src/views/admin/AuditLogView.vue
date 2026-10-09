@@ -3,6 +3,7 @@
     <TablePageLayout>
       <!-- 关键字搜索与筛选条件 -->
       <template #filters>
+        <RequestIdSearch v-model="filters.request_id" @search="search" />
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex min-w-0 w-full items-center gap-2 sm:w-auto">
             <div class="input-icon-wrap min-w-0 flex-1 sm:w-64 sm:flex-none">
@@ -177,7 +178,7 @@
             <span>{{ t('admin.audit.detail.latency') }} {{ detail.latency_ms }} ms</span>
             <span v-if="detail.request_id" class="inline-flex items-center gap-1">
               {{ t('admin.audit.detail.requestId') }}
-              <span class="break-all font-mono">{{ detail.request_id }}</span>
+              <RequestIdLink :value="detail.request_id" />
             </span>
           </div>
         </div>
@@ -326,6 +327,8 @@
   </AppLayout>
 </template>
 <script setup lang="ts">
+import RequestIdLink from '@/components/common/RequestIdLink.vue'
+import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -354,6 +357,7 @@ const page = ref(1)
 const pageSize = ref(20)
 
 const filters = reactive({
+  request_id: '',
   q: '',
   actor_email: '',
   action: '',
@@ -519,6 +523,7 @@ function buildQuery() {
   return {
     page: page.value,
     page_size: pageSize.value,
+    request_id: filters.request_id || undefined,
     q: filters.q || undefined,
     actor_email: filters.actor_email || undefined,
     action: filters.action || undefined,

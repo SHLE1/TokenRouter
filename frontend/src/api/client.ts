@@ -5,7 +5,7 @@
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios'
 import type { ApiResponse } from '@/types'
-import { getLocale } from '@/i18n'
+import { getLocale, i18n } from '@/i18n'
 import { responseErrorMessage, localizedErrorMessage } from '@/i18n/errors'
 import {
   ADMIN_UI_REQUEST_HEADER,
@@ -27,6 +27,13 @@ export const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+// requestErrorMessage 将服务端请求 ID 附在错误提示后，便于复制排查。
+function requestErrorMessage(message: string, requestId: unknown): string {
+  return typeof requestId === 'string' && requestId
+    ? `${message}\n${i18n.global.t('requests.id')}: ${requestId}`
+    : message
+}
 
 // ==================== Request Interceptor ====================
 
@@ -98,7 +105,8 @@ apiClient.interceptors.response.use(
         return Promise.reject({
           status: response.status,
           code: apiResponse.code,
-          message: responseErrorMessage(String(response.config?.url || ''), resp.reason, response.status, apiResponse.message || ''),
+          message: requestErrorMessage(responseErrorMessage(String(response.config?.url || ''), resp.reason, response.status, apiResponse.message || ''), response.headers?.['x-request-id']),
+          request_id: response.headers?.['x-request-id'],
           reason: resp.reason,
           metadata: resp.metadata,
         })
@@ -240,7 +248,8 @@ apiClient.interceptors.response.use(
         code: apiData.code,
         reason: apiData.reason,
         error: apiData.error,
-        message: responseErrorMessage(url, apiData.reason, status, apiData.message || apiData.detail || error.message),
+        message: requestErrorMessage(responseErrorMessage(url, apiData.reason, status, apiData.message || apiData.detail || error.message), error.response?.headers?.['x-request-id']),
+        request_id: error.response?.headers?.['x-request-id'],
         metadata: apiData.metadata,
       })
     }

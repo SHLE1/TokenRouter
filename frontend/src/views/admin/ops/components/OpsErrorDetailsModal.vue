@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -36,6 +37,8 @@ const page = ref(1)
 const pageSize = ref(10)
 
 const q = ref('')
+const requestId = ref('')
+const requestTimeRange = ref(false)
 const statusCode = ref<number | 'other' | null>(null)
 const phase = ref<string>('')
 const errorOwner = ref<string>('')
@@ -131,6 +134,14 @@ async function fetchErrorLogs() {
     if (typeof props.groupId === 'number' && props.groupId > 0) params.group_id = props.groupId
 
     if (q.value.trim()) params.q = q.value.trim()
+    if (requestId.value.trim()) {
+      params.request_id = requestId.value.trim()
+      if (!requestTimeRange.value) {
+        delete params.time_range
+        delete params.start_time
+        delete params.end_time
+      }
+    }
     if (statusCode.value === 'other') params.status_codes_other = '1'
     else if (typeof statusCode.value === 'number') params.status_codes = String(statusCode.value)
 
@@ -155,8 +166,15 @@ async function fetchErrorLogs() {
   }
 }
 
+function searchRequests() {
+  page.value = 1
+  void fetchErrorLogs()
+}
+
   function resetFilters() {
     q.value = ''
+    requestId.value = ''
+    requestTimeRange.value = false
     statusCode.value = null
     phase.value = props.errorType === 'upstream' ? 'upstream' : ''
     errorOwner.value = ''
@@ -179,7 +197,8 @@ watch(
 
 watch(
   () => [props.timeRange, props.customStartTime, props.customEndTime, props.platform, props.groupId] as const,
-  () => {
+  (next, previous) => {
+    if (next.slice(0, 3).some((value, index) => value !== previous[index])) requestTimeRange.value = true
     if (!props.show) return
     page.value = 1
     fetchErrorLogs()
@@ -219,6 +238,7 @@ watch(
 
 <template>
   <BaseDialog :show="show" :title="modalTitle" width="full" @close="close">
+    <RequestIdSearch v-model="requestId" v-model:within-time-range="requestTimeRange" show-time-range @search="searchRequests" />
     <div class="flex h-full min-h-0 flex-col">
       <!-- Filters -->
       <div class="mb-4 flex-shrink-0 border-b border-gray-200 pb-4 dark:border-dark-700">

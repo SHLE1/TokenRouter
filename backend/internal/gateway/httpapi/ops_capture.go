@@ -761,6 +761,17 @@ func OpsErrorLoggerMiddleware(ops *opscore.OpsService, queue OpsErrorLogQueue, a
 		c.Next()
 		w.finalizeCapture()
 
+		captured := parseOpsErrorResponse(w.capturedBytes())
+		if terminal, ok := w.capturedTerminalError(); ok {
+			captured = terminal
+		}
+		if captured.StreamFailure {
+			telemetry.UpdateRequest(c.Request.Context(), func(record *telemetry.RequestRecord) {
+				record.State = "failed"
+				record.ErrorCode = "stream_error"
+				record.ErrorCode = "stream_error"
+			})
+		}
 		if access.rejected(c) {
 			return
 		}

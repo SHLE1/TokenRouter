@@ -41,6 +41,10 @@ backend/
 │   ├── app/                                             应用装配、依赖绑定和运行资源登记
 │   │   ├── bootstrap/                                   数据库与 Redis 引导、迁移、密钥、时区及初始数据
 │   │   └── lifecycle/                                   分阶段启停、请求屏障、派生任务等待与重启
+│   ├── requestlog/                                      请求摘要、持久待写队列与查询
+│   │   ├── httpapi/                                     用户与管理员请求详情
+│   │   ├── postgres/                                    摘要、历史关联与归属查询
+│   │   └── provider/                                    本地持久待写目录
 │   ├── audit/                                           管理员操作审计与审计数据清理
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
 │   │   └── postgres/                                    PostgreSQL 持久化及事务适配
@@ -422,6 +426,7 @@ app/lifecycle 管理这些组件的启动和关闭。audit 独立记录操作审
 | creative、batchimage | [创作台](../domains/creative_studio.md)、[批量图片作业](../domains/batch_image_jobs.md) |
 | moderation | [内容审核](../domains/content_moderation.md) |
 | search、notification | [搜索编排](../domains/search_orchestration.md)、[通知投递](../domains/notification_delivery.md) |
+| requestlog | [请求 ID 与请求查询](../operations/request_lookup.md) |
 | usage、audit、ops | [数据生命周期](../operations/observability_and_data_lifecycle.md)、[监控告警](../operations/ops_monitoring_and_alerting.md)、[预聚合](../operations/pre_aggregation.md) |
 | backup | [备份与恢复](../operations/deployment_and_migrations.md#maintenance_execution) |
 | settings、site | [配置](../interfaces/configuration.md)、[HTTP 与页面权限](../interfaces/http_api.md) |

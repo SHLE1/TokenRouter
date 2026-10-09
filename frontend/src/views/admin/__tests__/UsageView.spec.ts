@@ -527,12 +527,12 @@ describe('admin UsageView request ID column visibility', () => {
     },
   })
 
-  it('keeps request ID hidden by default and persists an explicit enable', async () => {
+  it('shows request ID by default and persists an explicit hide', async () => {
     const wrapper = mountColumnView()
     await wrapper.vm.$nextTick()
 
     const usageTable = wrapper.findComponent(UsageTableStub)
-    expect(usageTable.props('columns')).not.toEqual(
+    expect(usageTable.props('columns')).toEqual(
       expect.arrayContaining([expect.objectContaining({ key: 'request_id' })]),
     )
 
@@ -541,7 +541,7 @@ describe('admin UsageView request ID column visibility', () => {
     expect(requestIdToggle).toBeDefined()
     await requestIdToggle!.trigger('click')
 
-    expect(usageTable.props('columns')).toEqual(
+    expect(usageTable.props('columns')).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ key: 'request_id', label: 'Request ID' })]),
     )
     expect(localStorage.setItem).toHaveBeenCalledWith(
@@ -602,7 +602,7 @@ describe('admin UsageView request ID column visibility', () => {
     const columns = wrapper.findComponent(UsageTableStub).props('columns') as Array<{ key: string }>
 
     expect(columns).not.toEqual(expect.arrayContaining([expect.objectContaining({ key: 'ip_address' })]))
-    expect(columns).not.toEqual(expect.arrayContaining([expect.objectContaining({ key: 'request_id' })]))
+    expect(columns).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'request_id' })]))
     expect(localStorage.setItem).toHaveBeenCalledWith(
       'usage-hidden-columns',
       expect.stringContaining('request_id'),

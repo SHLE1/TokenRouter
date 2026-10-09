@@ -1,6 +1,7 @@
 <template>
   <div :class="flat ? 'p-4' : 'card p-6'">
     <div class="space-y-4">
+      <RequestIdSearch v-if="mode !== 'ranking'" v-model="filters.request_id" :within-time-range="requestTimeRange" show-time-range @update:within-time-range="emit('update:requestTimeRange', $event)" @search="emitChange" />
       <div class="flex items-center justify-between gap-2">
         <!-- 未设置的条件可能是 undefined，统一按 null 显示，才能匹配各下拉框的“全部”选项 -->
         <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetPanelFilters">
@@ -194,6 +195,7 @@
 </template>
 
 <script setup lang="ts">
+import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, onMounted, onUnmounted, toRef, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -209,6 +211,7 @@ import type { SimpleApiKey, SimpleUser } from '@/api/admin/usage'
 type ModelValue = Record<string, any>
 
 interface Props {
+  requestTimeRange?: boolean
   modelValue: ModelValue
   exporting: boolean
   startDate: string
@@ -231,6 +234,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 const emit = defineEmits([
   'update:modelValue',
+  'update:requestTimeRange',
   'change',
   'refresh',
   'reset',
