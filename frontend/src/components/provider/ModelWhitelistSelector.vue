@@ -62,7 +62,7 @@
                   :class="[
                     'flex h-4 w-4 shrink-0 items-center justify-center rounded-compact border',
                     modelValue.includes(model.value)
-                      ? 'border-primary-500 bg-primary-500 text-white'
+                      ? 'border-primary-700 bg-primary-700 text-white dark:border-primary-600 dark:bg-primary-600'
                       : 'border-gray-300 dark:border-dark-500'
                   ]"
                 >

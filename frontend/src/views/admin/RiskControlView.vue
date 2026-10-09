@@ -622,11 +622,11 @@
                       <span class="font-medium text-gray-700 dark:text-gray-200">{{ t('admin.riskControl.apiKeysWriteMode') }}</span>
                       <span class="ml-2">{{ apiKeysModeHint }}</span>
                     </div>
-                    <div class="inline-flex rounded-control bg-white p-1 shadow-sm dark:bg-dark-800">
+                    <div v-segmented class="segmented">
                       <button
                         type="button"
-                        class="rounded-control px-3 py-1.5 text-xs font-medium transition-colors"
-                        :class="configForm.api_keys_mode === 'append' ? 'bg-primary-500 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700'"
+                        class="segmented-item px-3 py-1.5 text-xs"
+                        :class="{ 'segmented-item-active': configForm.api_keys_mode === 'append' }"
                         :disabled="configForm.clear_api_key"
                         @click="setAPIKeysMode('append')"
                       >
@@ -634,8 +634,8 @@
                       </button>
                       <button
                         type="button"
-                        class="rounded-control px-3 py-1.5 text-xs font-medium transition-colors"
-                        :class="configForm.api_keys_mode === 'replace' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700'"
+                        class="segmented-item px-3 py-1.5 text-xs"
+                        :class="{ 'segmented-item-active': configForm.api_keys_mode === 'replace' }"
                         :disabled="configForm.clear_api_key"
                         @click="setAPIKeysMode('replace')"
                       >
@@ -921,7 +921,7 @@
                   </span>
                   <span
                     class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border"
-                    :class="isGroupSelected(group.id) ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-300 text-transparent dark:border-dark-500'"
+                    :class="isGroupSelected(group.id) ? 'border-primary-700 bg-primary-700 text-white dark:border-primary-600 dark:bg-primary-600' : 'border-gray-300 text-transparent dark:border-dark-500'"
                   >
                     <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
                   </span>
@@ -957,7 +957,7 @@
                     <span
                       class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border"
                       :class="configForm.model_filter_type === option.value
-                        ? 'border-primary-500 bg-primary-500 text-white'
+                        ? 'border-primary-700 bg-primary-700 text-white dark:border-primary-600 dark:bg-primary-600'
                         : 'border-gray-300 text-transparent dark:border-dark-500'"
                     >
                       <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
@@ -1222,7 +1222,7 @@
                     <span
                       class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border"
                       :class="configForm.keyword_blocking_mode === option.value
-                        ? 'border-primary-500 bg-primary-500 text-white'
+                        ? 'border-primary-700 bg-primary-700 text-white dark:border-primary-600 dark:bg-primary-600'
                         : 'border-gray-300 text-transparent dark:border-dark-500'"
                     >
                       <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />

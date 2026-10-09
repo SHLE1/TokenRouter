@@ -445,19 +445,14 @@
                               <div
                                 class="flex items-center justify-between border-b border-gray-200 bg-gray-100 px-2 py-1.5 dark:border-dark-600 dark:bg-dark-700"
                               >
-                                <div
-                                  class="flex items-center gap-0.5 rounded-control bg-gray-200/70 p-0.5 dark:bg-dark-600/70"
-                                >
+                                <div v-segmented class="segmented">
                                   <button
                                     v-for="tab in manualTabs"
                                     :key="tab.key"
+                                    type="button"
                                     @click="manualTab = tab.key"
-                                    class="rounded-compact px-2 py-0.5 text-xs font-medium transition-colors"
-                                    :class="
-                                      manualTab === tab.key
-                                        ? 'bg-white text-gray-700 shadow-sm dark:bg-dark-800 dark:text-dark-100'
-                                        : 'text-gray-400 hover:text-gray-600 dark:text-dark-400 dark:hover:text-dark-200'
-                                    "
+                                    class="segmented-item px-2 py-0.5 text-xs"
+                                    :class="{ 'segmented-item-active': manualTab === tab.key }"
                                   >
                                     {{ tab.label }}
                                   </button>
@@ -554,6 +549,7 @@ import {
 } from '@/api/admin/system'
 import { useClipboard } from '@/composables/useClipboard'
 import Icon from '@/components/icons/Icon.vue'
+import { vSegmented } from '@/directives/segmented'
 
 const GITHUB_REPO = 'TokenFlux/TokenRouter'
 // CI 发布到 GHCR 的镜像 tag 不带 v 前缀，例如 ghcr.io/tokenflux/tokenrouter:0.1.146。
