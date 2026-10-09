@@ -17,7 +17,11 @@ CREATE INDEX request_records_started_at_idx ON request_records(started_at);
 CREATE INDEX request_records_parent_idx ON request_records(parent_request_id) WHERE parent_request_id <> '';
 CREATE INDEX request_records_aliases_idx ON request_records USING GIN(aliases);
 
--- 查询候选 ID 后，由每个业务查询继续检查用户和团队范围。
+-- 使用记录按计费键和 API Key 去重，已有记录使用 request_id。
+CREATE UNIQUE INDEX idx_usage_logs_billing_key_api_key
+ON usage_logs ((COALESCE(billing_key, request_id)), api_key_id);
+
+-- 请求 ID 的每列查询分别使用等值关联，历史日志通过已有 B-tree 索引定位。
 CREATE FUNCTION request_lookup_ids(search_id TEXT) RETURNS TABLE(id TEXT)
 LANGUAGE SQL STABLE AS $$
 WITH base AS (
@@ -28,22 +32,31 @@ WITH base AS (
     UNION SELECT 'client:' || value FROM base
     UNION SELECT 'local:' || value FROM base
 ), legacy AS (
-    SELECT request_id, client_request_id FROM ops_error_logs
-    WHERE request_id IN (SELECT value FROM variants) OR client_request_id IN (SELECT value FROM variants)
+    SELECT o.request_id, o.client_request_id
+    FROM variants v JOIN ops_error_logs o ON o.request_id=v.value
     UNION
-    SELECT request_id, client_request_id FROM ops_system_logs
-    WHERE request_id IN (SELECT value FROM variants) OR client_request_id IN (SELECT value FROM variants)
+    SELECT o.request_id, o.client_request_id
+    FROM variants v JOIN ops_error_logs o ON o.client_request_id=v.value
+    UNION
+    SELECT l.request_id, l.client_request_id
+    FROM variants v JOIN ops_system_logs l ON l.request_id=v.value
+    UNION
+    SELECT l.request_id, l.client_request_id
+    FROM variants v JOIN ops_system_logs l ON l.client_request_id=v.value
 ), candidates AS (
     SELECT value FROM variants
-    UNION SELECT request_id FROM usage_logs WHERE COALESCE(billing_key, request_id) IN (SELECT value FROM variants)
-    UNION SELECT request_id FROM usage_logs WHERE upstream_request_id IN (SELECT value FROM variants)
+    UNION SELECT u.request_id FROM variants v JOIN usage_logs u ON COALESCE(u.billing_key, u.request_id)=v.value
+    UNION SELECT u.request_id FROM variants v JOIN usage_logs u ON u.upstream_request_id=v.value
     UNION SELECT request_id FROM legacy
     UNION SELECT client_request_id FROM legacy
     UNION SELECT 'client:' || client_request_id FROM legacy
 ), matched AS (
+    SELECT r.request_id, r.aliases, r.record
+    FROM candidates c JOIN request_records r ON r.request_id=c.value
+    UNION
     SELECT r.request_id, r.aliases, r.record FROM request_records r
-    WHERE r.request_id IN (SELECT value FROM candidates)
-       OR (NOT EXISTS (SELECT 1 FROM request_records exact WHERE exact.request_id=btrim(search_id)) AND r.aliases && ARRAY(SELECT value FROM candidates))
+    WHERE NOT EXISTS (SELECT 1 FROM request_records exact WHERE exact.request_id=btrim(search_id))
+      AND r.aliases && ARRAY(SELECT value FROM candidates)
 )
 SELECT value FROM candidates WHERE value IS NOT NULL AND value <> ''
 UNION SELECT request_id FROM matched
@@ -56,5 +69,6 @@ UNION SELECT a->>'value' FROM matched m
 CROSS JOIN LATERAL jsonb_array_elements(COALESCE(m.record->'aliases','[]'::jsonb)) a
 WHERE a->>'kind'='legacy'
 UNION SELECT relation->>'value' FROM matched CROSS JOIN LATERAL jsonb_array_elements(COALESCE(record->'aliases','[]'::jsonb)) relation WHERE relation->>'kind'='related'
-UNION SELECT child.request_id FROM request_records child WHERE child.parent_request_id IN (SELECT request_id FROM matched)
+UNION SELECT child.request_id FROM matched m JOIN request_records child ON child.parent_request_id=m.request_id
+WHERE child.parent_request_id <> ''
 $$;

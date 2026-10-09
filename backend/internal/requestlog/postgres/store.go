@@ -62,12 +62,17 @@ func (s *Store) Save(ctx context.Context, records []telemetry.RequestRecord) err
 
 // Find 对每类来源分别检查归属，外部别名可以对应多条请求。
 func (s *Store) Find(ctx context.Context, id string, userID int64, admin bool) ([]requestlog.Detail, error) {
+	// 各来源共用一次 ID 解析结果，数组参数让筛选直接匹配索引列。
+	var ids []string
+	if err := s.db.QueryRowContext(ctx, `SELECT ARRAY(SELECT id FROM request_lookup_ids($1))`, id).Scan(pq.Array(&ids)); err != nil {
+		return nil, err
+	}
 	rows, err := s.db.QueryContext(ctx, `SELECT record FROM request_records r
- WHERE (r.request_id IN (SELECT id FROM request_lookup_ids($1))
- OR r.parent_request_id IN (SELECT id FROM request_lookup_ids($1)))
+ WHERE (r.request_id = ANY($1::text[])
+ OR (r.parent_request_id <> '' AND r.parent_request_id = ANY($1::text[])))
  AND ($3 OR (r.user_id > 0 AND (r.user_id=$2 OR r.team_id IN
  (SELECT team_id FROM team_memberships WHERE user_id=$2 AND role='owner' AND left_at IS NULL))))
- ORDER BY r.started_at DESC LIMIT 101`, id, userID, admin)
+ ORDER BY r.started_at DESC LIMIT 101`, pq.Array(ids), userID, admin)
 	if err != nil {
 		return nil, err
 	}
@@ -95,14 +100,14 @@ func (s *Store) Find(ctx context.Context, id string, userID int64, admin bool) (
 	for i := range result {
 		index[result[i].RequestID] = i
 	}
-	if err = s.findUsage(ctx, id, userID, admin, &result, index); err != nil {
+	if err = s.findUsage(ctx, ids, id, userID, admin, &result, index); err != nil {
 		return nil, err
 	}
-	if err = s.findErrors(ctx, id, userID, admin, &result, index); err != nil {
+	if err = s.findErrors(ctx, ids, userID, admin, &result, index); err != nil {
 		return nil, err
 	}
 	if admin {
-		if err = s.findAudit(ctx, id, &result, index); err != nil {
+		if err = s.findAudit(ctx, ids, &result, index); err != nil {
 			return nil, err
 		}
 	}
@@ -112,12 +117,12 @@ func (s *Store) Find(ctx context.Context, id string, userID int64, admin bool) (
 	return result, nil
 }
 
-func (s *Store) findUsage(ctx context.Context, id string, userID int64, admin bool, result *[]requestlog.Detail, index map[string]int) error {
+func (s *Store) findUsage(ctx context.Context, ids []string, searchID string, userID int64, admin bool, result *[]requestlog.Detail, index map[string]int) error {
 	rows, err := s.db.QueryContext(ctx, `SELECT id,COALESCE(request_id,''),created_at,user_id,COALESCE(team_id,0),api_key_id,
  COALESCE(requested_model,model),input_tokens,output_tokens,actual_cost,COALESCE(duration_ms,0)
- FROM usage_logs WHERE (request_id IN (SELECT id FROM request_lookup_ids($1)) OR upstream_request_id=$1)
+ FROM usage_logs WHERE (request_id = ANY($1::text[]) OR upstream_request_id=$4)
  AND ($3 OR user_id=$2 OR team_id IN (SELECT team_id FROM team_memberships WHERE user_id=$2 AND role='owner' AND left_at IS NULL))
- ORDER BY created_at DESC LIMIT 101`, id, userID, admin)
+ ORDER BY created_at DESC LIMIT 101`, pq.Array(ids), userID, admin, searchID)
 	if err != nil {
 		return err
 	}
@@ -137,11 +142,11 @@ func (s *Store) findUsage(ctx context.Context, id string, userID int64, admin bo
 	return rows.Err()
 }
 
-func (s *Store) findErrors(ctx context.Context, id string, userID int64, admin bool, result *[]requestlog.Detail, index map[string]int) error {
+func (s *Store) findErrors(ctx context.Context, ids []string, userID int64, admin bool, result *[]requestlog.Detail, index map[string]int) error {
 	rows, err := s.db.QueryContext(ctx, `SELECT id,COALESCE(NULLIF(request_id,''),client_request_id,''),created_at,
  COALESCE(user_id,0),COALESCE(api_key_id,0),COALESCE(model,''),COALESCE(status_code,0),COALESCE(error_phase,'')
- FROM ops_error_logs WHERE (request_id IN (SELECT id FROM request_lookup_ids($1)) OR client_request_id IN (SELECT id FROM request_lookup_ids($1)))
- AND ($3 OR user_id=$2) ORDER BY created_at DESC LIMIT 101`, id, userID, admin)
+ FROM ops_error_logs WHERE (request_id = ANY($1::text[]) OR client_request_id = ANY($1::text[]))
+ AND ($3 OR user_id=$2) ORDER BY created_at DESC LIMIT 101`, pq.Array(ids), userID, admin)
 	if err != nil {
 		return err
 	}
@@ -160,9 +165,9 @@ func (s *Store) findErrors(ctx context.Context, id string, userID int64, admin b
 	return rows.Err()
 }
 
-func (s *Store) findAudit(ctx context.Context, id string, result *[]requestlog.Detail, index map[string]int) error {
+func (s *Store) findAudit(ctx context.Context, ids []string, result *[]requestlog.Detail, index map[string]int) error {
 	rows, err := s.db.QueryContext(ctx, `SELECT id,request_id,created_at,method,path,status_code FROM audit_logs
- WHERE request_id IN (SELECT id FROM request_lookup_ids($1)) ORDER BY created_at DESC LIMIT 101`, id)
+ WHERE request_id = ANY($1::text[]) ORDER BY created_at DESC LIMIT 101`, pq.Array(ids))
 	if err != nil {
 		return err
 	}
