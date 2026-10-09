@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import RequestIdLink from '@/components/common/RequestIdLink.vue'
-import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
@@ -52,7 +51,6 @@ const runtimeConfig = reactive<OpsRuntimeLogConfig>({
   retention_days: 30
 })
 
-const requestTimeRange = ref(false)
 const filters = reactive({
   time_range: '1h' as '5m' | '30m' | '1h' | '6h' | '24h' | '7d' | '30d',
   start_time: '',
@@ -61,7 +59,6 @@ const filters = reactive({
   level: '',
   component: '',
   request_id: '',
-  client_request_id: '',
   user_id: '',
   api_key_id: '',
   provider_id: '',
@@ -147,9 +144,9 @@ const formatSystemLogDetail = (row: OpsSystemLog) => {
   if (protocol) accessParts.push(`proto=${protocol}`)
   if (accessParts.length > 0) parts.push(accessParts.join(' '))
 
+  // 日志行上方的链接显示 request_id（缺失时显示 client_request_id），两个都有时这里补上 client_request_id。
   const corrParts: string[] = []
-  if (row.request_id) corrParts.push(`req=${row.request_id}`)
-  if (row.client_request_id) corrParts.push(`client_req=${row.client_request_id}`)
+  if (row.request_id && row.client_request_id) corrParts.push(`client_req=${row.client_request_id}`)
   if (row.user_id != null) corrParts.push(`user=${row.user_id}`)
   if (row.api_key_id != null) corrParts.push(`key=${row.api_key_id}`)
   if (row.provider_id != null) corrParts.push(`acc=${row.provider_id}`)
@@ -189,7 +186,6 @@ const buildQuery = () => {
   if (filters.level.trim()) query.level = filters.level.trim()
   if (filters.component.trim()) query.component = filters.component.trim()
   if (filters.request_id.trim()) query.request_id = filters.request_id.trim()
-  if (filters.client_request_id.trim()) query.client_request_id = filters.client_request_id.trim()
   if (filters.user_id.trim()) {
     const v = Number.parseInt(filters.user_id.trim(), 10)
     if (Number.isFinite(v) && v > 0) query.user_id = v
@@ -205,7 +201,12 @@ const buildQuery = () => {
   if (filters.platform.trim()) query.platform = filters.platform.trim()
   if (filters.model.trim()) query.model = filters.model.trim()
   if (filters.q.trim()) query.q = filters.q.trim()
-  if (filters.request_id.trim() && !requestTimeRange.value) { delete query.time_range; delete query.start_time; delete query.end_time }
+  // 按请求 ID 查询时去掉时间条件，保留期内的日志都能查到。
+  if (filters.request_id.trim()) {
+    delete query.time_range
+    delete query.start_time
+    delete query.end_time
+  }
   return query
 }
 
@@ -304,7 +305,6 @@ const cleanupCurrentFilter = async () => {
       level: filters.level.trim() || undefined,
       component: filters.component.trim() || undefined,
       request_id: filters.request_id.trim() || undefined,
-      client_request_id: filters.client_request_id.trim() || undefined,
       user_id: filters.user_id.trim() ? Number.parseInt(filters.user_id.trim(), 10) : undefined,
       api_key_id: filters.api_key_id.trim() ? Number.parseInt(filters.api_key_id.trim(), 10) : undefined,
       provider_id: filters.provider_id.trim() ? Number.parseInt(filters.provider_id.trim(), 10) : undefined,
@@ -334,7 +334,6 @@ const resetFilters = () => {
   filters.level = ''
   filters.component = ''
   filters.request_id = ''
-  filters.client_request_id = ''
   filters.user_id = ''
   filters.api_key_id = ''
   filters.provider_id = ''
@@ -454,15 +453,15 @@ onMounted(async () => {
     <div class="mb-4 grid grid-cols-1 gap-2 md:grid-cols-5">
       <label class="text-xs text-gray-600 dark:text-gray-300">
         时间范围
-        <Select v-model="filters.time_range" @change="requestTimeRange = true" class="mt-1" :options="timeRangeOptions" />
+        <Select v-model="filters.time_range" class="mt-1" :options="timeRangeOptions" />
       </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         开始时间（可选）
-        <input v-model="filters.start_time" @change="requestTimeRange = true" type="datetime-local" class="input mt-1" />
+        <input v-model="filters.start_time" type="datetime-local" class="input mt-1" />
       </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         结束时间（可选）
-        <input v-model="filters.end_time" @change="requestTimeRange = true" type="datetime-local" class="input mt-1" />
+        <input v-model="filters.end_time" type="datetime-local" class="input mt-1" />
       </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         级别
@@ -476,7 +475,10 @@ onMounted(async () => {
         {{ t('admin.ops.systemLogs.host') }}
         <input v-model="filters.host" type="text" class="input mt-1" />
       </label>
-      <div class="md:col-span-2"><RequestIdSearch v-model="filters.request_id" v-model:within-time-range="requestTimeRange" show-time-range @search="applyFilters" /></div>
+      <label class="text-xs text-gray-600 dark:text-gray-300">
+        {{ t('requests.id') }}
+        <input v-model="filters.request_id" type="text" class="input mt-1 font-mono" spellcheck="false" maxlength="255" @keyup.enter="applyFilters" />
+      </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         user_id
         <input v-model="filters.user_id" type="text" class="input mt-1" />
@@ -525,7 +527,9 @@ onMounted(async () => {
             {{ row.host }}
           </div>
           <div class="whitespace-normal break-all text-xs text-gray-700 dark:text-gray-300">
-            <RequestIdLink v-if="row.request_id || row.client_request_id" :value="row.request_id || row.client_request_id" />
+            <div v-if="row.request_id || row.client_request_id" class="mb-1">
+              <RequestIdLink :value="row.request_id || row.client_request_id" />
+            </div>
             {{ formatSystemLogDetail(row) }}
           </div>
         </div>
@@ -552,8 +556,10 @@ onMounted(async () => {
                 </span>
               </td>
               <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-normal break-all">
-                <RequestIdLink v-if="row.request_id || row.client_request_id" :value="row.request_id || row.client_request_id" />
-            {{ formatSystemLogDetail(row) }}
+                <div v-if="row.request_id || row.client_request_id" class="mb-1">
+                  <RequestIdLink :value="row.request_id || row.client_request_id" />
+                </div>
+                {{ formatSystemLogDetail(row) }}
               </td>
             </tr>
           </tbody>

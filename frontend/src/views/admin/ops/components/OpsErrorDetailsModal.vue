@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -37,8 +36,9 @@ const page = ref(1)
 const pageSize = ref(10)
 
 const q = ref('')
+// requestId 是输入框里的内容，按回车后写入 appliedRequestId 再查询。
 const requestId = ref('')
-const requestTimeRange = ref(false)
+const appliedRequestId = ref('')
 const statusCode = ref<number | 'other' | null>(null)
 const phase = ref<string>('')
 const errorOwner = ref<string>('')
@@ -134,13 +134,12 @@ async function fetchErrorLogs() {
     if (typeof props.groupId === 'number' && props.groupId > 0) params.group_id = props.groupId
 
     if (q.value.trim()) params.q = q.value.trim()
-    if (requestId.value.trim()) {
-      params.request_id = requestId.value.trim()
-      if (!requestTimeRange.value) {
-        delete params.time_range
-        delete params.start_time
-        delete params.end_time
-      }
+    // 按请求 ID 查询时去掉时间条件，保留期内的记录都能查到。
+    if (appliedRequestId.value) {
+      params.request_id = appliedRequestId.value
+      delete params.time_range
+      delete params.start_time
+      delete params.end_time
     }
     if (statusCode.value === 'other') params.status_codes_other = '1'
     else if (typeof statusCode.value === 'number') params.status_codes = String(statusCode.value)
@@ -167,6 +166,8 @@ async function fetchErrorLogs() {
 }
 
 function searchRequests() {
+  requestId.value = requestId.value.trim()
+  appliedRequestId.value = requestId.value
   page.value = 1
   void fetchErrorLogs()
 }
@@ -174,7 +175,7 @@ function searchRequests() {
   function resetFilters() {
     q.value = ''
     requestId.value = ''
-    requestTimeRange.value = false
+    appliedRequestId.value = ''
     statusCode.value = null
     phase.value = props.errorType === 'upstream' ? 'upstream' : ''
     errorOwner.value = ''
@@ -197,8 +198,7 @@ watch(
 
 watch(
   () => [props.timeRange, props.customStartTime, props.customEndTime, props.platform, props.groupId] as const,
-  (next, previous) => {
-    if (next.slice(0, 3).some((value, index) => value !== previous[index])) requestTimeRange.value = true
+  () => {
     if (!props.show) return
     page.value = 1
     fetchErrorLogs()
@@ -238,11 +238,10 @@ watch(
 
 <template>
   <BaseDialog :show="show" :title="modalTitle" width="full" @close="close">
-    <RequestIdSearch v-model="requestId" v-model:within-time-range="requestTimeRange" show-time-range @search="searchRequests" />
     <div class="flex h-full min-h-0 flex-col">
       <!-- Filters -->
       <div class="mb-4 flex-shrink-0 border-b border-gray-200 pb-4 dark:border-dark-700">
-        <div class="grid grid-cols-2 gap-2 md:grid-cols-8">
+        <div class="grid grid-cols-2 gap-2 md:grid-cols-10">
           <div class="col-span-2 compact-select">
             <div class="relative">
               <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -259,6 +258,19 @@ watch(
                 :placeholder="t('admin.ops.errorDetails.searchPlaceholder')"
               />
             </div>
+          </div>
+
+          <div class="col-span-2">
+            <input
+              v-model="requestId"
+              type="text"
+              class="input px-3 font-mono text-xs"
+              spellcheck="false"
+              maxlength="255"
+              :aria-label="t('requests.id')"
+              :placeholder="t('requests.id')"
+              @keydown.enter.prevent="searchRequests"
+            />
           </div>
 
           <div class="compact-select">

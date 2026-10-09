@@ -285,7 +285,9 @@
           <span class="text-sm text-gray-600 dark:text-gray-400">{{ formatDateTime(value) }}</span>
         </template>
 
-        <template #cell-request_id="{ row }"><RequestIdLink :value="row.request_id" /></template>
+        <template #cell-request_id="{ row }">
+          <RequestIdLink :value="row.request_id" />
+        </template>
 
         <template #cell-upstream_request_id="{ row }">
           <div v-if="row.upstream_request_id" class="flex max-w-[160px] items-center gap-1.5">
@@ -816,8 +818,7 @@ const handleBatchFetchIpGeo = async () => {
   }
 }
 
-// 请求 ID 复制复用全局剪贴板降级与提示，并单独维护当前行的完成图标。
-
+// 上游请求 ID 复制复用全局剪贴板降级与提示，并单独维护当前行的完成图标。
 const copyUpstreamRequestId = async (upstreamRequestId: string) => {
   if (!await copyToClipboard(upstreamRequestId, t('admin.usage.upstreamRequestIdCopied'))) return
   copiedRequestId.value = upstreamRequestId

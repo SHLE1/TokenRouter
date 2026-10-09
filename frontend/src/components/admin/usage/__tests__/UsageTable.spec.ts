@@ -69,7 +69,6 @@ const messages: Record<string, string> = {
   'admin.usage.billingModeToken': 'Token',
   'admin.usage.billingModePerRequest': 'Per request',
   'admin.usage.billingModeImage': 'Image',
-  'admin.usage.requestIdCopied': 'Request ID copied',
   'admin.usage.upstreamRequestIdCopied': 'Upstream ID copied',
   'keys.copied': 'Copied',
   'keys.copyToClipboard': 'Copy to clipboard',
@@ -88,6 +87,9 @@ const messages: Record<string, string> = {
   'usage.timingWriteError': 'Write error',
   'usage.timingUnavailable': 'Not collected',
   'common.copyFailed': 'Copy failed',
+  'common.copied': 'Copied',
+  'requests.copy': 'Copy request ID',
+  'requests.copied': 'Request ID copied',
 }
 
 vi.mock('vue-i18n', async () => {
@@ -190,7 +192,7 @@ describe('admin UsageTable request ID column', () => {
     })
 
     expect(wrapper.text()).toContain('req-admin-visible-id')
-    await wrapper.get('button[title="Copy to clipboard"]').trigger('click')
+    await wrapper.get('button[title="Copy request ID"]').trigger('click')
 
     expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith('req-admin-visible-id', 'Request ID copied')
     expect(wrapper.get('button').attributes('title')).toBe('Copied')
@@ -657,7 +659,7 @@ describe('admin UsageTable request ID column', () => {
     })
 
     expect(wrapper.text()).toContain('req-admin-visible-id')
-    await wrapper.get('button[title="Copy to clipboard"]').trigger('click')
+    await wrapper.get('button[title="Copy request ID"]').trigger('click')
 
     expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith('req-admin-visible-id', 'Request ID copied')
   })

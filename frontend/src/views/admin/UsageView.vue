@@ -22,6 +22,7 @@
             </div>
           </div>
         </div>
+        <!-- 按请求 ID 筛选时只看统计卡和表格，分布图和趋势图隐藏 -->
         <div v-if="!filters.request_id" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ModelDistributionChart
             v-model:source="modelDistributionSource"
@@ -85,7 +86,7 @@
           </button>
         </div>
 
-        <UsageFilters v-model="filters" v-model:request-time-range="requestTimeRange" ref="usageFiltersRef" flat :mode="activeTab" :start-date="startDate" :end-date="endDate" :exporting="exporting" :model-options="modelNameOptions" @change="applyFilters" @refresh="refreshData" @reset="resetFilters" @cleanup="openCleanupDialog" @export="exportToExcel">
+        <UsageFilters v-model="filters" ref="usageFiltersRef" flat :mode="activeTab" :start-date="startDate" :end-date="endDate" :exporting="exporting" :model-options="modelNameOptions" @change="applyFilters" @refresh="refreshData" @reset="resetFilters" @cleanup="openCleanupDialog" @export="exportToExcel">
           <template #after-reset>
             <IpGeoBatchToolbar
               v-if="activeTab === 'usage'"
@@ -326,8 +327,8 @@ const getGranularityForRange = (start: string, end: string): 'day' | 'hour' => {
 }
 const defaultRange = getLast24HoursRangeDates()
 const startDate = ref(defaultRange.start); const endDate = ref(defaultRange.end)
-const requestTimeRange = ref(false)
-const requestDateParams = () => filters.value.request_id?.trim() && !requestTimeRange.value ? { start_date: undefined, end_date: undefined } : {}
+// 按请求 ID 查询时不带日期范围，保留期内的记录都能查到。
+const requestDateParams = () => filters.value.request_id ? { start_date: undefined, end_date: undefined } : {}
 const filters = ref<AdminUsageQueryParams>({ user_id: undefined, model: undefined, group_id: undefined, request_type: undefined, billing_type: null, native_compaction_v2: null, start_date: startDate.value, end_date: endDate.value })
 const pagination = reactive({ page: 1, page_size: getPersistedPageSize(), total: 0 })
 const sortState = reactive({
@@ -390,7 +391,6 @@ const loadRouteUserFilterLabel = async () => {
 }
 
 const onDateRangeChange = (range: { startDate: string; endDate: string; preset: string | null }) => {
-  requestTimeRange.value = true
   startDate.value = range.startDate
   endDate.value = range.endDate
   filters.value = {
@@ -555,7 +555,7 @@ const loadModelStats = async (source: ModelDistributionSource, force = false) =>
 }
 
 const loadChartData = async () => {
-  if (filters.value.request_id?.trim()) return
+  if (filters.value.request_id) return
   const seq = ++chartReqSeq
   chartsLoading.value = true
   try {
@@ -884,7 +884,6 @@ const rankingMounted = ref(false)
 const rankingRef = ref<InstanceType<typeof UserTokenRanking> | null>(null)
 
 const switchTab = (tab: DetailTab) => {
-  if (tab === 'ranking') filters.value.request_id = undefined
   activeTab.value = tab
   if (tab === 'errors' && errRows.value.length === 0) loadAdminErrors()
   if (tab === 'ranking') rankingMounted.value = true
@@ -912,9 +911,9 @@ const loadAdminErrors = async () => {
       page: errPage.value,
       page_size: errPageSize.value,
       view: 'all',
-      request_id: filters.value.request_id?.trim() || undefined,
-      start_time: filters.value.request_id && !requestTimeRange.value ? undefined : toRFC3339(filters.value.start_date),
-      end_time: filters.value.request_id && !requestTimeRange.value ? undefined : toRFC3339(filters.value.end_date, true),
+      request_id: filters.value.request_id || undefined,
+      start_time: filters.value.request_id ? undefined : toRFC3339(filters.value.start_date),
+      end_time: filters.value.request_id ? undefined : toRFC3339(filters.value.end_date, true),
       user_id: filters.value.user_id ?? undefined,
       api_key_id: filters.value.api_key_id ?? undefined,
       provider_id: filters.value.provider_id ?? undefined,

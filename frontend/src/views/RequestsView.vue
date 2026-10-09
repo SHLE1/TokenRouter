@@ -3,44 +3,47 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
-import RequestIdLink from '@/components/common/RequestIdLink.vue'
+import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
+import RequestDetailCard from '@/components/requests/RequestDetailCard.vue'
 import UserErrorDetailModal from '@/components/user/UserErrorDetailModal.vue'
 import OpsErrorDetailModal from '@/views/admin/ops/components/OpsErrorDetailModal.vue'
-import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { findRequests, type RequestDetail } from '@/api/requests'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
 const requestId = ref('')
-const selectedError = ref<number | null>(null)
-const showError = ref(false)
+const searchInput = ref<InstanceType<typeof RequestIdSearch> | null>(null)
 const loading = ref(false)
 const searched = ref(false)
 const error = ref('')
 const items = ref<RequestDetail[]>([])
 const hasMore = ref(false)
+const selectedError = ref<number | null>(null)
+const showError = ref(false)
 const admin = computed(() => route.path.startsWith('/admin'))
 let controller: AbortController | undefined
 
+// load 按地址栏里的 ID 查询，新的查询会取消还没返回的旧查询。
 async function load() {
   controller?.abort()
   const current = new AbortController()
   controller = current
   const id = requestId.value.trim()
-  if (!id) {
-    items.value = []
-    searched.value = false
-    loading.value = false
-    error.value = ''
-    hasMore.value = false
-    return
-  }
-  loading.value = true
   items.value = []
   hasMore.value = false
   error.value = ''
+  if (!id) {
+    searched.value = false
+    loading.value = false
+    return
+  }
+  loading.value = true
   try {
     const response = await findRequests(id, admin.value, current.signal)
     if (current.signal.aborted) return
@@ -49,17 +52,17 @@ async function load() {
     searched.value = true
   } catch (cause: unknown) {
     if (current.signal.aborted) return
-    items.value = []
     const message = (cause as { message?: unknown })?.message
-    error.value = typeof message === 'string' ? message : t('requests.loadFailed')
+    error.value = typeof message === 'string' && message ? message : t('requests.loadFailed')
   } finally {
     if (controller === current) loading.value = false
   }
 }
 
+// search 把 ID 写进地址栏，同一个 ID 再次搜索时直接重新查询。
 async function search() {
   const id = requestId.value.trim()
-  if (id === route.query.request_id) {
+  if (id === (route.query.request_id ?? '')) {
     await load()
     return
   }
@@ -81,49 +84,72 @@ onBeforeUnmount(() => controller?.abort())
 <template>
   <AppLayout>
     <div class="space-y-4">
-      <div class="card p-4"><RequestIdSearch v-model="requestId" :show-details="false" @search="search" /></div>
-      <ContentSkeleton v-if="loading" />
-      <p v-else-if="error" role="alert" class="text-red-600 dark:text-red-400">{{ error }}</p>
-      <p v-else-if="searched && !items.length" class="card p-6 text-sm text-gray-500 dark:text-dark-300">{{ t('requests.notFound') }}</p>
-      <p v-if="hasMore" class="text-sm text-amber-600 dark:text-amber-400">{{ t('requests.more') }}</p>
-      <article v-for="item in items" :key="`${item.request_id}:${item.usage?.[0]?.id || ''}:${item.errors?.[0]?.id || ''}:${item.audit_ids?.[0] || ''}`" class="card space-y-4 p-6">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <RequestIdLink :value="item.request_id" />
-          <span class="text-sm">{{ t(`requests.states.${item.state}`, item.state) }} <span v-if="item.status_code">({{ item.status_code }})</span></span>
+      <!-- 搜索栏 -->
+      <div class="flex flex-wrap items-center gap-2">
+        <RequestIdSearch ref="searchInput" v-model="requestId" class="flex-1 sm:w-64 sm:flex-none" @search="search" />
+        <button type="button" class="btn btn-primary" :disabled="loading" @click="searchInput?.apply()">
+          {{ t('common.search') }}
+        </button>
+      </div>
+
+      <!-- 加载中：按详情卡片的结构占位 -->
+      <div v-if="loading" class="card overflow-hidden" aria-busy="true" :aria-label="t('common.loading')">
+        <div class="flex items-center gap-2 border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+          <Skeleton width="4rem" height="1.25rem" />
+          <Skeleton width="16rem" height="1.25rem" />
         </div>
-        <p v-if="item.error_code" class="text-sm text-red-600 dark:text-red-400">{{ t(`requests.errorCodes.${item.error_code}`, item.error_code) }}</p>
-        <p v-if="item.legacy" class="text-sm text-amber-600 dark:text-amber-400">{{ t('requests.legacy') }}</p>
-        <p v-if="item.pending" class="text-sm text-amber-600 dark:text-amber-400">{{ t('requests.pending') }}</p>
-        <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <div><dt class="text-gray-500 dark:text-dark-300">{{ t('requests.endpoint') }}</dt><dd class="break-all">{{ item.method }} {{ item.path || '-' }}</dd></div>
-          <div><dt class="text-gray-500 dark:text-dark-300">{{ t('requests.startedAt') }}</dt><dd>{{ new Date(item.started_at).toLocaleString() }}</dd></div>
-          <div><dt class="text-gray-500 dark:text-dark-300">{{ t('requests.duration') }}</dt><dd>{{ item.duration_ms ?? '-' }} ms</dd></div>
-          <div v-if="item.model"><dt class="text-gray-500 dark:text-dark-300">{{ t('usage.model') }}</dt><dd>{{ item.model }}</dd></div>
-          <div v-if="item.parent_request_id"><dt class="text-gray-500 dark:text-dark-300">{{ t('requests.parent') }}</dt><dd><RequestIdLink :value="item.parent_request_id" /></dd></div>
-        </dl>
-        <div v-if="item.attempts?.length" class="space-y-2">
-          <h2 class="text-sm font-medium">{{ t('requests.attempts') }}</h2>
-          <div v-for="attempt in item.attempts" :key="attempt.number" class="flex flex-wrap items-center gap-2 rounded-surface bg-gray-50 p-4 text-sm dark:bg-dark-800">
-            <span>#{{ attempt.number }}</span><span v-if="attempt.provider_id">{{ t('requests.provider') }} #{{ attempt.provider_id }}</span>
-            <span>{{ attempt.status_code ? `HTTP ${attempt.status_code}` : t(`requests.states.${attempt.outcome}`, attempt.outcome || '-') }}</span><span v-if="attempt.duration_ms != null">{{ attempt.duration_ms }} ms</span>
-            <span v-if="attempt.upstream_request_id" class="break-all font-mono text-xs">{{ attempt.upstream_request_id }}</span>
+        <div class="grid grid-cols-2 gap-4 px-6 py-4 md:grid-cols-4">
+          <div v-for="index in 4" :key="index" class="space-y-2">
+            <Skeleton width="4rem" height="0.75rem" />
+            <Skeleton width="7rem" height="1.25rem" />
           </div>
         </div>
-        <div v-if="item.timings && Object.keys(item.timings).length" class="space-y-2">
-          <h2 class="text-sm font-medium">{{ t('requests.timings') }}</h2>
-          <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2"><div v-for="(value, name) in item.timings" :key="name"><dt class="text-gray-500 dark:text-dark-300">{{ t(`requests.timingNames.${name}`, String(name)) }}</dt><dd>{{ value }} ms</dd></div></dl>
+        <div class="space-y-2 border-t border-gray-100 px-6 py-5 dark:border-dark-700">
+          <Skeleton v-for="index in 4" :key="index" height="0.75rem" />
         </div>
-        <div v-if="item.usage?.length" class="space-y-2">
-          <h2 class="text-sm font-medium">{{ t('requests.usage') }}</h2>
-          <p v-for="usage in item.usage" :key="usage.id" class="text-sm">{{ usage.model }} · {{ t('requests.tokens', { input: usage.input_tokens, output: usage.output_tokens }) }} · ${{ usage.actual_cost.toFixed(8) }}</p>
-        </div>
-        <div v-if="item.errors?.length" class="space-y-2">
-          <h2 class="text-sm font-medium">{{ t('requests.errors') }}</h2>
-          <button v-for="failure in item.errors" :key="failure.id" type="button" class="btn btn-secondary" @click="openError(failure.id)">#{{ failure.id }} · HTTP {{ failure.status_code }} · {{ failure.phase }}</button>
-        </div>
-        <details v-if="admin && item.aliases?.length" class="text-sm"><summary class="cursor-pointer text-primary-600 dark:text-primary-400">{{ t('requests.aliases') }}</summary><ul class="mt-2 space-y-2"><li v-for="alias in item.aliases" :key="`${alias.kind}:${alias.value}`" class="break-all">{{ t(`requests.aliasKinds.${alias.kind}`, alias.kind) }}: <span class="font-mono text-xs">{{ alias.value }}</span></li></ul></details>
-      </article>
+      </div>
+
+      <!-- 查询失败 -->
+      <div v-else-if="error" class="card" role="alert">
+        <EmptyState :title="t('requests.loadFailed')" :description="error">
+          <template #icon>
+            <Icon name="exclamationTriangle" class="empty-state-icon h-10 w-10" />
+          </template>
+          <template #action>
+            <button type="button" class="btn btn-secondary" @click="load">{{ t('common.retry') }}</button>
+          </template>
+        </EmptyState>
+      </div>
+
+      <!-- 还没输入 ID -->
+      <div v-else-if="!searched" class="card">
+        <EmptyState :title="t('requests.emptyTitle')" :description="t('requests.emptyDescription')">
+          <template #icon>
+            <Icon name="search" class="empty-state-icon h-10 w-10" />
+          </template>
+        </EmptyState>
+      </div>
+
+      <!-- 没有找到 -->
+      <div v-else-if="!items.length" class="card">
+        <EmptyState :title="t('requests.notFoundTitle')" :description="t('requests.notFound')" />
+      </div>
+
+      <template v-else>
+        <p v-if="items.length > 1" class="text-sm text-gray-500 dark:text-dark-300">
+          {{ t('requests.matchCount', { count: items.length }) }}
+        </p>
+        <SettingsNotice v-if="hasMore" tone="warning">{{ t('requests.more') }}</SettingsNotice>
+        <RequestDetailCard
+          v-for="item in items"
+          :key="`${item.request_id}:${item.usage?.[0]?.id ?? ''}:${item.errors?.[0]?.id ?? ''}:${item.audit_ids?.[0] ?? ''}`"
+          :item="item"
+          :admin="admin"
+          @open-error="openError"
+        />
+      </template>
     </div>
+
     <OpsErrorDetailModal v-if="admin" v-model:show="showError" :error-id="selectedError" error-type="request" />
     <UserErrorDetailModal v-else v-model:show="showError" :error-id="selectedError" />
   </AppLayout>

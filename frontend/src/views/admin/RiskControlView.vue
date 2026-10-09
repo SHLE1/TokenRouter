@@ -285,11 +285,11 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-6">
+            <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-7">
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.result" :options="resultOptions" @change="reloadLogsFromFirstPage" />
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.group_id" :options="groupFilterOptions" @change="reloadLogsFromFirstPage" />
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.endpoint" :options="endpointOptions" @change="reloadLogsFromFirstPage" />
-              <RequestIdSearch v-model="filters.request_id" @search="reloadLogsFromFirstPage" />
+              <input v-model.trim="filters.request_id" type="search" class="input font-mono" spellcheck="false" maxlength="255" :aria-label="t('requests.id')" :placeholder="t('requests.id')" @keyup.enter="reloadLogsFromFirstPage" />
               <input v-model.trim="filters.search" type="search" class="input" :placeholder="t('admin.riskControl.filters.search')" @keyup.enter="reloadLogsFromFirstPage" />
               <input v-model="filters.from" type="datetime-local" class="input" :title="t('admin.riskControl.filters.from')" @change="reloadLogsFromFirstPage" />
               <input v-model="filters.to" type="datetime-local" class="input" :title="t('admin.riskControl.filters.to')" @change="reloadLogsFromFirstPage" />
@@ -1289,7 +1289,6 @@
         width="wide"
         @close="closeInputDetail"
       >
-        <RequestIdLink v-if="inputDetailRow" :value="inputDetailRow.request_id" />
         <div v-if="inputDetailRow" class="space-y-5">
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div class="rounded-surface border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/70">
@@ -1330,6 +1329,7 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   {{ inputDetailRow.endpoint || '-' }} · {{ inputDetailRow.provider || '-' }} / {{ inputDetailRow.model || '-' }}
                 </p>
+                <RequestIdLink v-if="inputDetailRow.request_id" :value="inputDetailRow.request_id" class="mt-1.5" />
               </div>
               <span v-if="inputDetailRow.group_name" class="inline-flex rounded-compact bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 dark:bg-sky-900/20 dark:text-sky-300">
                 {{ inputDetailRow.group_name }}
@@ -1389,7 +1389,6 @@
         width="wide"
         @close="closeCyberDetail"
       >
-        <RequestIdLink v-if="cyberDetailRow" :value="cyberDetailRow.request_id" />
         <div v-if="cyberDetailRow" class="space-y-5">
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div class="rounded-surface border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/70">
@@ -1422,6 +1421,7 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   {{ cyberDetailRow.endpoint || '-' }} · openai / {{ cyberDetailRow.model || '-' }}
                 </p>
+                <RequestIdLink v-if="cyberDetailRow.request_id" :value="cyberDetailRow.request_id" class="mt-1.5" />
               </div>
               <span v-if="cyberDetailRow.group_name" class="inline-flex rounded-compact bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 dark:bg-sky-900/20 dark:text-sky-300">
                 {{ cyberDetailRow.group_name }}
@@ -1483,7 +1483,6 @@
 
 <script setup lang="ts">
 import RequestIdLink from '@/components/common/RequestIdLink.vue'
-import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import { vSegmented } from '@/directives/segmented'
 import Skeleton from '@/components/common/Skeleton.vue'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'

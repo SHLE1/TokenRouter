@@ -1,51 +1,68 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Icon from '@/components/icons/Icon.vue'
 
+// modelValue 是已生效的请求 ID，输入框里的草稿按回车或点清除后才写回。
 const props = defineProps<{
   modelValue?: string | null
-  withinTimeRange?: boolean
-  showTimeRange?: boolean
-  showDetails?: boolean
 }>()
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void
-  (event: 'update:withinTimeRange', value: boolean): void
   (event: 'search'): void
 }>()
-const { t } = useI18n()
-const route = useRoute()
-const destination = computed(() => ({
-  path: route?.path.startsWith('/admin') ? '/admin/requests' : '/requests',
-  query: { request_id: props.modelValue?.trim() || undefined },
-}))
 
-// 时间范围变更与搜索使用同一组父组件状态。
-function changeTimeRange(event: Event) {
-  emit('update:withinTimeRange', (event.target as HTMLInputElement).checked)
+const { t } = useI18n()
+const draft = ref(props.modelValue ?? '')
+
+// 父级重置或从链接带入 ID 时，草稿跟着更新。
+watch(() => props.modelValue, (value) => {
+  draft.value = value ?? ''
+})
+
+// apply 写回去掉首尾空白的 ID 并触发查询。
+function apply() {
+  const value = draft.value.trim()
+  draft.value = value
+  emit('update:modelValue', value)
   emit('search')
 }
+
+// clear 清空草稿，已有生效的 ID 时重新查询。
+function clear() {
+  draft.value = ''
+  if (!props.modelValue) return
+  emit('update:modelValue', '')
+  emit('search')
+}
+
+defineExpose({ apply })
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-wrap items-center gap-2">
+  <div class="input-icon-wrap min-w-0">
+    <Icon name="search" size="md" class="input-icon text-gray-400 dark:text-dark-400" />
     <input
-      :value="modelValue"
+      v-model="draft"
+      type="text"
+      class="input input-has-icon font-mono placeholder:font-sans"
+      :class="{ 'input-has-icon-right': draft }"
       :aria-label="t('requests.id')"
       :placeholder="t('requests.searchPlaceholder')"
-      class="input min-w-0 flex-1 font-mono sm:w-96 sm:flex-none"
-      type="search"
       maxlength="255"
-      @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-      @keydown.enter.prevent="emit('search')"
-      @search="emit('search')"
+      spellcheck="false"
+      autocomplete="off"
+      @keydown.enter.prevent="apply"
     />
-    <button type="button" class="btn btn-secondary" @click="emit('search')">{{ t('common.search') }}</button>
-    <RouterLink v-if="showDetails !== false && modelValue?.trim()" :to="destination" class="btn btn-secondary">{{ t('requests.details') }}</RouterLink>
-    <label v-if="showTimeRange && modelValue?.trim()" class="flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
-      <input type="checkbox" :checked="withinTimeRange" @change="changeTimeRange" />
-      {{ t('requests.withinTimeRange') }}
-    </label>
+    <button
+      v-if="draft"
+      type="button"
+      class="input-icon-right input-icon-action flex items-center text-gray-400 transition-colors hover:text-gray-600 dark:text-dark-400 dark:hover:text-dark-200"
+      :aria-label="t('requests.clearSearch')"
+      :title="t('requests.clearSearch')"
+      @click="clear"
+    >
+      <Icon name="x" size="sm" />
+    </button>
   </div>
 </template>

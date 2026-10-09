@@ -4,8 +4,7 @@
       <UsageStatsCards :stats="usageStats" :show-provider-cost="false" :show-standard-cost="false" />
 
       <div class="space-y-4">
-        <div class="card space-y-4 p-4">
-        <RequestIdSearch v-model="filters.request_id" v-model:within-time-range="requestTimeRange" show-time-range @search="applyFilters" />
+        <div class="card p-4">
           <div class="time-controls flex flex-wrap items-center justify-between gap-2">
             <div class="flex min-w-0 items-center gap-2">
               <span class="time-control-label text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.dashboard.timeRange') }}:</span>
@@ -24,6 +23,7 @@
           </div>
         </div>
 
+        <!-- 按请求 ID 筛选时只看统计卡和表格，分布图和趋势图隐藏，也不请求图表数据 -->
         <div v-if="!filters.request_id" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ModelDistributionChart
             v-model:metric="modelDistributionMetric"
@@ -82,6 +82,8 @@
       <div class="card p-4">
         <div class="flex items-center justify-between gap-2">
           <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetCurrentFilters">
+            <!-- 请求 ID 同时筛选使用记录和错误请求，生效后查询不限日期范围 -->
+            <RequestIdFilterField v-model="filters.request_id" @search="applyFilters" />
             <template v-if="activeTab === 'errors'">
               <FilterField :label="t('usage.errors.keyName')">
                 <Select v-model="errorFilter.api_key_id" :options="errorKeyOptions" @change="applyErrorFilters" />
@@ -242,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
+import RequestIdFilterField from '@/components/common/RequestIdFilterField.vue'
 import { useLocaleRefresh } from '@/composables/useLocaleRefresh'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { vContentReveal } from '@/directives/contentReveal'
@@ -323,9 +325,11 @@ const errorFilter = ref<{ model: string | null; category: string; api_key_id: nu
   api_key_id: null,
   status_code: null,
 })
+// 请求 ID 两个标签页共用，错误请求标签页另外加上它。
 const activeFilterCount = computed(() => {
   const source = activeTab.value === 'errors' ? errorFilter.value : filters.value
-  return Object.entries(source).filter(([key, value]) => !['start_date', 'end_date'].includes(key) && value !== null && value !== undefined && String(value) !== '').length
+  const count = Object.entries(source).filter(([key, value]) => !['start_date', 'end_date'].includes(key) && value !== null && value !== undefined && String(value) !== '').length
+  return activeTab.value === 'errors' && filters.value.request_id ? count + 1 : count
 })
 
 const errorKeyOptions = computed<SelectOption[]>(() => [
@@ -406,7 +410,6 @@ type UsageFilterState = Omit<UsageQueryParams, 'api_key_id' | 'group_id' | 'mode
   request_type: UsageRequestType | null
 }
 
-const requestTimeRange = ref(false)
 const filters = ref<UsageFilterState>({
   start_date: startDate.value,
   end_date: endDate.value,
@@ -487,8 +490,8 @@ const normalizedFilters = computed<UsageQueryParams>(() => {
     group_id: filters.value.group_id ?? undefined,
     model: filters.value.model || undefined,
     request_type: requestType ?? undefined,
-    start_date: filters.value.request_id && !requestTimeRange.value ? undefined : startDate.value,
-    end_date: filters.value.request_id && !requestTimeRange.value ? undefined : endDate.value,
+    start_date: filters.value.request_id ? undefined : startDate.value,
+    end_date: filters.value.request_id ? undefined : endDate.value,
     stream: legacyStream === null ? undefined : legacyStream,
   }
 })
@@ -601,7 +604,6 @@ const refreshModelOptions = (models: ModelStat[]) => {
 }
 
 const applyFilters = () => {
-  if (activeTab.value === 'errors') { void loadStats(); applyErrorFilters(); return }
   pagination.page = 1
   void loadLogs()
   void loadStats()
@@ -613,15 +615,19 @@ const applyFilters = () => {
 
 // 重置只清空当前标签页的筛选条件，日期范围保持不变。
 const resetCurrentFilters = () => {
-  filters.value.request_id = undefined
-  requestTimeRange.value = false
   if (activeTab.value === 'errors') {
     errorFilter.value = { model: '', category: '', api_key_id: null, status_code: null }
+    if (filters.value.request_id) {
+      filters.value.request_id = undefined
+      applyFilters()
+      return
+    }
     applyErrorFilters()
     return
   }
   filters.value = {
     ...filters.value,
+    request_id: undefined,
     api_key_id: null,
     group_id: null,
     model: null,
@@ -643,7 +649,6 @@ const refreshData = () => {
 }
 
 const onDateRangeChange = (range: { startDate: string; endDate: string; preset: string | null }) => {
-  requestTimeRange.value = true
   startDate.value = range.startDate
   endDate.value = range.endDate
   filters.value.start_date = range.startDate
@@ -779,7 +784,6 @@ const DEFAULT_HIDDEN_COLUMNS = ['user_agent']
 const HIDDEN_COLUMNS_KEY = 'user-usage-hidden-columns'
 
 const allColumns = computed<Column[]>(() => [
-  { key: 'request_id', label: t('requests.id'), sortable: false },
   ...(isTeamOwner.value ? [{ key: 'user', label: t('team.member'), sortable: false, class: 'w-36 min-w-36 max-w-36' }] : []),
   { key: 'api_key', label: t('usage.apiKeyFilter'), sortable: false },
   { key: 'model', label: t('usage.model'), sortable: true },
@@ -793,6 +797,7 @@ const allColumns = computed<Column[]>(() => [
   { key: 'cost', label: t('usage.cost'), sortable: false },
   { key: 'latency', label: t('usage.latency'), sortable: false },
   { key: 'created_at', label: t('usage.time'), sortable: true },
+  { key: 'request_id', label: t('requests.id'), sortable: false },
   { key: 'user_agent', label: t('usage.userAgent'), sortable: false },
 ])
 
@@ -824,7 +829,6 @@ const ERR_HIDDEN_COLUMNS_KEY = 'user-usage-error-hidden-columns'
 
 // key 须与 UserErrorRequestsTable 的 allColumns 一致
 const errAllColumns = computed<Column[]>(() => [
-  { key: 'request_id', label: t('requests.id') },
   { key: 'key_name', label: t('usage.errors.keyName') },
   { key: 'model', label: t('usage.errors.model') },
   { key: 'endpoint', label: t('usage.errors.endpoint') },
@@ -836,6 +840,7 @@ const errAllColumns = computed<Column[]>(() => [
   { key: 'status', label: t('usage.errors.status') },
   { key: 'message', label: t('usage.errors.message') },
   { key: 'created_at', label: t('usage.errors.time') },
+  { key: 'request_id', label: t('requests.id') },
   { key: 'user_agent', label: t('usage.userAgent') },
 ])
 
@@ -967,8 +972,8 @@ const loadErrors = async () => {
       page: errorPage.value,
       page_size: errorPageSize.value,
       request_id: filters.value.request_id?.trim() || undefined,
-      start_date: filters.value.request_id && !requestTimeRange.value ? undefined : startDate.value,
-      end_date: filters.value.request_id && !requestTimeRange.value ? undefined : endDate.value,
+      start_date: filters.value.request_id ? undefined : startDate.value,
+      end_date: filters.value.request_id ? undefined : endDate.value,
       model: (errorFilter.value.model ?? '').trim() || undefined,
       category: errorFilter.value.category || undefined,
       api_key_id: errorFilter.value.api_key_id ?? undefined,

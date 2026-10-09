@@ -10,8 +10,12 @@
 
     <!-- 详情内容 -->
     <div v-else-if="detail" class="space-y-4 text-sm">
-      <RequestIdLink :value="detail.request_id" />
       <div class="grid grid-cols-2 gap-x-6 gap-y-3">
+        <!-- 请求 ID -->
+        <div v-if="detail.request_id" class="col-span-2">
+          <span class="font-medium text-gray-500 dark:text-dark-400">{{ t('requests.id') }}</span>
+          <p class="mt-0.5"><RequestIdLink :value="detail.request_id" full /></p>
+        </div>
         <!-- 时间 -->
         <div>
           <span class="font-medium text-gray-500 dark:text-dark-400">{{ t('usage.errors.time') }}</span>

@@ -41,11 +41,21 @@ describe('请求详情查询', () => {
     expect(findRequests).toHaveBeenCalledWith('supplier', true, expect.any(AbortSignal))
     expect(wrapper.findAll('article')).toHaveLength(2)
     expect(wrapper.text()).toContain('requests.legacy')
-    await wrapper.get('input[type="search"]').setValue('next-id')
-    await wrapper.get('input[type="search"]').trigger('keydown.enter')
+    await wrapper.get('input[aria-label="requests.id"]').setValue('next-id')
+    await wrapper.get('input[aria-label="requests.id"]').trigger('keydown.enter')
     await flushPromises()
     expect(router.currentRoute.value.query.request_id).toBe('next-id')
     expect(findRequests).toHaveBeenLastCalledWith('next-id', true, expect.any(AbortSignal))
+  })
+
+  it('点击搜索按钮时提交输入框里的 ID', async () => {
+    const { wrapper, router } = await open('/requests')
+    expect(findRequests).not.toHaveBeenCalled()
+    await wrapper.get('input[aria-label="requests.id"]').setValue('  typed-id  ')
+    await wrapper.get('button.btn-primary').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query.request_id).toBe('typed-id')
+    expect(findRequests).toHaveBeenLastCalledWith('typed-id', false, expect.any(AbortSignal))
   })
 
   it('切换 ID 时取消旧查询，迟到结果不会覆盖当前请求', async () => {

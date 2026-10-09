@@ -382,9 +382,6 @@ export default {
         empty: '该窗口内暂无请求。',
         emptyHint: '可尝试调整时间范围或取消部分筛选。',
         failedToLoad: '加载请求明细失败',
-        requestIdCopied: '请求ID已复制',
-        copyFailed: '复制失败',
-        copy: '复制',
         viewError: '查看错误',
         kind: {
           success: '成功',

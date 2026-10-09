@@ -537,7 +537,6 @@ export default {
       teamFilter: 'Team',
       requestId: 'Request ID',
       upstreamRequestId: 'Upstream ID',
-      requestIdCopied: 'Request ID copied',
       upstreamRequestIdCopied: 'Upstream ID copied',
       allModels: 'All Models',
       allProviders: 'All Providers',

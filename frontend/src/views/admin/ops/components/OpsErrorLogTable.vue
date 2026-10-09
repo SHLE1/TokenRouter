@@ -20,12 +20,12 @@
         @sort="onSort"
         @rowClick="(row) => emit('openErrorDetail', row.id)"
       >
-        <template #cell-request_id="{ row }"><RequestIdLink :value="row.request_id || row.client_request_id" /></template>
         <template #cell-created_at="{ row }">
-          <span
-            class="text-sm text-gray-600 dark:text-gray-400"
-            :title="row.request_id || row.client_request_id"
-          >{{ formatDateTime(row.created_at) }}</span>
+          <span class="text-sm text-gray-600 dark:text-gray-400">{{ formatDateTime(row.created_at) }}</span>
+        </template>
+
+        <template #cell-request_id="{ row }">
+          <RequestIdLink :value="row.request_id || row.client_request_id" />
         </template>
 
         <template #cell-type="{ row }">
@@ -202,9 +202,8 @@ import { mapErrorSortKey, statusCodeBadgeClass } from '@/utils/errorBadges'
 const { t } = useI18n()
 
 // 列序对齐管理端用量明细:身份(用户→Key→提供商)→请求形态(平台→模型→端点→分组→类型)
-// →结果(状态→消息)→时间→UA→IP→操作。
+// →结果(状态→消息)→时间→请求 ID→UA→IP→操作。
 const allColumns = computed<Column[]>(() => [
-  { key: 'request_id', label: t('requests.id') },
   { key: 'user', label: t('admin.ops.errorLog.user') },
   { key: 'api_key', label: t('admin.ops.errorLog.apiKey') },
   { key: 'provider', label: t('admin.ops.errorLog.provider') },
@@ -217,6 +216,7 @@ const allColumns = computed<Column[]>(() => [
   { key: 'status', label: t('admin.ops.errorLog.status'), sortable: true },
   { key: 'message', label: t('admin.ops.errorLog.message') },
   { key: 'created_at', label: t('admin.ops.errorLog.time'), sortable: true },
+  { key: 'request_id', label: t('requests.id') },
   { key: 'user_agent', label: t('usage.userAgent') },
   { key: 'client_ip', label: t('admin.ops.errorLog.ip') },
   { key: 'actions', label: t('admin.ops.errorLog.action') },

@@ -533,7 +533,6 @@ export default {
       teamFilter: '团队',
       requestId: '请求ID',
       upstreamRequestId: '上游ID',
-      requestIdCopied: '请求ID已复制',
       upstreamRequestIdCopied: '上游ID已复制',
       allModels: '全部模型',
       allProviders: '全部提供商',

@@ -45,8 +45,8 @@ const appStore = useAppStore()
 // 宽度小于 1024px 时使用卡片视图，与 DataTable 的断点一致。
 const isDesktopViewport = useMediaQuery(TABLE_DESKTOP_MEDIA_QUERY)
 
+// 已生效的请求 ID，非空时查询不带时间条件。
 const requestId = ref('')
-const requestTimeRange = ref(false)
 const loading = ref(false)
 const items = ref<OpsRequestDetail[]>([])
 const total = ref(0)
@@ -90,8 +90,8 @@ const fetchData = async () => {
   loading.value = true
   try {
     const params: OpsRequestDetailsParams = {
-      ...(requestId.value.trim() && !requestTimeRange.value ? {} : buildTimeParams()),
-      request_id: requestId.value.trim() || undefined,
+      ...(requestId.value ? {} : buildTimeParams()),
+      request_id: requestId.value || undefined,
       page: page.value,
       page_size: pageSize.value,
       kind: props.preset.kind ?? 'all',
@@ -125,7 +125,6 @@ watch(
     if (open) {
       if (props.resumeState) return
       requestId.value = ''
-      requestTimeRange.value = false
       page.value = 1
       pageSize.value = 10
       fetchData()
@@ -146,8 +145,7 @@ watch(
     props.preset.min_duration_ms,
     props.preset.max_duration_ms
   ],
-  (next, previous) => {
-    if (next.slice(0, 3).some((value, index) => value !== previous[index])) requestTimeRange.value = true
+  () => {
     if (!props.modelValue) return
     page.value = 1
     fetchData()
@@ -184,19 +182,21 @@ const kindBadgeClass = (kind: string) => {
 <template>
   <BaseDialog :show="modelValue" :title="props.preset.title || t('admin.ops.requestDetails.title')" width="full" @close="close">
     <template #default>
-      <RequestIdSearch v-model="requestId" v-model:within-time-range="requestTimeRange" show-time-range @search="searchRequests" />
       <div class="flex h-full min-h-0 flex-col">
-        <div class="mb-4 flex flex-shrink-0 items-center justify-between gap-3">
+        <div class="mb-4 flex flex-shrink-0 flex-wrap items-center justify-between gap-2">
           <div class="min-w-0 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.ops.requestDetails.rangeLabel', { range: rangeLabel }) }}
+            {{ requestId ? t('requests.allTimeRange') : t('admin.ops.requestDetails.rangeLabel', { range: rangeLabel }) }}
           </div>
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm h-9 shrink-0"
-            @click="fetchData"
-          >
-            {{ t('common.refresh') }}
-          </button>
+          <div class="flex min-w-0 items-center gap-2">
+            <RequestIdSearch v-model="requestId" class="w-full sm:w-64" @search="searchRequests" />
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm h-9 shrink-0"
+              @click="fetchData"
+            >
+              {{ t('common.refresh') }}
+            </button>
+          </div>
         </div>
 
         <!-- Table -->

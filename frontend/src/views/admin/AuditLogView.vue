@@ -3,7 +3,6 @@
     <TablePageLayout>
       <!-- 关键字搜索与筛选条件 -->
       <template #filters>
-        <RequestIdSearch v-model="filters.request_id" @search="search" />
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex min-w-0 w-full items-center gap-2 sm:w-auto">
             <div class="input-icon-wrap min-w-0 flex-1 sm:w-64 sm:flex-none">
@@ -22,6 +21,9 @@
               />
             </div>
             <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetAuditFilters">
+              <FilterField :label="t('requests.id')" :value-text="filters.request_id" @clear="clearAuditFilter('request_id')">
+                <input v-model.trim="filters.request_id" type="text" class="input font-mono" spellcheck="false" maxlength="255" @keyup.enter="search" />
+              </FilterField>
               <FilterField :label="t('admin.audit.filters.actorEmail')" :value-text="filters.actor_email" @clear="clearAuditFilter('actor_email')">
                 <input v-model.trim="filters.actor_email" type="text" class="input" @keyup.enter="search" />
               </FilterField>
@@ -176,10 +178,7 @@
               {{ formatTime(detail.created_at) }}
             </span>
             <span>{{ t('admin.audit.detail.latency') }} {{ detail.latency_ms }} ms</span>
-            <span v-if="detail.request_id" class="inline-flex items-center gap-1">
-              {{ t('admin.audit.detail.requestId') }}
-              <RequestIdLink :value="detail.request_id" />
-            </span>
+            <RequestIdLink v-if="detail.request_id" :value="detail.request_id" />
           </div>
         </div>
 
@@ -328,7 +327,6 @@
 </template>
 <script setup lang="ts">
 import RequestIdLink from '@/components/common/RequestIdLink.vue'
-import RequestIdSearch from '@/components/common/RequestIdSearch.vue'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -443,7 +441,7 @@ function handleCustomTimeRangeConfirm() {
 }
 
 // 移除单个文本条件后立即重新查询。
-function clearAuditFilter(key: 'actor_email' | 'action' | 'client_ip') {
+function clearAuditFilter(key: 'request_id' | 'actor_email' | 'action' | 'client_ip') {
   filters[key] = ''
   search()
 }

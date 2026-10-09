@@ -21,8 +21,6 @@ initializeTfCliImportSession()
  * Route definitions with lazy loading
  */
 const routes: RouteRecordRaw[] = [
-  { path: '/requests', name: 'Requests', component: () => import('@/views/RequestsView.vue'), meta: { requiresAuth: true, requiresAdmin: false, titleKey: 'requests.title', descriptionKey: 'requests.description' } },
-  { path: '/admin/requests', name: 'AdminRequests', component: () => import('@/views/RequestsView.vue'), meta: { requiresAuth: true, requiresAdmin: true, titleKey: 'requests.title', descriptionKey: 'requests.description' } },
   // ==================== Setup Routes ====================
   {
     path: '/setup',
@@ -282,6 +280,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Usage Records',
       titleKey: 'usage.title',
       descriptionKey: 'usage.description'
+    }
+  },
+  {
+    path: '/requests',
+    name: 'Requests',
+    component: () => import('@/views/RequestsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Request Lookup',
+      titleKey: 'requests.title',
+      descriptionKey: 'requests.description'
     }
   },
   {
@@ -648,6 +658,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Usage Records',
       titleKey: 'admin.usage.title',
       descriptionKey: 'admin.usage.description'
+    }
+  },
+  {
+    path: '/admin/requests',
+    name: 'AdminRequests',
+    component: () => import('@/views/RequestsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Request Lookup',
+      titleKey: 'requests.title',
+      descriptionKey: 'requests.description'
     }
   },
   {
