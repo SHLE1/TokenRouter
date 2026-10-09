@@ -1,6 +1,6 @@
 <template>
   <div class="relative">
-    <!-- Admin: Full version badge with dropdown -->
+    <!-- 版本号只对管理员显示，点击展开更新、重启和回滚面板。 -->
     <template v-if="isAdmin">
       <button
         @click="toggleDropdown"
@@ -533,11 +533,6 @@
         </div>
       </MotionTransition>
     </template>
-
-    <!-- Non-admin: Simple static version text -->
-    <span v-else-if="version" class="text-xs text-gray-500 dark:text-dark-400">
-      v{{ version }}
-    </span>
   </div>
 </template>
 
