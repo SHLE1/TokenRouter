@@ -1131,9 +1131,6 @@ update:
   # 留空表示直连（适用于海外服务器）
   proxy_url: ""
 
-# 请求摘要独立于 Ops 采样保存，待写目录需要位于持久数据卷。
+# 请求摘要独立于 Ops 采样保存，通过内存缓冲批量写入数据库。
 request_log:
   retention_days: 30
-  # 留空时使用 DATA_DIR 或价格资源数据目录下的 request-records。
-  # 多实例分别指定自己的目录。
-  spool_dir: ""

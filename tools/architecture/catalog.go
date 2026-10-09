@@ -74,7 +74,7 @@ github.com/wechatpay-apiv3/wechatpay-go/services/payments/h5
 github.com/wechatpay-apiv3/wechatpay-go/services/payments/jsapi
 github.com/wechatpay-apiv3/wechatpay-go/services/payments/native
 github.com/wechatpay-apiv3/wechatpay-go/services/refunddomestic
-github.com/wechatpay-apiv3/wechatpay-go/utils go.uber.org/zap google.golang.org/api/idtoken golang.org/x/sys/windows`, Tests: `github.com/gin-gonic/gin github.com/stretchr/testify/assert github.com/stretchr/testify/require
+github.com/wechatpay-apiv3/wechatpay-go/utils go.uber.org/zap google.golang.org/api/idtoken`, Tests: `github.com/gin-gonic/gin github.com/stretchr/testify/assert github.com/stretchr/testify/require
 github.com/stretchr/testify/suite github.com/testcontainers/testcontainers-go/modules/redis
 golang.org/x/crypto/curve25519 golang.org/x/crypto/nacl/box golang.org/x/net/http2
 google.golang.org/api/option`},

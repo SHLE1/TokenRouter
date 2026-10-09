@@ -57,7 +57,7 @@
 
 ### 请求记录
 
-`request_log.retention_days` 控制请求摘要保留天数，默认 30。`request_log.spool_dir` 指定数据库批写前的持久待写目录，环境变量分别为 `REQUEST_LOG_RETENTION_DAYS` 和 `REQUEST_LOG_SPOOL_DIR`。目录默认路径、实例锁和故障恢复见[请求 ID 与请求查询](../operations/request_lookup.md#request_storage)。
+`request_log.retention_days` 控制请求摘要保留天数，默认 30，环境变量为 `REQUEST_LOG_RETENTION_DAYS`。内存批写、失败处理和关闭排空见[请求 ID 与请求查询](../operations/request_lookup.md#request_storage)。
 
 ### 模型目录与价格补充
 

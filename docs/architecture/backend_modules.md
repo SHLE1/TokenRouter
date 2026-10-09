@@ -41,10 +41,9 @@ backend/
 │   ├── app/                                             应用装配、依赖绑定和运行资源登记
 │   │   ├── bootstrap/                                   数据库与 Redis 引导、迁移、密钥、时区及初始数据
 │   │   └── lifecycle/                                   分阶段启停、请求屏障、派生任务等待与重启
-│   ├── requestlog/                                      请求摘要、持久待写队列与查询
+│   ├── requestlog/                                      请求摘要、内存批写与查询
 │   │   ├── httpapi/                                     用户与管理员请求详情
-│   │   ├── postgres/                                    摘要、历史关联与归属查询
-│   │   └── provider/                                    本地持久待写目录
+│   │   └── postgres/                                    摘要、历史关联与归属查询
 │   ├── audit/                                           管理员操作审计与审计数据清理
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
 │   │   └── postgres/                                    PostgreSQL 持久化及事务适配

@@ -75,10 +75,9 @@ var (
 	ErrDingTalkV4InvalidAppKind = authconfig.ErrDingTalkV4InvalidAppKind
 )
 
-// RequestLogConfig 配置独立请求摘要的留存和本地待写目录。
+// RequestLogConfig 配置独立请求摘要的保留天数。
 type RequestLogConfig struct {
-	RetentionDays int    `mapstructure:"retention_days"`
-	SpoolDir      string `mapstructure:"spool_dir"`
+	RetentionDays int `mapstructure:"retention_days"`
 }
 
 type Config struct {
@@ -1951,7 +1950,6 @@ func setDefaults() {
 	viper.SetDefault("ops.cleanup.batch_pause_ms", 200)
 	// Retention days: vNext defaults to 30 days across ops datasets.
 	viper.SetDefault("request_log.retention_days", 30)
-	viper.SetDefault("request_log.spool_dir", "")
 	viper.SetDefault("ops.cleanup.error_log_retention_days", 30)
 	viper.SetDefault("ops.cleanup.system_log_retention_days", 30)
 	viper.SetDefault("ops.cleanup.minute_metrics_retention_days", 30)

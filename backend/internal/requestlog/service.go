@@ -2,6 +2,7 @@ package requestlog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -10,19 +11,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 )
 
+const (
+	requestBufferCapacity = 4096
+	requestBatchSize      = 256
+	requestFlushInterval  = 20 * time.Millisecond
+	requestRetryInterval  = time.Second
+	requestWriteTimeout   = 5 * time.Second
+)
+
 // Repository 保存请求摘要，并按调用者权限查询现存记录。
 type Repository interface {
 	Save(context.Context, []telemetry.RequestRecord) error
 	Find(context.Context, string, int64, bool) ([]Detail, error)
 	Cleanup(context.Context, time.Time) error
-}
-
-// Queue 在写入数据库前持久保存快照，确认时按版本移除。
-type Queue interface {
-	Put(telemetry.RequestRecord) error
-	Peek(int) ([]telemetry.RequestRecord, error)
-	Ack([]telemetry.RequestRecord) error
-	Pending() (int, error)
 }
 
 // Usage 是请求详情中的费用和用量摘要。
@@ -57,40 +58,73 @@ type Health struct {
 	Failures uint64 `json:"failures"`
 }
 
-// Service 在请求结束后批量写库，待写记录由 Queue 跨进程重启保存。
+// Service 在内存中合并请求快照，由后台按批写入数据库。
 type Service struct {
 	repo      Repository
-	queue     Queue
 	retention time.Duration
 	logf      func(string, ...any)
 	failures  atomic.Uint64
-	flushMu   sync.Mutex
+
+	mu      sync.Mutex
+	pending map[string]telemetry.RequestRecord
+	stopped bool
+	writes  sync.WaitGroup
+	flushMu sync.Mutex
+
+	ctx       context.Context
+	cancel    context.CancelFunc
 	startOnce sync.Once
 	stopOnce  sync.Once
-	stop      chan struct{}
 	done      chan struct{}
+	stopDone  chan struct{}
+	stopErr   error
 }
 
 // NewService 配置请求摘要的批写和留存。
 // @project-doc docs/operations/request_lookup.md#request_storage
-func NewService(repo Repository, queue Queue, retentionDays int, logf func(string, ...any)) *Service {
+func NewService(repo Repository, retentionDays int, logf func(string, ...any)) *Service {
 	if retentionDays <= 0 {
 		retentionDays = 30
 	}
-	return &Service{repo: repo, queue: queue, retention: time.Duration(retentionDays) * 24 * time.Hour, logf: logf, stop: make(chan struct{}), done: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Service{
+		repo: repo, retention: time.Duration(retentionDays) * 24 * time.Hour, logf: logf,
+		pending: make(map[string]telemetry.RequestRecord), ctx: ctx, cancel: cancel,
+		done: make(chan struct{}), stopDone: make(chan struct{}),
+	}
 }
 
-// Observe 先持久化快照，数据库批写由后台任务执行。
+// Observe 合并同一请求的待写快照，缓冲已满或服务停止时同步写库。
 func (s *Service) Observe(record telemetry.RequestRecord) {
-	if s == nil || s.queue == nil {
+	if s == nil || s.repo == nil {
 		return
 	}
 	if record.RequestID == "" {
-		s.report("persist request record", fmt.Errorf("missing request ID"))
+		s.report("write request record", fmt.Errorf("missing request ID"))
 		return
 	}
-	if err := s.queue.Put(telemetry.NormalizeRequestRecord(record)); err != nil {
-		s.report("persist request "+record.RequestID, err)
+	record = telemetry.NormalizeRequestRecord(record)
+	s.mu.Lock()
+	if !s.stopped {
+		if previous, ok := s.pending[record.RequestID]; ok {
+			s.pending[record.RequestID] = telemetry.MergeRequestRecord(previous, record)
+			s.mu.Unlock()
+			return
+		}
+		if len(s.pending) < requestBufferCapacity {
+			s.pending[record.RequestID] = record
+			s.mu.Unlock()
+			return
+		}
+		// 关闭入队后等待已经开始的同步写入，停止后的调用自行完成写库。
+		s.writes.Add(1)
+		defer s.writes.Done()
+	}
+	s.mu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), requestWriteTimeout)
+	defer cancel()
+	if err := s.repo.Save(ctx, []telemetry.RequestRecord{record}); err != nil {
+		s.report("write request "+record.RequestID, err)
 	}
 }
 
@@ -101,23 +135,29 @@ func (s *Service) Start(context.Context) error {
 
 func (s *Service) run() {
 	defer close(s.done)
-	ticker := time.NewTicker(250 * time.Millisecond)
+	ticker := time.NewTicker(requestFlushInterval)
 	defer ticker.Stop()
 	cleanup := time.NewTicker(time.Hour)
 	defer cleanup.Stop()
 	for {
 		select {
-		case <-s.stop:
+		case <-s.ctx.Done():
 			return
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(s.ctx, requestWriteTimeout)
 			if err := s.Flush(ctx); err != nil {
-				s.report("flush request records", err)
+				if s.ctx.Err() == nil {
+					s.report("flush request records", err)
+				}
+				// 持续失败时降低重试频率，数据库恢复后再按批写窗口调度。
+				ticker.Reset(requestRetryInterval)
+			} else {
+				ticker.Reset(requestFlushInterval)
 			}
 			cancel()
 		case <-cleanup.C:
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			if err := s.repo.Cleanup(ctx, time.Now().Add(-s.retention)); err != nil {
+			ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
+			if err := s.repo.Cleanup(ctx, time.Now().Add(-s.retention)); err != nil && s.ctx.Err() == nil {
 				s.report("clean request records", err)
 			}
 			cancel()
@@ -125,77 +165,120 @@ func (s *Service) run() {
 	}
 }
 
+// Stop 关闭内存入队并排空，等待时间由应用的关闭期限控制。
 func (s *Service) Stop(ctx context.Context) error {
-	defer func() {
-		if queue, ok := s.queue.(interface{ Close() error }); ok {
-			_ = queue.Close()
-		}
-	}()
-	s.stopOnce.Do(func() { close(s.stop) })
-	s.startOnce.Do(func() { close(s.done) })
+	s.stopOnce.Do(func() {
+		s.mu.Lock()
+		s.stopped = true
+		s.mu.Unlock()
+		s.cancel()
+		s.startOnce.Do(func() { close(s.done) })
+		go func() {
+			defer close(s.stopDone)
+			<-s.done
+			s.writes.Wait()
+			s.stopErr = s.drain(ctx)
+		}()
+	})
 	select {
-	case <-s.done:
+	case <-s.stopDone:
+		return s.stopErr
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func (s *Service) drain(ctx context.Context) error {
 	for {
-		pending, err := s.queue.Pending()
-		if err != nil || pending == 0 {
-			return err
+		health, _ := s.Health()
+		if health.Pending == 0 {
+			return nil
 		}
-		if err = s.Flush(ctx); err != nil {
+		if err := s.Flush(ctx); err != nil {
+			s.report("drain request records", err)
 			return err
 		}
 	}
 }
 
-// Flush 在一次数据库事务成功后确认队列中的对应版本。
+// Flush 批量写入快照，失败时在同一超时窗口内尝试逐条写入。
 func (s *Service) Flush(ctx context.Context) error {
 	s.flushMu.Lock()
 	defer s.flushMu.Unlock()
-	for range 8 {
-		if err := ctx.Err(); err != nil {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	batch := make([]telemetry.RequestRecord, 0, min(len(s.pending), requestBatchSize))
+	for _, record := range s.pending {
+		batch = append(batch, record)
+		if len(batch) == requestBatchSize {
+			break
+		}
+	}
+	s.mu.Unlock()
+	if len(batch) == 0 {
+		return nil
+	}
+	writeCtx, cancel := context.WithTimeout(ctx, requestWriteTimeout)
+	defer cancel()
+	if err := s.repo.Save(writeCtx, batch); err != nil {
+		if len(batch) == 1 || writeCtx.Err() != nil {
 			return err
 		}
-		batch, err := s.queue.Peek(128)
-		if err != nil || len(batch) == 0 {
-			return err
+		s.report("batch write request records", err)
+		var failures []error
+		for _, record := range batch {
+			if err := writeCtx.Err(); err != nil {
+				return errors.Join(append(failures, err)...)
+			}
+			if err := s.repo.Save(writeCtx, []telemetry.RequestRecord{record}); err != nil {
+				failures = append(failures, fmt.Errorf("request %s: %w", record.RequestID, err))
+			} else {
+				s.ack(record)
+			}
 		}
-		if err = s.repo.Save(ctx, batch); err != nil {
-			return err
-		}
-		if err = s.queue.Ack(batch); err != nil {
-			return err
-		}
-		if len(batch) < 128 {
-			return nil
-		}
+		return errors.Join(failures...)
+	}
+	for _, record := range batch {
+		s.ack(record)
 	}
 	return nil
 }
 
+// ack 仅移除已写入的版本，写库期间收到的更新继续等待下一批。
+func (s *Service) ack(record telemetry.RequestRecord) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if current, ok := s.pending[record.RequestID]; ok && current.UpdatedAt.Equal(record.UpdatedAt) {
+		delete(s.pending, record.RequestID)
+	}
+}
+
 func (s *Service) Find(ctx context.Context, id string, userID int64, admin bool) ([]Detail, error) {
 	items, err := s.repo.Find(ctx, id, userID, admin)
-	if pending, ok := s.queue.(interface {
-		Get(string) (telemetry.RequestRecord, bool)
-	}); ok {
-		if record, found := pending.Get(id); found && (admin || record.UserID > 0 && record.UserID == userID) {
-			for i := range items {
-				if items[i].RequestID == id {
-					items[i].RequestRecord = telemetry.MergeRequestRecord(items[i].RequestRecord, record)
-					items[i].Pending = true
-					return items, nil
-				}
+	s.mu.Lock()
+	record, found := s.pending[id]
+	s.mu.Unlock()
+	if found && (admin || record.UserID > 0 && record.UserID == userID) {
+		record = telemetry.CloneRequestRecord(record)
+		for i := range items {
+			if items[i].RequestID == id {
+				items[i].RequestRecord = telemetry.MergeRequestRecord(items[i].RequestRecord, record)
+				items[i].Pending = true
+				return items, nil
 			}
-			return append(items, Detail{RequestRecord: record, Pending: true}), nil
 		}
+		return append(items, Detail{RequestRecord: record, Pending: true}), nil
 	}
 	return items, err
 }
 
 func (s *Service) Health() (Health, error) {
-	pending, err := s.queue.Pending()
-	return Health{Pending: pending, Failures: s.failures.Load()}, err
+	s.mu.Lock()
+	pending := len(s.pending)
+	s.mu.Unlock()
+	return Health{Pending: pending, Failures: s.failures.Load()}, nil
 }
 
 func (s *Service) report(action string, err error) {

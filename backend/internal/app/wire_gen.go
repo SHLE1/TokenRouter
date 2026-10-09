@@ -72,10 +72,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	if err != nil {
 		return nil, err
 	}
-	service, err := provideRequestLog(db, cfg, manager)
-	if err != nil {
-		return nil, err
-	}
+	service := provideRequestLog(db, cfg, manager)
 	store := provideSettingsStore(client)
 	runtimeSettings := provideUsageSettings(store)
 	oAuthSettings := provideOAuthSettings(store, cfg)

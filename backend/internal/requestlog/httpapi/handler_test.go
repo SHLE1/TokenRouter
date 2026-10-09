@@ -33,7 +33,7 @@ func (r *requestRepositoryStub) Find(_ context.Context, _ string, userID int64, 
 // TestFindUsesAuthenticatedScopeAndRedactsDetails 检查查询参数无法切换身份或管理员视图。
 func TestFindUsesAuthenticatedScopeAndRedactsDetails(t *testing.T) {
 	repo := &requestRepositoryStub{}
-	handler := NewHandler(requestlog.NewService(repo, nil, 30, nil), func(context.Context) bool { return false })
+	handler := NewHandler(requestlog.NewService(repo, 30, nil), func(context.Context) bool { return false })
 	router := gin.New()
 	router.Use(func(c *gin.Context) { c.Set(authctx.ContextKeyUser, authctx.AuthSubject{UserID: 42}); c.Next() })
 	router.GET("/requests", handler.Find)

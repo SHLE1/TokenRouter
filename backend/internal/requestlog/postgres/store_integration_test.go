@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	"github.com/TokenFlux/TokenRouter/internal/requestlog"
 	"github.com/TokenFlux/TokenRouter/internal/testutil/postgrescontainer"
 )
 
@@ -86,4 +87,32 @@ func TestStoreLookupIsolationAndReplay(t *testing.T) {
 	items, err = store.Find(ctx, "first", 0, true)
 	require.NoError(t, err)
 	require.Empty(t, items)
+}
+
+// TestStoreBatchWriterFlushesFinalSnapshot 在 PostgreSQL 上确认关闭排空和同一请求的版本合并。
+func TestStoreBatchWriterFlushesFinalSnapshot(t *testing.T) {
+	store := NewStore(postgrescontainer.New(t))
+	service := requestlog.NewService(store, 30, nil)
+	start := time.Now().UTC().Truncate(time.Microsecond)
+	service.Observe(telemetry.RequestRecord{
+		RequestID: "batched", UserID: 101, State: "running", StartedAt: start, UpdatedAt: start,
+		Aliases: []telemetry.RequestAlias{{Kind: "caller", Value: "client-alias"}},
+	})
+	finished := start.Add(time.Second)
+	service.Observe(telemetry.RequestRecord{
+		RequestID: "batched", UserID: 101, State: "failed", UpdatedAt: finished, FinishedAt: &finished,
+		Status: 502, Attempts: []telemetry.RequestAttempt{{Number: 1, ProviderID: 7, Status: 502}},
+	})
+	require.NoError(t, service.Stop(t.Context()))
+	items, err := store.Find(t.Context(), "client-alias", 101, false)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, "failed", items[0].State)
+	require.Equal(t, 502, items[0].Status)
+	require.Equal(t, start, items[0].StartedAt)
+	require.Len(t, items[0].Attempts, 1)
+	health, err := service.Health()
+	require.NoError(t, err)
+	require.Zero(t, health.Pending)
+	require.Zero(t, health.Failures)
 }
