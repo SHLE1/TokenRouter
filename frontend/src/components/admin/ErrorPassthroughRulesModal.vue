@@ -19,17 +19,15 @@
 
       <!-- Rules Table -->
 
-      <div v-if="!loading && rules.length === 0" class="py-8 text-center">
-        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-dark-700">
-          <Icon name="shield" size="lg" class="text-gray-400" />
-        </div>
-        <h4 class="mb-1 text-sm font-medium text-gray-900 dark:text-white">
-          {{ t('admin.errorPassthrough.noRules') }}
-        </h4>
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('admin.errorPassthrough.createFirstRule') }}
-        </p>
-      </div>
+      <EmptyState
+        v-if="!loading && rules.length === 0"
+        :title="t('admin.errorPassthrough.noRules')"
+        :description="t('admin.errorPassthrough.createFirstRule')"
+      >
+        <template #icon>
+          <Icon name="shield" class="empty-state-icon h-10 w-10" />
+        </template>
+      </EmptyState>
 
       <div v-else class="max-h-96 overflow-auto rounded-control border border-gray-200 dark:border-dark-600">
         <table :aria-busy="loading" class="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
@@ -445,6 +443,7 @@ import type { ErrorPassthroughRule } from '@/api/admin/errorPassthrough'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 
 const props = defineProps<{
   show: boolean

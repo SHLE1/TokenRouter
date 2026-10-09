@@ -8,19 +8,11 @@
           v-else-if="!menuItem"
           class="flex h-full items-center justify-center p-10 text-center"
         >
-          <div class="max-w-md">
-            <div
-              class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-dark-700"
-            >
-              <Icon name="link" size="lg" class="text-gray-400" />
-            </div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('customPage.notFoundTitle') }}
-            </h3>
-            <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-              {{ t('customPage.notFoundDesc') }}
-            </p>
-          </div>
+          <EmptyState :title="t('customPage.notFoundTitle')" :description="t('customPage.notFoundDesc')">
+            <template #icon>
+              <Icon name="link" class="empty-state-icon h-10 w-10" />
+            </template>
+          </EmptyState>
         </div>
 
         <div v-else-if="isMarkdownMode" class="flex h-full overflow-hidden">
@@ -67,19 +59,11 @@
         </div>
 
         <div v-else-if="!isValidUrl" class="flex h-full items-center justify-center p-10 text-center">
-          <div class="max-w-md">
-            <div
-              class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-dark-700"
-            >
-              <Icon name="link" size="lg" class="text-gray-400" />
-            </div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('customPage.notConfiguredTitle') }}
-            </h3>
-            <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-              {{ t('customPage.notConfiguredDesc') }}
-            </p>
-          </div>
+          <EmptyState :title="t('customPage.notConfiguredTitle')" :description="t('customPage.notConfiguredDesc')">
+            <template #icon>
+              <Icon name="link" class="empty-state-icon h-10 w-10" />
+            </template>
+          </EmptyState>
         </div>
 
         <div v-else class="custom-embed-shell">
@@ -115,6 +99,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { buildApiUrl } from '@/api/client'
 import { COPY_FEEDBACK_MS } from '@/constants/ui'
 import { buildEmbeddedUrl, detectTheme } from '@/utils/embedded-url'

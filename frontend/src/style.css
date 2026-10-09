@@ -1204,8 +1204,8 @@
     @apply text-center;
   }
 
+  /* 空状态图标放在 EmptyState 的居中方框里，尺寸由组件设定，这里只给颜色。 */
   .empty-state-icon {
-    @apply mb-4 h-16 w-16;
     @apply text-primary-300 dark:text-dark-500;
   }
 
