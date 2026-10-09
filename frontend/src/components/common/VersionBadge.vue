@@ -138,7 +138,7 @@
                 <button
                   @click="handleUpdate"
                   :disabled="updating"
-                  class="flex w-full items-center justify-center gap-2 rounded-control bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  class="btn btn-danger w-full"
                 >
                   {{ t('version.retry') }}
                 </button>
@@ -177,7 +177,7 @@
                 <button
                   @click="handleRestart"
                   :disabled="restarting"
-                  class="flex w-full items-center justify-center gap-2 rounded-control bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  class="btn btn-success w-full"
                 >
                   <Icon
                     name="loader"
@@ -272,11 +272,11 @@
                   </div>
                 </div>
 
-                <!-- Update button -->
+                <!-- 更新按钮用全站主按钮样式，颜色和其他主按钮一致。 -->
                 <button
                   @click="handleUpdate"
                   :disabled="updating"
-                  class="flex w-full items-center justify-center gap-2 rounded-control bg-primary-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  class="btn btn-primary w-full"
                 >
                   <Icon
                     name="loader"
@@ -503,7 +503,7 @@
                             <button
                               @click="handleRollback"
                               :disabled="rollingBack"
-                              class="flex w-full items-center justify-center gap-2 rounded-control bg-amber-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+                              class="btn btn-warning w-full"
                             >
                               <Icon
                                 name="loader"

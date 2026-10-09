@@ -16,7 +16,7 @@
           <Toggle
             v-model="notifyEnabled"
             variant="flush"
-            off-class="bg-gray-200 dark:bg-gray-700"
+            off-tone="soft"
             @update:model-value="handleToggle"
           />
         </label>
@@ -63,7 +63,7 @@
                   <Toggle
                     :model-value="!entry.disabled"
                     size="sm"
-                    off-class="bg-gray-200 dark:bg-gray-600"
+                    off-tone="soft"
                     @update:model-value="handleEmailToggle(entry)"
                   />
                 </label>

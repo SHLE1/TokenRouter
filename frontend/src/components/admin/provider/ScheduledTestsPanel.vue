@@ -112,14 +112,14 @@
           <div class="mt-3 flex justify-end gap-2">
             <button
               @click="showAddForm = false; resetNewPlan()"
-              class="rounded-control bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
+              class="btn btn-secondary"
             >
               {{ t('common.cancel') }}
             </button>
             <button
               @click="handleCreate"
               :disabled="!newPlan.model_id || !newPlan.cron_expression || creating"
-              class="flex items-center gap-1.5 rounded-control bg-primary-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+              class="btn btn-primary"
             >
               <Icon
                 v-if="creating"
@@ -328,14 +328,14 @@
             <div class="mt-3 flex justify-end gap-2">
               <button
                 @click="cancelEdit"
-                class="rounded-control bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
+                class="btn btn-secondary"
               >
                 {{ t('common.cancel') }}
               </button>
               <button
                 @click="handleEdit"
                 :disabled="!editForm.model_id || !editForm.cron_expression || updating"
-                class="flex items-center gap-1.5 rounded-control bg-primary-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+                class="btn btn-primary"
               >
                 <Icon
                   v-if="updating"

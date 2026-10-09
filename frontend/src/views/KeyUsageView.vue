@@ -72,16 +72,16 @@
           <button
             @click="queryKey"
             :disabled="isQuerying"
-            class="h-9 px-7 rounded-control bg-primary-500 hover:bg-primary-600 text-white font-medium text-sm transition active:scale-[0.97] flex items-center gap-2 whitespace-nowrap disabled:opacity-60"
+            class="btn btn-primary whitespace-nowrap px-7"
           >
             <Icon
               name="loader"
               size="sm"
               :animate-on-hover="false"
               v-if="isQuerying"
-              class="w-4 h-4 animate-spin"
+              class="animate-spin"
             />
-            <Icon name="search" size="sm" v-else class="w-4 h-4" />
+            <Icon name="search" size="sm" v-else />
             {{ isQuerying ? t('keyUsage.querying') : t('keyUsage.query') }}
           </button>
         </div>
@@ -116,7 +116,7 @@
               />
               <button
                 @click="queryKey"
-                class="h-9 text-xs px-3 py-1.5 rounded-control bg-primary-500 text-white hover:bg-primary-600"
+                class="btn btn-primary btn-sm h-9"
               >{{ t('keyUsage.apply') }}</button>
             </div>
           </div>

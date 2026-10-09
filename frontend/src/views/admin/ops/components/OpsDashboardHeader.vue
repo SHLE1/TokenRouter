@@ -1599,7 +1599,7 @@ function handleToolbarRefresh() {
         <div class="flex justify-end gap-3 pt-2">
           <button
             type="button"
-            class="rounded-control bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-dark-950 dark:text-gray-300 dark:hover:bg-dark-800"
+            class="btn btn-secondary"
             @click="handleCustomTimeRangeCancel"
           >
             {{ t('common.cancel') }}

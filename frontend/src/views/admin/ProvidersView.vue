@@ -329,13 +329,12 @@
             </div>
           </template>
           <template #cell-schedulable="{ row }">
-            <!-- 异步保存,值由 handleToggleSchedulable 写回列表;保留本站点的 hover 配色。 -->
+            <!-- 异步保存，值由 handleToggleSchedulable 写回列表。 -->
             <Toggle
               :model-value="row.schedulable"
               size="sm"
               :disabled="togglingSchedulable === row.id"
-              on-class="bg-primary-500 hover:bg-primary-600"
-              off-class="bg-gray-200 hover:bg-gray-300 dark:bg-dark-600 dark:hover:bg-dark-500"
+              off-tone="soft"
               :title="row.schedulable ? t('admin.providers.schedulableEnabled') : t('admin.providers.schedulableDisabled')"
               @update:model-value="handleToggleSchedulable(row)"
             />
