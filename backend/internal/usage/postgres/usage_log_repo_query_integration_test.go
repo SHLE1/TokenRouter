@@ -32,11 +32,11 @@ CREATE TEMP TABLE usage_logs (LIKE public.usage_logs INCLUDING ALL) ON COMMIT DR
 CREATE TEMP TABLE request_records (LIKE public.request_records INCLUDING ALL) ON COMMIT DROP;
 CREATE TEMP TABLE ops_error_logs (LIKE public.ops_error_logs INCLUDING ALL) ON COMMIT DROP;
 CREATE TEMP TABLE ops_system_logs (LIKE public.ops_system_logs INCLUDING ALL) ON COMMIT DROP;
-INSERT INTO usage_logs(user_id,api_key_id,provider_id,request_id,upstream_request_id,model)
-SELECT 1,1,1,'request-'||g,'upstream-'||g,'model' FROM generate_series(1,20000) g;
+INSERT INTO usage_logs(user_id,billing_user_id,api_key_id,provider_id,request_id,upstream_request_id,model)
+SELECT 1,1,1,1,'request-'||g,'upstream-'||g,'model' FROM generate_series(1,20000) g;
 UPDATE usage_logs SET upstream_request_id='request-1' WHERE request_id='request-2';
-INSERT INTO usage_logs(user_id,api_key_id,provider_id,request_id,upstream_request_id,model)
-VALUES(1,1,1,NULL,'legacy-upstream','model');
+INSERT INTO usage_logs(user_id,billing_user_id,api_key_id,provider_id,request_id,upstream_request_id,model)
+VALUES(1,1,1,1,NULL,'legacy-upstream','model');
 INSERT INTO request_records(request_id,started_at,updated_at,revision,record)
 VALUES('request-1',now(),now(),1,'{"request_id":"request-1","state":"completed"}');
 ANALYZE usage_logs;
