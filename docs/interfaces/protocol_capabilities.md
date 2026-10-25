@@ -61,7 +61,7 @@ Responses WebSocket 的客户端许可在分组协议控制中设置，提供商
 
 这 3 个上游专用项加上 22 个客户端控制项，就是 25 项目录。
 
-批量图片是持久作业的入口：分组控制 `image_batches`，执行器检查提供商启用的是 Gemini Batch 还是 Vertex Batch 协议，并使用现有的 provider 选择和任务绑定。批量图片没有文本那样可以任选的转换目标。
+批量图片是持久作业的入口：分组控制 `image_batches`，执行器检查提供商启用的是 Gemini Batch 还是 Vertex Batch 协议，并使用现有的 provider 选择和任务绑定。批量图片没有文本那样可以任选的转换目标。目录与提交使用同一套候选资格，Vertex 新建作业还要求配置受管 GCS 存储桶。自动选择按提供商全局优先级数值升序、ID 升序处理 Gemini API 和 Vertex 候选。批量 API、worker 和清理不需要额外启用开关。
 
 Antigravity 对 Google 内部接口的封装，算作 `gemini_generate_content` 的一种平台适配，没有单独的协议复选框。Bedrock、Vertex Anthropic 等认证和端点的变体，同样归入对应的协议族。
 

@@ -563,7 +563,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	opsIngressRejectAggregator := provideOpsIngress(opsRepository, opsService)
 	appOpsRuntimeReady := provideOpsRuntime(opsMetricsCollector, opsAggregationService, opsAlertEvaluatorService, opsCleanupService, opsScheduledReportService, opsSystemLogSink, opsService, opsIngressRejectAggregator, manager, dashboardAggregationService)
 	appQueuesRuntimeReady := provideQueuesRuntime(emailQueueService, eligibility, usageRecordWorkerPool, ollamaCloudUsageService, auditLogService, grokQuotaService, openAIQuotaService, manager, deferredService, contentModerationService)
-	appBatchCleanupRuntime := provideBatchCleanupRuntime(cleanup, cfg)
+	appBatchCleanupRuntime := provideBatchCleanupRuntime(cleanup)
 	batchimageRuntime := provideBatchRuntime(service, batchImageRepository, providerStore, batchImageQueue, funds, usageLogRepository, pricing, apiKeyAuthCacheInvalidator, cfg, batchimageRegistry)
 	cnUsageMonitor := provideCNUsageMonitor(providerStore, upstreamUsageService, cfg, leaderLock, db)
 	appJobsRuntimeReady := provideJobsRuntime(appBatchCleanupRuntime, batchimageRuntime, creativeWorkerRuntime, cnUsageMonitor, manager)
