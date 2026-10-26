@@ -825,13 +825,13 @@ var ManagementOperations = map[string]*adminapi.Operation{
 		Title:  "Sync Upstream Models",
 		Description: "SyncUpstreamModels loads provider credentials and requests a live supported-model list. " +
 			"Lookup failures map to 404, configuration or unsupported errors to 400, and other query " +
-			"failures to sanitized 502 responses. OpenCode accepts optional provider_mode and base_url " +
-			"for this query and returns model_protocols with models; provider settings are saved separately.",
+			"failures to sanitized 502 responses. The query uses saved provider settings and rejects " +
+			"configuration overrides. OpenCode also returns catalogue protocol suggestions.",
 		Method:      "POST",
 		Path:        "/api/v1/admin/providers/:id/models/sync-upstream",
 		Response:    "json",
 		BrowserPath: "/admin/providers",
-		Input:       adminapi.Arguments("/api/v1/admin/providers/:id/models/sync-upstream", []string{}, (*ProviderModelsSyncRequest)(nil)),
+		Input:       adminapi.Arguments("/api/v1/admin/providers/:id/models/sync-upstream", []string{}, nil),
 	}),
 	"providers.models.sync_upstream_preview.create": adminapi.Define(adminapi.Operation{
 		ID:     "providers.models.sync_upstream_preview.create",
@@ -1565,16 +1565,6 @@ type ProviderBatchDeleteRequest struct {
 // ProviderBatchClearErrorRequest carries the administrative request decoded by its existing HTTP handler.
 type ProviderBatchClearErrorRequest struct {
 	ProviderIDs []int64 `json:"provider_ids"` // requested provider identifier list
-}
-
-// ProviderModelsSyncRequest carries temporary OpenCode settings for a saved provider query.
-type ProviderModelsSyncRequest struct {
-	// ProviderMode replaces the saved mode for this query when nonempty; saving
-	// the provider remains a separate administrator operation.
-	ProviderMode string `json:"provider_mode,omitempty"`
-	// BaseURL replaces the saved root when supplied, including an empty string
-	// that requests the selected mode's official inference root.
-	BaseURL *string `json:"base_url,omitempty"`
 }
 
 // ProviderModelsSyncPreviewRequest carries the administrative request decoded by its existing HTTP handler.

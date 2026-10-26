@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { adminAPI } from '@/api/admin'
-import { isUpstreamUsageQueryEnabled } from '@/utils/upstreamUsage'
+import { isUpstreamUsageQueryEnabled, resolveUpstreamUsageConfig } from '@/utils/upstreamUsage'
 import type {
   Provider,
   UpstreamUsageQueryError,
@@ -71,26 +71,6 @@ export function useProviderUpstreamUsage(
   // each key.
   const UPSTREAM_USAGE_CACHE_PREFIX = 'tokenrouter:admin:upstream-usage:v1:'
 
-  // effectiveUpstreamUsageAdapter resolves the adapter name expected by stored
-  // observations. CN billing modes choose fixed adapter names; supported relay
-  // choices retain their configured name, and other relay configurations use
-  // sub2api.
-  const effectiveUpstreamUsageAdapter = (provider: Provider) => {
-    if (provider.platform === 'kimi') {
-      return provider.credentials?.provider_mode === 'coding' ? 'kimi_coding' : 'kimi_balance'
-    }
-    if (provider.platform === 'zhipu') {
-      return provider.credentials?.provider_mode === 'coding' ? 'zhipu_coding' : ''
-    }
-    if (provider.platform === 'deepseek') return 'deepseek_balance'
-    const rawConfig = provider.extra?.upstream_usage_query as Record<string, unknown> | undefined
-    return rawConfig?.adapter === 'new_api' ||
-      rawConfig?.adapter === 'zivv' ||
-      rawConfig?.adapter === 'derouter'
-      ? rawConfig.adapter
-      : 'sub2api'
-  }
-
   // upstreamUsageCacheIdentity hashes an endpoint string into a compact cache-key
   // segment. The browser can distinguish configured addresses while
   // session-storage keys contain the unsigned hexadecimal hash instead of the
@@ -125,12 +105,8 @@ export function useProviderUpstreamUsage(
     if (!adminID) return ''
     const rawConfig = provider.extra?.upstream_usage_query as Record<string, unknown> | undefined
     const config = {
-      enabled: rawConfig?.enabled !== false,
-      adapter:
-        effectiveUpstreamUsageAdapter(provider) ||
-        (typeof rawConfig?.adapter === 'string' && rawConfig.adapter.trim()
-          ? rawConfig.adapter.trim()
-          : 'sub2api'),
+      ...resolveUpstreamUsageConfig(provider),
+      provider_mode: provider.credentials?.provider_mode ?? '',
       base_url: upstreamUsageCacheIdentity(
         typeof rawConfig?.base_url === 'string' ? rawConfig.base_url.trim() : '',
       ),
@@ -279,12 +255,11 @@ export function useProviderUpstreamUsage(
   ): data is UpstreamUsageQueryResult => {
     if (!data || typeof data !== 'object') return false
     const result = data as UpstreamUsageQueryResult
-    const rawConfig = provider.extra?.upstream_usage_query as Record<string, unknown> | undefined
-    const expectedAdapter = effectiveUpstreamUsageAdapter(provider)
+    const config = resolveUpstreamUsageConfig(provider)
     if (
       result.provider_id !== provider.id ||
-      rawConfig?.enabled === false ||
-      result.adapter !== expectedAdapter ||
+      !config.enabled ||
+      result.adapter !== config.adapter ||
       typeof result.observed_at !== 'string' ||
       !Number.isFinite(Date.parse(result.observed_at))
     )
@@ -493,7 +468,12 @@ export function useProviderUpstreamUsage(
       hydratedUpstreamUsageAdminID = adminID
     }
     for (const provider of providers.value) {
-      if (!isUpstreamUsageQueryEnabled(provider)) continue
+      if (!isUpstreamUsageQueryEnabled(provider)) {
+        // Removing eligibility also retires pending requests and old revisions,
+        // preventing Go observations from resurfacing after a switch to payg.
+        invalidateUpstreamUsageCache(provider.id)
+        continue
+      }
       const cached = readUpstreamUsageCache(provider)
       if (cached) {
         setUpstreamUsageState(provider.id, cached, null, false)
@@ -501,6 +481,35 @@ export function useProviderUpstreamUsage(
         setUpstreamUsageState(provider.id, null, null, false)
       }
     }
+  }
+
+  // ownsUpstreamUsageRequest checks a request token and its captured configuration
+  // before publishing a completion. Visible rows take precedence over the
+  // originally supplied record, while off-page selections retain their fetched
+  // record. Callers capture the cache identity before awaiting the API.
+  //
+  // A token mismatch belongs to newer work and leaves its state untouched. If
+  // the token still matches but the administrator or provider configuration has
+  // changed, clearing this request's state prevents its loading indicator or
+  // observation from remaining attached to the replacement identity.
+  const ownsUpstreamUsageRequest = (
+    provider: Provider,
+    requestToken: number,
+    cacheIdentity: string,
+  ) => {
+    const key = String(provider.id)
+    if (upstreamUsageRequestTokenByProviderId.value[key] !== requestToken) return false
+    const currentProvider = providers.value.find((item) => item.id === provider.id) ?? provider
+    if (
+      !isUpstreamUsageQueryEnabled(currentProvider) ||
+      upstreamUsageCacheKey(currentProvider) !== cacheIdentity
+    ) {
+      // Retire the still-owned loading state after a configuration change; a
+      // newer request's state has already been protected by the token check above.
+      setUpstreamUsageState(provider.id, null, null, false)
+      return false
+    }
+    return true
   }
 
   // requestUpstreamUsage fetches one enabled provider's observation, reusing a
@@ -534,6 +543,7 @@ export function useProviderUpstreamUsage(
     // Assign ownership before publishing loading state so a later single query
     // or invalidation can supersede this request independently.
     const requestToken = ++upstreamUsageRequestToken
+    const cacheIdentity = upstreamUsageCacheKey(provider)
     upstreamUsageRequestTokenByProviderId.value = {
       ...upstreamUsageRequestTokenByProviderId.value,
       [key]: requestToken,
@@ -543,7 +553,7 @@ export function useProviderUpstreamUsage(
       const result = await adminAPI.providers.queryUpstreamUsage(provider.id)
       // A newer query or provider edit has taken ownership; discard this
       // response before either storage or the displayed observation changes.
-      if (upstreamUsageRequestTokenByProviderId.value[key] !== requestToken) return
+      if (!ownsUpstreamUsageRequest(provider, requestToken, cacheIdentity)) return
       if (!isValidUpstreamUsageResult(provider, result)) {
         setUpstreamUsageState(provider.id, null, { code: 'UPSTREAM_USAGE_INVALID_RESPONSE' }, false)
         return
@@ -553,7 +563,7 @@ export function useProviderUpstreamUsage(
     } catch (error) {
       // A failed older query must not overwrite the error or loading state
       // belonging to the current provider request.
-      if (upstreamUsageRequestTokenByProviderId.value[key] !== requestToken) return
+      if (!ownsUpstreamUsageRequest(provider, requestToken, cacheIdentity)) return
       setUpstreamUsageState(provider.id, null, normalizeUpstreamUsageError(error), false)
     }
   }
@@ -578,6 +588,9 @@ export function useProviderUpstreamUsage(
         upstreamUsageRequestTokenByProviderId.value[String(provider.id)] ?? 0,
       ]),
     )
+    const cacheIdentities = new Map(
+      selectedProviders.map((provider) => [provider.id, upstreamUsageCacheKey(provider)]),
+    )
     let success = 0
     let failed = 0
     let result: Awaited<ReturnType<typeof adminAPI.providers.queryBatchUpstreamUsage>>
@@ -589,8 +602,14 @@ export function useProviderUpstreamUsage(
       // Validate each batch entry independently; mismatched tokens belong to
       // newer work and must not affect totals or cached observations.
       for (const provider of selectedProviders) {
-        const key = String(provider.id)
-        if (upstreamUsageRequestTokenByProviderId.value[key] !== tokens.get(provider.id)) continue
+        if (
+          !ownsUpstreamUsageRequest(
+            provider,
+            tokens.get(provider.id)!,
+            cacheIdentities.get(provider.id)!,
+          )
+        )
+          continue
         setUpstreamUsageState(provider.id, null, normalizeUpstreamUsageError(error), false)
         failed++
       }
@@ -598,7 +617,14 @@ export function useProviderUpstreamUsage(
     }
     for (const provider of selectedProviders) {
       const key = String(provider.id)
-      if (upstreamUsageRequestTokenByProviderId.value[key] !== tokens.get(provider.id)) continue
+      if (
+        !ownsUpstreamUsageRequest(
+          provider,
+          tokens.get(provider.id)!,
+          cacheIdentities.get(provider.id)!,
+        )
+      )
+        continue
       const data = result.usage?.[key]
       const queryError = result.errors?.[key]
       if (data) {

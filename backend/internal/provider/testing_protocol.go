@@ -98,3 +98,10 @@ func TestProtocolRouteFromContext(ctx context.Context) TestProtocolRoute {
 	route, _ := ctx.Value(testProtocolRouteKey{}).(TestProtocolRoute)
 	return route
 }
+
+// WithTestProtocolRoute retains a validated probe route for attribute lookups.
+// Callers validate both protocol identities before using this context. The
+// derived context retains the parent's cancellation and all other request values.
+func WithTestProtocolRoute(ctx context.Context, route TestProtocolRoute) context.Context {
+	return context.WithValue(ctx, testProtocolRouteKey{}, route)
+}

@@ -14,6 +14,8 @@ import (
 //
 // The record is translated into a modelcatalog.Target for the actual upstream
 // protocol, then WithServiceIdentity resolves its service and endpoint context.
+// OpenCode retains its service model separately from the canonical author
+// metadata reference so that service prices cannot supply model attributes.
 // OpenAI API Key Chat routes additionally recognize Ollama through their
 // address or saved usage markers, and attach the provider's output cap for
 // execution rules. Responses routes omit that Ollama interpretation. The helper
@@ -41,6 +43,10 @@ func (r *Record) ModelAttributeTarget(model, upstreamProtocol string) modelcatal
 	}
 	target.Platform, target.ProviderType = r.Platform, r.Type
 	target.ProviderMode, target.Site = r.GetCredential("provider_mode"), r.GetCredential("site")
+	if r.IsOpenCode() {
+		target.ProviderMode = r.OpenCodeMode()
+		target.AttributeModel = modelcatalog.OpenCodeOfferings(target.ProviderMode)[model].CanonicalModelID
+	}
 	target.BaseURL = r.GetCredential("base_url")
 	// Catalogue identity must follow the endpoint used by this protocol. A
 	// provider can configure separate Chat, Messages, and Responses addresses

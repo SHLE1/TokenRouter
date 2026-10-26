@@ -143,9 +143,6 @@ func (s *CNProviderTest) executeAdaptiveAnthropic(c *TestRun, value *providercor
 	}
 	req.Header.Set("anthropic-beta", claude.APIKeyBetaHeader)
 	claude.SetAPIKeyAuthHeader(req.Header, value.GetAnthropicAPIKeyAuthScheme() == providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer, authToken)
-	if value.IsOpenCode() {
-		req.Header.Set("User-Agent", c.Headers.Get("User-Agent"))
-	}
 	applyGrokQuotaHeaders(value, req.Header)
 	resp, err := s.doAdaptiveRequest(req, value)
 	if err != nil {
@@ -215,9 +212,6 @@ func (s *CNProviderTest) executeAdaptiveResponses(c *TestRun, value *providercor
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	openai.ApplyOpenAICodexProbeHeaders(req.Header)
-	if value.IsOpenCode() {
-		req.Header.Set("User-Agent", c.Headers.Get("User-Agent"))
-	}
 	applyGrokQuotaHeaders(value, req.Header)
 	resp, err := s.doAdaptiveRequest(req, value)
 	if err != nil {

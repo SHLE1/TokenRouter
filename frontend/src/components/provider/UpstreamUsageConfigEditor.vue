@@ -8,9 +8,9 @@
       testid="upstream-usage-enabled"
     />
 
-    <Collapse :open="enabledModel && !automaticAdapter" unmount-on-hide>
+    <Collapse :open="enabledModel && (!automaticAdapter || baseUrlEditable)" unmount-on-hide>
       <SettingsSubpanel>
-        <div>
+        <div v-if="!automaticAdapter">
           <label class="input-label">{{ t('admin.providers.upstreamUsage.adapter') }}</label>
           <Select
             v-model="adapterModel"
@@ -18,30 +18,18 @@
             data-testid="upstream-usage-adapter"
           />
         </div>
-        <div>
+        <div v-if="baseUrlEditable">
           <label class="input-label">{{ t('admin.providers.upstreamUsage.baseUrl') }}</label>
           <input
             v-model="baseUrlModel"
             type="text"
             class="input"
-            :placeholder="
-              adapterModel === 'derouter'
-                ? 'https://cf-api.derouter.ai'
-                : t('admin.providers.upstreamUsage.baseUrlPlaceholder')
-            "
+            :placeholder="baseUrlPresentation.placeholder"
             data-testid="upstream-usage-base-url"
           />
-          <p class="input-hint">
-            {{
-              t(
-                adapterModel === 'derouter'
-                  ? 'admin.providers.upstreamUsage.derouterBaseUrlHint'
-                  : 'admin.providers.upstreamUsage.baseUrlHint',
-              )
-            }}
-          </p>
+          <p class="input-hint">{{ baseUrlPresentation.hint }}</p>
         </div>
-        <template v-if="adapterModel === 'new_api'">
+        <template v-if="!automaticAdapter && adapterModel === 'new_api'">
           <div>
             <label class="input-label">{{
               t('admin.providers.upstreamUsage.walletAccessToken')
@@ -87,8 +75,9 @@ import type { UpstreamUsageAdapter } from '@/api/admin/providers.types'
 
 // UpstreamUsageConfigEditor.vue edits a provider usage-query adapter, management address,
 // and optional wallet credentials. Each input emits its own value to the parent form. The
-// automatic adapter flag changes the visible controls, and New API exposes wallet
-// authentication independently from inference credentials.
+// automatic adapter flag hides the selector, while baseUrlEditable independently
+// controls management-address editing. New API exposes wallet authentication
+// independently from inference credentials.
 
 // props exposes caller-owned inputs used by the template and derived state in this
 // component.
@@ -107,6 +96,9 @@ const props = withDefaults(
     // When true, hides manual adapter selection while retaining the caller-supplied
     // adapter draft value.
     automaticAdapter?: boolean
+    // Defaults to true for independent management endpoints; callers disable it
+    // for fixed CN platform forms whose query address is not editable.
+    baseUrlEditable?: boolean
   }>(),
   {
     enabled: true,
@@ -115,6 +107,7 @@ const props = withDefaults(
     walletAccessToken: '',
     walletUserId: '',
     automaticAdapter: false,
+    baseUrlEditable: true,
   },
 )
 
@@ -142,6 +135,26 @@ const adapterOptions = computed<SelectOption[]>(() => [
   { value: 'zivv', label: t('admin.providers.upstreamUsage.adapters.zivv') },
   { value: 'derouter', label: t('admin.providers.upstreamUsage.adapters.derouter') },
 ])
+
+// baseUrlPresentation keeps the default management destination and its explanation
+// together. Platform-selected Go usage and Derouter query their dedicated official
+// roots; ordinary relay adapters inherit the provider forwarding root when blank.
+const baseUrlPresentation = computed(() => {
+  if (props.adapter === 'opencode_go')
+    return {
+      placeholder: 'https://opencode.ai',
+      hint: t('admin.providers.upstreamUsage.openCodeBaseUrlHint'),
+    }
+  if (props.adapter === 'derouter')
+    return {
+      placeholder: 'https://cf-api.derouter.ai',
+      hint: t('admin.providers.upstreamUsage.derouterBaseUrlHint'),
+    }
+  return {
+    placeholder: t('admin.providers.upstreamUsage.baseUrlPlaceholder'),
+    hint: t('admin.providers.upstreamUsage.baseUrlHint'),
+  }
+})
 
 // enabledModel forwards the query switch to the parent and reflects its current value in
 // the shared toggle row.

@@ -247,6 +247,7 @@ func filterSchedulerCredentials(credentials map[string]any) map[string]any {
 		"openai_auth_mode",
 		"provider_mode",
 		"opencode_model_protocols",
+		"opencode_catalog_protocols",
 		"api_protocol",
 		"openai_workload_capabilities",
 		"api_key",

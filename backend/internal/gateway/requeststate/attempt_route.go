@@ -6,10 +6,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // attempt_route.go resolves provider protocol attempts from request routing
-// state and applies the current model mapping.
+// state and retains the model selected for each admitted attempt.
 // Provider capabilities can change between selections even when the request
 // keeps its group plan. Candidate resolution therefore rechecks the current
 // provider snapshot against the client protocol before a later attempt uses a
@@ -19,9 +20,10 @@ import (
 // Without a saved plan, an existing attempt protocol can be retained for
 // compatibility, otherwise the state builds a capability route from the current
 // group. Only an admitted saved plan publishes a CandidatePlan to callers;
-// model mapping remains late-bound to the configuration supplied to
-// ResolveModel, so a refreshed mapping is read when each attempt resolves its
-// model.
+// that candidate retains the final model and metadata identity with its
+// protocol. Legacy calls without a model plan resolve supplied mappings when
+// requested. A new candidate reads a fresh snapshot before execution, so a
+// retry can observe changed aliases without altering an in-flight attempt.
 
 // AttemptRoute records one candidate's protocol and optional admitted model
 // plan.
@@ -52,8 +54,8 @@ func (a AttemptRoute) Candidate() (routing.CandidatePlan, bool) {
 // false, as is any attempt lacking a client protocol. Otherwise current group
 // policy supplies a fresh capability plan. Resolution failure returns an error
 // and an empty attempt; an unplanned success publishes its protocol alone,
-// while a planned success also captures its candidate for later model
-// resolution.
+// while a planned success also captures its final model and canonical metadata
+// identity together with that protocol.
 func (s RoutingState) ResolveAttempt(snapshot provider.ProviderSnapshot, previous AttemptRoute) (AttemptRoute, bool, error) {
 	plan, planned := s.plan, s.planSet
 	// A derived group fallback can retain its predecessor's plan. Discard that
@@ -85,16 +87,26 @@ func (s RoutingState) ResolveAttempt(snapshot provider.ProviderSnapshot, previou
 	return result, true, nil
 }
 
-// ResolveModel applies one provider mapping using the supplied current
-// configuration and reports whether it matched. Planned attempts resolve
-// through their captured candidate; compatibility attempts use
-// provider.ResolveMappedModel directly, so the saved attempt does not freeze
-// the mapping.
+// ResolveModel returns the captured final identity for an admitted model attempt.
+// Requested, group-mapped, and final spellings all select that same result,
+// preventing a mapped target from being interpreted as another alias hop.
+//
+// Unplanned calls and model-free legacy plans apply the supplied mapping. An
+// auxiliary model on a model-independent platform uses its separate mapping,
+// such as an image-tool model inside a text attempt. OpenCode auxiliary models
+// require a separately resolved attempt because their encoding can differ;
+// returning empty prevents callers from sending them on the retained protocol.
 func (a AttemptRoute) ResolveModel(id int64, platform string, mapping map[string]string, requested string) (string, bool) {
-	if a.planned {
-		snapshot := provider.ProviderSnapshot{ID: id, Platform: platform, ModelPolicy: provider.NewModelRoutingSnapshot(mapping)}
-		candidate, matched := a.candidate.ResolveModel(snapshot, requested)
-		return candidate.Models.ProviderMappedModel, matched
+	if a.planned && a.candidate.ProviderID == id {
+		models := a.candidate.Models
+		if models.RequestedModel != "" || models.GroupMappedModel != "" {
+			if requested == models.RequestedModel || requested == models.GroupMappedModel || requested == models.ProviderMappedModel {
+				return models.ProviderMappedModel, a.candidate.ModelMappingMatched
+			}
+			if platform == capability.PlatformOpenCode {
+				return "", false
+			}
+		}
 	}
 	return provider.ResolveMappedModel(mapping, requested)
 }

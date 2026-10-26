@@ -52,6 +52,9 @@ type Profile struct {
 	// Type is the credential type.
 	Platform, Name, Type string
 	UsesCodex            bool // Codex protocol selection flag
+	// HTTPContinuation retains upstream response references on admitted native
+	// HTTP Responses routes after the caller has validated ownership and affinity.
+	HTTPContinuation bool
 	// OpenAI identifies the platform; OAuth identifies OAuth credentials;
 	// OAuthLike includes compatible credential types; APIKey identifies API Key
 	// credentials.

@@ -14,7 +14,11 @@ export default {
       payg: 'Console / Zen（按量）',
       description: '使用 API Key 接入 OpenCode 模型。Go 用量可在提供商列表中手动刷新。',
       modelProtocols: '模型协议',
-      modelProtocolsHint: '同步模型协议，或为指定模型手动设置协议。两种服务模式分别保存配置。',
+      modelProtocolsHint:
+        '查看目录建议，或为指定模型手动设置协议。删除覆盖后使用目录选择，两种服务模式分别保存配置。',
+      syncSavedSettings: '同步使用已保存的 API Key、服务模式和根地址。',
+      saveBeforeSync: '请先保存 API Key、服务模式和根地址的更改，再同步模型。',
+      catalogSuggestion: '目录建议',
       selectProtocol: '选择协议',
       endpointOverrides: '自定义协议地址',
     },
@@ -361,6 +365,7 @@ export default {
       baseUrl: '查询 Base URL 覆盖',
       baseUrlPlaceholder: '留空则使用提供商转发 Base URL',
       baseUrlHint: '所选适配器会固定请求路径和格式。留空即可复用提供商的 Base URL。',
+      openCodeBaseUrlHint: '留空查询 https://opencode.ai。Go 管理地址与推理地址分别配置。',
       derouterBaseUrlHint:
         '使用提供商的 Account Key 查询可用余额（USD）。留空使用 https://cf-api.derouter.ai，也可填写管理接口的根地址。',
       walletAccessToken: 'New API 用户访问令牌（可选）',

@@ -45,6 +45,17 @@ func ApplyHeaders(headers http.Header, key string, read func(string) string) {
 	if agent == "" {
 		agent = headers.Get("User-Agent")
 	}
+	// Remove every wire spelling before publishing one final agent identity.
+	// A caller agent wins over configured values; absent caller identity retains
+	// the configured value even when its map key used noncanonical casing.
+	for name, values := range headers {
+		if strings.EqualFold(name, "user-agent") {
+			if agent == "" && len(values) > 0 {
+				agent = strings.TrimSpace(values[0])
+			}
+			delete(headers, name)
+		}
+	}
 	if agent == "" {
 		agent = "TokenRouter"
 	}

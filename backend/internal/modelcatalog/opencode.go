@@ -3,14 +3,17 @@ package modelcatalog
 import (
 	"encoding/json"
 	"maps"
+	"strings"
 	"sync"
 )
 
-// opencode.go indexes the protocol declarations of OpenCode model offerings.
-// Service routes remain separate from the price and attribute indexes because
-// an intermediary's encoding determines its request endpoint independently of
-// the first-party metadata used for billing. Each mode retains exact model IDs;
-// the same model can use different encodings on payg and Go.
+// opencode.go indexes the encodings and canonical identities of OpenCode model
+// offerings. Service offerings retain public attribute references separately
+// from prices because an intermediary's encoding determines its request
+// endpoint independently of the author metadata used for model attributes.
+// Each mode retains exact model IDs; the same model can use different encodings
+// on payg and Go. Missing canonical declarations use an exact, unique public
+// model ID, and ambiguous author matches leave the identity unknown.
 //
 // The embedded publication provides deterministic startup defaults. A live
 // model synchronization can obtain declarations from another catalog body and
@@ -18,42 +21,83 @@ import (
 // changes before they affect inference. Returned maps are detached from the
 // retained publication so request-specific overrides cannot mutate defaults.
 
-// embeddedOpenCodeProtocols parses the bundled publication once and retains
+// embeddedOpenCodeOfferings parses the bundled publication once and retains
 // immutable mode tables; callers obtain independent copies through the accessor.
-var embeddedOpenCodeProtocols = sync.OnceValue(func() map[string]map[string]string {
+var embeddedOpenCodeOfferings = sync.OnceValue(func() map[string]map[string]OpenCodeOffering {
 	body, err := Offline()
 	if err != nil {
 		// An unreadable bundled catalog provides no verified routes. Unknown models
 		// then require administrator overrides instead of choosing a guessed endpoint.
 		return nil
 	}
-	return ParseOpenCodeProtocols(body)
+	return ParseOpenCodeOfferings(body)
 })
+
+// OpenCodeOffering retains one service model's encoding and public metadata identity.
+// The map key remains the outbound model name; CanonicalModelID selects author
+// attributes independently of service prices and administrator protocol overrides.
+type OpenCodeOffering struct {
+	Protocol         string // declared upstream wire encoding
+	CanonicalModelID string // public author metadata identity
+}
+
+// OpenCodeOfferings returns detached offering metadata for one bundled service
+// mode. Unknown modes return nil, and changing the result leaves future
+// snapshots attached to the embedded publication's original offering records.
+func OpenCodeOfferings(mode string) map[string]OpenCodeOffering {
+	return maps.Clone(embeddedOpenCodeOfferings()[mode])
+}
 
 // OpenCodeProtocols returns copied protocol defaults for one service mode.
 // Unknown modes return an empty map. Defaults come from the bundled models.dev
 // publication and can be replaced by saved provider model declarations.
 func OpenCodeProtocols(mode string) map[string]string {
-	return maps.Clone(embeddedOpenCodeProtocols()[mode])
+	result := make(map[string]string)
+	for id, offering := range OpenCodeOfferings(mode) {
+		if offering.Protocol != "" {
+			result[id] = offering.Protocol
+		}
+	}
+	return result
 }
 
-// ParseOpenCodeProtocols extracts exact model routes from a models.dev catalog.
-// Invalid JSON returns no routes. Model SDK declarations override the provider
-// SDK, and decision models use SystemOne regardless of an inherited chat SDK.
-//
-// SDK identities describe wire formats rather than inferred model families.
-// Unrecognized encodings remain absent so a future format cannot silently use
-// an unrelated endpoint. This parser deliberately excludes prices and model
-// attributes; those continue through the catalog's normal validation and
-// first-party selection. Callers own every map in the returned result and may
-// combine the selected mode with administrator-supplied overrides.
+// ParseOpenCodeProtocols extracts protocol suggestions from a catalog body.
+// Invalid JSON returns an empty result; unknown SDK encodings are omitted so
+// synchronization cannot invent an execution protocol for a model offering.
 func ParseOpenCodeProtocols(body []byte) map[string]map[string]string {
+	result := make(map[string]map[string]string)
+	for mode, offerings := range ParseOpenCodeOfferings(body) {
+		routes := make(map[string]string)
+		for id, offering := range offerings {
+			if offering.Protocol != "" {
+				routes[id] = offering.Protocol
+			}
+		}
+		result[mode] = routes
+	}
+	return result
+}
+
+// ParseOpenCodeOfferings extracts service model encodings and canonical author
+// identities from one catalog publication. Invalid JSON returns nil; model SDK
+// declarations override the provider SDK, and decision entries select SystemOne.
+//
+// Canonical identities survive unknown encodings because metadata and execution
+// eligibility answer separate questions. A manual protocol override can make
+// such an offering executable while its author metadata remains available.
+// Missing canonical declarations use an exact model component from a unique
+// public author entry. Explicit declarations take precedence, and ambiguous or
+// absent public matches stay unknown. Prices stay in the catalog's independently
+// filtered price index, and every returned mode map belongs to the caller.
+func ParseOpenCodeOfferings(body []byte) map[string]map[string]OpenCodeOffering {
 	var source struct {
+		Models    map[string]json.RawMessage `json:"models"` // qualified public model records
 		Providers map[string]struct {
 			NPM    string `json:"npm"` // provider default SDK
 			Models map[string]struct {
-				Type     string `json:"type"` // declared model operation
-				Provider struct {
+				Type      string `json:"type"`               // declared model operation
+				Canonical string `json:"canonical_model_id"` // public author metadata identity
+				Provider  struct {
 					NPM string `json:"npm"`
 				} `json:"provider"` // per-model SDK override
 			} `json:"models"` // exact model identity records
@@ -62,10 +106,24 @@ func ParseOpenCodeProtocols(body []byte) map[string]map[string]string {
 	if json.Unmarshal(body, &source) != nil {
 		return nil
 	}
-	result := make(map[string]map[string]string, 2)
+	// Older offerings omit canonical references even when an exact public model
+	// exists. Keep only unique author matches so shared names cannot choose a vendor.
+	publicModels := make(map[string]string, len(source.Models))
+	for canonical := range source.Models {
+		author, model, qualified := strings.Cut(canonical, "/")
+		if !qualified || author == "" || model == "" {
+			continue
+		}
+		if _, exists := publicModels[model]; exists {
+			publicModels[model] = ""
+			continue
+		}
+		publicModels[model] = canonical
+	}
+	result := make(map[string]map[string]OpenCodeOffering, 2)
 	for mode, name := range map[string]string{"payg": "opencode", "go": "opencode-go"} {
 		service := source.Providers[name]
-		routes := make(map[string]string)
+		routes := make(map[string]OpenCodeOffering)
 		for id, model := range service.Models {
 			sdk := model.Provider.NPM
 			if sdk == "" {
@@ -87,9 +145,11 @@ func ParseOpenCodeProtocols(body []byte) map[string]map[string]string {
 			if model.Type == "decision" {
 				target = "systemone"
 			}
-			if target != "" {
-				routes[id] = target
+			canonical := model.Canonical
+			if canonical == "" {
+				canonical = publicModels[id]
 			}
+			routes[id] = OpenCodeOffering{Protocol: target, CanonicalModelID: canonical}
 		}
 		result[mode] = routes
 	}

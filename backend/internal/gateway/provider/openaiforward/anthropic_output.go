@@ -27,13 +27,17 @@ import (
 // creation, and cache-read usage buckets. Converted Responses and Chat output
 // reconstruct those fragments while retaining the vendor model declaration
 // before restoring the caller model, and their OpenAI completion input count
-// includes every input bucket.
+// includes every input bucket. Completion separately receives normalized native
+// usage, including cache lifetimes and speed, so inclusive client counts cannot
+// be mistaken for billable uncached input. The typed aggregate merge retains
+// output counts reported in message_start by compatible providers. Raw parsing
+// then resolves cache TTL presence and any prompt totals that include those writes.
 //
 // Buffered conversion waits for a message_start before producing JSON, while
-// streaming conversion commits SSE headers and records the first decoded event
-// as its timing observation. An idle timeout closes the upstream body; buffered
-// output reports a failure with no result, and streaming output returns
-// collected usage beside that error. Responses streaming continues conversion
+// streaming conversion commits SSE headers before reading vendor events.
+// An idle timeout closes the upstream body; buffered
+// output returns any observed usage beside the error, and streaming output
+// returns its current usage snapshot. Responses streaming continues conversion
 // state after client disconnection, while Chat streaming continues usage
 // collection and stops its ordinary event conversion. The execution caller
 // retains final body cleanup.
@@ -68,9 +72,9 @@ func AnthropicUsageToOpenAI(u *upstream.TokenUsage) protocolopenai.ForwardUsage 
 
 // ResponsesFromAnthropicBuffered reconstructs Responses JSON and completion
 // usage from paired Anthropic event/data lines. The caller closes the response
-// body after reading; a missing message_start or idle expiry returns no result
-// and writes the applicable client failure. Non-idle scanner failures end
-// accumulation after diagnostic handling.
+// body after reading; a missing message_start or idle expiry writes the client
+// failure and returns any accumulated usage beside the error. Non-idle scanner
+// failures end accumulation after diagnostic handling.
 //
 // Content deltas append to the matching reconstructed block, including split
 // tool arguments, and vendor model evidence is captured before caller-model
@@ -96,6 +100,30 @@ func ResponsesFromAnthropicBuffered(resp *http.Response, c *upstream.OutputConte
 
 	var finalResp *protocolanthropic.AnthropicResponse
 	var usage upstream.TokenUsage
+
+	resultWithUsage := func() *Result {
+		return &Result{
+			RequestID:        requestID,
+			Headers:          resp.Header,
+			Usage:            AnthropicUsageToOpenAI(&usage),
+			NativeUsage:      &usage,
+			Model:            originalModel,
+			BillingModel:     billingModel,
+			UpstreamModel:    upstreamModel,
+			UpstreamEndpoint: "/v1/messages",
+			ReasoningEffort:  reasoningEffort,
+			Stream:           false,
+			Duration:         time.Since(startTime),
+		}
+	}
+	// Preserve measured work when buffered conversion fails after observing usage.
+	// Completion eligibility stays with the caller, while the returned evidence
+	// remains available for diagnostics or an eligible partial-completion record.
+	defer func() {
+		if failure != nil && out == nil && usage != (upstream.TokenUsage{}) {
+			out = resultWithUsage()
+		}
+	}()
 
 	// The line-consumer interval bounds buffered waiting before JSON output;
 	// expiry closes the body so the scanner can finish and the client receives a
@@ -176,6 +204,11 @@ func ResponsesFromAnthropicBuffered(resp *http.Response, c *upstream.OutputConte
 				finalResp.StopReason = bridge.AnthropicStopReasonPtr(event.Delta.StopReason)
 			}
 		}
+		// Reconcile raw usage after typed aggregates so TTL-only creation counts
+		// participate in compatible prompt normalization and explicit zeros clear
+		// earlier buckets.
+		protocolanthropic.ParseSSEUsagePassthrough(payload, &usage)
+
 		if event.Type == "content_block_start" && event.ContentBlock != nil && finalResp != nil {
 			finalResp.Content = append(finalResp.Content, *event.ContentBlock)
 		}
@@ -238,18 +271,7 @@ func ResponsesFromAnthropicBuffered(resp *http.Response, c *upstream.OutputConte
 		c.JSON(http.StatusOK, responsesResp)
 	}
 
-	return &Result{
-		RequestID:        requestID,
-		Headers:          resp.Header,
-		Usage:            AnthropicUsageToOpenAI(&usage),
-		Model:            originalModel,
-		BillingModel:     billingModel,
-		UpstreamModel:    upstreamModel,
-		UpstreamEndpoint: "/v1/messages",
-		ReasoningEffort:  reasoningEffort,
-		Stream:           false,
-		Duration:         time.Since(startTime),
-	}, nil
+	return resultWithUsage(), nil
 }
 
 // ResponsesFromAnthropicStreaming converts paired Anthropic event/data lines
@@ -299,6 +321,7 @@ func ResponsesFromAnthropicStreaming(resp *http.Response, c *upstream.OutputCont
 			RequestID:        requestID,
 			Headers:          resp.Header,
 			Usage:            AnthropicUsageToOpenAI(&usage),
+			NativeUsage:      &usage,
 			Model:            originalModel,
 			BillingModel:     billingModel,
 			UpstreamModel:    upstreamModel,
@@ -338,17 +361,17 @@ func ResponsesFromAnthropicStreaming(resp *http.Response, c *upstream.OutputCont
 
 	// After client disconnection, keep advancing conversion state and draining usage.
 	// The final output token count arrives in a trailing message_delta event.
-	processAnthropicEvent := func(event *protocolanthropic.AnthropicStreamEvent) {
-		// Measure the first decoded vendor event, including metadata-only events,
-		// from request start; this observation can precede the first client-visible
-		// converted chunk.
-
+	processAnthropicEvent := func(event *protocolanthropic.AnthropicStreamEvent, payload string) {
 		if event.Type == "message_delta" && event.Usage != nil {
 			protocolanthropic.MergeAnthropicUsage(&usage, *event.Usage)
 		}
 		if event.Type == "message_start" && event.Message != nil {
 			protocolanthropic.MergeAnthropicUsage(&usage, event.Message.Usage)
 		}
+		// Reconcile raw usage after typed aggregates so TTL-only creation counts
+		// participate in compatible prompt normalization and explicit zeros clear
+		// earlier buckets.
+		protocolanthropic.ParseSSEUsagePassthrough(payload, &usage)
 
 		events := bridge.AnthropicEventToResponsesEvents(o.Runtime, event, state)
 		if clientDisconnected {
@@ -417,7 +440,7 @@ func ResponsesFromAnthropicStreaming(resp *http.Response, c *upstream.OutputCont
 			continue
 		}
 
-		processAnthropicEvent(&event)
+		processAnthropicEvent(&event, payload)
 	}
 
 	// Finalize Responses conversion after scanner completion even if client output
@@ -460,15 +483,16 @@ func ResponsesFromAnthropicStreaming(resp *http.Response, c *upstream.OutputCont
 
 // ChatFromAnthropicBuffered reconstructs Chat JSON and completion usage from
 // paired Anthropic event/data lines. The caller retains response-body cleanup;
-// idle expiry and an absent message_start produce client failure with no
-// result, while other scanner endings allow reconstruction from available
+// idle expiry and an absent message_start produce client failure with any
+// observed usage, while other scanner endings allow reconstruction from available
 // content.
 //
 // Vendor model evidence is captured before converting through Responses into
 // the caller's Chat model. Content and tool-argument fragments accumulate in
 // the Anthropic message before conversion. Successful preparatory marshaling
 // applies reverse-tool names, and the returned result carries normalized
-// inclusive input usage independently of that client output representation.
+// inclusive input usage and complete native buckets independently of that client
+// output representation.
 func ChatFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time) (out *Result, failure error) {
 	var modelObserver protocol.ResponseModelObserver
 	defer func() {
@@ -487,6 +511,30 @@ func ChatFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o
 
 	var finalResp *protocolanthropic.AnthropicResponse
 	var usage upstream.TokenUsage
+
+	resultWithUsage := func() *Result {
+		return &Result{
+			RequestID:        requestID,
+			Headers:          resp.Header,
+			Usage:            AnthropicUsageToOpenAI(&usage),
+			NativeUsage:      &usage,
+			Model:            originalModel,
+			BillingModel:     billingModel,
+			UpstreamModel:    upstreamModel,
+			UpstreamEndpoint: "/v1/messages",
+			ReasoningEffort:  reasoningEffort,
+			Stream:           false,
+			Duration:         time.Since(startTime),
+		}
+	}
+	// Preserve measured work when buffered conversion fails after observing usage.
+	// Completion eligibility stays with the caller, while the returned evidence
+	// remains available for diagnostics or an eligible partial-completion record.
+	defer func() {
+		if failure != nil && out == nil && usage != (upstream.TokenUsage{}) {
+			out = resultWithUsage()
+		}
+	}()
 
 	// The line-consumer interval bounds buffered waiting before JSON output;
 	// expiry closes the body so the scanner can finish and the client receives a
@@ -567,6 +615,11 @@ func ChatFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o
 				finalResp.StopReason = bridge.AnthropicStopReasonPtr(event.Delta.StopReason)
 			}
 		}
+		// Reconcile raw usage after typed aggregates so TTL-only creation counts
+		// participate in compatible prompt normalization and explicit zeros clear
+		// earlier buckets.
+		protocolanthropic.ParseSSEUsagePassthrough(payload, &usage)
+
 		if event.Type == "content_block_start" && event.ContentBlock != nil && finalResp != nil {
 			finalResp.Content = append(finalResp.Content, *event.ContentBlock)
 		}
@@ -625,18 +678,7 @@ func ChatFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o
 		c.JSON(http.StatusOK, ccResp)
 	}
 
-	return &Result{
-		RequestID:        requestID,
-		Headers:          resp.Header,
-		Usage:            AnthropicUsageToOpenAI(&usage),
-		Model:            originalModel,
-		BillingModel:     billingModel,
-		UpstreamModel:    upstreamModel,
-		UpstreamEndpoint: "/v1/messages",
-		ReasoningEffort:  reasoningEffort,
-		Stream:           false,
-		Duration:         time.Since(startTime),
-	}, nil
+	return resultWithUsage(), nil
 }
 
 // ChatFromAnthropicStreaming converts Anthropic events through Responses state
@@ -688,6 +730,7 @@ func ChatFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, 
 			RequestID:        requestID,
 			Headers:          resp.Header,
 			Usage:            AnthropicUsageToOpenAI(&usage),
+			NativeUsage:      &usage,
 			Model:            originalModel,
 			BillingModel:     billingModel,
 			UpstreamModel:    upstreamModel,
@@ -749,11 +792,7 @@ func ChatFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, 
 		return false
 	}
 
-	processAnthropicEvent := func(event *protocolanthropic.AnthropicStreamEvent) bool {
-		// Measure the first decoded vendor event, including metadata-only events,
-		// from request start; this observation can precede the first client-visible
-		// converted chunk.
-
+	processAnthropicEvent := func(event *protocolanthropic.AnthropicStreamEvent, payload string) bool {
 		// Update usage before the disconnect guard so trailing message_delta tokens
 		// remain available even after conversion output has stopped for that client.
 		if event.Type == "message_delta" && event.Usage != nil {
@@ -762,6 +801,10 @@ func ChatFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, 
 		if event.Type == "message_start" && event.Message != nil {
 			protocolanthropic.MergeAnthropicUsage(&usage, event.Message.Usage)
 		}
+		// Reconcile raw usage after typed aggregates so TTL-only creation counts
+		// participate in compatible prompt normalization and explicit zeros clear
+		// earlier buckets.
+		protocolanthropic.ParseSSEUsagePassthrough(payload, &usage)
 
 		// After output failure, skip ordinary event conversion while the outer reader
 		// continues consuming lines; accumulated usage still reaches the returned
@@ -821,7 +864,7 @@ func ChatFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, 
 			continue
 		}
 
-		if processAnthropicEvent(&event) {
+		if processAnthropicEvent(&event, payload) {
 			return resultWithUsage(), nil
 		}
 	}

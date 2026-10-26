@@ -71,16 +71,16 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 		return fmt.Errorf("count_tokens: missing provider")
 	}
 
-	// Grok and CN counts use the local Anthropic estimator regardless of
+	// Grok, CN, and OpenCode counts use the local Anthropic estimator regardless of
 	// configured upstream protocol, leaving their inference transport and
 	// health state unused here.
 	if (provider.View().IsCNProvider() || provider.View().IsOpenCode()) || provider.View().IsGrok() {
 		estimated, err := tokenestimate.Anthropic(body)
 		if err != nil {
 			writeAnthropicCountTokensError(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
-			return fmt.Errorf("count_tokens: estimate cn provider input tokens: %w", err)
+			return fmt.Errorf("count_tokens: estimate compatible provider input tokens: %w", err)
 		}
-		logging.L().Debug("openai count_tokens: cn provider local estimate",
+		logging.L().Debug("openai count_tokens: compatible provider local estimate",
 			zap.Int64("provider_id", provider.Record.ID),
 			zap.Int("estimated_input_tokens", estimated),
 		)
@@ -244,7 +244,7 @@ func (s *OpenAIAuxiliary) buildInputTokensUpstreamRequest(
 ) (*http.Request, error) {
 	targetURL := openaiPlatformAPIInputTokensURL
 	if provider.Record.Type == capability.ProviderTypeAPIKey {
-		if baseURL := gatewayprovider.ExecutionProtocolTarget(provider).GetOpenAIBaseURL(); strings.TrimSpace(baseURL) != "" {
+		if baseURL := gatewayprovider.ExecutionProtocolTarget(provider).BaseURL(); strings.TrimSpace(baseURL) != "" {
 			validatedURL, err := s.Requests.ValidateBaseURL(baseURL)
 			if err != nil {
 				return nil, err

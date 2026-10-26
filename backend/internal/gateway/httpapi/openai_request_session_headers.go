@@ -46,25 +46,31 @@ const (
 	OpenAICodexRoutingHintHeader = "x-codex-routing-hint"
 )
 
-// ApplyOpenCodeSessionHeader installs client identity and bearer authentication
-// for an OpenCode provider after provider overrides. Callers validate configured
-// destinations before constructing this header map. Other API-key providers
-// forward the conversation header only to the exact HTTPS opencode.ai host;
-// missing caller session values leave existing overrides intact.
-//
-// A nonempty caller ID replaces every casing variant in the outgoing map before
-// setting the canonical header. This keeps that conversation's identity
-// authoritative when an override used a different casing or a fixed
-// provider-wide value.
+// FinalizeProviderRequestHeaders installs the selected provider's final identity.
+// Callers apply configured overrides first and validate the destination before
+// sending. OpenCode supplies authentication, agent and session together; other
+// API-key providers retain the trusted-origin conversation forwarding rule.
+func FinalizeProviderRequestHeaders(c *gin.Context, provider *gatewayprovider.ExecutionProvider, targetURL string, headers http.Header) {
+	if provider != nil && provider.View().IsOpenCode() && headers != nil {
+		var read func(string) string
+		if c != nil && c.Request != nil {
+			read = c.GetHeader
+		}
+		opencode.ApplyHeaders(headers, provider.View().GetCredential("api_key"), read)
+		return
+	}
+	ApplyOpenCodeSessionHeader(c, provider, targetURL, headers)
+}
+
+// ApplyOpenCodeSessionHeader copies a conversation ID to the trusted origin.
+// API-key requests to HTTPS opencode.ai qualify. Missing caller identity keeps
+// any configured session override, and authentication remains owned by request
+// preparation rather than this conversation-only operation.
 func ApplyOpenCodeSessionHeader(c *gin.Context, provider *gatewayprovider.ExecutionProvider, targetURL string, headers http.Header) {
 	if c == nil || c.Request == nil || provider == nil || provider.Record.Type != capability.ProviderTypeAPIKey || headers == nil {
 		return
 	}
 
-	if provider.View().IsOpenCode() {
-		opencode.ApplyHeaders(headers, provider.View().GetCredential("api_key"), c.GetHeader)
-		return
-	}
 	parsed, err := url.Parse(targetURL)
 	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || !strings.EqualFold(parsed.Hostname(), "opencode.ai") {
 		return

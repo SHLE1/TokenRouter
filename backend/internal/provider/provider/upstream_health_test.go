@@ -1977,3 +1977,48 @@ func (s *unauthorizedTokenRecorder) InvalidateToken(_ context.Context, value *pr
 	s.providers = append(s.providers, value)
 	return s.err
 }
+
+// TestOpenCodeGeminiHealthUsesProviderDeadline presents a Gemini-shaped quota
+// failure with Retry-After. OpenCode must use thirty seconds, while ordinary
+// Google requests continue selecting the injected Google daily reset.
+func TestOpenCodeGeminiHealthUsesProviderDeadline(t *testing.T) {
+	for _, platform := range []string{providercore.PlatformOpenCode, providercore.PlatformGemini} {
+		t.Run(platform, func(t *testing.T) {
+			repo := &jevRateLimitRepoStub{}
+			before := time.Now()
+			daily := before.Add(12 * time.Hour).Unix()
+			observer := &GeminiErrorObserver{
+				Other:          &UpstreamHealth{Core: providercore.NewHealthService(repo, nil, providercore.HealthOptions{})},
+				SetRateLimited: repo.SetRateLimited,
+				ResetTime:      func([]byte) *int64 { return nil },
+				DailyReset:     func() *int64 { return &daily },
+			}
+			value := &providercore.Record{ID: 13, Platform: platform, Type: providercore.ProviderTypeAPIKey}
+			headers := http.Header{"Retry-After": {"30"}}
+			observer.Observe(context.Background(), value, 429, headers, nil, HealthObservation{Status: 429, Headers: headers})
+			require.Equal(t, 1, repo.calls)
+			if platform == providercore.PlatformOpenCode {
+				require.WithinDuration(t, before.Add(30*time.Second), repo.reset, time.Second)
+			} else {
+				require.Equal(t, time.Unix(daily, 0), repo.reset)
+			}
+		})
+	}
+}
+
+// TestOpenCodeGeminiCustomPolicyPrecedesRetryAfter supplies an enabled custom
+// status rule alongside a concrete retry deadline. Both ordinary and pool
+// records must apply the configured error state before default quota handling.
+func TestOpenCodeGeminiCustomPolicyPrecedesRetryAfter(t *testing.T) {
+	for _, pool := range []bool{false, true} {
+		repo := &errorPolicyRepoStub{}
+		observer := &GeminiErrorObserver{Other: newErrorPolicyObserver(repo)}
+		value := &providercore.Record{ID: 18, Platform: providercore.PlatformOpenCode, Type: providercore.ProviderTypeAPIKey, Credentials: map[string]any{
+			"pool_mode": pool, "custom_error_codes_enabled": true, "custom_error_codes": []any{float64(429)},
+		}}
+		headers := http.Header{"Retry-After": {"30"}}
+		observer.Observe(context.Background(), value, 429, headers, []byte(`{"error":{"message":"limited"}}`), HealthObservation{Status: 429, Headers: headers})
+		require.Equal(t, 1, repo.setErrCalls)
+		require.Zero(t, repo.tempCalls)
+	}
+}

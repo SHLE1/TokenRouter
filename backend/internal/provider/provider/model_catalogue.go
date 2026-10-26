@@ -21,6 +21,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/jev"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/opencode"
 )
 
 // model_catalogue.go fetches upstream model lists and extracts
@@ -231,7 +232,7 @@ func (s *ModelCatalogue) buildUpstreamModelsRequest(ctx context.Context, value *
 			return nil, err
 		}
 		ApplyProviderHeaderOverrides(value, req.Header)
-		req.Header.Set("Authorization", "Bearer "+value.GetCredential("api_key"))
+		opencode.ApplyHeaders(req.Header, value.GetCredential("api_key"), nil)
 		req.Header.Set("Accept", "application/json")
 		return req, nil
 	case value.Platform == capability.PlatformJev:

@@ -1220,6 +1220,7 @@
             :enabled="upstreamUsageEnabled"
             :adapter="form.platform === 'opencode' ? 'opencode_go' : upstreamUsageAdapter"
             :base-url="upstreamUsageBaseUrl"
+            :base-url-editable="!isCNPlatform"
             :wallet-access-token="upstreamUsageWalletAccessToken"
             :wallet-user-id="upstreamUsageWalletUserId"
             :automatic-adapter="isCNPlatform || form.platform === 'opencode'"

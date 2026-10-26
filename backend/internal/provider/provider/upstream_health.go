@@ -233,15 +233,15 @@ func (s *UpstreamHealth) HandleDefault(ctx context.Context, provider *providerco
 	if provider == nil {
 		return false
 	}
-	// A Jev retry deadline provides the concrete cooldown for its decision
-	// endpoint. Prefer it before general overload or temporary rules can choose
-	// another window.
+	// Jev and OpenCode provide concrete cooldown deadlines through Retry-After.
+	// Prefer those deadlines before general overload or temporary rules choose
+	// another window for the same provider response.
 	if (provider.Platform == capability.PlatformJev || provider.IsOpenCode()) && (statusCode == http.StatusTooManyRequests || statusCode == 529) {
 		if reset := jev.RetryAfterResetTime(headers, time.Now()); reset != nil {
 			s.Core.ApplyObservedRateLimit(ctx, provider, *reset)
 			return false
 		}
-		// Without a Jev retry deadline, an explicit maintenance rule can still define
+		// Without a retry deadline, an explicit maintenance rule can still define
 		// its suspension. Try that rule before the general overload branch returns.
 		if statusCode == 529 && s.Core.TryTempUnschedulable(ctx, provider, statusCode, responseBody, true, observation.EffectiveModel) {
 			return true

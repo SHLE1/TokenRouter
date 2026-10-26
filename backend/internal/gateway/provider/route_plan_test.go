@@ -72,17 +72,17 @@ func TestProtocolRouteNativeFirstAndExplicitFallback(t *testing.T) {
 	require.False(t, group.AllowsClientProtocol(protocolcore.ProtocolOpenAIResponses))
 	next := *provider
 	next.Record.Credentials = map[string]any{providercore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}
-	require.False(t, ExecutionModelPolicy(&next).AllowsProtocol(ctx))
+	require.False(t, ExecutionModelPolicy(&next).HasProtocolRoute(ctx))
 	group.ProtocolFallbacks[protocolcore.ProtocolAnthropicMessages] = []protocolcore.ProtocolID{}
 	ctx = requeststate.WithGroup(ctx, group)
-	require.False(t, ExecutionModelPolicy(provider).AllowsProtocol(ctx))
+	require.False(t, ExecutionModelPolicy(provider).HasProtocolRoute(ctx))
 }
 
-// TestRoutePlanRebuildsCandidateAndKeepsModelReadTiming creates an attempt
+// TestRoutePlanRebuildsCandidateAndRetainsModelSnapshot creates an attempt
 // from a shared provider target and changes its model rules. Candidate state
-// stays on the attempt, later mapping reads see its replacement credentials,
+// stays on the attempt, later mapping reads retain the captured identity,
 // and incompatible fresh protocols return an error.
-func TestRoutePlanRebuildsCandidateAndKeepsModelReadTiming(t *testing.T) {
+func TestRoutePlanRebuildsCandidateAndRetainsModelSnapshot(t *testing.T) {
 	group := &routing.Group{ID: 7, AllowedProtocols: []protocolcore.ProtocolID{protocolcore.ProtocolAnthropicMessages}, ProtocolFallbacks: map[protocolcore.ProtocolID][]protocolcore.ProtocolID{protocolcore.ProtocolAnthropicMessages: {protocolcore.ProtocolOpenAIResponses}}}
 	ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocolcore.ProtocolAnthropicMessages)
 	mapping := routing.GroupMappingResult{MappedModel: "group-model", Mapped: true, PricingConfigID: 9, BillingModelSource: "requested"}
@@ -98,9 +98,30 @@ func TestRoutePlanRebuildsCandidateAndKeepsModelReadTiming(t *testing.T) {
 	require.True(t, captured)
 	require.Equal(t, "first", ExecutionModelPolicy(first).Mapped("group-model"))
 	first.Record.Credentials = map[string]any{providercore.UpstreamProtocolsKey: []string{"openai_responses"}, "model_mapping": map[string]any{"group-model": "latest"}}
-	require.Equal(t, "latest", ExecutionModelPolicy(first).Mapped("group-model"))
+	require.Equal(t, "first", ExecutionModelPolicy(first).Mapped("group-model"))
+	refreshed, err := ProviderForProtocolAttempt(ctx, first)
+	require.NoError(t, err)
+	require.Equal(t, "latest", ExecutionModelPolicy(refreshed).Mapped("group-model"))
 	require.Equal(t, "first", ExecutionModelPolicy(shared).Mapped("group-model"))
 	first.Record.Credentials = map[string]any{providercore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}
 	_, err = ProviderForProtocolAttempt(ctx, first)
 	require.Error(t, err, "已有尝试副本也须复核 fresh 能力")
+}
+
+// TestOpenCodeAttemptRetainsFinalModelAndRejectsAuxiliaryEncoding binds an alias
+// whose target is another alias key. Repeated mapping keeps the admitted model,
+// and request preparation rejects an auxiliary model requiring another encoding.
+func TestOpenCodeAttemptRetainsFinalModelAndRejectsAuxiliaryEncoding(t *testing.T) {
+	value := &ExecutionProvider{Record: providercore.Record{ID: 7, Platform: capability.PlatformOpenCode, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test", "model_mapping": map[string]any{"a": "minimax-m3", "minimax-m3": "claude-opus-4-7"}}}}
+	plan := routing.Plan(routing.PlanInput{RequestedModel: "a", ClientProtocol: protocolcore.ProtocolOpenAIChatCompletions})
+	ctx := requeststate.WithRoutePlan(requeststate.WithClientProtocol(context.Background(), protocolcore.ProtocolOpenAIChatCompletions), plan)
+	attempt, err := ProviderForProtocolAttempt(ctx, value)
+	require.NoError(t, err)
+	policy := ExecutionModelPolicy(attempt)
+	require.Equal(t, "minimax-m3", policy.UpstreamModel(ctx, "a"))
+	require.Equal(t, "minimax-m3", policy.UpstreamModel(ctx, "minimax-m3"))
+	require.NoError(t, ValidateResolvedModelRoute(attempt, "minimax-m3", "openai_chat_completions"))
+	_, err = PrepareModelAttributeParameters(ctx, attempt, "claude-opus-4-7", []byte(`{"model":"claude-opus-4-7"}`), nil, "openai_chat_completions")
+	require.Error(t, err)
+	require.Error(t, ValidateResolvedModelRoute(attempt, "minimax-m3", "anthropic_messages"))
 }

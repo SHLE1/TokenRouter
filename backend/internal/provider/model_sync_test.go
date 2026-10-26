@@ -8,7 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A live model adapter may mutate its input or delay returning after shutdown
+// model_sync_test.go checks input isolation, catalogue ownership, and shutdown
+// behavior. A live model adapter may mutate its input or delay returning after shutdown
 // cancellation. A blocked fetch makes those effects observable, checking that
 // the caller's credentials stay isolated and that stop rejects another query
 // while retaining its first timeout result.
@@ -30,29 +31,85 @@ func TestModelSyncOwnsInflightQueryAndInput(t *testing.T) {
 	// Keep the adapter in flight until stop has exhausted its budget. This
 	// exposes both copied input ownership and the canceled context observed
 	// when the deliberately blocked adapter finally returns.
-	go func() { _, err := core.Fetch(context.Background(), input); completed <- err }()
+	go func() {
+		_, err := core.Query(context.Background(), input)
+		completed <- err
+	}()
 	<-entered
 	require.Equal(t, "original", input.Credentials["access_token"])
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	stopErr := core.StopContext(ctx)
 	require.ErrorIs(t, stopErr, context.DeadlineExceeded)
-	_, err := core.Fetch(context.Background(), input)
+	_, err := core.Query(context.Background(), input)
 	require.ErrorIs(t, err, ErrRefreshStopped)
 	close(release)
 	require.ErrorIs(t, <-completed, context.Canceled)
 	require.Equal(t, stopErr, core.StopContext(context.Background()))
 }
 
-// TestOpenCodeModelSyncProtocolsPreferSavedModeOverrides combines current
-// catalog suggestions with saved exact-model choices. Unknown upstream models
-// remain without a protocol, and the other mode cannot override Go results.
-func TestOpenCodeModelSyncProtocolsPreferSavedModeOverrides(t *testing.T) {
-	svc := &ModelSyncService{CatalogProtocols: func(mode string) map[string]string {
+// TestOpenCodeModelSyncQueryExcludesSavedOverrides queries a Go record with
+// conflicting saved choices. The result contains current catalogue suggestions,
+// leaves unknown models unresolved, and gives the caller independently owned data.
+func TestOpenCodeModelSyncQueryExcludesSavedOverrides(t *testing.T) {
+	models := []string{"new", "custom", "unknown", "minimax-m3"}
+	routes := map[string]string{"new": "openai_responses", "custom": "openai_chat_completions"}
+	svc := NewModelSyncService(func(context.Context, *Record) ([]string, error) { return models, nil })
+	svc.CatalogProtocols = func(mode string) map[string]string {
 		require.Equal(t, "go", mode)
-		return map[string]string{"new": "openai_responses", "custom": "openai_chat_completions"}
-	}}
-	value := &Record{Platform: PlatformOpenCode, Type: ProviderTypeAPIKey, Credentials: map[string]any{"provider_mode": "go", OpenCodeModelProtocolsKey: map[string]any{"go": map[string]any{"custom": "anthropic_messages"}, "payg": map[string]any{"new": "systemone"}}}}
-	result := svc.Protocols(value, []string{"new", "custom", "unknown", "minimax-m3"})
-	require.Equal(t, map[string]string{"new": "openai_responses", "custom": "anthropic_messages"}, result)
+		return routes
+	}
+	value := &Record{
+		Platform: PlatformOpenCode, Type: ProviderTypeAPIKey,
+		Credentials: map[string]any{
+			"provider_mode": "go",
+			OpenCodeModelProtocolsKey: map[string]any{
+				"go":   map[string]any{"custom": "anthropic_messages"},
+				"payg": map[string]any{"new": "systemone"},
+			},
+			"opencode_catalog_protocols": map[string]any{"go": map[string]any{"unknown": "systemone"}},
+		},
+	}
+	result, err := svc.Query(context.Background(), value)
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"new": "openai_responses", "custom": "openai_chat_completions"}, result.ModelProtocols)
+	result.Models[0] = "changed"
+	result.ModelProtocols["new"] = "changed"
+	require.Equal(t, "new", models[0])
+	require.Equal(t, "openai_responses", routes["new"])
+}
+
+// TestOpenCodeModelSyncUsesBundledSuggestions queries without a live publication.
+// Bundled Go routes remain available, and saved manual values cannot replace them.
+func TestOpenCodeModelSyncUsesBundledSuggestions(t *testing.T) {
+	svc := NewModelSyncService(func(context.Context, *Record) ([]string, error) { return []string{"minimax-m3"}, nil })
+	value := &Record{
+		Platform: PlatformOpenCode, Type: ProviderTypeAPIKey,
+		Credentials: map[string]any{
+			"provider_mode":           "go",
+			OpenCodeModelProtocolsKey: map[string]any{"go": map[string]any{"minimax-m3": "systemone"}},
+		},
+	}
+	result, err := svc.Query(context.Background(), value)
+	require.NoError(t, err)
+	require.Equal(t, "anthropic_messages", result.ModelProtocols["minimax-m3"])
+}
+
+// TestModelSyncPreviewOwnsTemporaryCredentials supplies a temporary root and key.
+// The use case builds the complete unsaved query record and returns paired model results.
+func TestModelSyncPreviewOwnsTemporaryCredentials(t *testing.T) {
+	svc := NewModelSyncService(func(_ context.Context, value *Record) ([]string, error) {
+		require.Zero(t, value.ID)
+		require.Equal(t, "temporary-key", value.GetCredential("api_key"))
+		require.Equal(t, "https://preview.example", value.OpenCodeRoot())
+		require.Equal(t, "go", value.OpenCodeMode())
+		return []string{"minimax-m3"}, nil
+	})
+	result, err := svc.Preview(context.Background(), ModelSyncPreview{
+		Platform: PlatformOpenCode, Type: ProviderTypeAPIKey, APIKey: "temporary-key",
+		BaseURL: "https://preview.example", ProviderMode: "go",
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"minimax-m3"}, result.Models)
+	require.Equal(t, "anthropic_messages", result.ModelProtocols["minimax-m3"])
 }

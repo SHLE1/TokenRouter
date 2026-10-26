@@ -27,8 +27,9 @@ import (
 // OpenCode configuration keys identify the subscription mode and mode-scoped
 // exact-model protocol overrides persisted with the other provider credentials.
 const (
-	ProviderModeGo            = "go"                       // OpenCode subscription service mode
-	OpenCodeModelProtocolsKey = "opencode_model_protocols" // exact model override key
+	ProviderModeGo              = "go"                         // OpenCode subscription service mode
+	OpenCodeModelProtocolsKey   = "opencode_model_protocols"   // exact model override key
+	OpenCodeCatalogProtocolsKey = "opencode_catalog_protocols" // accepted catalog encoding key
 )
 
 // IsOpenCode reports whether this record uses the OpenCode inference platform.
@@ -45,9 +46,10 @@ func (r *Record) OpenCodeMode() string {
 	return mode
 }
 
-// OpenCodeModelProtocols returns mode-specific catalog routes with exact saved
-// overrides applied. The result is independently owned, and non-OpenCode records
-// return nil so ordinary provider routing retains its existing protocol rules.
+// OpenCodeModelProtocols returns mode-specific routes using manual overrides,
+// accepted catalog suggestions, then bundled defaults. The result is
+// independently owned, and non-OpenCode records return nil so ordinary provider
+// routing retains its existing protocol rules.
 //
 // Only the selected mode's overrides participate: a model's payg encoding can
 // differ from its Go encoding. Defaults use the bundled publication, while an
@@ -64,11 +66,13 @@ func (r *Record) OpenCodeModelProtocols() map[string]capability.ProtocolID {
 	for id, value := range modelcatalog.OpenCodeProtocols(mode) {
 		result[id] = capability.ProtocolID(value)
 	}
-	modes, _ := r.Credentials[OpenCodeModelProtocolsKey].(map[string]any)
-	overrides, _ := modes[mode].(map[string]any)
-	for id, value := range overrides {
-		if text, ok := value.(string); ok {
-			result[id] = capability.ProtocolID(text)
+	for _, key := range []string{OpenCodeCatalogProtocolsKey, OpenCodeModelProtocolsKey} {
+		modes, _ := r.Credentials[key].(map[string]any)
+		overrides, _ := modes[mode].(map[string]any)
+		for id, value := range overrides {
+			if text, ok := value.(string); ok {
+				result[id] = capability.ProtocolID(text)
+			}
 		}
 	}
 	return result
@@ -134,10 +138,14 @@ func ValidateOpenCodeCredentials(r *Record) error {
 			return invalid("OpenCode provider_mode must be payg or go")
 		}
 	}
-	if raw, exists := r.Credentials[OpenCodeModelProtocolsKey]; exists {
+	for _, key := range []string{OpenCodeCatalogProtocolsKey, OpenCodeModelProtocolsKey} {
+		raw, exists := r.Credentials[key]
+		if !exists {
+			continue
+		}
 		modes, ok := raw.(map[string]any)
 		if !ok {
-			return invalid("opencode_model_protocols must be an object keyed by payg or go")
+			return invalid(key + " must be an object keyed by payg or go")
 		}
 		for mode, rawModels := range modes {
 			if mode != ProviderModePayG && mode != ProviderModeGo {

@@ -18,11 +18,15 @@
 }
 ```
 
-保存的覆盖优先于内嵌 models.dev 的协议目录。模型同步读取上游模型列表，并使用共享 models.dev 当前发布的协议目录补充建议；已保存的覆盖继续优先。同步结果进入表单，管理员保存后进入提供商配置。未识别的模型需要手动指定协议，无法确定协议的候选不参与调度。
+`credentials.opencode_catalog_protocols` 使用相同的两级结构，保存管理员同步并接受的目录协议。有效协议按人工覆盖、已接受目录、内嵌目录的顺序读取。两种模式分别保存，切换模式不会复用另一模式的模型协议。
 
-目录协议索引独立于价格和属性的原厂筛选。它使用服务商或模型声明的 SDK 和 decision 类型，不根据名称猜测协议，也不把 OpenCode 的渠道价格加入默认价卡。
+模型同步返回上游模型 ID 和当前 models.dev 目录的纯建议，表单用它替换当前模式的目录草稿，人工覆盖由当前表单管理。删除人工覆盖后恢复目录选择，同步不会把数据库里的旧覆盖重新插回。管理员保存后，已接受目录与人工覆盖一起进入提供商配置；仅同步没有持久化效果。目录未识别的型号需要手动指定协议。
 
-提供商的 `upstream_protocols` 继续限制可用协议，空集合关闭新调用。分组准入与已有单步转换规则在选路时生效；SystemOne 保持独立的同步 JSON 入口。模型目录、调度快照、换号复核和提供商测试使用同一份最终模型协议规则。
+目录保留服务模型的协议及 canonical 属性身份。明确的 `canonical_model_id` 优先；缺失时，只接受完整型号与公共模型 ID 完全一致且作者唯一的匹配，模糊名称保持未知。传给上游的服务模型 ID、模型属性身份和计费身份分别保存。
+
+协议来自服务或模型声明的 SDK 和 decision 类型。模型编码规则按已核验的作者身份及协议选择，包含 Claude adaptive thinking、OpenAI 采样条件等；账户认证、配额和站点规则仍由提供商负责。OpenCode 平台身份保持不变，渠道价格继续从默认价卡排除。
+
+提供商的 `upstream_protocols` 继续限制可用协议，空集合关闭新调用。分组准入与已有单步转换规则在选路时生效；SystemOne 保持独立的同步 JSON 入口。候选从同一提供商快照执行一跳映射，保留最终模型、协议和属性身份；实际请求不能在保留旧协议时重新映射到另一个模型。换号重新解析候选，自动探针也要检查其具体模型的已启用协议。
 
 ## 地址与认证
 
@@ -36,19 +40,29 @@
 | Gemini | `/google/v1beta/models/{model}:generateContent` | `gemini` |
 | SystemOne | `/systemone/v1/systemone` | `systemone` |
 
-地址槽保存完整协议根地址，包括 `/v1` 或 `/v1beta`；Gemini 流式请求使用 `:streamGenerateContent`。覆盖地址同样经过出站 URL 校验，并复用提供商代理和对应传输配置。
+地址槽保存完整协议根地址，包括 `/v1` 或 `/v1beta`。`ProtocolTarget.BaseURL` 根据已选协议分派到对应的地址规则，版本段由协议 URL 构造器规范化；Gemini 流式请求使用 `:streamGenerateContent`。覆盖地址同样经过出站 URL 校验，并复用提供商代理和对应传输配置。
 
-各协议使用 `Authorization: Bearer <api_key>`。发送前移除其他协议的 API Key 认证头。客户端 User-Agent 优先于提供商配置，缺失时使用配置值或 `TokenRouter`。会话头依次读取 `x-opencode-session`、`session-id`、`session_id`、`conversation_id`、`x-session-affinity`、`x-session-id`，发送为 `X-OpenCode-Session`；缺少稳定会话信息时不生成随机会话 ID。
+各协议使用 `Authorization: Bearer <api_key>`。配置的 Header Override 只负责应用覆盖；随后由明确的 OpenCode 认证步骤移除其他协议的 API Key 头并写入规范化的 Bearer。客户端 User-Agent 优先于提供商配置，缺失时使用配置值或 `TokenRouter`。会话头依次读取 `x-opencode-session`、`session-id`、`session_id`、`conversation_id`、`x-session-affinity`、`x-session-id`，发送为 `X-OpenCode-Session`；缺少稳定会话信息时不生成随机会话 ID。
 
-OpenCode 的平台身份贯穿使用记录、错误策略和运行监控。兼容请求复用现有协议编解码、工具调用、流式处理和用量采集。SystemOne 不接受 `stream=true`。是否可调用某个上游模型仍受其账户权限和服务限制约束。
+OpenCode 的平台身份贯穿使用记录、错误策略和运行监控。错误处理使用实际失败提供商的身份，telemetry 记录这些执行事实。兼容请求复用现有协议编解码、工具调用、流式处理和用量采集。SystemOne 不接受 `stream=true`，Messages token count 使用本地估算。
+
+Gemini 编码的普通失败交给提供商外层重试和换号策略，429 使用共享健康处理及 Retry-After，不采用 Google 每日重置。协议专属的签名修复仍有界执行，等待响应取消。上游响应头超时属于提供商失败；只有调用者 Context 已取消或过期时才结束为调用者取消。
+
+原生 HTTP Responses 保留客户端 `store` 和 `previous_response_id`，不借用 CN 无状态改写。续接请求仍需通过响应归属与来源提供商绑定检查；不可移动的 HTTP 续接不转给另一套上游凭据。上游是否提供所请求的持久性能力由其实际响应决定，此接入没有通过真实账户验证该能力。
+
+原生 Messages 的内部用量保留 uncached input、cache read、cache creation 总量与 5m/1h 明细、output 和 speed。客户端 OpenAI 兼容输出使用 inclusive input，完成记录和计费保留原生桶，防止 TTL 或 speed 在协议转换中丢失。是否可调用某个上游模型仍受其账户权限和服务限制约束。
 
 ## 管理与用量
 
-创建和编辑页面支持两种模式的模型协议覆盖、各协议地址、模型同步和测试。同步返回保留 `models` 数组，并为 OpenCode 增加 `model_protocols` 对象。预览请求接受 `provider_mode`；已保存提供商的同步请求可携带临时 `provider_mode` 和 `base_url`，查询使用服务器保存的 API Key，配置仍由管理员另行保存。
+创建和编辑页面支持两种模式的模型协议覆盖、各协议地址、模型同步和测试。`ModelSyncService.Query` 一次返回 `models` 数组及 OpenCode 的 `model_protocols` 目录建议；`Preview` 构造调用者提供凭据的临时查询，两者共用在途跟踪和取消。
 
-Go 使用固定适配器 `opencode_go`，请求 `GET https://opencode.ai/zen/go/v1/usage`，以提供商 API Key 做 Bearer 认证。查询根地址可通过现有用量配置覆盖。结果包含滚动五小时、周和月窗口的使用百分比、状态及 UTC 重置时间。超过 100% 的已用百分比保留，剩余额度最低为零。
+已保存提供商的同步只使用保存的 Key、地址、模式和代理，不接受临时配置请求体，空请求或空对象用于兼容调用。MCP 同步权限因此只授权查询已保存目的地。创建预览接受调用者提供的 Key、根地址和模式。编辑保存记录时，替换 Key、改变地址或模式后需要先保存，再同步；当前表单会阻止混用草稿地址和服务器保存密钥。
 
-三个窗口均需包含有效的 `percent`、`status` 和 `resetsAt`。异常响应、认证错误、未订阅、限流和超时按查询失败展示。单个及批量查询沿用身份复核、独立并发和五分钟浏览器缓存；查询失败不改变转发资格。
+OpenCode 测试先解析一份最终模型和协议，由 `NativeProviderTest` 在同一个 `TestRun` 中执行协议载荷与响应解析。模型不会再交给 CN、Gemini、Jev 的平台 target 重映射；SystemOne 共用独立决策交换原语。
+
+Go 使用固定适配器 `opencode_go`，请求 `GET https://opencode.ai/zen/go/v1/usage`，以提供商 API Key 做 Bearer 认证。查询根地址在界面和 API 中独立配置，留空使用官方管理根地址，不复用自定义推理地址。结果包含滚动五小时、周和月窗口的使用百分比、状态及 UTC 重置时间。超过 100% 的已用百分比保留，剩余额度最低为零。
+
+三个窗口均需包含有效的 `percent`、`status` 和 `resetsAt`。异常响应、认证错误、未订阅、限流和超时按查询失败展示。前端通过同一有效配置解析选择 `opencode_go` 并校验结果、缓存和显示资格。单个及批量查询沿用身份复核、独立并发和五分钟浏览器缓存；查询失败不改变转发资格。
 
 payg 不提供上游用量查询，列表仍可展示本地统计。此接入没有钱包余额查询或后台额度监控。用量查询不会根据窗口百分比自动停调，也不会修改 OpenCode 控制台的超额使用设置。
 

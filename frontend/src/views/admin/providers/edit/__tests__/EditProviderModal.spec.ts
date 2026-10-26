@@ -20,8 +20,10 @@ const {
   getSettingsMock,
   listTLSProfilesMock,
   getBalanceAlertStatusMock,
+  syncUpstreamModelsMock,
 } = vi.hoisted(() => ({
   getBalanceAlertStatusMock: vi.fn(),
+  syncUpstreamModelsMock: vi.fn(),
   updateProviderMock: vi.fn(),
   checkMixedChannelRiskMock: vi.fn(),
   getWebSearchEmulationConfigMock: vi.fn(),
@@ -69,6 +71,7 @@ vi.mock('@/api/admin', () => ({
 vi.mock('@/api/admin/providers', () => ({
   getAntigravityDefaultModelMapping: vi.fn(),
   getUpstreamBalanceAlertStatus: getBalanceAlertStatusMock,
+  syncUpstreamModels: syncUpstreamModelsMock,
 }))
 
 vi.mock('vue-i18n', async () => {
@@ -2215,6 +2218,68 @@ describe('EditProviderModal', () => {
         opencode_model_protocols: provider.credentials.opencode_model_protocols,
       }),
     )
+    wrapper.unmount()
+  })
+  // A saved OpenCode provider deletes an override, then accepts newly discovered models.
+  // Saving persists accepted catalogue routes separately and leaves the manual deletion intact.
+  it('saves synchronized OpenCode catalog routes after deleting an override', async () => {
+    syncUpstreamModelsMock.mockReset().mockResolvedValue({
+      models: ['custom', 'new'],
+      model_protocols: { custom: 'anthropic_messages', new: 'openai_responses' },
+    })
+    const provider = {
+      ...buildProvider(),
+      platform: 'opencode',
+      credentials: {
+        api_key: 'saved',
+        provider_mode: 'go',
+        base_url: 'https://saved.example',
+        opencode_model_protocols: { go: { custom: 'systemone' } },
+      },
+    }
+    const wrapper = mountModal(provider)
+    await flushPromises()
+    await wrapper.get('[data-settings-tab-button="models"]').trigger('click')
+    const fields = wrapper.get('[data-testid="opencode-fields"]')
+    expect(fields.find('button').attributes('disabled')).toBeUndefined()
+    await fields.get('button[aria-label="common.delete"]').trigger('click')
+    await fields.find('button').trigger('click')
+    await flushPromises()
+    expect(syncUpstreamModelsMock).toHaveBeenCalledWith(1, expect.any(AbortSignal))
+    await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(updateProviderMock.mock.calls[0]?.[1]?.credentials).toEqual(
+      expect.objectContaining({
+        base_url: 'https://saved.example',
+        provider_mode: 'go',
+        opencode_model_protocols: { payg: {}, go: {} },
+        opencode_catalog_protocols: {
+          payg: {},
+          go: { custom: 'anthropic_messages', new: 'openai_responses' },
+        },
+      }),
+    )
+    wrapper.unmount()
+  })
+
+  // Changing the root in the saved provider dialog leaves its stored query identity available.
+  // The model panel detects the unsaved difference and blocks synchronization until saving.
+  it('passes saved OpenCode settings to the sync guard', async () => {
+    syncUpstreamModelsMock.mockReset()
+    const provider = {
+      ...buildProvider(),
+      platform: 'opencode',
+      credentials: { api_key: 'saved', provider_mode: 'go', base_url: 'https://saved.example' },
+    }
+    const wrapper = mountModal(provider)
+    await flushPromises()
+    await wrapper.get('#edit-provider-base-url').setValue('https://unsaved.example')
+    await wrapper.get('[data-settings-tab-button="models"]').trigger('click')
+    const fields = wrapper.get('[data-testid="opencode-fields"]')
+    expect(fields.find('button').attributes('disabled')).toBeDefined()
+    expect(fields.text()).toContain('admin.providers.opencode.saveBeforeSync')
+    await fields.find('button').trigger('click')
+    expect(syncUpstreamModelsMock).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 })

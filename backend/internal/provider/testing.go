@@ -376,7 +376,7 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 		if request.Protocol != "" || mode != ProviderTestModeDefault || !request.ProtocolRoute.SupportsProvider(info.ProviderSnapshot) {
 			return s.fail(ctx, sink, fmt.Sprintf("Provider test cannot execute route %s -> %s", request.ProtocolRoute.ClientProtocol, request.ProtocolRoute.UpstreamProtocol))
 		}
-		ctx = context.WithValue(ctx, testProtocolRouteKey{}, request.ProtocolRoute)
+		ctx = WithTestProtocolRoute(ctx, request.ProtocolRoute)
 		// Routed probes select their operation from the client entry. Text entries
 		// cannot switch to an Images endpoint because a model also declares images.
 		kind, explicit = ProviderTestTypeText, true

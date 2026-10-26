@@ -12,8 +12,14 @@ import CreateProviderModal from '../CreateProviderModal.vue'
 
 // Hoisted API spies isolate transport side effects and retain each submitted
 // payload for assertions; beforeEach restores defaults between independent provider scenarios.
-const { createProviderMock, importCodexSessionMock, createOpenAICodexPATMock } = vi.hoisted(() => ({
+const {
+  createProviderMock,
+  importCodexSessionMock,
+  createOpenAICodexPATMock,
+  syncUpstreamModelsPreviewMock,
+} = vi.hoisted(() => ({
   createProviderMock: vi.fn(),
+  syncUpstreamModelsPreviewMock: vi.fn(),
   importCodexSessionMock: vi.fn(),
   createOpenAICodexPATMock: vi.fn(),
 }))
@@ -47,6 +53,7 @@ vi.mock('@/api/admin', () => ({
 vi.mock('@/api/admin/providers', () => ({
   getAntigravityDefaultModelMapping: vi.fn().mockResolvedValue([]),
   getUpstreamBalanceAlertStatus: vi.fn(),
+  syncUpstreamModelsPreview: syncUpstreamModelsPreviewMock,
 }))
 
 vi.mock('vue-i18n', async () => {
@@ -979,6 +986,35 @@ describe('OpenCode provider creation', () => {
             'systemone',
           ],
         }),
+      }),
+    )
+    wrapper.unmount()
+  })
+  // OpenCode creation previews a model absent from bundled defaults with the entered key.
+  // The create payload persists its accepted catalogue route separately from manual overrides.
+  it('persists an OpenCode preview catalog for a newly discovered model', async () => {
+    syncUpstreamModelsPreviewMock.mockReset().mockResolvedValue({
+      models: ['new-model'],
+      model_protocols: { 'new-model': 'anthropic_messages' },
+    })
+    const wrapper = mountModal()
+    await wrapper.get('[data-testid="create-provider-platform-opencode"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('form#create-provider-form input[type="text"]').setValue('OpenCode preview')
+    await wrapper.get('form#create-provider-form input[type="password"]').setValue('preview-key')
+    await wrapper.get('[data-settings-tab-button="models"]').trigger('click')
+    await wrapper.get('[data-testid="opencode-fields"]').find('button').trigger('click')
+    await flushPromises()
+    expect(syncUpstreamModelsPreviewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ api_key: 'preview-key', provider_mode: 'payg' }),
+      expect.any(AbortSignal),
+    )
+    await wrapper.get('form#create-provider-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(createProviderMock.mock.calls[0]?.[0]?.credentials).toEqual(
+      expect.objectContaining({
+        opencode_model_protocols: { payg: {}, go: {} },
+        opencode_catalog_protocols: { payg: { 'new-model': 'anthropic_messages' }, go: {} },
       }),
     )
     wrapper.unmount()

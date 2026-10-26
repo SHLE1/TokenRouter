@@ -11,7 +11,7 @@ import (
 // test_targets.go loads provider records and selects the platform executor for
 // administrative tests.
 // Provider test handles use the stored platform to choose execution after
-// loading the requested provider ID. Jev, Qoder, Gemini, Grok, OpenAI, CN, and
+// loading the requested provider ID. OpenCode, Jev, Qoder, Gemini, Grok, OpenAI, CN, and
 // Antigravity have explicit routes; remaining platforms enter the Anthropic
 // executor, which validates supported provider types during execution. Automatic
 // text and image probes select their payload using declared final-model output;
@@ -26,7 +26,8 @@ import (
 // TestTargets loads provider records and binds platform executors for prepared
 // probes.
 type TestTargets struct {
-	Jev *JevProviderTest // Jev SystemOne probe executor
+	Native *NativeProviderTest // prepared model/protocol probe executor
+	Jev    *JevProviderTest    // Jev SystemOne probe executor
 	// Read is required for target loading. A successful callback returns a nonnil
 	// provider whose platform selects the executor.
 	Read        func(context.Context, int64) (*provider.Record, error)
@@ -56,7 +57,7 @@ func (t *TestTargets) LoadTestTarget(ctx context.Context, request provider.TestR
 	}
 	switch value.Platform {
 	case provider.PlatformOpenCode:
-		return openCodeTestTarget{targets: t, record: value}, nil
+		return openCodeTestTarget{executor: t.Native, record: value}, nil
 	case provider.PlatformJev:
 		return t.Jev.Target(value), nil
 	case provider.PlatformQoder:

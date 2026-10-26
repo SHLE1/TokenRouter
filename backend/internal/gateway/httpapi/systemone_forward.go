@@ -115,7 +115,7 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 		WriteSystemOneError(c, 400, "invalid_request_error", "model_pricing_unavailable", "", admission.ModelPricingUnavailableMessage)
 		return result, err
 	}
-	base, err := s.URLPolicy.Validate(selected.View().GetJevBaseURL())
+	base, err := s.URLPolicy.Validate((provider.ProtocolTarget{Record: selected.View(), Protocol: protocol.ProtocolSystemOne}).BaseURL())
 	if err != nil {
 		return result, err
 	}
@@ -134,7 +134,7 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 		Token: selected.View().GetCredential("api_key"), ReadLimit: s.ReadLimit, Enter: s.Enter,
 		ApplyHeaders: func(h http.Header) {
 			gatewayprovider.BindExecutionHeaders(selected)(h)
-			ApplyOpenCodeSessionHeader(c, selected, jev.EndpointURL(base, "systemone"), h)
+			FinalizeProviderRequestHeaders(c, selected, jev.EndpointURL(base, "systemone"), h)
 		},
 		Do: func(req *http.Request) (*http.Response, error) {
 			return s.Transport.Do(req, proxy, selected.Record.ID, selected.Record.Concurrency)
@@ -161,7 +161,7 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 		// A 422 describes this request's input validation. Present it directly
 		// before provider health classification so the request is not replayed elsewhere.
 		if failure.Status == http.StatusUnprocessableEntity {
-			s.writeUpstreamError(c, failure)
+			s.writeUpstreamError(c, selected.Record.Platform, failure)
 			return result, err
 		}
 		decision := provider.ErrorDecisionWithoutPersistence(selected.View(), failure.Status)
@@ -177,7 +177,7 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 		}
 		retry := failure.Status == 401 || failure.Status == 403 || failure.Status == 429 || failure.Status >= 500
 		if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(selected), failure.Status, retry) && !decision.ShouldReturnGenericError() {
-			retryFailure := &forward.UpstreamFailoverError{StatusCode: failure.Status, ResponseBody: failure.Body, ResponseHeaders: failure.Header.Clone(), RetryableOnSameProvider: decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(selected), failure.Status)}
+			retryFailure := &forward.UpstreamFailoverError{Platform: selected.Record.Platform, StatusCode: failure.Status, ResponseBody: failure.Body, ResponseHeaders: failure.Header.Clone(), RetryableOnSameProvider: decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(selected), failure.Status)}
 			// Preserve a longer upstream reset interval for same-provider retry, so
 			// the outer loop does not resend before that provider's requested wait has elapsed.
 			if retryFailure.RetryableOnSameProvider {
@@ -191,13 +191,13 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 			WriteSystemOneError(c, http.StatusInternalServerError, "upstream_error", "", "", "Upstream request failed")
 			return result, err
 		}
-		s.writeUpstreamError(c, failure)
+		s.writeUpstreamError(c, selected.Record.Platform, failure)
 		return result, err
 	}
 	// A transport failure with an active request has supplied no served answer;
 	// expose failover eligibility while cancellation keeps its ordinary error path.
 	if result.FailureClass == "transport" && ctx.Err() == nil {
-		return result, &forward.UpstreamFailoverError{StatusCode: http.StatusBadGateway}
+		return result, &forward.UpstreamFailoverError{Platform: selected.Record.Platform, StatusCode: http.StatusBadGateway}
 	}
 	return result, err
 }
@@ -206,12 +206,12 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 // copying. An already-written response is left alone; a matching administrator
 // rule writes uncompressed SystemOne JSON, while unmatched errors retain their
 // supplied body and Content-Type.
-func (s *SystemOneExecutor) writeUpstreamError(c *gin.Context, failure *jev.HTTPError) {
+func (s *SystemOneExecutor) writeUpstreamError(c *gin.Context, platform string, failure *jev.HTTPError) {
 	if c.Writer.Written() {
 		return
 	}
 	egressprovider.WriteFilteredHeaders(c.Writer.Header(), failure.Header, s.HeaderFilter)
-	if status, kind, message, matched := ApplyErrorPassthroughRule(c, selectedErrorRulePlatform(c, provider.PlatformJev), failure.Status, failure.Body, failure.Status, "upstream_error", "Upstream request failed"); matched {
+	if status, kind, message, matched := ApplyErrorPassthroughRule(c, platform, failure.Status, failure.Body, failure.Status, "upstream_error", "Upstream request failed"); matched {
 		// The replacement is uncompressed JSON. Remove the upstream encoding so
 		// clients decode these new bytes using their JSON representation instead of
 		// attempting the vendor response's compression.
@@ -249,7 +249,7 @@ func WriteSystemOneFailoverExhausted(c *gin.Context, failure *forward.UpstreamFa
 	case 500, 502, 503, 504:
 		message = "Upstream service temporarily unavailable"
 	}
-	status, kind, message, _ = ApplyErrorPassthroughRule(c, selectedErrorRulePlatform(c, provider.PlatformJev), failure.StatusCode, failure.ResponseBody, status, kind, message)
+	status, kind, message, _ = ApplyErrorPassthroughRule(c, failure.ProviderPlatform(provider.PlatformJev), failure.StatusCode, failure.ResponseBody, status, kind, message)
 	SetOpsUpstreamError(c, failure.StatusCode, upstream.ExtractErrorMessage(failure.ResponseBody), "")
 	WriteSystemOneError(c, status, kind, "", "", message)
 }

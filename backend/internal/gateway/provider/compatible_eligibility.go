@@ -182,7 +182,7 @@ func SupportsRequestCapability(ctx context.Context, provider *ExecutionProvider,
 	}
 	if provider.View().IsOpenCode() {
 		if capability == "" || capability == providercore.OpenAIEndpointCapabilityTextGeneration || capability == providercore.OpenAIEndpointCapabilityResponses {
-			return ExecutionModelPolicy(provider).AllowsProtocol(ctx)
+			return ExecutionModelPolicy(provider).HasProtocolRoute(ctx)
 		}
 		return false
 	}
@@ -192,7 +192,7 @@ func SupportsRequestCapability(ctx context.Context, provider *ExecutionProvider,
 	if !provider.View().IsOpenAICompatible() && (capability == "" || capability == providercore.OpenAIEndpointCapabilityTextGeneration || capability == providercore.OpenAIEndpointCapabilityResponses) {
 		policy := ExecutionModelPolicy(provider)
 		if source != "" {
-			return policy.AllowsProtocol(ctx)
+			return policy.HasProtocolRoute(ctx)
 		}
 		group, _ := requeststate.GroupFromContext(ctx)
 		for _, entry := range []protocolcore.ProtocolID{protocolcore.ProtocolAnthropicMessages, protocolcore.ProtocolOpenAIResponses, protocolcore.ProtocolOpenAIChatCompletions} {
@@ -206,10 +206,10 @@ func SupportsRequestCapability(ctx context.Context, provider *ExecutionProvider,
 	// qualify even when the provider has no ordinary HTTP text generation capability.
 	if source == protocolcore.ProtocolResponsesWebSocket || source == protocolcore.ProtocolResponsesCompact {
 		if capability == providercore.OpenAIEndpointCapabilityTextGeneration || capability == providercore.OpenAIEndpointCapabilityResponses {
-			return ExecutionModelPolicy(provider).AllowsProtocol(ctx)
+			return ExecutionModelPolicy(provider).HasProtocolRoute(ctx)
 		}
 		if capability == providercore.OpenAIEndpointCapabilityRemoteCompactionV2 {
-			return ExecutionModelPolicy(provider).AllowsProtocol(ctx) && provider.View().AllowsOpenAINativeCompactionV2()
+			return ExecutionModelPolicy(provider).HasProtocolRoute(ctx) && provider.View().AllowsOpenAINativeCompactionV2()
 		}
 	}
 	return provideradapter.SupportsOpenAIEndpoint(ExecutionProtocolRecord(provider), capability)

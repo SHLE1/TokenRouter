@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -16,12 +17,13 @@ import (
 // unsaved credential previews.
 // Live model queries use the model-sync use case for stored or temporary
 // credentials. The HTTP layer distinguishes local configuration failures from
-// upstream failures and sends sanitized messages; preview constructs an unsaved
-// record so query results can be inspected before provider creation.
+// upstream failures and sends sanitized messages. The use case constructs
+// preview records from supplied credentials before provider creation.
 
 // SyncUpstreamModels loads provider credentials and requests a live
-// supported-model list. OpenCode accepts temporary mode and root settings on
-// a copied record, and returns model protocol suggestions alongside IDs.
+// supported-model list using its saved destination, mode, key, and proxy.
+// Request bodies may be empty or an empty object; configuration overrides are
+// rejected before any authenticated upstream request is prepared.
 // Lookup failures map to 404, configuration or
 // unsupported errors to 400, and other query failures to sanitized 502
 // responses.
@@ -44,22 +46,18 @@ func (h *ManagementHandler) SyncUpstreamModels(c *gin.Context) {
 		return
 	}
 
-	if provider.IsOpenCode() && c.Request.ContentLength != 0 {
-		var override ProviderModelsSyncRequest
-		if err := response.BindJSONStrict(c, &override); err != nil {
-			response.BadRequest(c, "Invalid model synchronization settings")
+	// A synchronization permission authorizes querying the saved destination.
+	// Reject configuration fields before the saved key can reach any upstream.
+	if c.Request.Body != nil {
+		var empty map[string]any
+		err := response.BindJSONStrict(c, &empty)
+		if (err != nil && !errors.Is(err, io.EOF)) || (err == nil && (empty == nil || len(empty) != 0)) {
+			response.BadRequest(c, "Model synchronization uses saved provider settings; save changes before syncing")
 			return
-		}
-		provider = providercore.CloneRecord(provider)
-		if override.ProviderMode != "" {
-			provider.Credentials["provider_mode"] = override.ProviderMode
-		}
-		if override.BaseURL != nil {
-			provider.Credentials["base_url"] = *override.BaseURL
 		}
 	}
 
-	models, err := h.models.Fetch(c.Request.Context(), provider)
+	result, err := h.models.Query(c.Request.Context(), provider)
 	if err != nil {
 		if syncErr, ok := errors.AsType[*providercore.UpstreamModelSyncError](err); ok {
 			switch syncErr.Kind {
@@ -77,10 +75,6 @@ func (h *ManagementHandler) SyncUpstreamModels(c *gin.Context) {
 		return
 	}
 
-	result := gin.H{"models": models}
-	if protocols := h.models.Protocols(provider, models); protocols != nil {
-		result["model_protocols"] = protocols
-	}
 	response.Success(c, result)
 }
 
@@ -96,25 +90,18 @@ func (h *ManagementHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 		return
 	}
 
-	tempProvider := &providercore.Record{
-		Platform: req.Platform,
-		Type:     req.Type,
-		Credentials: map[string]any{
-			"api_key":  req.APIKey,
-			"base_url": req.BaseURL,
-		},
-	}
-
-	if req.ProviderMode != "" {
-		tempProvider.Credentials["provider_mode"] = req.ProviderMode
-	}
-
 	if h.models == nil {
 		response.InternalError(c, "Provider test service is not configured")
 		return
 	}
 
-	models, err := h.models.Fetch(c.Request.Context(), tempProvider)
+	result, err := h.models.Preview(c.Request.Context(), providercore.ModelSyncPreview{
+		Platform:     req.Platform,
+		Type:         req.Type,
+		APIKey:       req.APIKey,
+		BaseURL:      req.BaseURL,
+		ProviderMode: req.ProviderMode,
+	})
 	if err != nil {
 		if syncErr, ok := errors.AsType[*providercore.UpstreamModelSyncError](err); ok {
 			switch syncErr.Kind {
@@ -132,9 +119,5 @@ func (h *ManagementHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 		return
 	}
 
-	result := gin.H{"models": models}
-	if protocols := h.models.Protocols(tempProvider, models); protocols != nil {
-		result["model_protocols"] = protocols
-	}
 	response.Success(c, result)
 }

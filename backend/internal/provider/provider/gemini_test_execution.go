@@ -144,7 +144,6 @@ func (s *GeminiProviderTest) Execute(c *TestRun, value *providercore.Record, mod
 // API key.
 // Blank keys return an error. Missing base_url uses AI Studio, the selected base
 // passes ValidateURL, and a nonblank executor UserAgent overrides request defaults.
-// OpenCode uses its Google protocol root and final bearer authentication policy.
 func (s *GeminiProviderTest) buildGeminiAPIKeyRequest(ctx context.Context, value *providercore.Record, modelID string, payload []byte) (*http.Request, error) {
 	apiKey := value.GetCredential("api_key")
 	if strings.TrimSpace(apiKey) == "" {

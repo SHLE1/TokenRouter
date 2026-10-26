@@ -215,3 +215,72 @@ func TestGetOpenAIFormatBaseURL_ProtocolAware(t *testing.T) {
 	}}
 	require.Equal(t, "https://ds-relay.example.com", ccProvider.GetOpenAIFormatBaseURL())
 }
+
+// TestOpenCodeProtocolEndpointsKeepProviderPolicySeparate selects each supported
+// wire family through one endpoint entry. CN stateless classification and
+// CN-specific endpoint lookup must remain unavailable for the OpenCode record.
+func TestOpenCodeProtocolEndpointsKeepProviderPolicySeparate(t *testing.T) {
+	r := &Record{Platform: PlatformOpenCode, Type: ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "key"}}
+	for selected, suffix := range map[capability.ProtocolID]string{
+		capability.ProtocolOpenAIResponses:       "/openai/v1",
+		capability.ProtocolOpenAIChatCompletions: "/openai/v1",
+		capability.ProtocolAnthropicMessages:     "/anthropic/v1",
+		capability.ProtocolGeminiGenerateContent: "/google/v1beta",
+		capability.ProtocolSystemOne:             "/systemone/v1",
+	} {
+		target := ProtocolTarget{Record: r, Protocol: selected}
+		require.Equal(t, "https://opencode.ai/inference"+suffix, target.BaseURL())
+		require.False(t, target.UsesNativeCNResponses())
+		require.Empty(t, target.GetCNProtocolBaseURL(APIProtocolResponses))
+	}
+	require.Equal(t, DefaultJevBaseURL, r.GetJevBaseURL())
+	require.Equal(t, "google-default", r.GetGeminiBaseURL("google-default"))
+}
+
+// TestProtocolBaseURLUsesAnthropicProviderEndpoint checks ordinary Anthropic
+// API-key records with a unified protocol selection. Both default and custom
+// endpoints must resolve through Anthropic settings without requiring CN slots.
+func TestProtocolBaseURLUsesAnthropicProviderEndpoint(t *testing.T) {
+	for _, custom := range []string{"", "https://messages.example/anthropic"} {
+		r := &Record{Platform: PlatformAnthropic, Type: ProviderTypeAPIKey, Credentials: map[string]any{
+			"api_key": "key", "base_url": custom, UpstreamProtocolsKey: []string{string(capability.ProtocolAnthropicMessages)},
+		}}
+		want := custom
+		if want == "" {
+			want = "https://api.anthropic.com"
+		}
+		require.Equal(t, want, (ProtocolTarget{Record: r, Protocol: capability.ProtocolAnthropicMessages}).BaseURL())
+	}
+}
+
+// TestSupportsHTTPResponsesContinuation separates native response references from
+// converted or stateless routes. OpenCode keeps its platform identity while API
+// keys on its Responses route can retain an authorized upstream identifier.
+func TestSupportsHTTPResponsesContinuation(t *testing.T) {
+	for _, tc := range []struct {
+		platform string                // configured provider platform
+		kind     string                // configured credential type
+		protocol capability.ProtocolID // admitted operation protocol
+		allowed  bool                  // expected continuation eligibility
+	}{
+		{capability.PlatformOpenCode, capability.ProviderTypeAPIKey, capability.ProtocolOpenAIResponses, true},
+		{capability.PlatformOpenCode, capability.ProviderTypeAPIKey, capability.ProtocolOpenAIChatCompletions, false},
+		{capability.PlatformOpenCode, capability.ProviderTypeAPIKey, capability.ProtocolAnthropicMessages, false},
+		{capability.PlatformOpenCode, capability.ProviderTypeAPIKey, capability.ProtocolGeminiGenerateContent, false},
+		{capability.PlatformOpenCode, capability.ProviderTypeAPIKey, "", false},
+		{capability.PlatformOpenCode, capability.ProviderTypeOAuth, capability.ProtocolOpenAIResponses, false},
+		{capability.PlatformKimi, capability.ProviderTypeAPIKey, capability.ProtocolOpenAIResponses, false},
+		{capability.PlatformDeepseek, capability.ProviderTypeAPIKey, capability.ProtocolOpenAIResponses, false},
+		{capability.PlatformOpenAI, capability.ProviderTypeAPIKey, capability.ProtocolOpenAIResponses, true},
+		{capability.PlatformOpenAI, capability.ProviderTypeAPIKey, capability.ProtocolOpenAIChatCompletions, false},
+		{capability.PlatformOpenAI, capability.ProviderTypeAPIKey, "", true},
+		{capability.PlatformOpenAI, capability.ProviderTypeOAuth, capability.ProtocolOpenAIResponses, false},
+	} {
+		t.Run(tc.platform+"/"+tc.kind+"/"+string(tc.protocol), func(t *testing.T) {
+			target := ProtocolTarget{Record: &Record{Platform: tc.platform, Type: tc.kind}, Protocol: tc.protocol}
+			require.Equal(t, tc.allowed, target.SupportsHTTPResponsesContinuation())
+			require.Equal(t, tc.platform, target.Platform)
+		})
+	}
+	require.False(t, (ProtocolTarget{}).SupportsHTTPResponsesContinuation())
+}

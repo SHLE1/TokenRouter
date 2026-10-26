@@ -25,6 +25,10 @@ import (
 // Target contains route inputs that determine metadata for a complete outbound
 // model.
 type Target struct {
+	// AttributeModel retains the canonical metadata identity selected with the
+	// attempt's model route. Empty values let the retained catalog resolve it.
+	AttributeModel string `json:"attribute_model,omitempty"`
+
 	Model        string `json:"model"`                   // complete outbound model identity
 	Platform     string `json:"platform,omitempty"`      // configured provider platform name
 	ProviderType string `json:"provider_type,omitempty"` // configured provider authentication type
@@ -129,8 +133,9 @@ func (v View) Version() string {
 
 // Resolve returns model attributes and encoding rules for one target using
 // the retained catalog version. Service recognition fixes lookup identity;
-// Qoder public identities and the registered Antigravity thinking alias affect
-// metadata lookup while the returned Target retains its outbound model.
+// OpenCode canonical references, Qoder public identities, and the registered
+// Antigravity thinking alias affect metadata lookup while Target.Model retains
+// its outbound identity.
 //
 // Catalog attributes are copied, platform patches precede administrator
 // overrides, and adapter restrictions apply last. Explicitly disabled reasoning
@@ -141,6 +146,19 @@ func (v View) Resolve(target Target, override Attributes) Resolution {
 	target = target.WithServiceIdentity()
 	result := Resolution{Target: target, Sources: map[string]string{}, Version: v.Version()}
 	model := target.Model
+	if target.Platform == "opencode" {
+		if target.AttributeModel == "" && v.catalog != nil {
+			mode := target.ProviderMode
+			if mode == "" {
+				mode = "payg"
+			}
+			target.AttributeModel = v.catalog.OpenCodeOfferings[mode][model].CanonicalModelID
+		}
+		if target.AttributeModel != "" {
+			model = target.AttributeModel
+		}
+		result.Target = target
+	}
 	if target.Platform == "qoder" {
 		model = QoderModelIdentity(target.Site, model)
 	}
@@ -268,18 +286,23 @@ func (r *Resolution) patch(attrs Attributes, source string) {
 // state and returns a copy of the attributes. Source labels, rules, and target
 // references remain shared with the receiver and are treated as read-only.
 //
-// Missing thinking state uses adaptive-mode defaults for Anthropic and enabled
-// thinking for DeepSeek. Missing effort defaults to none for the registered
+// Missing thinking state uses adaptive-mode defaults for Claude Messages and enabled
+// thinking for DeepSeek. The retained canonical identity supplies these defaults
+// for OpenCode aliases. Missing effort defaults to none for the registered
 // GPT-5.2 and GPT-5.4 identities. Every supplied condition must match its
 // request state; a mismatch disables that parameter without changing the
 // display attributes retained by the receiver.
 func (r Resolution) ForRequest(state RequestState) Resolution {
+	author, model := r.Target.modelEncodingIdentity()
 	r.Attributes = r.Attributes.Clone()
 	if state.Thinking == nil {
 		// Conditional parameters need the adapter's default thinking state when
 		// the client omits a choice, so their eligibility agrees with that
 		// request's encoding.
-		switch r.Target.servicePlatform() {
+		if r.Target.UpstreamProtocol == "anthropic_messages" && r.Rules.SignatureMode == "anthropic" {
+			state.Thinking = valuePointer(r.Rules.ThinkingMode == "adaptive" || r.Rules.ThinkingMode == "adaptive_between_tools")
+		}
+		switch author {
 		case "anthropic":
 			state.Thinking = valuePointer(r.Rules.ThinkingMode == "adaptive" || r.Rules.ThinkingMode == "adaptive_between_tools")
 		case "deepseek":
@@ -298,7 +321,7 @@ func (r Resolution) ForRequest(state RequestState) Resolution {
 			effort := ""
 			if state.Effort != nil {
 				effort = *state.Effort
-			} else if slices.Contains([]string{"gpt-5.2", "gpt-5.4"}, strings.TrimPrefix(normalize(r.Target.Model), "openai/")) {
+			} else if slices.Contains([]string{"gpt-5.2", "gpt-5.4"}, strings.TrimPrefix(model, "openai/")) {
 				// These registered models use none when effort is omitted.
 				// Evaluate their sampling conditions using that default,
 				// allowing the same fields as an explicit none request.

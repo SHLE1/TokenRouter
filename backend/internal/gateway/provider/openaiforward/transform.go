@@ -470,10 +470,9 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 			}
 		}
 	}
-	// Continuation references remain for WSv2 and OpenAI API Key execution; other
-	// selected compatibility paths drop that server-side reference while retaining
-	// the supplied input bytes.
-	if wsDecision.Transport != "responses_websockets_v2" && (!profile.OpenAI || !profile.APIKey) && gjson.GetBytes(body, "previous_response_id").Exists() {
+	// Native HTTP continuation and WSv2 retain their upstream response reference.
+	// Converted and stateless compatibility routes rely on the supplied input history.
+	if wsDecision.Transport != "responses_websockets_v2" && !profile.HTTPContinuation && gjson.GetBytes(body, "previous_response_id").Exists() {
 		markPatchDelete("previous_response_id")
 	}
 	// Remove empty image placeholders on the decoded path before tier resolution;

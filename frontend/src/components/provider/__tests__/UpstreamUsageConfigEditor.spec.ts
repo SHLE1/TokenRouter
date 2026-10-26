@@ -55,6 +55,41 @@ describe('UpstreamUsageConfigEditor', () => {
     expect(wrapper.find('[data-testid="select"]').exists()).toBe(false)
   })
 
+  // OpenCode chooses its adapter automatically but allows a separate management
+  // endpoint. Editing that address emits its draft while the adapter selector stays hidden.
+  it('edits the management address with an automatic Go adapter', async () => {
+    const wrapper = mount(UpstreamUsageConfigEditor, {
+      props: { enabled: true, adapter: 'opencode_go', baseUrl: '', automaticAdapter: true },
+      global: { stubs: { Select: SelectStub } },
+    })
+    expect(wrapper.find('[data-testid="upstream-usage-adapter"]').exists()).toBe(false)
+    await wrapper
+      .get('[data-testid="upstream-usage-base-url"]')
+      .setValue('https://management.example.test')
+    expect(wrapper.emitted('update:baseUrl')?.at(-1)).toEqual(['https://management.example.test'])
+    expect(wrapper.emitted('update:adapter')).toBeUndefined()
+    await wrapper.setProps({ enabled: false })
+    expect(wrapper.find('[data-testid="upstream-usage-base-url"]').exists()).toBe(false)
+  })
+
+  // Fixed CN forms opt out of management-address editing separately from adapter
+  // selection. Their automatic adapter still leaves the query enable switch available.
+  it('hides the management address when the caller uses a fixed CN form', () => {
+    const wrapper = mount(UpstreamUsageConfigEditor, {
+      props: {
+        enabled: true,
+        adapter: 'kimi_coding',
+        baseUrl: '',
+        automaticAdapter: true,
+        baseUrlEditable: false,
+      },
+      global: { stubs: { Select: SelectStub } },
+    })
+    expect(wrapper.find('[data-testid="upstream-usage-enabled"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="upstream-usage-adapter"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="upstream-usage-base-url"]').exists()).toBe(false)
+  })
+
   // The administrator chooses the Derouter usage adapter in the shared selector. The
   // editor must emit that adapter value and display its account-management address
   // guidance for the parent form.
@@ -75,5 +110,19 @@ describe('UpstreamUsageConfigEditor', () => {
       .get('[data-testid="upstream-usage-base-url"]')
       .setValue('https://management.example.test')
     expect(wrapper.emitted('update:baseUrl')?.at(-1)).toEqual(['https://management.example.test'])
+  })
+  // An automatic OpenCode Go adapter uses its own management host. The editor
+  // must explain that leaving this field blank does not reuse inference credentials' destination.
+  it('shows the official Go management root independently from inference', () => {
+    const wrapper = mount(UpstreamUsageConfigEditor, {
+      props: { enabled: true, adapter: 'opencode_go', baseUrl: '', automaticAdapter: true },
+      global: { stubs: { Select: SelectStub } },
+    })
+    expect(wrapper.get('[data-testid="upstream-usage-base-url"]').attributes('placeholder')).toBe(
+      'https://opencode.ai',
+    )
+    expect(wrapper.text()).toContain('admin.providers.upstreamUsage.openCodeBaseUrlHint')
+    expect(wrapper.text()).not.toContain('admin.providers.upstreamUsage.baseUrlHint')
+    wrapper.unmount()
   })
 })

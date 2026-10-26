@@ -164,7 +164,7 @@ func PreserveProtocolCredentials(existing, incoming map[string]any) map[string]a
 	// Secret-only credential rotations omit protocol fields. Carry those fields
 	// forward unless legacy credential keys request a new interpretation of the selection.
 	if !HasLegacyProtocolPatch(incoming, nil) {
-		for _, key := range []string{UpstreamProtocolsKey, "api_base_urls", "provider_mode", OpenCodeModelProtocolsKey} {
+		for _, key := range []string{UpstreamProtocolsKey, "api_base_urls", "provider_mode", OpenCodeModelProtocolsKey, OpenCodeCatalogProtocolsKey} {
 			if _, supplied := out[key]; !supplied {
 				if value, exists := existing[key]; exists {
 					out[key] = value

@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
-	geminicli "github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/opencode"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
@@ -34,8 +36,12 @@ func (s *Gemini) geminiRequestPlan(value *gatewayprovider.ExecutionProvider, mod
 		UpstreamStream: upstreamStream,
 		ForceAIStudio:  forceAIStudio,
 		APIKey:         func() string { return value.View().GetCredential("api_key") },
-		BaseURL:        func() string { return value.View().GetGeminiBaseURL(geminicli.AIStudioBaseURL) },
-		ValidateURL:    s.validateUpstreamBaseURL,
+		// The Gemini wire builder appends v1beta itself. Remove a selected protocol
+		// root's terminal version here so default and custom OpenCode prefixes remain intact.
+		BaseURL: func() string {
+			return strings.TrimSuffix((providercore.ProtocolTarget{Record: value.View(), Protocol: capability.ProtocolGeminiGenerateContent}).BaseURL(), "/v1beta")
+		},
+		ValidateURL: s.validateUpstreamBaseURL,
 		VertexURL: func(action string, stream bool) (string, error) {
 			return vertex.BuildVertexGeminiURL(gatewayprovider.ExecutionProtocolRecord(value).VertexProjectID(vertex.ServiceAccountProjectID), gatewayprovider.ExecutionProtocolRecord(value).VertexLocation(model), model, action, stream)
 		},

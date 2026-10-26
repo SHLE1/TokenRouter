@@ -331,13 +331,3 @@ func SetActualUpstreamEndpoint(c *gin.Context, endpoint string) {
 		c.Set(ctxKeyActualUpstreamEndpoint, strings.TrimSpace(endpoint))
 	}
 }
-
-// selectedErrorRulePlatform uses recorded provider identity for final error rules.
-// Direct executor callers without selection telemetry retain their supplied
-// platform default, keeping error representation independent of observation setup.
-func selectedErrorRulePlatform(c *gin.Context, fallback string) string {
-	if platform := selectedOpsPlatform(c); platform != "unknown" {
-		return platform
-	}
-	return fallback
-}

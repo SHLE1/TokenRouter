@@ -26,8 +26,7 @@ type ProviderProtocols struct {
 	// Platform: configured provider platform. Type: provider authentication type.
 	// AuthMode: OpenAI authentication mode.
 	Platform, Type, AuthMode string
-	Enabled                  []ProtocolID          // configured enabled upstream protocols
-	ModelProtocols           map[string]ProtocolID // exact model encodings; immutable during route selection
+	Enabled                  []ProtocolID // configured enabled upstream protocols
 }
 
 // ResolveRoute returns the preferred upstream protocol for one provider and
@@ -40,22 +39,10 @@ type ProviderProtocols struct {
 // images select the supplied Gemini provider's dedicated batch protocol
 // regardless of fallback configuration. That branch checks platform and enabled
 // protocol; callers supply validated authentication/protocol configuration.
-// OpenCode requires the optional final model and intersects its declared
-// encoding with enabled protocols before checking the client source. Unknown
-// models have no route. Other platforms ignore the optional model argument.
-// Client admission and model whitelist checks surround this pure decision.
-func ResolveRoute(provider ProviderProtocols, source ProtocolID, fallbacks map[ProtocolID][]ProtocolID, model ...string) (ProtocolID, bool) {
+// Callers narrow enabled protocols for their final model before invoking this
+// decision. Client admission and model whitelist checks surround this selection.
+func ResolveRoute(provider ProviderProtocols, source ProtocolID, fallbacks map[ProtocolID][]ProtocolID) (ProtocolID, bool) {
 	enabled := provider.Enabled
-	if provider.Platform == PlatformOpenCode {
-		if len(model) == 0 || model[0] == "" {
-			return "", false
-		}
-		target, known := provider.ModelProtocols[model[0]]
-		if !known || !slices.Contains(enabled, target) {
-			return "", false
-		}
-		enabled = []ProtocolID{target}
-	}
 	if slices.Contains(enabled, source) && slices.Contains(NativeProtocolOptions(provider.Platform, provider.Type, provider.AuthMode), source) {
 		return source, true
 	}

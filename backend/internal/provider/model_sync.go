@@ -2,8 +2,9 @@ package provider
 
 import (
 	"context"
-	"maps"
 	"slices"
+
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 )
 
 // model_sync.go fetches live model catalogues using copied provider records
@@ -16,7 +17,7 @@ import (
 // The shared operationActivity implementation tracks these request-triggered
 // queries, combines request and shutdown cancellation, and fixes the first stop
 // result. Construction performs no upstream query; requests begin work when
-// Fetch is called, and stopped services reject another query.
+// Query is called, and stopped services reject another query.
 
 // ModelSyncService tracks request-triggered model queries through an injected
 // fetch function.
@@ -25,11 +26,30 @@ type ModelSyncService struct {
 	// It observes cancellation so shutdown can wait for the call to return.
 	fetch func(context.Context, *Record) ([]string, error)
 	// activity owns admission, cancellation, and the retained shutdown result.
-	// Each successful registration remains active until Fetch's deferred finish.
+	// Each successful registration remains active until Query's deferred finish.
 	activity operationActivity
 	// CatalogProtocols reads mode-specific encodings from the shared catalog.
 	// A missing callback uses the bundled publication for local adapters and tests.
 	CatalogProtocols func(string) map[string]string
+}
+
+// ModelSyncResult contains live identifiers and independently owned catalogue suggestions.
+type ModelSyncResult struct {
+	Models []string `json:"models"` // live upstream model identifiers
+	// ModelProtocols contains catalogue suggestions for the returned models. Saved
+	// administrator overrides remain owned by the provider configuration and form.
+	ModelProtocols map[string]string `json:"model_protocols,omitempty"`
+}
+
+// ModelSyncPreview supplies caller-owned credentials for an unsaved model query.
+type ModelSyncPreview struct {
+	Platform string // temporary upstream platform
+	Type     string // temporary authentication kind
+	APIKey   string // caller supplied credential
+	BaseURL  string // temporary service root
+	// ProviderMode selects the OpenCode service; an empty value leaves the temporary
+	// record unconfigured so the provider uses its default payg mode.
+	ProviderMode string
 }
 
 // NewModelSyncService constructs a request-triggered catalogue service around
@@ -42,23 +62,41 @@ func NewModelSyncService(fetch func(context.Context, *Record) ([]string, error))
 	return &ModelSyncService{fetch: fetch}
 }
 
-// Fetch registers a catalogue query and passes a copied provider record to the
-// adapter. The returned model slice is copied even when the adapter also
-// returns an error.
+// Query registers a catalogue query and passes a copied provider record to the
+// adapter. Its result pairs live model IDs with pure catalogue suggestions,
+// leaving saved manual protocol overrides in the caller-owned configuration.
 //
 // Request cancellation and service shutdown reach the adapter through the
 // registered context. Completion unregisters the operation so StopContext can
 // finish waiting, and a stopped service returns ErrRefreshStopped before
 // invoking fetch. Callers provide stable input during copying and adapters
 // respond to cancellation to permit timely shutdown.
-func (s *ModelSyncService) Fetch(ctx context.Context, v *Record) ([]string, error) {
+func (s *ModelSyncService) Query(ctx context.Context, v *Record) (ModelSyncResult, error) {
 	ctx, finish, err := s.activity.begin(ctx, ErrRefreshStopped)
 	if err != nil {
-		return nil, err
+		return ModelSyncResult{}, err
 	}
 	defer finish()
-	models, err := s.fetch(ctx, CloneRecord(v))
-	return slices.Clone(models), err
+	snapshot := CloneRecord(v)
+	models, err := s.fetch(ctx, snapshot)
+	if err != nil {
+		return ModelSyncResult{}, err
+	}
+	return ModelSyncResult{Models: slices.Clone(models), ModelProtocols: s.protocolSuggestions(snapshot, models)}, nil
+}
+
+// Preview queries models using the credentials supplied by the caller. It
+// constructs an unsaved record inside this use case and shares Query's copy,
+// cancellation, and catalogue suggestion rules.
+func (s *ModelSyncService) Preview(ctx context.Context, input ModelSyncPreview) (ModelSyncResult, error) {
+	credentials := map[string]any{
+		"api_key":  input.APIKey,
+		"base_url": input.BaseURL,
+	}
+	if input.ProviderMode != "" {
+		credentials["provider_mode"] = input.ProviderMode
+	}
+	return s.Query(ctx, &Record{Platform: input.Platform, Type: input.Type, Credentials: credentials})
 }
 
 // StopContext rejects subsequent model queries, cancels active queries, and
@@ -68,34 +106,20 @@ func (s *ModelSyncService) StopContext(ctx context.Context) error {
 	return s.activity.stop(ctx, "provider model list requests")
 }
 
-// Protocols returns exact-model encodings for an OpenCode synchronization result.
-// A published mode table replaces bundled defaults, then saved overrides
-// take precedence. An unavailable publication retains bundled defaults. Unknown entries remain absent so the form can request an
-// administrator choice instead of selecting a guessed endpoint.
-//
-// A successful current publication is authoritative for its complete mode
-// table, including entries it omits. Saved exact-model overrides are applied
-// afterward because they may describe a custom compatible deployment. The
-// returned table contains only models reported by this synchronization; other
-// saved models remain in the provider configuration until separately edited.
-func (s *ModelSyncService) Protocols(value *Record, models []string) map[string]string {
+// protocolSuggestions returns catalogue encodings for the queried OpenCode
+// model IDs. A published mode table is authoritative, including omitted models;
+// absent publication uses bundled defaults. Administrator overrides stay in the
+// caller's configuration so deleting a draft override restores catalogue choice.
+func (s *ModelSyncService) protocolSuggestions(value *Record, models []string) map[string]string {
 	if !value.IsOpenCode() {
 		return nil
 	}
-	routes := make(map[string]string)
-	for model, target := range value.OpenCodeModelProtocols() {
-		routes[model] = string(target)
-	}
+	// An unavailable live publication retains bundled model knowledge, while a
+	// published empty table intentionally supplies no current protocol suggestions.
+	routes := modelcatalog.OpenCodeProtocols(value.OpenCodeMode())
 	if s.CatalogProtocols != nil {
 		if current := s.CatalogProtocols(value.OpenCodeMode()); current != nil {
-			routes = maps.Clone(current)
-		}
-	}
-	modes, _ := value.Credentials[OpenCodeModelProtocolsKey].(map[string]any)
-	overrides, _ := modes[value.OpenCodeMode()].(map[string]any)
-	for model, target := range overrides {
-		if text, ok := target.(string); ok {
-			routes[model] = text
+			routes = current
 		}
 	}
 	result := make(map[string]string)

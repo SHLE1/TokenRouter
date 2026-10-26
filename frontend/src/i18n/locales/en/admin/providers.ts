@@ -16,7 +16,10 @@ export default {
         'Use one API key for OpenCode models. Go usage can be refreshed from the provider list.',
       modelProtocols: 'Model protocols',
       modelProtocolsHint:
-        'Sync model protocols or add an exact model override. Each service mode keeps its own overrides.',
+        'View catalog suggestions or set an exact model override. Delete an override to use the catalog. Each service mode keeps its own overrides.',
+      syncSavedSettings: 'Sync uses the saved API key, service mode, and root address.',
+      saveBeforeSync: 'Save API key, service mode, and root address changes before syncing.',
+      catalogSuggestion: 'Catalog',
       selectProtocol: 'Select a protocol',
       endpointOverrides: 'Custom protocol addresses',
     },
@@ -484,6 +487,8 @@ export default {
       baseUrlPlaceholder: 'Use the provider forwarding base URL',
       baseUrlHint:
         'The selected adapter keeps its own fixed paths and request format. Leave blank to reuse the provider base URL.',
+      openCodeBaseUrlHint:
+        'Leave blank to query https://opencode.ai. The Go management address is configured independently of the inference address.',
       derouterBaseUrlHint:
         'Uses the provider Account Key to query available USD. Leave blank to use https://cf-api.derouter.ai, or enter a management base URL.',
       walletAccessToken: 'New API user access token (optional)',

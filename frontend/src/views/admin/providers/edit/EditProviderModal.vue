@@ -404,6 +404,8 @@
             :api-key="editApiKey"
             :base-url="editBaseUrl"
             :provider-id="provider.id"
+            :saved-mode="provider.credentials?.provider_mode === 'go' ? 'go' : 'payg'"
+            :saved-base-url="String(provider.credentials?.base_url ?? '')"
             @synced="setAllowedModels([...new Set([...allowedModels, ...$event])])"
           />
 
@@ -674,6 +676,7 @@
             :enabled="upstreamUsageEnabled"
             :adapter="provider.platform === 'opencode' ? 'opencode_go' : upstreamUsageAdapter"
             :base-url="upstreamUsageBaseUrl"
+            :base-url-editable="!isCNApiKeyProvider"
             :wallet-access-token="upstreamUsageWalletAccessToken"
             :wallet-user-id="upstreamUsageWalletUserId"
             :automatic-adapter="isCNApiKeyProvider || provider.platform === 'opencode'"

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
@@ -66,6 +67,11 @@ func (s *Gemini) geminiExchangeOptions(c *attempt, ctx context.Context, provider
 		SetError: func(code int, message, detail string) { c.SetError(code, message, detail) },
 		Detail:   s.upstreamErrorDetail,
 	}
+	if provider.View().IsOpenCode() {
+		// The outer gateway owns ordinary OpenCode attempts and their retry budget.
+		// Gemini keeps its bounded signature repair stages within this one attempt.
+		options.ExternalRetry = true
+	}
 	options.BuildError = func(err error) error {
 		if mode == geminiExchangeOpenAI {
 			return c.GeminiOpenAICompatError(protocol, http.StatusBadGateway, "upstream_error", err.Error())
@@ -82,6 +88,13 @@ func (s *Gemini) geminiExchangeOptions(c *attempt, ctx context.Context, provider
 		return c.ClaudeError(status, kind, err.Error())
 	}
 	options.FinalError = func(message string) error {
+		if provider.View().IsOpenCode() {
+			return &forwardcore.UpstreamFailoverError{
+				Platform:                provider.Record.Platform,
+				StatusCode:              http.StatusBadGateway,
+				RetryableOnSameProvider: provider.View().IsPoolMode() && provider.View().IsPoolModeRetryableStatus(http.StatusBadGateway),
+			}
+		}
 		if mode == geminiExchangeNative {
 			return c.GoogleError(http.StatusBadGateway, message)
 		}

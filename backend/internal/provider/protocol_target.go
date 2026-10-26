@@ -7,9 +7,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// protocol_target.go resolves CN protocol variants and endpoint addresses for
-// a selected operation. CN endpoint selection combines stored provider
-// configuration with one operation's text protocol. A recognized selected
+// protocol_target.go resolves provider protocol endpoints and CN variants for
+// a selected operation. BaseURL selects OpenCode mode and protocol slots,
+// native platform defaults, or CN-specific endpoint rules. CN endpoint selection
+// combines stored provider configuration with one operation's text protocol. A recognized selected
 // protocol overrides the stored variant, while a unified native-set key makes
 // unselected CN operations adaptive even when the set is empty or malformed.
 // Protocol admission is checked separately from these address and variant
@@ -69,18 +70,47 @@ func (r *Record) ConfiguredAPIProtocol() string {
 	return APIProtocolChatCompletions
 }
 
-// GetOpenAIBaseURL returns the operation's protocol base for OpenCode, or the
-// base selected by Record.OpenAIBaseURL for other providers. Record must be
-// nonnil. An unselected OpenCode operation defaults to the Chat base; execution
-// callers validate the returned address before connecting.
-func (a ProtocolTarget) GetOpenAIBaseURL() string {
-	if a.IsOpenCode() {
-		target := a.Protocol
-		if target == "" {
-			target = protocolcore.ProtocolOpenAIChatCompletions
-		}
-		return a.OpenCodeBaseURL(target)
+// BaseURL selects the endpoint for the operation's protocol and provider.
+// An absent protocol selects Chat. Callers validate the returned address before
+// connecting; protocol admission and Gemini version suffix handling remain with
+// the request builder consuming this base. OpenCode selects its mode and exact
+// protocol slot here. Other providers retain their platform-specific lookup,
+// including the CN distinction between fixed legacy bases and adaptive slots.
+// Endpoint selection does not enable a protocol or apply request-body storage
+// policy; callers establish an admitted route separately before dispatch.
+func (a ProtocolTarget) BaseURL() string {
+	if a.Record == nil {
+		return ""
 	}
+	selected := a.Protocol
+	if selected == "" {
+		selected = protocolcore.ProtocolOpenAIChatCompletions
+	}
+	if a.IsOpenCode() {
+		return a.OpenCodeBaseURL(selected)
+	}
+	switch selected {
+	case protocolcore.ProtocolSystemOne:
+		return a.GetJevBaseURL()
+	case protocolcore.ProtocolGeminiGenerateContent:
+		return a.GetGeminiBaseURL("https://generativelanguage.googleapis.com")
+	case protocolcore.ProtocolAnthropicMessages:
+		if a.IsCNProvider() {
+			return a.GetAnthropicProtocolBaseURL()
+		}
+		return a.GetBaseURL()
+	case protocolcore.ProtocolOpenAIResponses:
+		if _, unified := a.Credentials[UpstreamProtocolsKey]; a.UsesNativeCNResponses() && (unified || a.ConfiguredAPIProtocol() == APIProtocolAdaptive) {
+			return a.GetCNProtocolBaseURL(APIProtocolResponses)
+		}
+	}
+	return a.GetOpenAIBaseURL()
+}
+
+// GetOpenAIBaseURL returns the provider's ordinary OpenAI-compatible base.
+// The record must be nonnil. Adaptive CN configuration selects its Chat slot;
+// callers needing a selected protocol's endpoint use BaseURL before validation.
+func (a ProtocolTarget) GetOpenAIBaseURL() string {
 	return a.OpenAIBaseURL(a.IsAdaptiveAPIProtocol())
 }
 
@@ -112,13 +142,7 @@ func (a ProtocolTarget) GetAPIProtocol() string {
 // Responses or adaptive lookup. Nil and unsupported records return false. This
 // predicate checks platform and variant, so an empty unified selection can still
 // return true; protocol admission checks its enabled identifiers separately.
-// OpenCode qualifies when the operation has selected its Responses encoding.
 func (a ProtocolTarget) UsesNativeCNResponses() bool {
-	if a.IsOpenCode() {
-		// The shared stateless preparation belongs to Responses. Other OpenCode
-		// encodings must not trigger its storage and continuation body rewrites.
-		return a.Protocol == protocolcore.ProtocolOpenAIResponses
-	}
 	if a.Record == nil || !a.SupportsNativeCNResponses() {
 		return false
 	}
@@ -138,7 +162,7 @@ func (a ProtocolTarget) IsAdaptiveAPIProtocol() bool {
 	return a.GetAPIProtocol() == APIProtocolAdaptive
 }
 
-// GetCNProtocolBaseURL returns a configured or default CN or OpenCode address
+// GetCNProtocolBaseURL returns a configured or default CN address
 // for a supported text protocol. Other platforms and nil records return empty. A unified key or adaptive operation first
 // checks that exact protocol slot for a nonblank string, then Chat alone accepts
 // a nonblank legacy base_url. Chosen custom strings are trimmed.
@@ -149,20 +173,10 @@ func (a ProtocolTarget) IsAdaptiveAPIProtocol() bool {
 // handles its stored Messages base separately. This helper selects an address
 // and leaves URL and protocol admission validation to execution callers.
 func (a ProtocolTarget) GetCNProtocolBaseURL(protocol string) string {
-	if a.IsOpenCode() {
-		switch protocol {
-		case APIProtocolResponses:
-			return a.OpenCodeBaseURL(protocolcore.ProtocolOpenAIResponses)
-		case APIProtocolAnthropic:
-			return a.OpenCodeBaseURL(protocolcore.ProtocolAnthropicMessages)
-		case APIProtocolChatCompletions:
-			return a.OpenCodeBaseURL(protocolcore.ProtocolOpenAIChatCompletions)
-		}
-	}
 	if a.Record == nil || !a.IsCNProvider() {
 		return ""
 	}
-	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified || a.IsAdaptiveAPIProtocol() {
+	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified || a.ConfiguredAPIProtocol() == APIProtocolAdaptive {
 		if baseURLs, ok := a.Credentials["api_base_urls"].(map[string]any); ok {
 			if baseURL, ok := baseURLs[protocol].(string); ok && strings.TrimSpace(baseURL) != "" {
 				return strings.TrimSpace(baseURL)
@@ -188,8 +202,7 @@ func (a ProtocolTarget) IsAnthropicProtocol() bool {
 }
 
 // GetAnthropicProtocolBaseURL returns the Messages address for fixed Messages
-// or adaptive lookup. OpenCode resolves its Messages address directly. Nil
-// records and other resolved variants on remaining platforms return empty.
+// or adaptive lookup. Nil records and other resolved variants return empty.
 // A present unified key or adaptive variant delegates to CN slot lookup, which
 // also returns empty for a non-CN record.
 //
@@ -200,13 +213,10 @@ func (a ProtocolTarget) IsAnthropicProtocol() bool {
 // The helper performs no URL validation or enabled-selection check; execution
 // callers establish those requirements before sending requests.
 func (a ProtocolTarget) GetAnthropicProtocolBaseURL() string {
-	if a.IsOpenCode() {
-		return a.OpenCodeBaseURL(protocolcore.ProtocolAnthropicMessages)
-	}
 	if a.Record == nil || (!a.IsAnthropicProtocol() && !a.IsAdaptiveAPIProtocol()) {
 		return ""
 	}
-	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified || a.IsAdaptiveAPIProtocol() {
+	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified || a.ConfiguredAPIProtocol() == APIProtocolAdaptive {
 		return a.GetCNProtocolBaseURL(APIProtocolAnthropic)
 	}
 	// A fixed Messages lookup uses the record's single custom endpoint in base_url.
@@ -286,4 +296,19 @@ func (a ProtocolTarget) GetOpenAIFormatBaseURL() string {
 	default:
 		return a.GetOpenAIBaseURL()
 	}
+}
+
+// SupportsHTTPResponsesContinuation reports whether the selected route may carry
+// stored Responses identifiers over HTTP. OpenCode requires an admitted native
+// Responses route and API-key credentials; route admission and response-owner
+// validation remain obligations of the caller before dispatch. An unset OpenAI
+// route keeps the legacy API-key default for callers without an admitted plan.
+func (a ProtocolTarget) SupportsHTTPResponsesContinuation() bool {
+	if a.Record == nil || a.Type != capability.ProviderTypeAPIKey {
+		return false
+	}
+	if a.IsOpenAIApiKey() {
+		return a.Protocol == "" || a.Protocol == protocolcore.ProtocolOpenAIResponses
+	}
+	return a.IsOpenCode() && a.Protocol == protocolcore.ProtocolOpenAIResponses
 }

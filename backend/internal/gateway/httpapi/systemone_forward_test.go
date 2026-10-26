@@ -66,7 +66,7 @@ func TestSystemOneErrorRepresentation(t *testing.T) {
 						defer rules.Stop()
 						BindErrorPassthroughService(c, rules)
 					}
-					(&SystemOneExecutor{}).writeUpstreamError(c, &jev.HTTPError{Status: 422, Header: headers, Body: body})
+					(&SystemOneExecutor{}).writeUpstreamError(c, provider.PlatformJev, &jev.HTTPError{Status: 422, Header: headers, Body: body})
 					require.Equal(t, "upstream-id", recorder.Header().Get("X-Request-Id"))
 					require.Equal(t, "17", recorder.Header().Get("Retry-After"))
 					if matched {

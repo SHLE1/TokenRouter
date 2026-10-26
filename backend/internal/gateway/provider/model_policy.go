@@ -26,10 +26,10 @@ import (
 // thinking variants determine the final wire identity. Compact can select a
 // dedicated outbound mapping without replacing the ordinary billing name.
 //
-// Prepared rules capture model configuration for catalogue queries; uncaptured
-// execution policies read provider rules when used. An attempt route records
-// its chosen protocol and participates in mapping resolution, keeping
-// candidate identity separate from shared provider configuration. Final
+// Prepared rules capture model configuration for catalogue queries; unplanned
+// execution policies read provider rules when used. An admitted attempt retains
+// its selected protocol and mapped model together, keeping request identity
+// separate from shared provider configuration. Final
 // scheduling names and shared image, Fable, or Gemini scopes then determine
 // model-window eligibility. Successful outbound resolution records the final
 // stage in request model tracing for response and usage correlation.
@@ -85,15 +85,33 @@ func (p ModelPolicy) finalModelWhitelisted(model string) bool {
 	return p.Record.FinalModelWhitelisted(model, provideradapter.ModelDefaults(), provideradapter.ModelRules(p.Record))
 }
 
-// forwardMappedModel resolves ordinary forwarding with captured rules when
-// present and current provider defaults otherwise. Snapshot-backed catalogue
-// checks reuse their mapping, while uncaptured execution policies read
-// configuration at the call.
+// forwardMappedModel resolves forwarding through the attempt's captured model
+// when present. Nil records return empty; legacy calls use configured mappings,
+// and empty configured targets retain the request spelling for ordinary platform
+// normalization.
 func (p ModelPolicy) forwardMappedModel(model string) string {
-	if p.models != nil {
-		return p.models.ForwardMappedModel(model)
+	if p.Record == nil {
+		return ""
 	}
-	return provider.ResolveForwardMappedModel(p.Record, model, provideradapter.ModelDefaults())
+	mapped, matched := p.ResolveMapped(model)
+	if candidate, planned := p.Route.Candidate(); planned && (model == candidate.Models.RequestedModel || model == candidate.Models.GroupMappedModel || model == candidate.Models.ProviderMappedModel) {
+		// Ordinary provider mappings allow an empty target to retain the request
+		// name. Capturing a candidate does not turn that configured value into an
+		// empty wire model; model-specific OpenCode routes reject it during admission.
+		if strings.TrimSpace(mapped) == "" && !p.Record.IsOpenCode() {
+			return model
+		}
+		return strings.TrimSpace(mapped)
+	}
+	if p.Record.IsOpenCode() {
+		return strings.TrimSpace(mapped)
+	}
+	// Empty configured targets retain the caller identity, allowing platform
+	// normalization to apply its established default instead of sending an empty model.
+	if !matched || strings.TrimSpace(mapped) == "" {
+		return model
+	}
+	return strings.TrimSpace(mapped)
 }
 
 // antigravityModel resolves Antigravity model and thinking variants through
@@ -123,13 +141,13 @@ func (p ModelPolicy) Mapped(model string) string {
 	return mapped
 }
 
-// ResolveMapped applies one provider mapping hop and returns the matched flag.
+// ResolveMapped returns the admitted model or one provider mapping hop.
 // A prepared policy with no candidate uses its captured rules directly;
-// candidate-bound policies resolve through Route using the provider identity
-// and chosen map.
+// candidate-bound policies reuse their captured model for the admitted request.
+// Auxiliary model behavior is defined by AttemptRoute.ResolveModel.
 func (p ModelPolicy) ResolveMapped(model string) (string, bool) {
-	// Prepared catalogue queries without a candidate use their captured resolver;
-	// candidate routes retain provider identity when applying the supplied one-hop map.
+	// Prepared catalogue queries use their captured resolver until an attempt
+	// binds a final identity; that retained identity prevents another provider alias hop.
 	if p.models != nil {
 		if _, planned := p.Route.Candidate(); !planned {
 			return p.models.ResolveMappedModel(model)

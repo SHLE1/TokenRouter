@@ -1028,15 +1028,10 @@ func (r *Record) GetBaseURL() string {
 }
 
 // GetGeminiBaseURL returns the trimmed saved endpoint or the supplied default
-// URL. OpenCode selects its mode-specific Google base and removes the version
-// segment that the shared Gemini request builder appends. Other platforms use
-// the supplied default when their stored base is missing or whitespace only.
+// URL. The supplied default is used when the stored base is missing or
+// whitespace only; protocol-specific service endpoints are selected by
+// ProtocolTarget.BaseURL before constructing a request.
 func (r *Record) GetGeminiBaseURL(defaultBaseURL string) string {
-	if r.IsOpenCode() {
-		// The Gemini URL builder appends its version segment. Remove the saved
-		// protocol base's suffix here so custom prefixes do not duplicate v1beta.
-		return strings.TrimSuffix(r.OpenCodeBaseURL(capability.ProtocolGeminiGenerateContent), "/v1beta")
-	}
 	baseURL := strings.TrimSpace(r.GetCredential("base_url"))
 	if baseURL == "" {
 		return defaultBaseURL

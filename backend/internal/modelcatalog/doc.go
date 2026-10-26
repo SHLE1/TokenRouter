@@ -9,7 +9,8 @@
 // File groups:
 //   - catalog.go, index.go, and origins.go organize model identity and authorship.
 //   - attributes*.go and capabilities.go validate and combine model declarations.
-//   - platform.go, bedrock.go, qoder.go, and ollama.go describe execution rules.
+//   - encoding.go selects model payload rules by author identity and protocol.
+//   - platform.go, bedrock.go, qoder.go, and ollama.go describe service rules.
 //   - opencode.go indexes service-specific model protocols independently of prices.
 //   - media.go supplies known media-generation attributes for supported routes.
 package modelcatalog

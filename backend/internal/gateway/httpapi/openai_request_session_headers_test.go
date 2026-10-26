@@ -74,3 +74,17 @@ func TestApplyOpenCodeSessionHeaderTrustBoundary(t *testing.T) {
 		})
 	}
 }
+
+// TestOpenCodeSessionHelperDoesNotAuthenticate invokes conversation forwarding on
+// an OpenCode record. Existing authentication and agent values must remain
+// unchanged because the final request preparation step owns those headers.
+func TestOpenCodeSessionHelperDoesNotAuthenticate(t *testing.T) {
+	value := openCodeSessionTestProvider("https://opencode.ai/inference")
+	value.Record.Platform = providercore.PlatformOpenCode
+	value.Record.Credentials["api_key"] = "provider-key"
+	headers := http.Header{"Authorization": {"Bearer existing"}, "User-Agent": {"existing-agent"}}
+	ApplyOpenCodeSessionHeader(newOpenCodeSessionTestContext(t, "session"), value, "https://opencode.ai/inference/openai/v1/responses", headers)
+	require.Equal(t, "Bearer existing", headers.Get("Authorization"))
+	require.Equal(t, "existing-agent", headers.Get("User-Agent"))
+	require.Equal(t, "session", headers.Get("X-OpenCode-Session"))
+}

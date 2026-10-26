@@ -68,7 +68,7 @@ func (s *OpenAIWebSocketExecutor) buildOpenAIResponsesWSURL(provider *gatewaypro
 			targetURL = gatewayhttp.OpenaiPlatformAPIURL
 		}
 	case capability.ProviderTypeAPIKey:
-		baseURL := gatewayprovider.ExecutionProtocolTarget(provider).GetOpenAIBaseURL()
+		baseURL := gatewayprovider.ExecutionProtocolTarget(provider).BaseURL()
 		if _, unified := provider.Record.Credentials[providercore.UpstreamProtocolsKey]; gatewayprovider.ExecutionProtocolTarget(provider).UsesNativeCNResponses() && (unified || gatewayprovider.ExecutionProtocolTarget(provider).IsAdaptiveAPIProtocol()) {
 			// Unified or adaptive CN Responses configuration chooses its protocol-specific
 			// base URL before validation, matching the endpoint used by Responses HTTP.

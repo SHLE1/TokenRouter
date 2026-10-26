@@ -8,7 +8,7 @@
     <button
       type="button"
       class="btn btn-secondary"
-      :disabled="syncing || (!providerId && !apiKey?.trim())"
+      :disabled="syncing || syncNeedsSave || (!providerId && !apiKey?.trim())"
       @click="syncModels"
     >
       {{
@@ -19,6 +19,15 @@
         )
       }}
     </button>
+    <p v-if="providerId" class="input-hint" data-testid="opencode-sync-settings">
+      {{
+        t(
+          syncNeedsSave
+            ? 'admin.providers.opencode.saveBeforeSync'
+            : 'admin.providers.opencode.syncSavedSettings',
+        )
+      }}
+    </p>
     <p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
     <details class="space-y-3">
       <summary class="cursor-pointer text-sm font-medium">{{
@@ -26,7 +35,7 @@
       }}</summary>
       <p class="input-hint">{{ t('admin.providers.opencode.modelProtocolsHint') }}</p>
       <div
-        v-for="(target, model) in draft.protocols[draft.mode]"
+        v-for="(target, model) in displayedProtocols"
         :key="model"
         class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2"
       >
@@ -37,12 +46,16 @@
           @update:model-value="setProtocol(model, String($event))"
         />
         <button
+          v-if="Object.prototype.hasOwnProperty.call(draft.protocols[draft.mode], model)"
           type="button"
           class="btn btn-ghost btn-sm"
           :aria-label="t('common.delete')"
           @click="removeProtocol(model)"
           ><Icon name="trash" size="sm"
         /></button>
+        <span v-else class="text-xs text-gray-500 dark:text-gray-400">{{
+          t('admin.providers.opencode.catalogSuggestion')
+        }}</span>
       </div>
       <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
         <input
@@ -82,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -93,20 +106,30 @@ import type { OpenCodeDraft } from './openCodeDraft'
 // OpenCodeFields.vue edits inference modes, exact model protocols, and endpoint
 // overrides using the provider form's draft. Synchronization loads current
 // upstream model IDs and their protocol declarations for the selected mode;
-// the parent receives the IDs for its whitelist while the draft retains routes.
+// the parent receives IDs for its whitelist while the draft keeps catalogue
+// suggestions separate from administrator overrides. Both tables are saved by
+// the parent, so newly discovered models retain their accepted catalogue route.
 //
 // A synchronization captures mode and root before awaiting the server. It
 // ignores results after unmount or identity changes, preventing an earlier
 // provider's results from replacing the active draft. Mode controls are disabled
-// during that request, and every successful merge keeps explicit administrator
-// entries ahead of suggested catalog routes. Persistence belongs to the parent
-// dialog, so synchronizing or canceling this component does not save a provider.
+// during that request. Configuration changes cancel the HTTP request, and saved
+// records require their key, root, and mode edits to be saved first. Persistence
+// belongs to the parent dialog, so synchronization changes its draft until saving.
 
 // props supplies saved identity or temporary credentials for model synchronization.
 const props = defineProps<{
-  providerId?: number // Existing provider identity.
-  apiKey?: string // Unsaved inference credential.
+  // providerId selects saved synchronization. When absent, the form sends the
+  // supplied temporary key and root to the separate preview endpoint.
+  providerId?: number
+  // apiKey is blank for an unchanged saved credential. Entering a replacement
+  // blocks saved synchronization until the parent saves the edited provider.
+  apiKey?: string
   baseUrl?: string // Unsaved inference service root.
+  // savedMode and savedBaseUrl identify the persisted query configuration. The
+  // parent supplies these separately from editable values to detect unsaved changes.
+  savedMode?: 'payg' | 'go' // Persisted inference service mode.
+  savedBaseUrl?: string // Persisted inference service root.
 }>()
 // The parent owns persistence, while this component edits its isolated configuration draft.
 const draft = defineModel<OpenCodeDraft>({ required: true })
@@ -119,6 +142,44 @@ const error = ref('')
 const newModel = ref('')
 const newProtocol = ref('')
 let disposed = false
+// request identifies the invocation permitted to publish results; replacing or
+// clearing it invalidates older responses even when their input values match again.
+let request: AbortController | undefined
+
+// syncNeedsSave prevents combining a saved secret with a temporary query target.
+const syncNeedsSave = computed(
+  () =>
+    Boolean(props.providerId) &&
+    (Boolean(props.apiKey?.trim()) ||
+      draft.value.mode !== props.savedMode ||
+      (props.baseUrl?.trim() ?? '') !== (props.savedBaseUrl?.trim() ?? '')),
+)
+// displayedProtocols keeps current manual choices ahead of the selected mode's catalogue suggestions.
+const displayedProtocols = computed(() => ({
+  ...draft.value.suggestions[draft.value.mode],
+  ...draft.value.protocols[draft.value.mode],
+}))
+
+// Invalidate the active request as soon as its identity changes, including changes
+// that return to their earlier value before the pending response reaches the form.
+watch(
+  () => [
+    props.providerId,
+    props.apiKey,
+    props.baseUrl,
+    props.savedMode,
+    props.savedBaseUrl,
+    draft.value,
+    draft.value.mode,
+  ],
+  () => {
+    request?.abort()
+    request = undefined
+    syncing.value = false
+    error.value = ''
+  },
+  { flush: 'sync' },
+)
 
 // modeOptions presents the two independently billed OpenCode inference services.
 const modeOptions = computed(() => [
@@ -157,7 +218,7 @@ function setProtocol(model: string, target: string): void {
   draft.value.protocols[draft.value.mode][model] = target as ProtocolID
 }
 
-// removeProtocol removes one explicit override, allowing the backend catalog default.
+// removeProtocol removes a manual override and restores its accepted catalogue choice.
 function removeProtocol(model: string): void {
   delete draft.value.protocols[draft.value.mode][model]
 }
@@ -171,41 +232,55 @@ function addProtocol(): void {
 }
 
 // syncModels loads IDs and encodings for the captured provider and mode.
-// Stale results are discarded after unmount or input changes. Errors remain
-// visible beside the retry button, and the parent saves successful suggestions.
+// Saved records require a clean key, root, and mode; creation sends the caller's
+// temporary credential. Each invocation owns its abort controller, so a changed
+// configuration can start another request while the previous transport settles.
+// Completion checks that ownership before publishing suggestions and whitelist
+// IDs. Manual overrides remain untouched, including deletions made during the
+// request, and current-mode suggestions are replaced as one catalogue result.
 async function syncModels(): Promise<void> {
-  if (syncing.value) return
+  if (syncing.value || syncNeedsSave.value || (!props.providerId && !props.apiKey?.trim())) return
   const mode = draft.value.mode
   const root = props.baseUrl
   const identity = props.providerId
   const key = props.apiKey
+  const controller = new AbortController()
+  request = controller
   syncing.value = true
   error.value = ''
   try {
     const result = identity
-      ? await providersAPI.syncUpstreamModels(identity, { provider_mode: mode, base_url: root })
-      : await providersAPI.syncUpstreamModelsPreview({
-          platform: 'opencode',
-          type: 'apikey',
-          api_key: key ?? '',
-          base_url: root,
-          provider_mode: mode,
-        })
+      ? await providersAPI.syncUpstreamModels(identity, controller.signal)
+      : await providersAPI.syncUpstreamModelsPreview(
+          {
+            platform: 'opencode',
+            type: 'apikey',
+            api_key: key ?? '',
+            base_url: root,
+            provider_mode: mode,
+          },
+          controller.signal,
+        )
     // A changed draft identifies a different synchronization target. Discard the
-    // earlier response before publishing either whitelist entries or protocol overrides.
+    // earlier response before publishing whitelist entries or accepted catalogue
+    // suggestions for the currently edited provider.
     if (
       disposed ||
+      request !== controller ||
+      controller.signal.aborted ||
       identity !== props.providerId ||
       mode !== draft.value.mode ||
       root !== props.baseUrl ||
       key !== props.apiKey
     )
       return
-    draft.value.protocols[mode] = { ...result.model_protocols, ...draft.value.protocols[mode] }
+    draft.value.suggestions[mode] = { ...result.model_protocols }
     emit('synced', result.models)
   } catch (cause) {
     if (
       !disposed &&
+      request === controller &&
+      !controller.signal.aborted &&
       identity === props.providerId &&
       mode === draft.value.mode &&
       root === props.baseUrl &&
@@ -214,12 +289,20 @@ async function syncModels(): Promise<void> {
       error.value =
         cause instanceof Error ? cause.message : t('admin.providers.syncUpstreamModelsFailed')
   } finally {
-    if (!disposed) syncing.value = false
+    // A canceled invocation may settle after another starts. Release busy state
+    // only while this invocation still owns the request.
+    if (request === controller) {
+      request = undefined
+      if (!disposed) syncing.value = false
+    }
   }
 }
 
-// Invalidate in-flight synchronization before an unmounted form can publish fetched settings.
+// Cancel the owned HTTP request and clear its identity before a disposed form
+// can publish model IDs or protocol suggestions into the retained parent draft.
 onBeforeUnmount(() => {
   disposed = true
+  request?.abort()
+  request = undefined
 })
 </script>

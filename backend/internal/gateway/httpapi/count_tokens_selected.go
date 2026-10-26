@@ -52,7 +52,7 @@ type messagesCountSink struct {
 // ForwardSelectedCountTokens dispatches to the selected provider's count path without generation slots or usage
 // submission.
 // Missing target or parsed input returns an error. Qoder and Antigravity write
-// unsupported output with nil error; Grok estimates locally. Other platforms
+// unsupported output with nil error; Grok and OpenCode estimate locally. Other platforms
 // require their matching bound executor, and missing execution support writes
 // unavailable output with a terminal error.
 func ForwardSelectedCountTokens(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, parsed *requeststate.ParsedRequest, messages *MessagesExecutor, auxiliary *OpenAIAuxiliary, gemini *GeminiExecutor) error {
@@ -73,7 +73,7 @@ func ForwardSelectedCountTokens(ctx context.Context, c *gin.Context, target *gat
 		}
 		c.JSON(http.StatusOK, gin.H{"input_tokens": count})
 		return nil
-	case "openai", "kimi", "zhipu", "deepseek":
+	case "openai", "kimi", "zhipu", "deepseek", "opencode":
 		if auxiliary != nil {
 			return auxiliary.ForwardCountTokensAsAnthropic(ctx, c, target, parsed.Body.Bytes(), parsed.Model)
 		}

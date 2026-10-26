@@ -19,6 +19,11 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
+// model_catalogue_test.go checks platform model endpoints, authentication, and
+// catalogue parsing through controlled requests and transport responses. Fixtures
+// retain prepared requests so tests can inspect credentials and destinations
+// before any external service is involved.
+
 // modelCatalogueTransportFixture captures one model request and returns the
 // configured response object.
 type modelCatalogueTransportFixture struct {
@@ -662,4 +667,22 @@ func TestOpenCodeModelSyncUsesModeServiceRoot(t *testing.T) {
 		require.Equal(t, tc.want, req.URL.String())
 		require.Equal(t, "Bearer test", req.Header.Get("Authorization"))
 	}
+}
+
+// TestOpenCodeModelSyncNormalizesFinalAuthentication supplies whitespace around
+// a validated API key. The completed model request contains a legal normalized
+// Authorization value after provider overrides have been applied.
+func TestOpenCodeModelSyncNormalizesFinalAuthentication(t *testing.T) {
+	catalogue := &ModelCatalogue{Options: ModelCatalogueOptions{ValidateURL: func(raw string) (string, error) { return raw, nil }}}
+	value := &providercore.Record{
+		Platform: capability.PlatformOpenCode, Type: capability.ProviderTypeAPIKey,
+		Credentials: map[string]any{"api_key": " \nfixture-key\r\n"},
+	}
+	require.NoError(t, providercore.ValidateOpenCodeCredentials(value))
+	req, err := catalogue.buildUpstreamModelsRequest(t.Context(), value)
+	require.NoError(t, err)
+	require.Equal(t, "Bearer fixture-key", req.Header.Get("Authorization"))
+	require.NotContains(t, req.Header.Get("Authorization"), "\n")
+	require.Empty(t, req.Header.Get("X-Api-Key"))
+	require.Empty(t, req.Header.Get("X-Goog-Api-Key"))
 }

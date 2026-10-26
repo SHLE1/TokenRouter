@@ -168,9 +168,6 @@ func (s *CNProviderTest) Execute(
 	} else {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
-	if value.IsOpenCode() {
-		req.Header.Set("User-Agent", c.Headers.Get("User-Agent"))
-	}
 	applyGrokQuotaHeaders(value, req.Header)
 
 	proxyURL := ""

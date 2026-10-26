@@ -87,7 +87,9 @@ Google One 单个和批量的 tier 刷新，由 `TierManagement` 负责资格、
 
 管理端的可用模型由 `routing.AdminCatalog` 合并统一目录与提供商配置，再检查提供商的白名单和执行资格。空白名单允许目录未知的型号，Spark、OAuth、站点及协议规则照常检查。测试和定时测试选择器显示实际模型 ID。Jev 手动测试默认填入 `jev-latest`，其他平台等待管理员选择型号。批量测试使用勾选的候选型号，默认提示词独立初始化。
 
-实时模型同步请求由 `ModelSyncService` 跟踪在途的调用，停止时取消并等待；构造时不请求供应商。临时凭据的预览不持久化，错误格式只由 provider 定义；`provider/provider.ModelCatalogue` 负责实际的 endpoint、Header、响应报文解析和读取上限，app 直接绑定提供商存储和凭据来源。模型预览和提供商测试共用一个 ProbeTasks 范围，持久化的提供商仍由同一个 task 协调器串行处理。
+OpenCode 探针从提供商快照一次确定最终模型、协议和属性身份，由 `NativeProviderTest` 使用共享的协议载荷、流读取器和 SystemOne 交换执行。单个 `TestRun` 保留分组、客户端协议、取消和输出错误；探针不重复映射最终模型。
+
+实时模型同步请求由 `ModelSyncService` 跟踪在途的调用，停止时取消并等待；构造时不请求供应商。保存记录的查询只使用保存配置，预览使用调用者凭据；查询一次返回模型及目录建议，人工覆盖由配置表单管理。临时凭据的预览不持久化，错误格式只由 provider 定义；`provider/provider.ModelCatalogue` 负责实际的 endpoint、Header、响应报文解析和读取上限，app 直接绑定提供商存储和凭据来源。模型预览和提供商测试共用一个 ProbeTasks 范围，持久化的提供商仍由同一个 task 协调器串行处理。
 
 提供商管理的 HTTP 路由绑定 `provider/httpapi` 的具体处理器，测试直接验证所属模块。高级调度诊断通过只读的安全数据，调用 scheduler 的同一个评分算法；app 保留同一个反馈实例和 gateway 的绑定顺序。
 

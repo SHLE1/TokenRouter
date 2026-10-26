@@ -10,7 +10,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -34,14 +33,14 @@ func (s *OpenAIRequests) Target(c *gin.Context, a *gatewayprovider.ExecutionProv
 	return forward.RequestTargetOptions{
 		OAuthTarget: oauth, APIKey: a.Record.Type == capability.ProviderTypeAPIKey, DefaultURL: OpenaiPlatformAPIURL, CodexURL: ChatgptCodexURL,
 		BaseURL: func() string {
-			base := gatewayprovider.ExecutionProtocolTarget(a).GetOpenAIBaseURL()
-			// Native CN Responses use their protocol-specific base
-			// when unified or adaptive routing is configured, so
-			// generic OpenAI addressing cannot mask it.
-			if _, unified := a.Record.Credentials[provider.UpstreamProtocolsKey]; gatewayprovider.ExecutionProtocolTarget(a).UsesNativeCNResponses() && (unified || gatewayprovider.ExecutionProtocolTarget(a).IsAdaptiveAPIProtocol()) {
-				base = gatewayprovider.ExecutionProtocolTarget(a).GetCNProtocolBaseURL(provider.APIProtocolResponses)
+			target := gatewayprovider.ExecutionProtocolTarget(a)
+			// Legacy adaptive CN calls can reach the Responses builder before an
+			// operation protocol is attached. Preserve its Responses slot selection
+			// while BaseURL owns platform-specific address resolution.
+			if target.UsesNativeCNResponses() {
+				target.Protocol = capability.ProtocolOpenAIResponses
 			}
-			return base
+			return target.BaseURL()
 		}, Validate: s.ValidateBaseURL, FromBase: func(base string) string { return forward.ResponsesEndpoint(a.Record.Platform, base) }, AppendSuffix: func(base string) string {
 			return openai.AppendResponsesPathSuffix(base, OpenAIResponsesRequestPathSuffix(c))
 		},
@@ -80,9 +79,9 @@ func (s *OpenAIRequests) ResponseOptions(ctx context.Context, c *gin.Context, pr
 		ApplyProviderIdentity: func(headers http.Header) {
 			openai.ApplyCodexProviderIdentityHeaders(headers, provideradapter.CodexIdentityNamespace(CodexIdentityRecord(c, provider.View())), APIKeyIDFromContext(c))
 		},
-		ApplyFingerprint: func(headers http.Header) { ApplyStagedCodexFingerprintHeaders(c, provider.View(), headers) },
-		OverrideHeaders:  gatewayprovider.BindExecutionHeaders(provider),
-		OpenCodeSession:  func(headers http.Header) { ApplyOpenCodeSessionHeader(c, provider, targetURL, headers) },
+		ApplyFingerprint:        func(headers http.Header) { ApplyStagedCodexFingerprintHeaders(c, provider.View(), headers) },
+		OverrideHeaders:         gatewayprovider.BindExecutionHeaders(provider),
+		FinalizeProviderHeaders: func(headers http.Header) { FinalizeProviderRequestHeaders(c, provider, targetURL, headers) },
 		BetaFeatures: func(headers http.Header) {
 			ApplyOpenAICodexBetaFeatures(c, provider != nil && provider.View().IsOpenAIOAuthLike(), headers)
 		},

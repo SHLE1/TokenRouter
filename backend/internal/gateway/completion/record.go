@@ -129,13 +129,16 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 		s.applyProviderStatsCost(ctx, usageLog,
 			provider.ID, *apiKey.GroupID, result.UpstreamModel, requestedModel, input.GroupMappedModel,
 			// Native input excludes both cache buckets, so statistics receive those buckets
-			// separately; OpenAI recording constructs the analogous disjoint ordinary input.
+			// separately, including cache-write lifetimes for distinct provider statistics
+			// rates; OpenAI recording constructs the analogous disjoint ordinary input.
 			UsageTokens{
-				InputTokens:         result.Usage.InputTokens,
-				OutputTokens:        result.Usage.OutputTokens,
-				CacheCreationTokens: result.Usage.CacheCreationInputTokens,
-				CacheReadTokens:     result.Usage.CacheReadInputTokens,
-				ImageOutputTokens:   result.Usage.ImageOutputTokens,
+				InputTokens:           result.Usage.InputTokens,
+				OutputTokens:          result.Usage.OutputTokens,
+				CacheCreationTokens:   result.Usage.CacheCreationInputTokens,
+				CacheCreation5mTokens: result.Usage.CacheCreation5mTokens,
+				CacheCreation1hTokens: result.Usage.CacheCreation1hTokens,
+				CacheReadTokens:       result.Usage.CacheReadInputTokens,
+				ImageOutputTokens:     result.Usage.ImageOutputTokens,
 			},
 		)
 	}
@@ -319,12 +322,14 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	actualInputTokens := max(result.Usage.InputTokens-result.Usage.CacheReadInputTokens-result.Usage.CacheCreationInputTokens, 0)
 
 	tokens := UsageTokens{
-		InputTokens:         actualInputTokens,
-		ImageInputTokens:    result.Usage.ImageInputTokens,
-		OutputTokens:        result.Usage.OutputTokens,
-		CacheCreationTokens: result.Usage.CacheCreationInputTokens,
-		CacheReadTokens:     result.Usage.CacheReadInputTokens,
-		ImageOutputTokens:   result.Usage.ImageOutputTokens,
+		InputTokens:           actualInputTokens,
+		ImageInputTokens:      result.Usage.ImageInputTokens,
+		OutputTokens:          result.Usage.OutputTokens,
+		CacheCreationTokens:   result.Usage.CacheCreationInputTokens,
+		CacheCreation5mTokens: result.Usage.CacheCreation5mTokens,
+		CacheCreation1hTokens: result.Usage.CacheCreation1hTokens,
+		CacheReadTokens:       result.Usage.CacheReadInputTokens,
+		ImageOutputTokens:     result.Usage.ImageOutputTokens,
 	}
 
 	multiplier := s.defaultMultiplier
@@ -465,20 +470,22 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 			result.RequestedReasoningEffort,
 			input.RequestedReasoningEffort,
 		),
-		InboundEndpoint:     OptionalTrimmedStringPtr(input.InboundEndpoint),
-		UpstreamEndpoint:    OptionalTrimmedStringPtr(input.UpstreamEndpoint),
-		InputTokens:         actualInputTokens,
-		OutputTokens:        result.Usage.OutputTokens,
-		CacheCreationTokens: result.Usage.CacheCreationInputTokens,
-		CacheReadTokens:     result.Usage.CacheReadInputTokens,
-		ImageInputTokens:    result.Usage.ImageInputTokens,
-		ImageOutputTokens:   result.Usage.ImageOutputTokens,
-		ImageCount:          result.ImageCount,
-		ImageSize:           OptionalTrimmedStringPtr(result.ImageSize),
-		ImageInputSize:      OptionalTrimmedStringPtr(result.ImageInputSize),
-		ImageOutputSize:     OptionalTrimmedStringPtr(result.ImageOutputSize),
-		ImageSizeSource:     OptionalTrimmedStringPtr(result.ImageSizeSource),
-		ImageSizeBreakdown:  result.ImageSizeBreakdown,
+		InboundEndpoint:       OptionalTrimmedStringPtr(input.InboundEndpoint),
+		UpstreamEndpoint:      OptionalTrimmedStringPtr(input.UpstreamEndpoint),
+		InputTokens:           actualInputTokens,
+		OutputTokens:          result.Usage.OutputTokens,
+		CacheCreationTokens:   result.Usage.CacheCreationInputTokens,
+		CacheCreation5mTokens: result.Usage.CacheCreation5mTokens,
+		CacheCreation1hTokens: result.Usage.CacheCreation1hTokens,
+		CacheReadTokens:       result.Usage.CacheReadInputTokens,
+		ImageInputTokens:      result.Usage.ImageInputTokens,
+		ImageOutputTokens:     result.Usage.ImageOutputTokens,
+		ImageCount:            result.ImageCount,
+		ImageSize:             OptionalTrimmedStringPtr(result.ImageSize),
+		ImageInputSize:        OptionalTrimmedStringPtr(result.ImageInputSize),
+		ImageOutputSize:       OptionalTrimmedStringPtr(result.ImageOutputSize),
+		ImageSizeSource:       OptionalTrimmedStringPtr(result.ImageSizeSource),
+		ImageSizeBreakdown:    result.ImageSizeBreakdown,
 	}
 	isVideoUsage := IsGrokVideoUsageResult(result, billingModels)
 	// Video identity remains in the analysis row even when a configured token card

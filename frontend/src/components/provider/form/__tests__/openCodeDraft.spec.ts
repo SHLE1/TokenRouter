@@ -18,13 +18,20 @@ describe('OpenCode provider drafts', () => {
         payg: { 'minimax-m3': 'openai_chat_completions' },
         go: { 'minimax-m3': 'anthropic_messages' },
       },
+      opencode_catalog_protocols: { go: { known: 'anthropic_messages' } },
       api_base_urls: { gemini: '', responses: ' https://relay.example/v1 ' },
     }
     const draft = openCodeDraft(source)
     draft.protocols.go.custom = 'systemone'
+    draft.suggestions.go.suggested = 'anthropic_messages'
     expect(source.opencode_model_protocols.go).not.toHaveProperty('custom')
+    expect(source.opencode_catalog_protocols.go).not.toHaveProperty('suggested')
     expect(openCodeCredentials(draft)).toEqual({
       provider_mode: 'go',
+      opencode_catalog_protocols: {
+        payg: {},
+        go: { known: 'anthropic_messages', suggested: 'anthropic_messages' },
+      },
       opencode_model_protocols: {
         payg: source.opencode_model_protocols.payg,
         go: { ...source.opencode_model_protocols.go, custom: 'systemone' },
