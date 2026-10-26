@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -623,14 +622,15 @@ func (s *Service) AttributeIndex() (modelcatalog.Index, AttributeSnapshot) {
 	return s.attributeIndex, AttributeSnapshot{Version: version, LastUpdated: s.lastUpdated, LastError: s.lastCatalogError}
 }
 
-// OpenCodeProtocols copies the selected mode's encoding index from the current
-// publication. The read lock keeps route metadata paired with one successfully
-// validated catalog; callers may edit the returned map before saving overrides.
+// OpenCodeProtocols copies the selected mode's protocol suggestions from the
+// current publication, returning nil before any catalog is published. The read
+// lock keeps the suggestions paired with one validated catalog; callers may
+// edit the returned map before saving overrides.
 func (s *Service) OpenCodeProtocols(mode string) map[string]string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.modelCatalog == nil {
 		return nil
 	}
-	return maps.Clone(s.modelCatalog.OpenCodeRoutes[mode])
+	return s.modelCatalog.OpenCodeProtocols(mode)
 }

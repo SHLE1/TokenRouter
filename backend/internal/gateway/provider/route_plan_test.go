@@ -72,10 +72,10 @@ func TestProtocolRouteNativeFirstAndExplicitFallback(t *testing.T) {
 	require.False(t, group.AllowsClientProtocol(protocolcore.ProtocolOpenAIResponses))
 	next := *provider
 	next.Record.Credentials = map[string]any{providercore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}
-	require.False(t, ExecutionModelPolicy(&next).HasProtocolRoute(ctx))
+	require.False(t, ExecutionModelPolicy(&next).AllowsProtocol(ctx, ""))
 	group.ProtocolFallbacks[protocolcore.ProtocolAnthropicMessages] = []protocolcore.ProtocolID{}
 	ctx = requeststate.WithGroup(ctx, group)
-	require.False(t, ExecutionModelPolicy(provider).HasProtocolRoute(ctx))
+	require.False(t, ExecutionModelPolicy(provider).AllowsProtocol(ctx, ""))
 }
 
 // TestRoutePlanRebuildsCandidateAndRetainsModelSnapshot creates an attempt
@@ -108,10 +108,10 @@ func TestRoutePlanRebuildsCandidateAndRetainsModelSnapshot(t *testing.T) {
 	require.Error(t, err, "已有尝试副本也须复核 fresh 能力")
 }
 
-// TestOpenCodeAttemptRetainsFinalModelAndRejectsAuxiliaryEncoding binds an alias
-// whose target is another alias key. Repeated mapping keeps the admitted model,
-// and request preparation rejects an auxiliary model requiring another encoding.
-func TestOpenCodeAttemptRetainsFinalModelAndRejectsAuxiliaryEncoding(t *testing.T) {
+// TestOpenCodeAttemptRetainsFinalModel binds an alias whose target is another
+// alias key. Mapping the requested or final spelling again keeps the admitted
+// model, so a captured target never takes a second alias hop.
+func TestOpenCodeAttemptRetainsFinalModel(t *testing.T) {
 	value := &ExecutionProvider{Record: providercore.Record{ID: 7, Platform: capability.PlatformOpenCode, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test", "model_mapping": map[string]any{"a": "minimax-m3", "minimax-m3": "claude-opus-4-7"}}}}
 	plan := routing.Plan(routing.PlanInput{RequestedModel: "a", ClientProtocol: protocolcore.ProtocolOpenAIChatCompletions})
 	ctx := requeststate.WithRoutePlan(requeststate.WithClientProtocol(context.Background(), protocolcore.ProtocolOpenAIChatCompletions), plan)
@@ -120,8 +120,4 @@ func TestOpenCodeAttemptRetainsFinalModelAndRejectsAuxiliaryEncoding(t *testing.
 	policy := ExecutionModelPolicy(attempt)
 	require.Equal(t, "minimax-m3", policy.UpstreamModel(ctx, "a"))
 	require.Equal(t, "minimax-m3", policy.UpstreamModel(ctx, "minimax-m3"))
-	require.NoError(t, ValidateResolvedModelRoute(attempt, "minimax-m3", "openai_chat_completions"))
-	_, err = PrepareModelAttributeParameters(ctx, attempt, "claude-opus-4-7", []byte(`{"model":"claude-opus-4-7"}`), nil, "openai_chat_completions")
-	require.Error(t, err)
-	require.Error(t, ValidateResolvedModelRoute(attempt, "minimax-m3", "anthropic_messages"))
 }

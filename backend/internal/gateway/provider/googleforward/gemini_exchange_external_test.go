@@ -23,7 +23,8 @@ import (
 
 // TestOpenCodeGeminiRetriesUseOuterBudget returns quota failures on repeated
 // gateway attempts. Each invocation sends once and carries the provider identity
-// and Retry-After delay back to the caller's bounded retry loop.
+// and a capped Retry-After delay back to the caller's bounded retry loop, while
+// the provider cooldown keeps the full thirty-second deadline.
 func TestOpenCodeGeminiRetriesUseOuterBudget(t *testing.T) {
 	for _, pool := range []bool{false, true} {
 		value := &gatewayprovider.ExecutionProvider{Record: providercore.Record{
@@ -43,7 +44,7 @@ func TestOpenCodeGeminiRetriesUseOuterBudget(t *testing.T) {
 			require.ErrorAs(t, err, &failure)
 			require.Equal(t, attempt, stub.calls)
 			require.Equal(t, providercore.PlatformOpenCode, failure.Platform)
-			require.Equal(t, 30*time.Second, failure.SameProviderRetryDelay)
+			require.Equal(t, 8*time.Second, failure.SameProviderRetryDelay)
 			require.Equal(t, pool, failure.RetryableOnSameProvider)
 			if pool {
 				require.Zero(t, repo.rateLimitCalls)
@@ -91,7 +92,7 @@ func TestOpenCodeGeminiErrorRulesUseExplicitProvider(t *testing.T) {
 
 // TestOpenCodeGeminiCompatibleRetriesUseOuterBudget exercises each converted
 // client protocol with the same quota response. Messages, Responses and Chat
-// must return one provider attempt and retain its thirty-second retry delay.
+// must return one provider attempt with its Retry-After wait capped at eight seconds.
 func TestOpenCodeGeminiCompatibleRetriesUseOuterBudget(t *testing.T) {
 	for _, client := range []string{"messages", "responses", "chat"} {
 		t.Run(client, func(t *testing.T) {
@@ -118,7 +119,7 @@ func TestOpenCodeGeminiCompatibleRetriesUseOuterBudget(t *testing.T) {
 			require.ErrorAs(t, err, &failure)
 			require.Equal(t, 1, stub.calls)
 			require.Equal(t, providercore.PlatformOpenCode, failure.Platform)
-			require.Equal(t, 30*time.Second, failure.SameProviderRetryDelay)
+			require.Equal(t, 8*time.Second, failure.SameProviderRetryDelay)
 			require.True(t, failure.RetryableOnSameProvider)
 			require.Zero(t, writer.Body.Len())
 		})

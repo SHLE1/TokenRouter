@@ -253,32 +253,26 @@ func (s *recordTTLStats) ResolveProviderStats(_ context.Context, input billing.P
 	return &cost
 }
 
-// TestRecordProviderStatisticsRetainCacheLifetimes submits native and inclusive
-// input representations to the recorder. Both must price the same disjoint
-// buckets, retain cache lifetimes in persisted rows, and expose their distinct TTL cost.
+// TestRecordProviderStatisticsRetainCacheLifetimes submits a native Messages
+// observation with separate cache-write lifetimes to the recorder. Provider
+// statistics must price those disjoint buckets, and the persisted row must
+// retain the lifetimes with their distinct TTL cost.
 func TestRecordProviderStatisticsRetainCacheLifetimes(t *testing.T) {
-	for _, native := range []bool{true, false} {
-		t.Run(map[bool]string{true: "native", false: "inclusive"}[native], func(t *testing.T) {
-			recorder, _, logs, input, _ := recordFixture()
-			stats := &recordTTLStats{}
-			recorder.stats = stats
-			groupID := int64(1)
-			input.APIKey.GroupID = &groupID
-			input.Result.NativeUsage = native
-			input.Result.Usage = TokenUsage{InputTokens: 100, OutputTokens: 10, CacheReadInputTokens: 30, CacheCreationInputTokens: 12, CacheCreation5mTokens: 5, CacheCreation1hTokens: 7}
-			if !native {
-				input.Result.Usage.InputTokens = 142
-			}
-			require.NoError(t, recorder.Record(t.Context(), input, true))
-			require.Equal(t, pricing.UsageTokens{InputTokens: 100, OutputTokens: 10, CacheReadTokens: 30, CacheCreationTokens: 12, CacheCreation5mTokens: 5, CacheCreation1hTokens: 7}, stats.tokens)
-			require.Len(t, logs.rows, 1)
-			row := logs.rows[0]
-			require.Equal(t, 100, row.InputTokens)
-			require.Equal(t, 5, row.CacheCreation5mTokens)
-			require.Equal(t, 7, row.CacheCreation1hTokens)
-			require.NotNil(t, row.ProviderStatsCost)
-			// Five tokens at one and seven at two microdollars cost nineteen microdollars.
-			require.InDelta(t, 19e-6, *row.ProviderStatsCost, 1e-12)
-		})
-	}
+	recorder, _, logs, input, _ := recordFixture()
+	stats := &recordTTLStats{}
+	recorder.stats = stats
+	groupID := int64(1)
+	input.APIKey.GroupID = &groupID
+	input.Result.NativeUsage = true
+	input.Result.Usage = TokenUsage{InputTokens: 100, OutputTokens: 10, CacheReadInputTokens: 30, CacheCreationInputTokens: 12, CacheCreation5mTokens: 5, CacheCreation1hTokens: 7}
+	require.NoError(t, recorder.Record(t.Context(), input, true))
+	require.Equal(t, pricing.UsageTokens{InputTokens: 100, OutputTokens: 10, CacheReadTokens: 30, CacheCreationTokens: 12, CacheCreation5mTokens: 5, CacheCreation1hTokens: 7}, stats.tokens)
+	require.Len(t, logs.rows, 1)
+	row := logs.rows[0]
+	require.Equal(t, 100, row.InputTokens)
+	require.Equal(t, 5, row.CacheCreation5mTokens)
+	require.Equal(t, 7, row.CacheCreation1hTokens)
+	require.NotNil(t, row.ProviderStatsCost)
+	// Five tokens at one and seven at two microdollars cost nineteen microdollars.
+	require.InDelta(t, 19e-6, *row.ProviderStatsCost, 1e-12)
 }

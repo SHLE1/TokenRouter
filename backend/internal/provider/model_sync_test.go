@@ -48,68 +48,23 @@ func TestModelSyncOwnsInflightQueryAndInput(t *testing.T) {
 	require.Equal(t, stopErr, core.StopContext(context.Background()))
 }
 
-// TestOpenCodeModelSyncQueryExcludesSavedOverrides queries a Go record with
-// conflicting saved choices. The result contains current catalogue suggestions,
-// leaves unknown models unresolved, and gives the caller independently owned data.
-func TestOpenCodeModelSyncQueryExcludesSavedOverrides(t *testing.T) {
-	models := []string{"new", "custom", "unknown", "minimax-m3"}
-	routes := map[string]string{"new": "openai_responses", "custom": "openai_chat_completions"}
+// TestModelSyncQueryPairsSuggestions installs a suggestion hook that reads the
+// queried record and models. The result carries the hook's map beside an
+// independently owned model slice, and a nil hook leaves suggestions absent.
+func TestModelSyncQueryPairsSuggestions(t *testing.T) {
+	models := []string{"first", "second"}
 	svc := NewModelSyncService(func(context.Context, *Record) ([]string, error) { return models, nil })
-	svc.CatalogProtocols = func(mode string) map[string]string {
-		require.Equal(t, "go", mode)
-		return routes
-	}
-	value := &Record{
-		Platform: PlatformOpenCode, Type: ProviderTypeAPIKey,
-		Credentials: map[string]any{
-			"provider_mode": "go",
-			OpenCodeModelProtocolsKey: map[string]any{
-				"go":   map[string]any{"custom": "anthropic_messages"},
-				"payg": map[string]any{"new": "systemone"},
-			},
-			"opencode_catalog_protocols": map[string]any{"go": map[string]any{"unknown": "systemone"}},
-		},
-	}
-	result, err := svc.Query(context.Background(), value)
+	result, err := svc.Query(context.Background(), &Record{Platform: PlatformOpenCode})
 	require.NoError(t, err)
-	require.Equal(t, map[string]string{"new": "openai_responses", "custom": "openai_chat_completions"}, result.ModelProtocols)
+	require.Nil(t, result.ModelProtocols)
+	svc.Suggest = func(value *Record, ids []string) map[string]string {
+		require.Equal(t, PlatformOpenCode, value.Platform)
+		require.Equal(t, models, ids)
+		return map[string]string{"first": "openai_responses"}
+	}
+	result, err = svc.Query(context.Background(), &Record{Platform: PlatformOpenCode})
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"first": "openai_responses"}, result.ModelProtocols)
 	result.Models[0] = "changed"
-	result.ModelProtocols["new"] = "changed"
-	require.Equal(t, "new", models[0])
-	require.Equal(t, "openai_responses", routes["new"])
-}
-
-// TestOpenCodeModelSyncUsesBundledSuggestions queries without a live publication.
-// Bundled Go routes remain available, and saved manual values cannot replace them.
-func TestOpenCodeModelSyncUsesBundledSuggestions(t *testing.T) {
-	svc := NewModelSyncService(func(context.Context, *Record) ([]string, error) { return []string{"minimax-m3"}, nil })
-	value := &Record{
-		Platform: PlatformOpenCode, Type: ProviderTypeAPIKey,
-		Credentials: map[string]any{
-			"provider_mode":           "go",
-			OpenCodeModelProtocolsKey: map[string]any{"go": map[string]any{"minimax-m3": "systemone"}},
-		},
-	}
-	result, err := svc.Query(context.Background(), value)
-	require.NoError(t, err)
-	require.Equal(t, "anthropic_messages", result.ModelProtocols["minimax-m3"])
-}
-
-// TestModelSyncPreviewOwnsTemporaryCredentials supplies a temporary root and key.
-// The use case builds the complete unsaved query record and returns paired model results.
-func TestModelSyncPreviewOwnsTemporaryCredentials(t *testing.T) {
-	svc := NewModelSyncService(func(_ context.Context, value *Record) ([]string, error) {
-		require.Zero(t, value.ID)
-		require.Equal(t, "temporary-key", value.GetCredential("api_key"))
-		require.Equal(t, "https://preview.example", value.OpenCodeRoot())
-		require.Equal(t, "go", value.OpenCodeMode())
-		return []string{"minimax-m3"}, nil
-	})
-	result, err := svc.Preview(context.Background(), ModelSyncPreview{
-		Platform: PlatformOpenCode, Type: ProviderTypeAPIKey, APIKey: "temporary-key",
-		BaseURL: "https://preview.example", ProviderMode: "go",
-	})
-	require.NoError(t, err)
-	require.Equal(t, []string{"minimax-m3"}, result.Models)
-	require.Equal(t, "anthropic_messages", result.ModelProtocols["minimax-m3"])
+	require.Equal(t, "first", models[0])
 }

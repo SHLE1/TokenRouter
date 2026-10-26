@@ -27,8 +27,8 @@ import (
 // GeminiErrorObserver applies provider health updates using platform reset
 // times or third-party cooldowns.
 type GeminiErrorObserver struct {
-	// Other handles all OpenCode failures and accepted Google 401, 403 and 529
-	// observations. Observe returns the input record after delegated handling.
+	// Other handles accepted 401, 403 and 529 observations when configured. Observe
+	// returns the input record after that call regardless of its health decision.
 	Other *UpstreamHealth
 	// Precheck optionally supplies dynamic cooldowns for third-party and tier
 	// routes. Nil uses their local or static tier duration.
@@ -47,28 +47,16 @@ type GeminiErrorObserver struct {
 }
 
 // Observe applies accepted Gemini failure observations to common health or
-// quota state. OpenCode delegates to common provider policy before Google
-// classification, so its deadlines use response evidence rather than daily reset.
+// quota state.
 // A nonnil record and branch-specific callbacks are required. Accepted 401, 403
-// and 529 Google responses return the input record when Other is configured,
-// as do all delegated OpenCode observations. Remaining paths return nil,
-// including Google quota writes whose errors are discarded.
+// and 529 responses return the input record when Other is configured; remaining
+// paths return nil, including 429 writes whose errors are discarded.
 //
 // Ordinary pool 429 responses stop before local deadline selection. Other 429
 // responses choose third-party cooldown, parsed reset, tier cooldown or daily
 // reset in that order according to provider identity. A missing daily reset
 // uses five minutes, so absent timing still produces a bounded scheduling window.
 func (s *GeminiErrorObserver) Observe(ctx context.Context, value *provider.Record, statusCode int, headers http.Header, body []byte, observation HealthObservation) *provider.Record {
-	// OpenCode supplies its own account policy even when the payload uses Gemini.
-	// Delegate before Google quota classification so Retry-After and administrator
-	// pool or custom-code rules retain their shared provider handling order.
-	if value.IsOpenCode() {
-		if s.Other != nil {
-			s.Other.ApplyUpstreamError(ctx, value, observation)
-			return value
-		}
-		return nil
-	}
 	// Honor the provider status filter before common health or quota branches so
 	// an excluded error cannot install a default cooldown through this observer.
 	if !value.ShouldHandleErrorCode(statusCode) {

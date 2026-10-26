@@ -2,7 +2,6 @@ package modelcatalog
 
 import (
 	"encoding/json"
-	"maps"
 	"strings"
 	"sync"
 )
@@ -18,11 +17,13 @@ import (
 // The embedded publication provides deterministic startup defaults. A live
 // model synchronization can obtain declarations from another catalog body and
 // save them with the provider, allowing its administrator to review route
-// changes before they affect inference. Returned maps are detached from the
-// retained publication so request-specific overrides cannot mutate defaults.
+// changes before they affect inference. Returned protocol maps are detached
+// from the retained publication so request-specific overrides cannot mutate
+// defaults. Canonical identities are read from the live catalog view during
+// attribute resolution, so a refreshed publication replaces bundled ones.
 
 // embeddedOpenCodeOfferings parses the bundled publication once and retains
-// immutable mode tables; callers obtain independent copies through the accessor.
+// immutable mode tables; OpenCodeProtocols returns independent copies.
 var embeddedOpenCodeOfferings = sync.OnceValue(func() map[string]map[string]OpenCodeOffering {
 	body, err := Offline()
 	if err != nil {
@@ -41,39 +42,28 @@ type OpenCodeOffering struct {
 	CanonicalModelID string // public author metadata identity
 }
 
-// OpenCodeOfferings returns detached offering metadata for one bundled service
-// mode. Unknown modes return nil, and changing the result leaves future
-// snapshots attached to the embedded publication's original offering records.
-func OpenCodeOfferings(mode string) map[string]OpenCodeOffering {
-	return maps.Clone(embeddedOpenCodeOfferings()[mode])
+// OpenCodeProtocols returns copied protocol defaults for one bundled service
+// mode. Unknown modes return an empty map. Defaults come from the bundled
+// models.dev publication and can be replaced by saved provider declarations.
+func OpenCodeProtocols(mode string) map[string]string {
+	return offeringProtocols(embeddedOpenCodeOfferings()[mode])
 }
 
-// OpenCodeProtocols returns copied protocol defaults for one service mode.
-// Unknown modes return an empty map. Defaults come from the bundled models.dev
-// publication and can be replaced by saved provider model declarations.
-func OpenCodeProtocols(mode string) map[string]string {
-	result := make(map[string]string)
-	for id, offering := range OpenCodeOfferings(mode) {
+// OpenCodeProtocols copies one service mode's protocol suggestions from this
+// publication. Unknown modes return an empty map; the catalog keeps its own tables.
+func (c *Catalog) OpenCodeProtocols(mode string) map[string]string {
+	return offeringProtocols(c.OpenCodeOfferings[mode])
+}
+
+// offeringProtocols copies the declared protocol of each offering into a new
+// map. Offerings with an unrecognized SDK are omitted, so neither defaults nor
+// synchronization suggestions can invent an execution protocol for them.
+func offeringProtocols(offerings map[string]OpenCodeOffering) map[string]string {
+	result := make(map[string]string, len(offerings))
+	for id, offering := range offerings {
 		if offering.Protocol != "" {
 			result[id] = offering.Protocol
 		}
-	}
-	return result
-}
-
-// ParseOpenCodeProtocols extracts protocol suggestions from a catalog body.
-// Invalid JSON returns an empty result; unknown SDK encodings are omitted so
-// synchronization cannot invent an execution protocol for a model offering.
-func ParseOpenCodeProtocols(body []byte) map[string]map[string]string {
-	result := make(map[string]map[string]string)
-	for mode, offerings := range ParseOpenCodeOfferings(body) {
-		routes := make(map[string]string)
-		for id, offering := range offerings {
-			if offering.Protocol != "" {
-				routes[id] = offering.Protocol
-			}
-		}
-		result[mode] = routes
 	}
 	return result
 }

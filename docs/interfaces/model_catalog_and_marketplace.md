@@ -71,7 +71,7 @@ TypeSafe 品牌键为 `typesafe`，`jev`、`jev-latest` 和 `typesafe/jev-latest
 
 生产环境只使用 models.dev 的加载流程，远程入口是 `https://models.dev/catalog.json?type=all`，按 `pricing.check_interval_minutes` 检查（默认每 10 分钟），使用 ETag 条件请求和本地的内容摘要；管理员可以强制更新。程序内嵌了一份经过解析验证的压缩离线快照和官方价格补充，并附上 models.dev 的 MIT 许可。官方补充随二进制一起升级和回退，不依赖外部的资源目录。首次启动和网络故障时，可以使用磁盘上或内嵌的离线目录；缓存文件是 `models_dev_catalog.json`，完整解析成功后，通过临时文件替换。管理员接口返回版本、最近一次成功更新的时间和最近一次更新的错误。本地文件在合并之前，把旧的 `litellm_provider` 归一化为 `provider`，同时有新字段时（包括空值和 `null`）以新字段为准；内部的来源分类是 `catalog`，不会覆盖实际的数据出处。远程返回 304 时，本地层照常校验。
 
-OpenCode 的服务模型索引保留 `opencode` 和 `opencode-go` 的编码及 canonical 属性身份，供同步、路由和属性解析使用。缺少 canonical 声明时，只接受完整型号匹配到唯一公共作者模型的关系。属性沿这个关系查询，计费身份和渠道价格筛选保持独立，详见 [OpenCode 上游](opencode_upstream.md#opencode_routing)。
+OpenCode 的服务模型索引保留 `opencode` 和 `opencode-go` 的编码及 canonical 属性身份，供同步、路由和属性解析使用。缺少 canonical 声明时，只接受完整型号匹配到唯一公共作者模型的关系。属性解析读取当前生效目录中的这个关系，计费身份和渠道价格筛选保持独立，详见 [OpenCode 上游](opencode_upstream.md#opencode_routing)。
 
 模型编码规则由已核验的 canonical 作者、完整型号及上游协议选择。服务身份继续决定 OAuth、站点和账户策略，模型别名不改变实际提供商平台。请求中未给出思考参数时的默认值与字段清理使用同一模型身份。
 

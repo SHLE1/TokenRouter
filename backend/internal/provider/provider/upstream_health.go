@@ -17,7 +17,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	anthropicupstream "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/jev"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/kimi"
 )
 
@@ -237,7 +236,7 @@ func (s *UpstreamHealth) HandleDefault(ctx context.Context, provider *providerco
 	// Prefer those deadlines before general overload or temporary rules choose
 	// another window for the same provider response.
 	if (provider.Platform == capability.PlatformJev || provider.IsOpenCode()) && (statusCode == http.StatusTooManyRequests || statusCode == 529) {
-		if reset := jev.RetryAfterResetTime(headers, time.Now()); reset != nil {
+		if reset := upstream.RetryAfterResetTime(headers, time.Now()); reset != nil {
 			s.Core.ApplyObservedRateLimit(ctx, provider, *reset)
 			return false
 		}

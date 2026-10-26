@@ -2,8 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -17,7 +15,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/ollama"
 )
 
@@ -26,9 +23,8 @@ import (
 // Final-route attributes decide request sampling, reasoning controls, output
 // limits, and image-tool options after model mapping. Resolution reuses a
 // request catalogue session and group context, keeping each attempt on the
-// intended catalogue/configuration view. OpenCode request preparation checks
-// the final model and protocol against the same captured attempt before applying
-// parameter rules.
+// intended catalogue/configuration view while protocol selection and model
+// identity are supplied separately.
 //
 // Parameter policy first interprets client controls to activate conditional
 // attributes, then applies removal, clamping, aliases, and platform encoding
@@ -51,11 +47,6 @@ func ResolveModelAttributes(ctx context.Context, value *ExecutionProvider, model
 		upstreamProtocol = protocols[0]
 	}
 	target := ExecutionProtocolRecord(value).ModelAttributeTarget(model, upstreamProtocol)
-	if value != nil {
-		if candidate, planned := value.Route.Candidate(); planned && candidate.Models.ProviderMappedModel == model {
-			target.AttributeModel = candidate.AttributeModel
-		}
-	}
 	if source, ok := requeststate.ClientProtocolFromContext(ctx); ok {
 		target.ClientProtocol = string(source)
 	}
@@ -288,39 +279,10 @@ func ModelRequestState(body []byte) modelcatalog.RequestState {
 	return state
 }
 
-// ValidateResolvedModelRoute checks the final outgoing model against its bound
-// attempt before request preparation. Model-independent platforms need no extra
-// check; OpenCode rejects a different model or encoding on a captured attempt.
-//
-// Legacy callers with no admitted model plan still supply an already mapped
-// final model. Its declared protocol must be enabled and match the execution
-// protocol, so this check never performs another alias mapping. Pure metadata
-// queries remain separate because hosted tools can inspect another model's
-// attributes without sending that model on the text driver's endpoint.
-func ValidateResolvedModelRoute(value *ExecutionProvider, model, upstreamProtocol string) error {
-	if value == nil || !value.Record.IsOpenCode() {
-		return nil
-	}
-	if upstreamProtocol == "" {
-		upstreamProtocol = string(value.Route.Protocol())
-	}
-	if candidate, planned := value.Route.Candidate(); planned {
-		if candidate.Models.ProviderMappedModel != model || string(candidate.UpstreamProtocol) != upstreamProtocol {
-			return fmt.Errorf("model %q and protocol %q do not match the resolved provider attempt", model, upstreamProtocol)
-		}
-		return nil
-	}
-	protocols := ExecutionModelPolicy(value).CandidateSnapshot().ProtocolsForModel(model)
-	if !slices.Contains(protocols.Enabled, capability.ProtocolID(upstreamProtocol)) {
-		return fmt.Errorf("model %q has no enabled route for protocol %q", model, upstreamProtocol)
-	}
-	return nil
-}
-
 // PrepareModelAttributeParameters applies request attributes using one session
-// for the final model and named image-tool models. OpenCode first checks the
-// captured final model and protocol; main parameter rewriting can then return
-// partially rewritten bytes on error, which callers adopt only on success.
+// for the final model and named image-tool models. Main parameter rewriting
+// runs first; its error can return partially rewritten bytes, which callers
+// adopt only on success.
 //
 // An image tool can name a different model from its text driver. Resolve that
 // tool's own media attributes before removing input_fidelity, so the driver's
@@ -329,13 +291,6 @@ func ValidateResolvedModelRoute(value *ExecutionProvider, model, upstreamProtoco
 // retains the main model's resolution; named and default image tool models are
 // validated independently against the same request attribute session.
 func PrepareModelAttributeParameters(ctx context.Context, value *ExecutionProvider, model string, body []byte, service *routing.ModelAttributeService, protocols ...string) ([]byte, error) {
-	upstream := ""
-	if len(protocols) > 0 {
-		upstream = protocols[0]
-	}
-	if err := ValidateResolvedModelRoute(value, model, upstream); err != nil {
-		return nil, err
-	}
 	if routing.ModelAttributesFromContext(ctx) == nil {
 		ctx = routing.WithModelAttributes(ctx, service)
 	}

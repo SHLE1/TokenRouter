@@ -114,7 +114,7 @@ func TestOpenCodeAutomaticProbeRequiresEnabledModelProtocol(t *testing.T) {
 	ctx := context.Background()
 	require.False(t, CompatibleProviderEligible(ctx, value, "", "minimax-m3", false, providercore.OpenAIEndpointCapabilityTextGeneration))
 	value.Record.Credentials[providercore.UpstreamProtocolsKey] = []string{"anthropic_messages"}
-	require.True(t, ExecutionModelPolicy(value).HasProtocolRoute(ctx))
+	require.True(t, ExecutionModelPolicy(value).AllowsProtocol(ctx, ""))
 	require.False(t, CompatibleProviderEligible(ctx, value, "", "minimax-m3", false, providercore.OpenAIEndpointCapabilityTextGeneration))
 	value.Record.Credentials[providercore.UpstreamProtocolsKey] = []string{"openai_chat_completions"}
 	require.True(t, CompatibleProviderEligible(ctx, value, "", "minimax-m3", false, providercore.OpenAIEndpointCapabilityTextGeneration))

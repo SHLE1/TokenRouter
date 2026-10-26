@@ -67,8 +67,8 @@ func (s *Gemini) geminiExchangeOptions(c *attempt, ctx context.Context, provider
 		SetError: func(code int, message, detail string) { c.SetError(code, message, detail) },
 		Detail:   s.upstreamErrorDetail,
 	}
-	if provider.View().IsOpenCode() {
-		// The outer gateway owns ordinary OpenCode attempts and their retry budget.
+	if !isGoogleAccount(provider) {
+		// The outer gateway owns a relay's ordinary attempts and retry budget.
 		// Gemini keeps its bounded signature repair stages within this one attempt.
 		options.ExternalRetry = true
 	}
@@ -88,7 +88,9 @@ func (s *Gemini) geminiExchangeOptions(c *attempt, ctx context.Context, provider
 		return c.ClaudeError(status, kind, err.Error())
 	}
 	options.FinalError = func(message string) error {
-		if provider.View().IsOpenCode() {
+		// A relay's final transport failure becomes a failover signal so the
+		// outer gateway can choose another provider under its retry budget.
+		if !isGoogleAccount(provider) {
 			return &forwardcore.UpstreamFailoverError{
 				Platform:                provider.Record.Platform,
 				StatusCode:              http.StatusBadGateway,

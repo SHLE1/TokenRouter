@@ -86,7 +86,6 @@ type RoutePlan struct {
 // attempt.
 type CandidatePlan struct {
 	ModelMappingMatched bool                  // one-hop provider mapping match
-	AttributeModel      string                // canonical author metadata identity
 	Models              ModelChain            // attempt-specific model identity stages
 	ProviderID          int64                 // selected provider row identifier
 	GroupID             int64                 // authorized final group identifier
@@ -147,8 +146,8 @@ func Plan(input PlanInput) RoutePlan {
 // refreshed candidate and enforce client entry admission separately.
 //
 // The retained group model feeds exactly one provider mapping hop. Its result
-// selects the model encoding and canonical attribute identity from the same
-// snapshot, so consumers can send the captured model directly. Retrying with a
+// selects the model's protocol from the same snapshot, so consumers can send
+// the captured model directly. Retrying with a
 // different provider rebuilds the complete candidate while preserving request,
 // group, restriction, and billing identities in the retained plan.
 func (p RoutePlan) ResolveCandidate(candidate provider.ProviderSnapshot) (CandidatePlan, bool) {
@@ -162,7 +161,7 @@ func (p RoutePlan) ResolveCandidate(candidate provider.ProviderSnapshot) (Candid
 	}
 	models := p.models
 	models.ProviderMappedModel = resolved.Model
-	return CandidatePlan{Models: models, ModelMappingMatched: resolved.MappingMatched, AttributeModel: resolved.AttributeModel, ProviderID: candidate.ID, GroupID: p.groupID, ClientProtocol: p.clientProtocol, UpstreamProtocol: resolved.Protocol}, true
+	return CandidatePlan{Models: models, ModelMappingMatched: resolved.MappingMatched, ProviderID: candidate.ID, GroupID: p.groupID, ClientProtocol: p.clientProtocol, UpstreamProtocol: resolved.Protocol}, true
 }
 
 // GroupID returns the captured final group identifier for this request.

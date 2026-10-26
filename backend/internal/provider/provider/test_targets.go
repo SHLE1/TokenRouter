@@ -26,8 +26,7 @@ import (
 // TestTargets loads provider records and binds platform executors for prepared
 // probes.
 type TestTargets struct {
-	Native *NativeProviderTest // prepared model/protocol probe executor
-	Jev    *JevProviderTest    // Jev SystemOne probe executor
+	Jev *JevProviderTest // Jev SystemOne probe executor
 	// Read is required for target loading. A successful callback returns a nonnil
 	// provider whose platform selects the executor.
 	Read        func(context.Context, int64) (*provider.Record, error)
@@ -36,7 +35,7 @@ type TestTargets struct {
 	Grok        *GrokProviderTest        // Grok platform probe executor
 	Anthropic   *AnthropicProviderTest   // default Anthropic probe executor
 	OpenAI      *OpenAIProviderTest      // OpenAI platform probe executor
-	CN          *CNProviderTest          // CN native-protocol probe executor
+	CN          *CNProviderTest          // CN and OpenCode native probe executor
 	Antigravity *AntigravityProviderTest // Antigravity platform probe executor
 }
 
@@ -57,7 +56,7 @@ func (t *TestTargets) LoadTestTarget(ctx context.Context, request provider.TestR
 	}
 	switch value.Platform {
 	case provider.PlatformOpenCode:
-		return openCodeTestTarget{executor: t.Native, record: value}, nil
+		return openCodeTestTarget{executor: t.CN, record: value}, nil
 	case provider.PlatformJev:
 		return t.Jev.Target(value), nil
 	case provider.PlatformQoder:

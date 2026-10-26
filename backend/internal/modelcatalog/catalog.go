@@ -98,10 +98,10 @@ type Entry struct {
 // it to readers.
 type Catalog struct {
 	Version string // published content version fingerprint
-	// OpenCodeRoutes and OpenCodeOfferings retain encoding suggestions and public
-	// metadata references for this publication. Readers treat both mode tables as immutable.
-	OpenCodeRoutes    map[string]map[string]string           // mode-scoped exact model encodings
-	OpenCodeOfferings map[string]map[string]OpenCodeOffering // mode-scoped service metadata references
+	// OpenCodeOfferings retains each service mode's protocol suggestions and
+	// canonical metadata references for this publication. Readers treat the
+	// mode tables as immutable.
+	OpenCodeOfferings map[string]map[string]OpenCodeOffering
 	// Entries, Providers, Ambiguous, attributeFallbacks, and publicEntries are
 	// prepared before publication. Existing views retain these maps, so callers
 	// finish supplement mutations before sharing a catalog with readers.
@@ -208,7 +208,7 @@ func Parse(body []byte) (*Catalog, error) {
 		return nil, fmt.Errorf("expected models.dev catalog with providers; legacy pricing JSON is only supported as a local supplement or override")
 	}
 	hash := sha256.Sum256(body)
-	catalog := &Catalog{OpenCodeOfferings: ParseOpenCodeOfferings(body), OpenCodeRoutes: ParseOpenCodeProtocols(body), Version: hex.EncodeToString(hash[:]), Entries: map[string]Entry{}, Providers: map[string]bool{}, Ambiguous: map[string]bool{}}
+	catalog := &Catalog{OpenCodeOfferings: ParseOpenCodeOfferings(body), Version: hex.EncodeToString(hash[:]), Entries: map[string]Entry{}, Providers: map[string]bool{}, Ambiguous: map[string]bool{}}
 	bare := map[string][]Entry{}
 	publicIdentities := make(map[string]bool, len(source.Models))
 	for id := range source.Models {

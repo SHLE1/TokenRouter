@@ -79,9 +79,11 @@ func (s *OpenAIRequests) ResponseOptions(ctx context.Context, c *gin.Context, pr
 		ApplyProviderIdentity: func(headers http.Header) {
 			openai.ApplyCodexProviderIdentityHeaders(headers, provideradapter.CodexIdentityNamespace(CodexIdentityRecord(c, provider.View())), APIKeyIDFromContext(c))
 		},
-		ApplyFingerprint:        func(headers http.Header) { ApplyStagedCodexFingerprintHeaders(c, provider.View(), headers) },
-		OverrideHeaders:         gatewayprovider.BindExecutionHeaders(provider),
-		FinalizeProviderHeaders: func(headers http.Header) { FinalizeProviderRequestHeaders(c, provider, targetURL, headers) },
+		ApplyFingerprint: func(headers http.Header) { ApplyStagedCodexFingerprintHeaders(c, provider.View(), headers) },
+		OverrideHeaders:  gatewayprovider.BindExecutionHeaders(provider),
+		FinalizeProviderHeaders: func(headers http.Header) {
+			gatewayprovider.FinalizeRequestHeaders(provider, targetURL, clientHeaderReader(c), headers)
+		},
 		BetaFeatures: func(headers http.Header) {
 			ApplyOpenAICodexBetaFeatures(c, provider != nil && provider.View().IsOpenAIOAuthLike(), headers)
 		},

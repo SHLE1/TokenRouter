@@ -12,11 +12,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// opencode.go resolves OpenCode service modes, model encodings, and endpoints.
-// A provider carries one API key and two independent sets of optional model
-// overrides, indexed by payg and Go. Encoding selection uses the final mapped
-// model and exact catalog identity, preventing an incoming client protocol
-// from choosing an unsupported endpoint for that model.
+// opencode.go resolves OpenCode service modes, model encodings, endpoints, and
+// the catalog protocol suggestions returned by model sync. A provider carries
+// one API key and two independent sets of optional model overrides, indexed by
+// payg and Go. Encoding selection uses the final mapped model and exact catalog
+// identity, preventing an incoming client protocol from choosing an unsupported
+// endpoint for that model.
 //
 // Protocol enablement remains an administrator restriction over these routes.
 // Address slots replace complete protocol bases, while base_url replaces the
@@ -46,10 +47,11 @@ func (r *Record) OpenCodeMode() string {
 	return mode
 }
 
-// OpenCodeModelProtocols returns mode-specific routes using manual overrides,
-// accepted catalog suggestions, then bundled defaults. The result is
-// independently owned, and non-OpenCode records return nil so ordinary provider
-// routing retains its existing protocol rules.
+// ModelProtocols returns the exact final-model protocol table for platforms
+// whose models each declare one protocol. Other platforms return nil, so their
+// routing keeps accepting every enabled protocol for every model. OpenCode
+// builds a fresh table from manual overrides, accepted catalog suggestions,
+// then bundled defaults.
 //
 // Only the selected mode's overrides participate: a model's payg encoding can
 // differ from its Go encoding. Defaults use the bundled publication, while an
@@ -57,7 +59,7 @@ func (r *Record) OpenCodeMode() string {
 // model IDs stay absent and therefore cannot acquire a route merely because the
 // provider has enabled a compatible protocol family.
 // @project-doc docs/interfaces/opencode_upstream.md#opencode_routing
-func (r *Record) OpenCodeModelProtocols() map[string]capability.ProtocolID {
+func (r *Record) ModelProtocols() map[string]capability.ProtocolID {
 	if !r.IsOpenCode() {
 		return nil
 	}
@@ -76,6 +78,39 @@ func (r *Record) OpenCodeModelProtocols() map[string]capability.ProtocolID {
 		}
 	}
 	return result
+}
+
+// OpenCodeProtocolSuggestions returns the model-sync suggestion hook for
+// OpenCode records. catalog reads one mode's protocol table from the live model
+// catalog and returns nil while no catalog is published; a nil callback always
+// uses the bundled publication. Other platforms receive nil suggestions.
+//
+// A published mode table is authoritative, including models it omits, so a
+// published empty table supplies no suggestions. Saved overrides stay out of
+// the result because they belong to the caller's configuration; deleting a
+// draft override then restores the catalog choice in the form.
+func OpenCodeProtocolSuggestions(catalog func(string) map[string]string) func(*Record, []string) map[string]string {
+	return func(value *Record, models []string) map[string]string {
+		if !value.IsOpenCode() {
+			return nil
+		}
+		mode := value.OpenCodeMode()
+		// An unavailable live publication falls back to bundled model knowledge,
+		// while a published table replaces it even when that table is empty.
+		routes := modelcatalog.OpenCodeProtocols(mode)
+		if catalog != nil {
+			if current := catalog(mode); current != nil {
+				routes = current
+			}
+		}
+		result := make(map[string]string)
+		for _, model := range models {
+			if target := routes[model]; target != "" {
+				result[model] = target
+			}
+		}
+		return result
+	}
 }
 
 // OpenCodeRoot returns the custom or official service root for this mode.
@@ -110,9 +145,8 @@ func (r *Record) OpenCodeBaseURL(target protocol.ProtocolID) string {
 	default:
 		return ""
 	}
-	bases, _ := r.Credentials["api_base_urls"].(map[string]any)
-	if custom, ok := bases[slot].(string); ok && strings.TrimSpace(custom) != "" {
-		return strings.TrimRight(strings.TrimSpace(custom), "/")
+	if custom := r.protocolSlotBaseURL(slot); custom != "" {
+		return strings.TrimRight(custom, "/")
 	}
 	return r.OpenCodeRoot() + suffix
 }

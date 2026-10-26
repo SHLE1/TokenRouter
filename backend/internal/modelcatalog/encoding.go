@@ -33,14 +33,14 @@ func (r *Resolution) applyModelEncoding(patch *Attributes, conditions ParameterC
 	author, model := t.modelEncodingIdentity()
 	// Intermediary encodings are selected explicitly; model constraints cannot be
 	// inferred for a different wire shape or a route with no selected protocol.
-	if t.Platform == "opencode" && !slices.Contains([]string{"openai_chat_completions", "openai_responses", "anthropic_messages"}, t.UpstreamProtocol) {
+	if t.usesCanonicalIdentity() && !slices.Contains([]string{"openai_chat_completions", "openai_responses", "anthropic_messages"}, t.UpstreamProtocol) {
 		return
 	}
 	switch author {
 	case "openai":
-		// OpenAI rules describe Chat and Responses payloads. A manually selected
-		// Messages route has no registered representation for these model controls.
-		if t.Platform == "opencode" && t.UpstreamProtocol == "anthropic_messages" {
+		// OpenAI rules describe Chat and Responses payloads. A Messages route has
+		// no registered representation for these model controls.
+		if t.UpstreamProtocol == "anthropic_messages" {
 			return
 		}
 		switch model {
@@ -50,13 +50,13 @@ func (r *Resolution) applyModelEncoding(patch *Attributes, conditions ParameterC
 			// text.verbosity from their request bodies.
 			r.Rules.Verbosity = valuePointer(false)
 		}
-		if (t.ServiceID() == "openai" || t.Platform == "opencode") && r.Attributes.Temperature != nil && !*r.Attributes.Temperature {
+		if (t.ServiceID() == "openai" || t.usesCanonicalIdentity()) && r.Attributes.Temperature != nil && !*r.Attributes.Temperature {
 			// OpenAI model metadata with unavailable temperature also restricts
 			// top_p. Both author routes and qualified intermediary identities
 			// therefore remove the same sampling fields from their requests.
 			patch.TopP = valuePointer(false)
 		}
-		if (t.ServiceID() == "openai" || t.Platform == "opencode") && slices.Contains([]string{"gpt-5.2", "gpt-5.4"}, model) {
+		if (t.ServiceID() == "openai" || t.usesCanonicalIdentity()) && slices.Contains([]string{"gpt-5.2", "gpt-5.4"}, model) {
 			// These registered sampling controls depend on none effort. Keep
 			// their request condition so ForRequest evaluates the same model
 			// with each supplied reasoning state.
@@ -64,7 +64,7 @@ func (r *Resolution) applyModelEncoding(patch *Attributes, conditions ParameterC
 			conditions["top_p"] = ParameterCondition{Efforts: []string{"none"}}
 			patch.TopP = valuePointer(true)
 		}
-		if t.UpstreamProtocol == "openai_chat_completions" && (t.ServiceID() == "openai" || t.Platform == "opencode") {
+		if t.UpstreamProtocol == "openai_chat_completions" && (t.ServiceID() == "openai" || t.usesCanonicalIdentity()) {
 			// Tool capability can differ between Chat and Responses for one
 			// model. Apply the registered Chat restriction here so route
 			// attributes retain that protocol distinction.
@@ -77,8 +77,8 @@ func (r *Resolution) applyModelEncoding(patch *Attributes, conditions ParameterC
 		}
 	case "grok":
 		// Grok field restrictions are registered for OpenAI-shaped requests; a
-		// Messages override does not establish the same payload field ownership.
-		if t.Platform == "opencode" && t.UpstreamProtocol == "anthropic_messages" {
+		// Messages route does not establish the same payload field ownership.
+		if t.UpstreamProtocol == "anthropic_messages" {
 			return
 		}
 		// Grok model-specific removals accompany its control declarations. The
@@ -96,7 +96,7 @@ func (r *Resolution) applyModelEncoding(patch *Attributes, conditions ParameterC
 	case "deepseek":
 		// DeepSeek sampling rules cover Chat and Messages requests. Responses
 		// overrides lack a registered model encoding for these conditional controls.
-		if t.Platform == "opencode" && t.UpstreamProtocol == "openai_responses" {
+		if t.usesCanonicalIdentity() && t.UpstreamProtocol == "openai_responses" {
 			return
 		}
 		if slices.Contains([]string{"deepseek-v4-pro", "deepseek-v4-flash", "deepseek-flash", "deepseek-v4-flash-vision-exp"}, model) {
@@ -124,7 +124,7 @@ func (r *Resolution) applyMessagesEncoding(conditions ParameterConditions) {
 	}
 	author, model := t.modelEncodingIdentity()
 	signature := thinkingSignatureMode(model)
-	if t.Platform == "opencode" {
+	if t.usesCanonicalIdentity() {
 		switch author {
 		case "anthropic":
 			if signature != "anthropic" {
@@ -155,8 +155,9 @@ func (r *Resolution) applyMessagesEncoding(conditions ParameterConditions) {
 }
 
 // modelEncodingIdentity returns the author family and model used for payload
-// rules and request defaults. OpenCode uses its retained qualified canonical
-// identity; unknown authors and missing qualifications return empty values.
+// rules and request defaults. Targets whose rules come from canonical references
+// use the qualified AttributeModel; unknown authors and missing qualifications
+// return empty values.
 //
 // Native routes retain service-based selection, Google resource normalization,
 // and service-prefix removal. Qualification is interpreted locally and never
@@ -165,31 +166,15 @@ func (r *Resolution) applyMessagesEncoding(conditions ParameterConditions) {
 // the original target for authentication, quotas, addresses, and media policy.
 func (t Target) modelEncodingIdentity() (string, string) {
 	model := normalize(t.Model)
-	if t.Platform == "opencode" {
+	if t.usesCanonicalIdentity() {
 		// A qualified reference supplies author evidence independently of the
 		// service alias. Reject incomplete and nested references before choosing rules.
 		author, name, qualified := strings.Cut(normalize(t.AttributeModel), "/")
-		if !qualified || name == "" || strings.Contains(name, "/") {
+		family := serviceRuleFamily(author)
+		if !qualified || name == "" || strings.Contains(name, "/") || family == "" {
 			return "", ""
 		}
-		switch author {
-		case "openai", "anthropic", "deepseek", "minimax", "alibaba":
-			return author, name
-		case "xai":
-			return "grok", name
-		case "moonshotai":
-			return "kimi", name
-		case "zhipuai":
-			return "zhipu", name
-		default:
-			return "", ""
-		}
-	}
-	if t.AttributeModel != "" {
-		model = normalize(t.AttributeModel)
-		if _, name, qualified := strings.Cut(model, "/"); qualified {
-			model = name
-		}
+		return family, name
 	}
 	if t.Platform == "gemini" || t.Platform == "antigravity" {
 		model = googleResourceModel(model)

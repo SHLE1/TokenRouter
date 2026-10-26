@@ -19,12 +19,12 @@ func TestOpenCodeProtocolsSeparatesModesAndCopiesDefaults(t *testing.T) {
 	require.Empty(t, OpenCodeProtocols("unknown"))
 }
 
-// TestParseOpenCodeProtocolsUsesDeclaredSDK gives one provider default and
+// TestParseOpenCodeOfferingsUsesDeclaredSDK gives one provider default and
 // several explicit model SDKs. Unknown encodings stay unavailable rather than
 // being guessed from otherwise familiar model names.
-func TestParseOpenCodeProtocolsUsesDeclaredSDK(t *testing.T) {
+func TestParseOpenCodeOfferingsUsesDeclaredSDK(t *testing.T) {
 	body := []byte(`{"providers":{"opencode":{"npm":"@ai-sdk/openai-compatible","models":{"chat":{},"response":{"provider":{"npm":"@ai-sdk/openai"}},"messages":{"provider":{"npm":"@ai-sdk/anthropic"}},"google":{"provider":{"npm":"@ai-sdk/google"}},"decision":{"type":"decision"},"gpt-unknown":{"provider":{"npm":"unknown"}}}}}}`)
-	routes := ParseOpenCodeProtocols(body)["payg"]
+	routes := offeringProtocols(ParseOpenCodeOfferings(body)["payg"])
 	require.Len(t, routes, 5)
 	require.Equal(t, "gemini_generate_content", routes["google"])
 	require.Equal(t, "systemone", routes["decision"])
@@ -47,7 +47,7 @@ func TestOpenCodeCanonicalMetadataKeepsOfferingAndPriceIdentities(t *testing.T) 
 	require.Equal(t, 262144, *resolved.Attributes.Context)
 	_, priced := catalog.Lookup([]string{"opencode/" + model})
 	require.False(t, priced)
-	require.Equal(t, "openai_chat_completions", OpenCodeOfferings("payg")[model].Protocol)
+	require.Equal(t, "openai_chat_completions", OpenCodeProtocols("payg")[model])
 }
 
 // TestOpenCodeClaudeEncodingUsesModelRules resolves the same Claude Messages

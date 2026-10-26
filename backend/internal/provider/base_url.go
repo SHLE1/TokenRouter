@@ -31,10 +31,8 @@ func (r *Record) OpenAIBaseURL(adaptive bool) string {
 		return ""
 	}
 	if _, unified := r.Credentials[UpstreamProtocolsKey]; r.IsCNProvider() && (unified || adaptive) {
-		if baseURLs, ok := r.Credentials["api_base_urls"].(map[string]any); ok {
-			if baseURL, ok := baseURLs[APIProtocolChatCompletions].(string); ok && strings.TrimSpace(baseURL) != "" {
-				return strings.TrimSpace(baseURL)
-			}
+		if baseURL := r.protocolSlotBaseURL(APIProtocolChatCompletions); baseURL != "" {
+			return baseURL
 		}
 	}
 	if r.Type == ProviderTypeAPIKey || r.Type == ProviderTypeUpstream {
@@ -60,4 +58,13 @@ func (r *Record) OpenAIBaseURL(adaptive bool) string {
 	default:
 		return "https://api.openai.com"
 	}
+}
+
+// protocolSlotBaseURL returns the trimmed address saved in one api_base_urls
+// slot. Missing maps, missing slots, non-string values, and blank strings all
+// return empty, letting callers fall back to their platform defaults.
+func (r *Record) protocolSlotBaseURL(slot string) string {
+	slots, _ := r.Credentials["api_base_urls"].(map[string]any)
+	value, _ := slots[slot].(string)
+	return strings.TrimSpace(value)
 }

@@ -111,7 +111,6 @@ func CNUsageMonitorIdentityFingerprint(provider *Record) string {
 	if err != nil {
 		return ""
 	}
-	queryConfig.Adapter = CNUpstreamUsageAdapterName(provider)
 	if queryConfig.Adapter == "" {
 		return ""
 	}

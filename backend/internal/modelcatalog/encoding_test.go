@@ -46,7 +46,8 @@ func TestCanonicalEncodingUsesAuthorAndProtocol(t *testing.T) {
 		}},
 	} {
 		t.Run(test.canonical+"/"+test.protocol, func(t *testing.T) {
-			target := Target{Platform: "opencode", ProviderType: "apikey", Model: "service-alias", AttributeModel: test.canonical, UpstreamProtocol: test.protocol}
+			catalog.OpenCodeOfferings["payg"]["service-alias"] = OpenCodeOffering{CanonicalModelID: test.canonical}
+			target := Target{Platform: "opencode", ProviderType: "apikey", Model: "service-alias", UpstreamProtocol: test.protocol}
 			result := catalog.View().Resolve(target, Attributes{})
 			require.Equal(t, "opencode", result.Target.Platform)
 			require.Equal(t, "service-alias", result.Target.Model)
@@ -61,22 +62,26 @@ func TestCanonicalEncodingUsesAuthorAndProtocol(t *testing.T) {
 // foreign qualifications, and unrelated protocols. Familiar name fragments
 // cannot activate model payload rules for those intermediary route identities.
 func TestCanonicalEncodingRejectsUnverifiedSelections(t *testing.T) {
-	for _, target := range []Target{
-		{Model: "gpt-5.4", UpstreamProtocol: "openai_responses"},
-		{AttributeModel: "gpt-5.4", UpstreamProtocol: "openai_responses"},
-		{AttributeModel: "foreign/gpt-5.4", UpstreamProtocol: "openai_responses"},
-		{AttributeModel: "openai/tenant/gpt-5.4", UpstreamProtocol: "openai_responses"},
-		{AttributeModel: "openai/gpt-5.4", UpstreamProtocol: "gemini_generate_content"},
-		{AttributeModel: "openai/gpt-5.4", UpstreamProtocol: "anthropic_messages"},
-		{AttributeModel: "deepseek/deepseek-v4-pro", UpstreamProtocol: "openai_responses"},
-		{AttributeModel: "xai/grok-4.5", UpstreamProtocol: "anthropic_messages"},
-		{AttributeModel: "foreign/claude-opus-4-7", UpstreamProtocol: "anthropic_messages"},
-		{AttributeModel: "openai/claude-opus-4-7", UpstreamProtocol: "anthropic_messages"},
+	for _, test := range []struct {
+		canonical string // offering's declared canonical reference
+		protocol  string // chosen upstream encoding
+	}{
+		{"", "openai_responses"},
+		{"gpt-5.4", "openai_responses"},
+		{"foreign/gpt-5.4", "openai_responses"},
+		{"openai/tenant/gpt-5.4", "openai_responses"},
+		{"openai/gpt-5.4", "gemini_generate_content"},
+		{"openai/gpt-5.4", "anthropic_messages"},
+		{"deepseek/deepseek-v4-pro", "openai_responses"},
+		{"xai/grok-4.5", "anthropic_messages"},
+		{"foreign/claude-opus-4-7", "anthropic_messages"},
+		{"openai/claude-opus-4-7", "anthropic_messages"},
 	} {
-		target.Platform = "opencode"
-		result := (View{}).Resolve(target, Attributes{})
-		require.Nil(t, result.Attributes.Conditions, "%+v", target)
-		require.Empty(t, result.Rules, "%+v", target)
+		catalog := &Catalog{OpenCodeOfferings: map[string]map[string]OpenCodeOffering{"payg": {"gpt-5.4": {CanonicalModelID: test.canonical}}}}
+		target := Target{Platform: "opencode", Model: "gpt-5.4", UpstreamProtocol: test.protocol}
+		result := catalog.View().Resolve(target, Attributes{})
+		require.Nil(t, result.Attributes.Conditions, "%+v", test)
+		require.Empty(t, result.Rules, "%+v", test)
 	}
 }
 
@@ -88,7 +93,8 @@ func TestCanonicalEncodingKeepsOAuthRulesOnOAuthRoutes(t *testing.T) {
 	require.NoError(t, err)
 	catalog, err := Parse(body)
 	require.NoError(t, err)
-	target := Target{Platform: "opencode", ProviderType: "apikey", Model: "service-alias", AttributeModel: "openai/gpt-5.6-sol", UpstreamProtocol: "openai_responses", Endpoint: "compact"}
+	catalog.OpenCodeOfferings["payg"]["service-alias"] = OpenCodeOffering{CanonicalModelID: "openai/gpt-5.6-sol"}
+	target := Target{Platform: "opencode", ProviderType: "apikey", Model: "service-alias", UpstreamProtocol: "openai_responses", Endpoint: "compact"}
 	result := catalog.View().Resolve(target, Attributes{})
 	require.Nil(t, result.Rules.OutputParameter)
 	require.Empty(t, result.Rules.DropFields)

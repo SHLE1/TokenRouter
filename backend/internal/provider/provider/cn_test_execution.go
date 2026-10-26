@@ -9,10 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -31,7 +29,7 @@ import (
 // authentication.
 
 // CNProviderTest prepares fixed and adaptive native-protocol probes for CN
-// API-key records.
+// API-key records and owns the native exchange that OpenCode probes share.
 type CNProviderTest struct {
 	// Attributes resolves the final model for routed group probes. A nil callback
 	// skips profile lookup, leaving declared output and sampling permissions unknown.
@@ -41,8 +39,9 @@ type CNProviderTest struct {
 	// sends no selected TLS profile through the shared transport.
 	Profiles    *egressprovider.TLSProfiles
 	ValidateURL func(string) (string, error) // native upstream root validator
-	// Store optionally records authentication failures from native Messages
-	// probes. A nil store skips these best-effort state writes.
+	// Store optionally records authentication failures from fixed Messages probes
+	// and from every shared native exchange, including OpenCode probes. A nil
+	// store skips these best-effort state writes.
 	Store interface {
 		// SetError records a native probe's provider authentication failure. The
 		// executor ignores write errors while returning the upstream status and
@@ -170,17 +169,7 @@ func (s *CNProviderTest) Execute(
 	}
 	applyGrokQuotaHeaders(value, req.Header)
 
-	proxyURL := ""
-	if value.ProxyID != nil && value.Proxy != nil {
-		proxyURL = value.Proxy.URL()
-	}
-	resp, err := s.Transport.DoWithTLS(
-		req,
-		proxyURL,
-		value.ID,
-		value.Concurrency,
-		s.resolveTLSProfile(value),
-	)
+	resp, err := s.send(req, value)
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Request failed: %s", err.Error()))
 	}
@@ -219,16 +208,6 @@ func (s *CNProviderTest) executeChat(
 	prompt string,
 ) error {
 	return s.Execute(c, value, modelID, prompt)
-}
-
-// resolveTLSProfile selects the record's enabled request fingerprint and direct
-// profile through Profiles. A missing profile service returns nil; callers
-// supply a nonnil record for configured selection.
-func (s *CNProviderTest) resolveTLSProfile(value *providercore.Record) *tlsfingerprint.Profile {
-	if s.Profiles == nil {
-		return nil
-	}
-	return s.Profiles.ResolveRequestTLS(egress.TLSSelection{Enabled: value.IsTLSFingerprintEnabled(), DirectProfileID: value.GetTLSFingerprintProfileID()})
 }
 
 // cnTestResponsesURL returns the platform-specific Responses endpoint under the

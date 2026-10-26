@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -43,6 +45,12 @@ type openCodeProbeTransport struct {
 	send func(*http.Request) (*http.Response, error)
 }
 
+// openCodeProbeStore records provider error-state writes from failed probes.
+type openCodeProbeStore struct {
+	ids      []int64  // provider identifiers passed to SetError
+	messages []string // error-state messages passed to SetError
+}
+
 // openCodeProbeBody records cleanup of an in-memory protocol response body.
 type openCodeProbeBody struct {
 	io.Reader                         // supplied protocol response reader
@@ -51,6 +59,13 @@ type openCodeProbeBody struct {
 
 // Begin accepts probe preparation for this in-memory event recorder.
 func (*openCodeProbeSink) Begin(context.Context, bool) error { return nil }
+
+// SetError retains one provider error-state write and reports success.
+func (s *openCodeProbeStore) SetError(_ context.Context, id int64, message string) error {
+	s.ids = append(s.ids, id)
+	s.messages = append(s.messages, message)
+	return nil
+}
 
 // Emit retains one probe event for subsequent sequential assertions.
 func (s *openCodeProbeSink) Emit(_ context.Context, event provider.TestEvent) error {
@@ -86,7 +101,7 @@ func TestOpenCodeProbeGeminiWildcardKeepsValidatedModel(t *testing.T) {
 		"api_key": "test-key", "model_mapping": map[string]any{"alias-*": "gemini-2.5-flash"},
 		"opencode_model_protocols": map[string]any{"payg": map[string]any{"gemini-2.5-flash": "gemini_generate_content"}},
 	}}
-	target := openCodeTestTarget{record: record, executor: &NativeProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }}}
+	target := openCodeTestTarget{record: record, executor: &CNProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }}}
 	require.NoError(t, target.Execute(t.Context(), provider.PreparedTestRequest{TestRequest: provider.TestRequest{Model: "alias-fast"}, TestType: provider.ProviderTestTypeText}, &openCodeProbeSink{}))
 	require.Equal(t, "/inference/google/v1beta/models/gemini-2.5-flash:streamGenerateContent", transport.request.URL.Path)
 }
@@ -162,7 +177,7 @@ func TestOpenCodeProbeNativeProtocolsKeepOneMappedIdentity(t *testing.T) {
 						entry = protocol.ProtocolOpenAIChatCompletions
 					}
 					lookups := 0
-					executor := &NativeProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }, Attributes: func(ctx context.Context, _ *provider.Record, group int64, model, endpoint string) (modelcatalog.Resolution, error) {
+					executor := &CNProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }, Attributes: func(ctx context.Context, _ *provider.Record, group int64, model, endpoint string) (modelcatalog.Resolution, error) {
 						lookups++
 						require.Equal(t, int64(17), group)
 						require.Equal(t, wire.model, model)
@@ -227,7 +242,7 @@ func TestOpenCodeProbeFailureAndCancellationKeepsOneRun(t *testing.T) {
 			record := &provider.Record{Platform: provider.PlatformOpenCode, Type: provider.ProviderTypeAPIKey, Credentials: map[string]any{
 				"api_key": "key", "opencode_model_protocols": map[string]any{"payg": map[string]any{"probe": "gemini_generate_content"}},
 			}}
-			target := openCodeTestTarget{record: record, executor: &NativeProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }}}
+			target := openCodeTestTarget{record: record, executor: &CNProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }}}
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			sink := &openCodeProbeSink{}
@@ -281,7 +296,7 @@ func TestOpenCodeProbePreparationRejectsDisabledAndFailedAttributes(t *testing.T
 		if disabled {
 			record.Credentials[provider.UpstreamProtocolsKey] = []string{}
 		}
-		executor := &NativeProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }, Attributes: func(context.Context, *provider.Record, int64, string, string) (modelcatalog.Resolution, error) {
+		executor := &CNProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }, Attributes: func(context.Context, *provider.Record, int64, string, string) (modelcatalog.Resolution, error) {
 			return modelcatalog.Resolution{}, errors.New("profile unavailable")
 		}}
 		target := openCodeTestTarget{record: record, executor: executor}
@@ -314,12 +329,38 @@ func TestOpenCodeProbeUserAgentDefaultsDoesNotInventSession(t *testing.T) {
 			"api_key": "key", "header_override_enabled": true, "header_overrides": map[string]any{"User-Agent": test.configured},
 			"opencode_model_protocols": map[string]any{"payg": map[string]any{"probe": "openai_responses"}},
 		}}
-		target := openCodeTestTarget{record: record, executor: &NativeProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }}}
+		target := openCodeTestTarget{record: record, executor: &CNProviderTest{Transport: transport, ValidateURL: func(raw string) (string, error) { return raw, nil }}}
 		err := target.Execute(t.Context(), provider.PreparedTestRequest{TestRequest: provider.TestRequest{Model: "probe", UserAgent: test.caller}, TestType: provider.ProviderTestTypeText}, &openCodeProbeSink{})
 		require.NoError(t, err)
 		require.Equal(t, test.want, transport.request.Header.Get("User-Agent"))
 		for name := range transport.request.Header {
 			require.False(t, strings.EqualFold(name, "x-opencode-session"))
 		}
+	}
+}
+
+// TestOpenCodeProbeUnauthorizedRecordsProviderError replies 401 and 429 to
+// streaming probes. A rejected credential writes the provider's error state
+// with the upstream diagnostic, while a rate limit leaves provider state alone.
+func TestOpenCodeProbeUnauthorizedRecordsProviderError(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusTooManyRequests} {
+		t.Run(strconv.Itoa(status), func(t *testing.T) {
+			transport := &openCodeProbeTransport{status: status, response: "rejected"}
+			store := &openCodeProbeStore{}
+			record := &provider.Record{ID: 31, Platform: provider.PlatformOpenCode, Type: provider.ProviderTypeAPIKey, Credentials: map[string]any{
+				"api_key": "key", "opencode_model_protocols": map[string]any{"payg": map[string]any{"probe": "anthropic_messages"}},
+			}}
+			target := openCodeTestTarget{record: record, executor: &CNProviderTest{Transport: transport, Store: store, ValidateURL: func(raw string) (string, error) { return raw, nil }}}
+			err := target.Execute(t.Context(), provider.PreparedTestRequest{TestRequest: provider.TestRequest{Model: "probe"}, TestType: provider.ProviderTestTypeText}, &openCodeProbeSink{})
+			require.Error(t, err)
+			want := fmt.Sprintf("Native probe returned %d: rejected", status)
+			require.EqualError(t, err, want)
+			if status == http.StatusUnauthorized {
+				require.Equal(t, []int64{31}, store.ids)
+				require.Equal(t, []string{want}, store.messages)
+			} else {
+				require.Empty(t, store.ids)
+			}
+		})
 	}
 }

@@ -27,9 +27,10 @@ const (
 	NewAPIUserIDCredentialKey          = "new_api_user_id"           // wallet user ID key
 	UpstreamUsageDefaultAdapter        = UpstreamUsageAdapterSub2API // default relay query format
 
-	// DerouterUsageDefaultBaseURL supplies the account management root when an
-	// administrator selects derouter without a separate query address override.
-	DerouterUsageDefaultBaseURL = "https://cf-api.derouter.ai"
+	// Default management roots apply when the resolved adapter queries a host
+	// separate from model forwarding and no query address override is saved.
+	DerouterUsageDefaultBaseURL   = "https://cf-api.derouter.ai" // derouter account management root
+	OpenCodeGoUsageDefaultBaseURL = "https://opencode.ai"        // OpenCode Go allowance root
 )
 
 // usageAdapterCatalog associates each supported format with its display name and
@@ -49,8 +50,8 @@ var usageAdapterCatalog = []UsageAdapterSpec{
 // UsageAdapterSpec names a usage format and its selection category.
 type UsageAdapterSpec struct {
 	Name, Label string // registered adapter name and administrator display label
-	// Automatic excludes the adapter from administrator choices because CN platform
-	// and provider mode determine the matching query format.
+	// Automatic excludes the adapter from administrator choices because
+	// PlatformUsageAdapter selects it from platform and provider mode.
 	Automatic bool // platform selects adapter
 }
 
@@ -62,7 +63,7 @@ func UpstreamUsageAdapterCatalog() []UsageAdapterSpec {
 }
 
 // UpstreamUsageAdapterOptions returns administrator choices in catalog order,
-// excluding adapters selected automatically by CN platform and mode. Each call
+// excluding adapters selected automatically by platform and mode. Each call
 // builds a new slice of name and label values.
 func UpstreamUsageAdapterOptions() []UpstreamUsageAdapterOption {
 	options := make([]UpstreamUsageAdapterOption, 0, len(usageAdapterCatalog))

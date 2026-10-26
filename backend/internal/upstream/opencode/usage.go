@@ -43,7 +43,7 @@ func (*GoUsageAdapter) Query(ctx context.Context, input *usagecontract.Request) 
 	if err != nil {
 		return nil, err
 	}
-	if err = usageclient.ValidateCNUsageStatus(status); err != nil {
+	if err = usageclient.UpstreamUsageHTTPError(status, true); err != nil {
 		return nil, err
 	}
 	return ParseGoUsage(body)

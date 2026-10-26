@@ -177,10 +177,8 @@ func (a ProtocolTarget) GetCNProtocolBaseURL(protocol string) string {
 		return ""
 	}
 	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified || a.ConfiguredAPIProtocol() == APIProtocolAdaptive {
-		if baseURLs, ok := a.Credentials["api_base_urls"].(map[string]any); ok {
-			if baseURL, ok := baseURLs[protocol].(string); ok && strings.TrimSpace(baseURL) != "" {
-				return strings.TrimSpace(baseURL)
-			}
+		if baseURL := a.protocolSlotBaseURL(protocol); baseURL != "" {
+			return baseURL
 		}
 		if protocol == APIProtocolChatCompletions {
 			if baseURL := strings.TrimSpace(a.GetCredential("base_url")); baseURL != "" {

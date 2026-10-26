@@ -127,9 +127,8 @@ func provideProviderTests(store *providerpostgres.ProviderStore, geminiToken *pr
 	qoderSessions.SetHTTPUpstream(transport, profiles)
 	manager.Register(lifecycle.Hook{Name: "ProviderTestQoderSessions", StopOrder: 26, Stop: qoderSessions.StopContext})
 	targets := &provideradapter.TestTargets{
-		Native: &provideradapter.NativeProviderTest{Attributes: probeAttributes, Transport: transport, Profiles: profiles, ValidateURL: urlPolicy.Validate},
-		Jev:    &provideradapter.JevProviderTest{Attributes: probeAttributes, Transport: transport, ValidateURL: urlPolicy.Validate},
-		Read:   store.GetByID, OpenAI: openaiTest, Gemini: geminiTest, Anthropic: anthropicTest,
+		Jev:  &provideradapter.JevProviderTest{Attributes: probeAttributes, Transport: transport, ValidateURL: urlPolicy.Validate},
+		Read: store.GetByID, OpenAI: openaiTest, Gemini: geminiTest, Anthropic: anthropicTest,
 		Qoder: &provideradapter.QoderProviderTest{Attributes: probeAttributes, Sessions: qoderSessions, Client: qoder.NewClient(qoder.APIBaseURL), Transport: transport, Profiles: profiles, RewriteModel: openaiprotocol.ReplaceModelInBody},
 		Grok:  &provideradapter.GrokProviderTest{Attributes: probeAttributes, Tokens: grokToken, Transport: transport, Store: store, OperatorValidator: urlPolicy.Validate, DefaultBaseURL: gatewayprovider.GrokDefaultBaseURLReader(settings)},
 		CN:    &provideradapter.CNProviderTest{Attributes: probeAttributes, Transport: transport, Profiles: profiles, Store: store, ValidateURL: urlPolicy.Validate, Responses: openaiTest},

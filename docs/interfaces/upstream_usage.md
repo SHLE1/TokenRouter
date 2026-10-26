@@ -14,7 +14,7 @@
 }
 ```
 
-普通 API Key 提供商没有这个对象时，按 `enabled=true`、`adapter=sub2api` 处理，根地址使用提供商现有的 API Base URL。Jev 缺少这个对象时默认关闭查询，管理员可配置兼容中继的查询适配器。其他 API Key 提供商通过 `enabled=false` 关闭查询。管理员可以选择的 `adapter` 只有 `sub2api`、`new_api`、`zivv` 和 `derouter`；Kimi、Zhipu、DeepSeek 忽略这个字段，按平台和 `provider_mode` 选择固定的内置适配器。`base_url` 只能覆盖查询的根地址，不能带用户信息、查询串或片段。后端照常执行 HTTPS、allowlist、私网地址和 URL 格式的校验。`derouter` 的查询地址留空时使用 `https://cf-api.derouter.ai`；其他适配器留空时复用转发地址。
+普通 API Key 提供商没有这个对象时，按 `enabled=true`、`adapter=sub2api` 处理，根地址使用提供商现有的 API Base URL。Jev 缺少这个对象时默认关闭查询，管理员可配置兼容中继的查询适配器。其他 API Key 提供商通过 `enabled=false` 关闭查询。管理员可以选择的 `adapter` 只有 `sub2api`、`new_api`、`zivv` 和 `derouter`；Kimi、Zhipu、DeepSeek 和 OpenCode 忽略这个字段，按平台和 `provider_mode` 选择固定的内置适配器；当前模式没有查询协议时，有效配置的 `enabled` 固定为 `false`。`base_url` 只能覆盖查询的根地址，不能带用户信息、查询串或片段。后端照常执行 HTTPS、allowlist、私网地址和 URL 格式的校验。查询地址留空时，`derouter` 使用 `https://cf-api.derouter.ai`，`opencode_go` 使用 `https://opencode.ai`，其他适配器复用转发地址。
 
 API Key 始终从提供商的 `credentials` 读取，不会出现在 `extra`、接口响应、审计请求体、浏览器缓存和日志里。用户也无法配置任意的路径、方法、Header 模板或脚本。
 
@@ -56,7 +56,7 @@ Zivv 的公开开发者文档说明余额在控制台的钱包页面，适配器
 
 ### OpenCode Go
 
-OpenCode 的 `go` 模式自动选择 `opencode_go`，读取固定的 `/zen/go/v1/usage`，展示三个百分比窗口及重置时间。管理根地址可独立编辑，留空使用 `https://opencode.ai`。`payg` 模式关闭查询。认证、窗口校验和配置规则见 [OpenCode 上游](opencode_upstream.md)。
+OpenCode 的 `go` 模式自动选择 `opencode_go`，读取固定的 `/zen/go/v1/usage`，展示三个百分比窗口及重置时间。管理根地址可独立编辑，留空使用 `https://opencode.ai`。`payg` 模式没有查询协议，查询保持关闭，手动查询返回不支持，不发送请求。认证、窗口校验和配置规则见 [OpenCode 上游](opencode_upstream.md)。
 
 ### 国产供应商
 
@@ -69,14 +69,14 @@ OpenCode 的 `go` 模式自动选择 `opencode_go`，读取固定的 `/zen/go/v1
 | Zhipu coding | `zhipu_coding` | `/api/monitor/usage/quota/limit` | `PERCENT` 周期限额 |
 | DeepSeek payg | `deepseek_balance` | `/user/balance` | 多币种的 `balances[]`、主 `balance` 和 `available` |
 
-Zhipu payg 没有公开的余额协议，DeepSeek coding 也不是合法的提供商组合，所以查询这两种时直接返回不支持，不发送请求。Kimi 和 Zhipu 的 coding 周期把使用百分比归一化为上限 `100`、已用百分比和剩余百分比。DeepSeek 保留所有合法币种的余额，只要还有一个币种高于监控阈值，就不会因为另一个币种余额低而停调。这四个适配器只解析供应商固定格式的 JSON 响应，不执行脚本，不接受自定义的方法或路径，也不直接写数据库。
+Zhipu payg 没有公开的余额协议，DeepSeek coding 也不是合法的提供商组合。这两种组合的有效配置保持关闭，保存的开关无法打开查询；手动查询直接返回不支持，不发送请求。Kimi 和 Zhipu 的 coding 周期把使用百分比归一化为上限 `100`、已用百分比和剩余百分比。DeepSeek 保留所有合法币种的余额，只要还有一个币种高于监控阈值，就不会因为另一个币种余额低而停调。这四个适配器只解析供应商固定格式的 JSON 响应，不执行脚本，不接受自定义的方法或路径，也不直接写数据库。
 
 适配器拒绝以下响应：HTTP 非成功、认证失败、限流、超时、重定向、响应体过大、缺字段或数值互相矛盾。选定的适配器失败时，不会自动换用另一个协议，也不会修改提供商配置。
 
 <a id="native_usage_adapters"></a>
 ## 原生查询与提供商编排
 
-Sub2API、New API、Zivv、derouter.ai 的固定查询和归一化在 `upstream/usageprovider`，OpenCode、Kimi、Zhipu、DeepSeek 分别在对应的 `upstream` 包里。`provider/provider.UpstreamUsageExecution` 持有唯一的适配器注册表，`NewUpstreamUsageHTTPExecution` 根据提供商记录构造凭据、代理、TLS 和 Header 的技术快照。app 只整理出站配置和共享的传输接口，直接绑定一个 `provider.UpstreamUsageService`。
+Sub2API、New API、Zivv、derouter.ai 的固定查询和归一化在 `upstream/usageprovider`，OpenCode、Kimi、Zhipu、DeepSeek 分别在对应的 `upstream` 包里。平台和模式决定适配器的规则集中在 `provider.PlatformUsageAdapter`；`provider.EffectiveUpstreamUsageConfig` 用它解析有效配置，并为管理根地址独立的适配器填入默认根地址，执行和身份复核因此使用同一个目的地。`provider/provider.UpstreamUsageExecution` 持有唯一的适配器注册表，`NewUpstreamUsageHTTPExecution` 根据提供商记录构造凭据、代理、TLS 和 Header 的技术快照。app 只整理出站配置和共享的传输接口，直接绑定一个 `provider.UpstreamUsageService`。
 
 `upstream/usageview` 保存归一化后的值、错误和验证规则，provider 通过类型别名复用它们。`upstream/usagecontract.Request` 是一次查询的技术快照，其中的敏感字段不会出现在 JSON 或普通的字符串格式化结果里。共享的 `upstream/internal/usageclient` 负责固定的读取上限、请求头覆盖顺序、状态映射和关闭响应体。这些原生包不读取提供商仓储，也不写健康、调度或资金数据。
 

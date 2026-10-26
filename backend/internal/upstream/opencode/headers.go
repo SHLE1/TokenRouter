@@ -12,9 +12,10 @@ import (
 //
 // Conversation values are selected from recognized client headers and copied
 // without generating per-request identifiers. Missing session evidence leaves
-// the header absent. Callers restrict this operation to selected OpenCode
+// the header absent. Callers restrict ApplyHeaders to selected OpenCode
 // providers, after validating their configured destination, so another provider
-// cannot receive these headers just because it accepts a compatible protocol.
+// cannot receive the key just because it accepts a compatible protocol; the
+// session helpers also serve API-key relays addressed to the official host.
 
 // ApplyHeaders replaces authentication and copies available client identity.
 // The header map must be writable; read may be nil for administrator probes.
@@ -33,14 +34,8 @@ func ApplyHeaders(headers http.Header, key string, read func(string) string) {
 	}
 	headers.Set("Authorization", "Bearer "+strings.TrimSpace(key))
 	agent := ""
-	session := ""
 	if read != nil {
 		agent = strings.TrimSpace(read("User-Agent"))
-		for _, name := range []string{"x-opencode-session", "session-id", "session_id", "conversation_id", "x-session-affinity", "x-session-id"} {
-			if session = strings.TrimSpace(read(name)); session != "" {
-				break
-			}
-		}
 	}
 	if agent == "" {
 		agent = headers.Get("User-Agent")
@@ -60,14 +55,36 @@ func ApplyHeaders(headers http.Header, key string, read func(string) string) {
 		agent = "TokenRouter"
 	}
 	headers.Set("User-Agent", agent)
-	if session != "" {
-		// Header overrides may use noncanonical casing. Replace every spelling so
-		// a fixed provider-wide value cannot override this conversation's identity.
-		for name := range headers {
-			if strings.EqualFold(name, "x-opencode-session") {
-				delete(headers, name)
-			}
-		}
-		headers.Set("X-OpenCode-Session", session)
+	SetSession(headers, SessionID(read))
+}
+
+// SessionID returns the first nonblank conversation ID among the recognized
+// client headers, or empty when read is nil or no header carries one.
+func SessionID(read func(string) string) string {
+	if read == nil {
+		return ""
 	}
+	for _, name := range []string{"x-opencode-session", "session-id", "session_id", "conversation_id", "x-session-affinity", "x-session-id"} {
+		if session := strings.TrimSpace(read(name)); session != "" {
+			return session
+		}
+	}
+	return ""
+}
+
+// SetSession publishes session as the single X-OpenCode-Session value. An
+// empty session leaves the map unchanged, so a configured header survives
+// requests that carry no conversation evidence.
+func SetSession(headers http.Header, session string) {
+	if session == "" {
+		return
+	}
+	// Header overrides may use noncanonical casing. Replace every spelling so
+	// a fixed provider-wide value cannot override this conversation's identity.
+	for name := range headers {
+		if strings.EqualFold(name, "x-opencode-session") {
+			delete(headers, name)
+		}
+	}
+	headers.Set("X-OpenCode-Session", session)
 }

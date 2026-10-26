@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -68,7 +69,7 @@ type SystemOneExecutor struct {
 
 // Forward validates final-model pricing and executes one selected Jev
 // SystemOne request. Transport and a pricing resolver are required, and the
-// provider must use the Jev platform. The body model is mapped for transport
+// provider must support SystemOne natively. The body model is mapped for transport
 // while route-plan requested identity and any composite prefix determine
 // client restoration.
 //
@@ -84,7 +85,7 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 		WriteSystemOneError(c, http.StatusServiceUnavailable, "api_error", "", "", "SystemOne execution is not configured")
 		return result, errors.New("SystemOne execution is not configured")
 	}
-	if target == nil || (target.Record.Platform != provider.PlatformJev && !target.View().IsOpenCode()) {
+	if target == nil || !slices.Contains(target.View().NativeProtocolOptions(), protocol.ProtocolSystemOne) {
 		return result, errors.New("SystemOne provider is required")
 	}
 	selected, err := gatewayprovider.ProviderForProtocolAttempt(ctx, target)
@@ -134,7 +135,7 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 		Token: selected.View().GetCredential("api_key"), ReadLimit: s.ReadLimit, Enter: s.Enter,
 		ApplyHeaders: func(h http.Header) {
 			gatewayprovider.BindExecutionHeaders(selected)(h)
-			FinalizeProviderRequestHeaders(c, selected, jev.EndpointURL(base, "systemone"), h)
+			gatewayprovider.FinalizeRequestHeaders(selected, jev.EndpointURL(base, "systemone"), clientHeaderReader(c), h)
 		},
 		Do: func(req *http.Request) (*http.Response, error) {
 			return s.Transport.Do(req, proxy, selected.Record.ID, selected.Record.Concurrency)
@@ -181,7 +182,7 @@ func (s *SystemOneExecutor) Forward(ctx context.Context, c *gin.Context, target 
 			// Preserve a longer upstream reset interval for same-provider retry, so
 			// the outer loop does not resend before that provider's requested wait has elapsed.
 			if retryFailure.RetryableOnSameProvider {
-				if reset := jev.RetryAfterResetTime(failure.Header, time.Now()); reset != nil {
+				if reset := upstream.RetryAfterResetTime(failure.Header, time.Now()); reset != nil {
 					retryFailure.SameProviderRetryDelay = max(failover.SameProviderRetryDelay, time.Until(*reset))
 				}
 			}

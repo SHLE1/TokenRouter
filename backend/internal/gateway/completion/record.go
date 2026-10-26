@@ -322,14 +322,12 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	actualInputTokens := max(result.Usage.InputTokens-result.Usage.CacheReadInputTokens-result.Usage.CacheCreationInputTokens, 0)
 
 	tokens := UsageTokens{
-		InputTokens:           actualInputTokens,
-		ImageInputTokens:      result.Usage.ImageInputTokens,
-		OutputTokens:          result.Usage.OutputTokens,
-		CacheCreationTokens:   result.Usage.CacheCreationInputTokens,
-		CacheCreation5mTokens: result.Usage.CacheCreation5mTokens,
-		CacheCreation1hTokens: result.Usage.CacheCreation1hTokens,
-		CacheReadTokens:       result.Usage.CacheReadInputTokens,
-		ImageOutputTokens:     result.Usage.ImageOutputTokens,
+		InputTokens:         actualInputTokens,
+		ImageInputTokens:    result.Usage.ImageInputTokens,
+		OutputTokens:        result.Usage.OutputTokens,
+		CacheCreationTokens: result.Usage.CacheCreationInputTokens,
+		CacheReadTokens:     result.Usage.CacheReadInputTokens,
+		ImageOutputTokens:   result.Usage.ImageOutputTokens,
 	}
 
 	multiplier := s.defaultMultiplier
@@ -470,22 +468,20 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 			result.RequestedReasoningEffort,
 			input.RequestedReasoningEffort,
 		),
-		InboundEndpoint:       OptionalTrimmedStringPtr(input.InboundEndpoint),
-		UpstreamEndpoint:      OptionalTrimmedStringPtr(input.UpstreamEndpoint),
-		InputTokens:           actualInputTokens,
-		OutputTokens:          result.Usage.OutputTokens,
-		CacheCreationTokens:   result.Usage.CacheCreationInputTokens,
-		CacheCreation5mTokens: result.Usage.CacheCreation5mTokens,
-		CacheCreation1hTokens: result.Usage.CacheCreation1hTokens,
-		CacheReadTokens:       result.Usage.CacheReadInputTokens,
-		ImageInputTokens:      result.Usage.ImageInputTokens,
-		ImageOutputTokens:     result.Usage.ImageOutputTokens,
-		ImageCount:            result.ImageCount,
-		ImageSize:             OptionalTrimmedStringPtr(result.ImageSize),
-		ImageInputSize:        OptionalTrimmedStringPtr(result.ImageInputSize),
-		ImageOutputSize:       OptionalTrimmedStringPtr(result.ImageOutputSize),
-		ImageSizeSource:       OptionalTrimmedStringPtr(result.ImageSizeSource),
-		ImageSizeBreakdown:    result.ImageSizeBreakdown,
+		InboundEndpoint:     OptionalTrimmedStringPtr(input.InboundEndpoint),
+		UpstreamEndpoint:    OptionalTrimmedStringPtr(input.UpstreamEndpoint),
+		InputTokens:         actualInputTokens,
+		OutputTokens:        result.Usage.OutputTokens,
+		CacheCreationTokens: result.Usage.CacheCreationInputTokens,
+		CacheReadTokens:     result.Usage.CacheReadInputTokens,
+		ImageInputTokens:    result.Usage.ImageInputTokens,
+		ImageOutputTokens:   result.Usage.ImageOutputTokens,
+		ImageCount:          result.ImageCount,
+		ImageSize:           OptionalTrimmedStringPtr(result.ImageSize),
+		ImageInputSize:      OptionalTrimmedStringPtr(result.ImageInputSize),
+		ImageOutputSize:     OptionalTrimmedStringPtr(result.ImageOutputSize),
+		ImageSizeSource:     OptionalTrimmedStringPtr(result.ImageSizeSource),
+		ImageSizeBreakdown:  result.ImageSizeBreakdown,
 	}
 	isVideoUsage := IsGrokVideoUsageResult(result, billingModels)
 	// Video identity remains in the analysis row even when a configured token card

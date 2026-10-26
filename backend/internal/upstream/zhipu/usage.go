@@ -259,7 +259,7 @@ func (*ZhipuCodingUsageAdapter) Query(ctx context.Context, input *usagecontract.
 	if err != nil {
 		return nil, err
 	}
-	if err := usageclient.ValidateCNUsageStatus(status); err != nil {
+	if err := usageclient.UpstreamUsageHTTPError(status, true); err != nil {
 		return nil, err
 	}
 	if success := gjson.GetBytes(body, "success"); success.Exists() && !success.Bool() {

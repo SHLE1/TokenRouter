@@ -126,7 +126,7 @@ func (s *OpenAIRequests) SendChat(
 		},
 		FinalizeHeaders: func(headers http.Header) {
 			provideradapter.ApplyProviderHeaderOverrides(gatewayprovider.ExecutionProtocolRecord(provider), headers)
-			FinalizeProviderRequestHeaders(c, provider, targetURL, headers)
+			gatewayprovider.FinalizeRequestHeaders(provider, targetURL, clientHeaderReader(c), headers)
 		},
 		Do: func(req *http.Request) (*http.Response, error) {
 			proxyURL := ""
@@ -173,7 +173,7 @@ func (s *OpenAIRequests) BuildAnthropic(ctx context.Context, c *gin.Context, pro
 	if err != nil {
 		return nil, nil, err
 	}
-	FinalizeProviderRequestHeaders(c, provider, targetURL, req.Header)
+	gatewayprovider.FinalizeRequestHeaders(provider, targetURL, clientHeaderReader(c), req.Header)
 	return req, prepared, nil
 }
 

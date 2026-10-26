@@ -153,24 +153,6 @@ func CnUsageLimits(provider string, tiers []usageview.CNQuotaTier) (*usageview.U
 	return &usageview.UpstreamUsageInfo{Provider: provider, Mode: "limits", Unit: "PERCENT", Limits: limits}, nil
 }
 
-// ValidateCNUsageStatus maps CN query HTTP status to a shared usage error,
-// with 2xx returning nil. Authentication, rate limits, and missing endpoints
-// receive specific categories; all other statuses mean invalid response.
-func ValidateCNUsageStatus(status int) error {
-	switch {
-	case status >= 200 && status < 300:
-		return nil
-	case status == 401 || status == 403:
-		return usageview.ErrUpstreamUsageAuthFailed
-	case status == 429:
-		return usageview.ErrUpstreamUsageRateLimited
-	case status == 404 || status == 405:
-		return usageview.ErrUpstreamUsageUnsupported
-	default:
-		return usageview.ErrUpstreamUsageInvalidResponse
-	}
-}
-
 // CnUsageEndpoint builds a fixed adapter path on the trimmed provider base. It
 // requires scheme and host; destination policy is validated elsewhere, and URL
 // credentials, query contents, and fragments are discarded. ForceQuery remains,

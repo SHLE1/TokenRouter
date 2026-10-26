@@ -17,8 +17,9 @@ import (
 // unsaved credential previews.
 // Live model queries use the model-sync use case for stored or temporary
 // credentials. The HTTP layer distinguishes local configuration failures from
-// upstream failures and sends sanitized messages. The use case constructs
-// preview records from supplied credentials before provider creation.
+// upstream failures and sends sanitized messages; preview constructs an unsaved
+// record, including the requested service mode, so query results can be
+// inspected before provider creation.
 
 // SyncUpstreamModels loads provider credentials and requests a live
 // supported-model list using its saved destination, mode, key, and proxy.
@@ -79,7 +80,8 @@ func (h *ManagementHandler) SyncUpstreamModels(c *gin.Context) {
 }
 
 // SyncUpstreamModelsPreview strictly binds temporary API-key credentials and
-// queries an unsaved provider record. It applies the same sanitized error
+// queries an unsaved provider record. A blank provider_mode stays absent so the
+// record uses its platform default mode. It applies the same sanitized error
 // categories as stored-provider synchronization, and the handler performs no
 // provider configuration write.
 // POST /api/v1/admin/providers/models/sync-upstream-preview
@@ -90,18 +92,24 @@ func (h *ManagementHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 		return
 	}
 
+	tempProvider := &providercore.Record{
+		Platform: req.Platform,
+		Type:     req.Type,
+		Credentials: map[string]any{
+			"api_key":  req.APIKey,
+			"base_url": req.BaseURL,
+		},
+	}
+	if req.ProviderMode != "" {
+		tempProvider.Credentials["provider_mode"] = req.ProviderMode
+	}
+
 	if h.models == nil {
 		response.InternalError(c, "Provider test service is not configured")
 		return
 	}
 
-	result, err := h.models.Preview(c.Request.Context(), providercore.ModelSyncPreview{
-		Platform:     req.Platform,
-		Type:         req.Type,
-		APIKey:       req.APIKey,
-		BaseURL:      req.BaseURL,
-		ProviderMode: req.ProviderMode,
-	})
+	result, err := h.models.Query(c.Request.Context(), tempProvider)
 	if err != nil {
 		if syncErr, ok := errors.AsType[*providercore.UpstreamModelSyncError](err); ok {
 			switch syncErr.Kind {

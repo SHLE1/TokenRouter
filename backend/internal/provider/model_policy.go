@@ -54,13 +54,12 @@ func (r *Record) IsModelSupported(requestedModel string, defaults ModelMappingDe
 }
 
 // modelPlatformAllows reports whether a final model passes supplied platform
-// callbacks for a nonnil record. OpenCode requires a known exact-model
-// encoding; Qoder site and OpenAI OAuth checks use their supplied callbacks.
-// Missing callbacks leave those other platform checks to their callers.
+// callbacks for a nonnil record. A record with per-model protocol declarations
+// requires the model to be declared; Qoder site and OpenAI OAuth checks use
+// their supplied callbacks. Missing callbacks leave those checks to callers.
 func (r *Record) modelPlatformAllows(model string, rules ModelPlatformRules) bool {
-	if r.IsOpenCode() {
-		_, known := r.OpenCodeModelProtocols()[model]
-		if !known {
+	if protocols := r.ModelProtocols(); protocols != nil {
+		if _, declared := protocols[model]; !declared {
 			return false
 		}
 	}

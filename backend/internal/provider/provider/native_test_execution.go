@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/systemone"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -22,89 +21,99 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// native_test_execution.go executes probes with an already selected model and
-// protocol. The platform target validates its provider configuration and fixes
-// the model, endpoint, and authentication callback before handing execution to
-// this adapter. Payload construction uses the selected wire protocol, while
-// the shared stream readers translate successful replies into test events.
+// native_test_execution.go builds and exchanges native protocol probes whose
+// model and wire protocol a platform target has already fixed. CN adaptive
+// Messages and Responses coverage and every OpenCode protocol use this one
+// executor through CNProviderTest, which supplies attributes, transport, TLS
+// profiles, URL validation, and the optional provider error store.
 //
-// A single TestRun carries group attributes, caller identity, cancellation, and
-// sink failures through the exchange. The prepared model passes directly into
-// payloads and model-action URLs, so an alias target cannot become another
-// mapping input. SystemOne uses its buffered exchange and reports response
-// identity and usage validity; streaming protocols reuse their existing readers.
+// A target describes each exchange with a nativeProbe: the resolved route, a
+// validated protocol root, a diagnostic label, and a header callback that
+// installs platform authentication after protocol defaults. Payloads pass the
+// final model directly, so an alias target cannot become another mapping
+// input. A 401 reply records provider error state when a store is configured,
+// and the protocol's shared stream reader translates successful replies into
+// test events. SystemOne uses its buffered decision exchange instead and
+// reports response identity and usage validity.
 
-// NativeProviderTest supplies transport and model attributes for prepared probes.
-type NativeProviderTest struct {
-	// Attributes resolves the final model under the probe's group and selected
-	// entry. A nil callback leaves automatic and image output capability unknown.
-	Attributes ModelAttributeLookup
-	Transport  QoderTransport // provider-aware probe request sender
-	// Profiles resolves optional request fingerprints. Nil delegates fingerprint
-	// selection to the configured transport using its ordinary default behavior.
-	Profiles    *egressprovider.TLSProfiles
-	ValidateURL func(string) (string, error) // selected protocol root validator
-}
-
-// nativeProbe retains one final route and the platform's request-header policy.
+// nativeProbe describes one streaming exchange prepared by a platform target.
 type nativeProbe struct {
-	route   provider.ResolvedModelRoute  // resolved model and protocol pair
-	request provider.PreparedTestRequest // normalized caller probe input
-	baseURL string                       // validated protocol root URL
+	route   provider.ResolvedModelRoute // final model and wire protocol
+	baseURL string                      // validated protocol root URL
+	// label names the endpoint in request and status failures, for example
+	// "Adaptive Anthropic endpoint" in "<label> returned 401: <body>".
+	label string
 	// applyHeaders installs the platform's final authentication and caller
 	// identity after protocol defaults have initialized the writable header map.
 	applyHeaders func(http.Header)
 }
 
-// execute sends a prepared probe and parses its protocol's response events.
-// The caller owns the TestRun and supplies a final model, validated endpoint,
-// and authentication callback. Response bodies close before this method returns.
-func (s *NativeProviderTest) execute(run *TestRun, value *provider.Record, probe nativeProbe) error {
-	output := TestStreamOutput{}
-	kind := probe.request.TestType
-	if probe.route.Protocol != protocol.ProtocolGeminiGenerateContent && probe.route.Protocol != protocol.ProtocolSystemOne {
-		if kind == provider.ProviderTestTypeImage {
-			return output.Error(run, "Selected native protocol supports text probes")
-		}
-		kind = provider.ProviderTestTypeText
-	}
-	if probe.route.Protocol != protocol.ProtocolSystemOne {
+// probePayload builds streaming protocol JSON for the final model and prompt.
+// The kind selects Gemini's text or image payload; other protocols send text.
+// Routed probes drop sampling fields that the model's attributes forbid, and
+// Responses requests to native CN endpoints become stateless. Unsupported
+// protocols return an error before any transport call.
+func (s *CNProviderTest) probePayload(run *TestRun, value *provider.Record, route provider.ResolvedModelRoute, prompt, kind string) ([]byte, error) {
+	var object map[string]any
+	switch route.Protocol {
+	case protocol.ProtocolGeminiGenerateContent:
+		return geminiTestPayload(route.Model, prompt, kind), nil
+	case protocol.ProtocolAnthropicMessages:
 		var err error
-		kind, err = resolveProbeType(run.Context, s.Attributes, value, run.GroupID,
-			probe.route.Model, string(probe.route.Protocol), kind)
+		object, err = anthropic.TestPayloadWithPrompt(route.Model, prompt)
 		if err != nil {
-			return output.Error(run, err.Error())
+			return nil, err
 		}
-	} else if s.Attributes != nil {
-		if _, err := s.Attributes(run.Context, value, run.GroupID, probe.route.Model, string(probe.route.Protocol)); err != nil {
-			return output.Error(run, err.Error())
-		}
+	case protocol.ProtocolOpenAIChatCompletions:
+		object = openai.TestChatCompletionsPayload(route.Model, prompt)
+	case protocol.ProtocolOpenAIResponses:
+		object = openai.TestResponsesPayload(route.Model, prompt, false)
+		// This probe supplies its own user prompt. Codex's internal system
+		// instructions belong to its account endpoint and would alter this input.
+		delete(object, "instructions")
+	default:
+		return nil, fmt.Errorf("unsupported native probe protocol %s", route.Protocol)
 	}
-	body, err := s.payload(run, value, probe, kind)
+	if err := applyProbeSampling(run, s.Attributes, value, route.Model, string(route.Protocol), object); err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(object)
 	if err != nil {
-		return output.Error(run, err.Error())
+		return nil, err
 	}
-	run.Begin(true)
-	output.SendEvent(run, provider.TestEvent{Type: "test_start", Model: probe.route.Model})
-	// A sink can cancel during Begin or test_start. Observe that cancellation
-	// before starting an upstream request whose output cannot reach the caller.
-	if err := run.Context.Err(); err != nil {
-		return err
+	if route.Protocol == protocol.ProtocolOpenAIResponses && (provider.ProtocolTarget{Record: value}).UsesNativeCNResponses() {
+		// Native CN Responses use fresh stateless requests. Set store false and
+		// remove any continuation identifier before sending this probe through the
+		// platform endpoint; other platforms keep the builder's request fields.
+		body = openaiprotocol.StatelessResponsesRequest(body)
 	}
-	if probe.route.Protocol == protocol.ProtocolSystemOne {
-		return executeSystemOneProbe(run, &jev.Target{
-			ProviderID: value.ID, URL: jev.EndpointURL(probe.baseURL, "systemone"), Model: probe.route.Model,
-			ApplyHeaders: probe.applyHeaders,
-			Do:           func(req *http.Request) (*http.Response, error) { return s.send(req, value) },
-		}, body)
-	}
-	endpoint, err := nativeProbeEndpoint(probe)
+	return body, nil
+}
+
+// exchange sends one prepared streaming probe and parses its protocol's reply.
+// The caller owns the TestRun, has already emitted any start event, and
+// supplies a final route, validated root, and header callback. Response bodies
+// close before this method returns.
+//
+// Transport failures after caller cancellation return the context error. A
+// non-OK reply becomes an error event carrying the label, status, and any body
+// prefix; a 401 also attempts a provider error-state write when Store is set.
+// Messages emits test_complete after its reader succeeds, matching the other
+// readers, and adaptive callers suppress those intermediate completions.
+func (s *CNProviderTest) exchange(run *TestRun, value *provider.Record, probe nativeProbe, body []byte) error {
+	output := TestStreamOutput{}
+	endpoint, err := nativeProbeEndpoint(value.Platform, probe.route, probe.baseURL)
 	if err != nil {
 		return output.Error(run, err.Error())
 	}
 	req, err := http.NewRequestWithContext(run.Context, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return output.Error(run, "Failed to create native probe request: "+err.Error())
+		return output.Error(run, fmt.Sprintf("Failed to create %s request: %s", probe.label, err.Error()))
+	}
+	if probe.route.Protocol == protocol.ProtocolOpenAIResponses {
+		// Gateway Responses forwarding uses the OpenAI transport profile. Probes
+		// select the same response-header wait so a test reflects that timing.
+		req = req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), upstream.HTTPUpstreamProfileOpenAI))
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
@@ -117,7 +126,7 @@ func (s *NativeProviderTest) execute(run *TestRun, value *provider.Record, probe
 		if run.Context.Err() != nil {
 			return run.Context.Err()
 		}
-		return output.Error(run, "Native probe request failed: "+err.Error())
+		return output.Error(run, fmt.Sprintf("%s request failed: %s", probe.label, err.Error()))
 	}
 	// Close successful and rejected responses here because all protocol readers
 	// borrow the body, including readers that return after an early terminal event.
@@ -126,7 +135,14 @@ func (s *NativeProviderTest) execute(run *TestRun, value *provider.Record, probe
 		// Retain any diagnostic prefix returned before a body read failure so the
 		// original HTTP rejection remains the primary explanation for this probe.
 		body, _ := io.ReadAll(resp.Body)
-		return output.Error(run, fmt.Sprintf("Native probe returned %d: %s", resp.StatusCode, body))
+		message := fmt.Sprintf("%s returned %d: %s", probe.label, resp.StatusCode, body)
+		if resp.StatusCode == http.StatusUnauthorized && s.Store != nil {
+			// The endpoint has already rejected the credential. Attempt the
+			// provider-state write, then keep the upstream diagnostic when storage
+			// itself reports an error.
+			_ = s.Store.SetError(run.Context, value.ID, message)
+		}
+		return output.Error(run, message)
 	}
 	switch probe.route.Protocol {
 	case protocol.ProtocolAnthropicMessages:
@@ -146,65 +162,30 @@ func (s *NativeProviderTest) execute(run *TestRun, value *provider.Record, probe
 	}
 }
 
-// payload builds protocol JSON using the prepared model and caller input.
-// Structured decisions retain caller fields after model replacement and validation.
-// Sampling attributes apply to text payloads using the same resolved route;
-// unsupported protocol selections return an error before any transport call.
-func (s *NativeProviderTest) payload(run *TestRun, value *provider.Record, probe nativeProbe, kind string) ([]byte, error) {
-	model, prompt := probe.route.Model, probe.request.Prompt
-	var object map[string]any
-	switch probe.route.Protocol {
-	case protocol.ProtocolGeminiGenerateContent:
-		return geminiTestPayload(model, prompt, kind), nil
-	case protocol.ProtocolSystemOne:
-		return systemOneProbeBody(model, prompt, probe.request.SystemOne)
-	case protocol.ProtocolAnthropicMessages:
-		var err error
-		object, err = anthropic.TestPayloadWithPrompt(model, prompt)
-		if err != nil {
-			return nil, err
-		}
-	case protocol.ProtocolOpenAIChatCompletions:
-		object = openai.TestChatCompletionsPayload(model, prompt)
-	case protocol.ProtocolOpenAIResponses:
-		object = openai.TestResponsesPayload(model, prompt, false)
-		// This probe supplies its own user prompt. Codex's internal system
-		// instructions belong to its account endpoint and would alter this input.
-		delete(object, "instructions")
-	default:
-		return nil, fmt.Errorf("unsupported native probe protocol %s", probe.route.Protocol)
-	}
-	if err := applyProbeSampling(run, s.Attributes, value, model, string(probe.route.Protocol), object); err != nil {
-		return nil, err
-	}
-	return json.Marshal(object)
-}
-
 // nativeProbeEndpoint builds the selected protocol's streaming request URL.
-// The caller supplies a validated root and final model. Gemini model actions
-// validate that model using the shared AI Studio URL builder.
-func nativeProbeEndpoint(probe nativeProbe) (string, error) {
-	switch probe.route.Protocol {
+// The caller supplies a validated root and final model. DeepSeek Responses use
+// the platform's unversioned path, and Gemini model actions validate the model
+// using the shared AI Studio URL builder.
+func nativeProbeEndpoint(platform string, route provider.ResolvedModelRoute, baseURL string) (string, error) {
+	switch route.Protocol {
 	case protocol.ProtocolAnthropicMessages:
-		return httpclient.BuildOpenAIEndpointURL(probe.baseURL, "/v1/messages"), nil
+		return httpclient.BuildOpenAIEndpointURL(baseURL, "/v1/messages"), nil
 	case protocol.ProtocolOpenAIResponses:
-		return httpclient.BuildOpenAIEndpointURL(probe.baseURL, "/v1/responses"), nil
+		return cnTestResponsesURL(platform, baseURL), nil
 	case protocol.ProtocolOpenAIChatCompletions:
-		return httpclient.BuildOpenAIEndpointURL(probe.baseURL, "/v1/chat/completions"), nil
+		return httpclient.BuildOpenAIEndpointURL(baseURL, "/v1/chat/completions"), nil
 	case protocol.ProtocolGeminiGenerateContent:
-		// Protocol roots include their version, while the shared AI Studio builder
-		// accepts a service root and adds v1beta when constructing its model action.
-		base := strings.TrimSuffix(strings.TrimRight(probe.baseURL, "/"), "/v1beta")
-		return gemini.BuildGeminiAIStudioModelActionURL(base, probe.route.Model, "streamGenerateContent", true)
+		return gemini.BuildGeminiAIStudioModelActionURL(baseURL, route.Model, "streamGenerateContent", true)
 	default:
-		return "", fmt.Errorf("unsupported streaming probe protocol %s", probe.route.Protocol)
+		return "", fmt.Errorf("unsupported streaming probe protocol %s", route.Protocol)
 	}
 }
 
-// send applies the provider's proxy and TLS selection to one prepared request.
-// The caller owns the returned response body. Cancellation follows the request
-// context and there is one transport attempt per invocation.
-func (s *NativeProviderTest) send(req *http.Request, value *provider.Record) (*http.Response, error) {
+// send applies the provider's loaded proxy and TLS selection to one prepared
+// request. A missing loaded proxy relation sends directly, and a missing
+// profile service sends no selected fingerprint. The caller owns the returned
+// response body; there is one transport attempt per invocation.
+func (s *CNProviderTest) send(req *http.Request, value *provider.Record) (*http.Response, error) {
 	proxy := ""
 	if value.ProxyID != nil && value.Proxy != nil {
 		proxy = value.Proxy.URL()

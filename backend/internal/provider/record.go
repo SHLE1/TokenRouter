@@ -512,8 +512,7 @@ func (r *Record) IsCNProvider() bool {
 // families. Nil records return false; the platform classification leaves
 // provider-type and endpoint eligibility to the route-specific checks.
 func (r *Record) IsOpenAICompatible() bool {
-	return r != nil && (r.Platform == PlatformOpenAI || r.Platform == PlatformGrok ||
-		r.Platform == PlatformKimi || r.Platform == PlatformZhipu || r.Platform == PlatformDeepseek || r.Platform == PlatformOpenCode)
+	return r != nil && IsOpenAICompatible(r.Platform)
 }
 
 // GeminiOAuthType returns the trimmed channel label for Gemini OAuth records.
@@ -2713,6 +2712,12 @@ func (r *Record) QuotaDimensionOrDefault() string {
 		return QuotaDimensionGlobal
 	}
 	return r.QuotaDimension
+}
+
+// IsOpenAICompatible classifies OpenAI, Grok, CN, and OpenCode as the
+// platforms whose text requests use the OpenAI-compatible gateway family.
+func IsOpenAICompatible(platform string) bool {
+	return platform == PlatformOpenAI || platform == PlatformGrok || platform == PlatformOpenCode || IsCNProvider(platform)
 }
 
 // IsCNProvider classifies Kimi, Zhipu, and DeepSeek as CN provider platforms.

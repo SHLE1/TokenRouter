@@ -25,8 +25,9 @@ import (
 // Target contains route inputs that determine metadata for a complete outbound
 // model.
 type Target struct {
-	// AttributeModel retains the canonical metadata identity selected with the
-	// attempt's model route. Empty values let the retained catalog resolve it.
+	// AttributeModel is the canonical author identity for platforms whose
+	// offerings rename another author's model. Resolve derives it from the
+	// catalog publication it reads when the caller leaves it empty.
 	AttributeModel string `json:"attribute_model,omitempty"`
 
 	Model        string `json:"model"`                   // complete outbound model identity
@@ -146,7 +147,10 @@ func (v View) Resolve(target Target, override Attributes) Resolution {
 	target = target.WithServiceIdentity()
 	result := Resolution{Target: target, Sources: map[string]string{}, Version: v.Version()}
 	model := target.Model
-	if target.Platform == "opencode" {
+	if target.usesCanonicalIdentity() {
+		// The offering's outbound name can differ from its author's model. Read
+		// the canonical reference from this publication, so a refreshed catalog
+		// supplies the alias's attributes and encoding rules.
 		if target.AttributeModel == "" && v.catalog != nil {
 			mode := target.ProviderMode
 			if mode == "" {
@@ -525,6 +529,14 @@ func compatibleService(host, path, mode string) string {
 	}
 }
 
+// usesCanonicalIdentity reports whether the target's model rules come only from
+// a canonical author reference. OpenCode offerings rename models from many
+// authors, so an unknown reference leaves their author-specific rules unapplied
+// instead of guessing an author from the outbound name.
+func (t Target) usesCanonicalIdentity() bool {
+	return t.Platform == "opencode"
+}
+
 // servicePlatform selects the encoding platform for recognized compatible
 // services. OpenAI OAuth and Setup Token routes retain OpenAI, while unknown
 // API-compatible services retain the target's configured platform.
@@ -532,8 +544,18 @@ func (t Target) servicePlatform() string {
 	if t.Platform != "openai" || t.ProviderType == "oauth" || t.ProviderType == "setup-token" {
 		return t.Platform
 	}
-	switch service := t.ServiceID(); service {
-	case "anthropic", "deepseek":
+	if family := serviceRuleFamily(t.ServiceID()); family != "" {
+		return family
+	}
+	return t.Platform
+}
+
+// serviceRuleFamily maps a catalog service or author lab to the platform name
+// whose model rules apply to it. Unregistered identities return empty, so
+// callers keep their own platform or leave author rules unapplied.
+func serviceRuleFamily(service string) string {
+	switch service {
+	case "openai", "anthropic", "deepseek", "minimax", "alibaba":
 		return service
 	case "xai":
 		return "grok"
@@ -546,7 +568,7 @@ func (t Target) servicePlatform() string {
 	case "typesafe":
 		return "jev"
 	default:
-		return t.Platform
+		return ""
 	}
 }
 

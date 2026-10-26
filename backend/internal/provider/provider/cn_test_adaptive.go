@@ -1,10 +1,7 @@
 package provider
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"slices"
@@ -12,9 +9,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
-	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
@@ -28,10 +23,10 @@ import (
 // suppressed until every selected endpoint succeeds. Chat owns its start
 // event; tests without Chat commit one start before the other endpoints run.
 // Model preparation applies one mapping for Messages and Responses, while Chat
-// delegates its original supplied model to the fixed executor. Native
-// Responses remove synthetic Codex instructions and request stateless
-// behavior, and native authentication failures can attempt provider error
-// persistence.
+// delegates its original supplied model to the fixed executor. Messages and
+// Responses run through the native exchange shared with OpenCode probes, which
+// sends stateless CN Responses and attempts provider error persistence after
+// an authentication failure.
 
 // ExecuteAdaptive tests one selected native protocol or every enabled protocol
 // for a CN record. Empty protocol sets and disabled explicit selections fail
@@ -89,14 +84,11 @@ func (s *CNProviderTest) ExecuteAdaptive(c *TestRun, value *providercore.Record,
 		}
 	}
 
-	if slices.Contains(enabled, protocol.ProtocolAnthropicMessages) {
-		if err := s.executeAdaptiveAnthropic(c, value, testModelID, prompt, authToken); err != nil {
-			return err
+	for _, wire := range []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses} {
+		if !slices.Contains(enabled, wire) {
+			continue
 		}
-	}
-
-	if slices.Contains(enabled, protocol.ProtocolOpenAIResponses) {
-		if err := s.executeAdaptiveResponses(c, value, testModelID, prompt, authToken); err != nil {
+		if err := s.executeAdaptiveEndpoint(c, value, testModelID, prompt, authToken, wire); err != nil {
 			return err
 		}
 	}
@@ -106,149 +98,54 @@ func (s *CNProviderTest) ExecuteAdaptive(c *TestRun, value *providercore.Record,
 	return nil
 }
 
-// executeAdaptiveAnthropic runs a mapped native Messages probe with the
-// supplied key and prompt. It validates the protocol root, applies the selected
-// API-key scheme and allowed overrides, closes the response, and records 401
-// state best effort.
-func (s *CNProviderTest) executeAdaptiveAnthropic(c *TestRun, value *providercore.Record, testModelID string, prompt string, authToken string) error {
-	ctx := c.Context
-	baseURL, err := s.ValidateURL((providercore.ProtocolTarget{Record: value}).GetCNProtocolBaseURL(providercore.APIProtocolAnthropic))
-	if err != nil {
-		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Invalid adaptive Anthropic base URL: %s", err.Error()))
+// executeAdaptiveEndpoint runs one mapped native Messages or Responses probe
+// with the supplied key and prompt through the shared native exchange. It
+// validates that protocol's CN root, then brackets the exchange with testing
+// and verified status events so adaptive output names each endpoint.
+//
+// Messages sends Claude default headers, the API-key beta, and the record's
+// API-key scheme; Responses sends a Bearer key with Codex probe identity. Both
+// apply allowed header overrides last. The shared exchange closes the response
+// and attempts a provider error-state write after a 401.
+func (s *CNProviderTest) executeAdaptiveEndpoint(c *TestRun, value *providercore.Record, testModelID, prompt, authToken string, wire protocol.ProtocolID) error {
+	name, path, apiProtocol := "Anthropic", "/v1/messages", providercore.APIProtocolAnthropic
+	authenticate := func(headers http.Header) {
+		for key, text := range claude.DefaultHeaders {
+			headers.Set(key, text)
+		}
+		headers.Set("anthropic-beta", claude.APIKeyBetaHeader)
+		claude.SetAPIKeyAuthHeader(headers, value.GetAnthropicAPIKeyAuthScheme() == providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer, authToken)
 	}
-	apiURL := httpclient.BuildOpenAIEndpointURL(baseURL, "/v1/messages")
-
-	payload, err := claude.TestPayloadWithPrompt(testModelID, prompt)
-	if err != nil {
-		return (TestStreamOutput{}).Error(c, "Failed to create adaptive Anthropic test payload")
+	if wire == protocol.ProtocolOpenAIResponses {
+		name, path, apiProtocol = "Responses", "/responses", providercore.APIProtocolResponses
+		authenticate = func(headers http.Header) {
+			headers.Set("Authorization", "Bearer "+authToken)
+			openai.ApplyOpenAICodexProbeHeaders(headers)
+		}
 	}
-	if err := applyProbeSampling(c, s.Attributes, value, testModelID, "anthropic_messages", payload); err != nil {
+	baseURL, err := s.ValidateURL((providercore.ProtocolTarget{Record: value}).GetCNProtocolBaseURL(apiProtocol))
+	if err != nil {
+		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Invalid adaptive %s base URL: %s", name, err.Error()))
+	}
+	probe := nativeProbe{
+		route:   providercore.ResolvedModelRoute{Model: testModelID, Protocol: wire},
+		baseURL: baseURL,
+		label:   "Adaptive " + name + " endpoint",
+		applyHeaders: func(headers http.Header) {
+			authenticate(headers)
+			applyGrokQuotaHeaders(value, headers)
+		},
+	}
+	body, err := s.probePayload(c, value, probe.route, prompt, providercore.ProviderTestTypeText)
+	if err != nil {
 		return (TestStreamOutput{}).Error(c, err.Error())
 	}
-	// These fixed probe payloads contain JSON-compatible values supplied by
-	// platform builders. Encoding retains their supported shapes after the local
-	// protocol preparation.
-	payloadBytes, _ := json.Marshal(payload)
-
-	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "status", Text: "Testing adaptive Anthropic endpoint through native /v1/messages"})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
-	if err != nil {
-		return (TestStreamOutput{}).Error(c, "Failed to create adaptive Anthropic request")
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("anthropic-version", "2023-06-01")
-	for key, value := range claude.DefaultHeaders {
-		req.Header.Set(key, value)
-	}
-	req.Header.Set("anthropic-beta", claude.APIKeyBetaHeader)
-	claude.SetAPIKeyAuthHeader(req.Header, value.GetAnthropicAPIKeyAuthScheme() == providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer, authToken)
-	applyGrokQuotaHeaders(value, req.Header)
-	resp, err := s.doAdaptiveRequest(req, value)
-	if err != nil {
-		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Adaptive Anthropic endpoint request failed: %s", err.Error()))
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		// Use the available non-OK response prefix for endpoint diagnostics even if
-		// reading fails, retaining the status that caused this adaptive attempt to
-		// stop.
-		body, _ := io.ReadAll(resp.Body)
-		errMsg := fmt.Sprintf("Adaptive Anthropic endpoint returned %d: %s", resp.StatusCode, string(body))
-		if resp.StatusCode == http.StatusUnauthorized && s.Store != nil {
-			// The endpoint has already returned an authentication failure. Attempt its
-			// provider-state write, then keep the upstream diagnostic when storage
-			// itself reports an error.
-			_ = s.Store.SetError(ctx, value.ID, errMsg)
-		}
-		return (TestStreamOutput{}).Error(c, errMsg)
-	}
-
-	if err := (TestStreamOutput{}).AdaptiveAnthropic(c, resp.Body); err != nil {
+	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "status", Text: "Testing adaptive " + name + " endpoint through native " + path})
+	if err := s.exchange(c, value, probe, body); err != nil {
 		return err
 	}
-	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "status", Text: "Verified through native /v1/messages"})
+	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "status", Text: "Verified through native " + path})
 	return nil
-}
-
-// executeAdaptiveResponses runs a mapped native Responses probe with the
-// supplied key and prompt. It omits Codex instructions, normalizes supported CN
-// requests to stateless form, closes the response, and records 401 state best
-// effort.
-func (s *CNProviderTest) executeAdaptiveResponses(c *TestRun, value *providercore.Record, testModelID string, prompt string, authToken string) error {
-	ctx := c.Context
-	baseURL, err := s.ValidateURL((providercore.ProtocolTarget{Record: value}).GetCNProtocolBaseURL(providercore.APIProtocolResponses))
-	if err != nil {
-		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Invalid adaptive Responses base URL: %s", err.Error()))
-	}
-	apiURL := cnTestResponsesURL(value.Platform, baseURL)
-
-	payload := openai.TestResponsesPayload(testModelID, prompt, false)
-	if err := applyProbeSampling(c, s.Attributes, value, testModelID, "openai_responses", payload); err != nil {
-		return (TestStreamOutput{}).Error(c, err.Error())
-	}
-	// Codex's probe builder supplies synthetic instructions for its own endpoint.
-	// Remove that field before native CN Responses execution so this payload
-	// carries the selected prompt directly.
-	delete(payload, "instructions")
-	// These fixed probe payloads contain JSON-compatible values supplied by
-	// platform builders. Encoding retains their supported shapes after the local
-	// protocol preparation.
-	payloadBytes, _ := json.Marshal(payload)
-	if (providercore.ProtocolTarget{Record: value}).UsesNativeCNResponses() {
-		// Native CN Responses use fresh stateless requests. Set store false and
-		// remove any continuation identifier before sending this probe through the
-		// platform endpoint.
-		payloadBytes = openaiprotocol.StatelessResponsesRequest(payloadBytes)
-	}
-
-	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "status", Text: "Testing adaptive Responses endpoint through native /responses"})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
-	if err != nil {
-		return (TestStreamOutput{}).Error(c, "Failed to create adaptive Responses request")
-	}
-	req = req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), upstream.HTTPUpstreamProfileOpenAI))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Authorization", "Bearer "+authToken)
-	openai.ApplyOpenAICodexProbeHeaders(req.Header)
-	applyGrokQuotaHeaders(value, req.Header)
-	resp, err := s.doAdaptiveRequest(req, value)
-	if err != nil {
-		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Adaptive Responses endpoint request failed: %s", err.Error()))
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		// Use the available non-OK response prefix for endpoint diagnostics even if
-		// reading fails, retaining the status that caused this adaptive attempt to
-		// stop.
-		body, _ := io.ReadAll(resp.Body)
-		errMsg := fmt.Sprintf("Adaptive Responses endpoint returned %d: %s", resp.StatusCode, string(body))
-		if resp.StatusCode == http.StatusUnauthorized && s.Store != nil {
-			// The endpoint has already returned an authentication failure. Attempt its
-			// provider-state write, then keep the upstream diagnostic when storage
-			// itself reports an error.
-			_ = s.Store.SetError(ctx, value.ID, errMsg)
-		}
-		return (TestStreamOutput{}).Error(c, errMsg)
-	}
-
-	if err := (TestStreamOutput{}).Responses(c, resp.Body); err != nil {
-		return err
-	}
-	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "status", Text: "Verified through native /responses"})
-	return nil
-}
-
-// doAdaptiveRequest sends a prepared native request with the record's loaded
-// proxy and selected TLS profile. A missing loaded proxy relation leaves the
-// proxy URL empty; the caller closes any returned response body.
-func (s *CNProviderTest) doAdaptiveRequest(req *http.Request, value *providercore.Record) (*http.Response, error) {
-	proxyURL := ""
-	if value.ProxyID != nil && value.Proxy != nil {
-		proxyURL = value.Proxy.URL()
-	}
-	return s.Transport.DoWithTLS(req, proxyURL, value.ID, value.Concurrency, s.resolveTLSProfile(value))
 }
 
 // cnAnthropicBaseURLMisconfigHint returns a diagnostic for OpenAI-shaped paths

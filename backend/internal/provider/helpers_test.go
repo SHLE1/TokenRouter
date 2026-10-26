@@ -69,7 +69,6 @@ func attachCNMonitorLimits(provider *Record, observedAt time.Time, limits []Upst
 	if err != nil {
 		panic(err)
 	}
-	queryConfig.Adapter = CNUpstreamUsageAdapterName(provider)
 	provider.Extra[CNUsageMonitorSnapshotExtraKey] = &CNUsageMonitorSnapshot{
 		Version:       CNUsageMonitorSnapshotVersion,
 		Adapter:       queryConfig.Adapter,

@@ -6,7 +6,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // attempt_route.go resolves provider protocol attempts from request routing
@@ -91,20 +90,14 @@ func (s RoutingState) ResolveAttempt(snapshot provider.ProviderSnapshot, previou
 // Requested, group-mapped, and final spellings all select that same result,
 // preventing a mapped target from being interpreted as another alias hop.
 //
-// Unplanned calls and model-free legacy plans apply the supplied mapping. An
-// auxiliary model on a model-independent platform uses its separate mapping,
-// such as an image-tool model inside a text attempt. OpenCode auxiliary models
-// require a separately resolved attempt because their encoding can differ;
-// returning empty prevents callers from sending them on the retained protocol.
-func (a AttemptRoute) ResolveModel(id int64, platform string, mapping map[string]string, requested string) (string, bool) {
+// Unplanned calls, model-free legacy plans, and auxiliary models such as an
+// image-tool model inside a text attempt apply the supplied mapping instead.
+func (a AttemptRoute) ResolveModel(id int64, mapping map[string]string, requested string) (string, bool) {
 	if a.planned && a.candidate.ProviderID == id {
 		models := a.candidate.Models
 		if models.RequestedModel != "" || models.GroupMappedModel != "" {
 			if requested == models.RequestedModel || requested == models.GroupMappedModel || requested == models.ProviderMappedModel {
 				return models.ProviderMappedModel, a.candidate.ModelMappingMatched
-			}
-			if platform == capability.PlatformOpenCode {
-				return "", false
 			}
 		}
 	}

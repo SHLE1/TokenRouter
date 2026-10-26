@@ -177,6 +177,7 @@ func setupSyncUpstreamModelsRouter(adminSvc ProviderManagement, upstream provide
 	modelPolicy := egress.OperatorURLPolicy{}
 	catalogue := &provideradapter.ModelCatalogue{Transport: upstream, Options: provideradapter.ModelCatalogueOptions{ValidateURL: modelPolicy.Validate, OperatorValidator: modelPolicy.Validate, BodyLimit: 8 * 1024 * 1024, CodexModelsURL: provideradapter.DefaultCodexModelsURL}}
 	models := providercore.NewModelSyncService(catalogue.FetchUpstreamSupportedModels)
+	models.Suggest = providercore.OpenCodeProtocolSuggestions(nil)
 	handler := NewManagementHandler(adminSvc, ManagementOptions{Models: models})
 	router.POST("/api/v1/admin/providers/:id/models/sync-upstream", handler.SyncUpstreamModels)
 	router.POST("/api/v1/admin/providers/models/sync-upstream-preview", handler.SyncUpstreamModelsPreview)
@@ -260,7 +261,8 @@ func TestProviderHandlerSyncUpstreamModelsUsesSavedSettings(t *testing.T) {
 
 // TestProviderHandlerOpenCodePreviewUsesCallerCredentials previews the default
 // payg service and explicit Go service. Each request uses the supplied key and
-// temporary root, and neither preview requires reading a saved provider.
+// temporary root, Go suggestions show that the mode reached the query record,
+// and neither preview requires reading a saved provider.
 func TestProviderHandlerOpenCodePreviewUsesCallerCredentials(t *testing.T) {
 	for _, mode := range []string{"", "go"} {
 		t.Run(mode, func(t *testing.T) {
@@ -284,6 +286,9 @@ func TestProviderHandlerOpenCodePreviewUsesCallerCredentials(t *testing.T) {
 			require.Len(t, upstream.requests, 1)
 			require.Equal(t, "https://preview.example/v1/models", upstream.requests[0].URL.String())
 			require.Equal(t, "Bearer preview-key", upstream.requests[0].Header.Get("Authorization"))
+			if mode == "go" {
+				require.Contains(t, rec.Body.String(), `"minimax-m3":"anthropic_messages"`)
+			}
 		})
 	}
 }

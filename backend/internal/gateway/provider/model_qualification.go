@@ -47,7 +47,7 @@ func (p ModelPolicy) CandidateSnapshot() provider.ProviderSnapshot {
 
 // ProtocolRoute checks provider protocol support against the supplied group
 // and client protocol independently of model identity. Nil records return false;
-// execution callers subsequently resolve a concrete model with AllowsProtocol.
+// AllowsProtocol adds the model-specific check for a known model.
 func (p ModelPolicy) ProtocolRoute(group *routing.Group, source protocol.ProtocolID) (protocol.ProtocolID, bool) {
 	if p.Record == nil {
 		return "", false
@@ -59,53 +59,30 @@ func (p ModelPolicy) ProtocolRoute(group *routing.Group, source protocol.Protoco
 	return capability.ResolveRoute(p.CandidateSnapshot().Protocols(), source, fallbacks)
 }
 
-// HasProtocolRoute checks structural protocol support and group requirements.
-// It serves preliminary pool checks that have no model; executable requests
-// must additionally call AllowsProtocol with their requested model identity.
-func (p ModelPolicy) HasProtocolRoute(ctx context.Context) bool {
+// AllowsProtocol checks group OAuth/privacy requirements and the protocol
+// route for model. Missing provider records fail. An empty model asks only
+// whether the provider can serve the client protocol at all, which pool
+// checks use before a model is known.
+//
+// Providers whose models each declare one protocol also need a route for the
+// final mapped model, so a known model resolves a complete candidate. That
+// resolution reuses the retained request plan when model is one of its
+// spellings, keeping group mapping and conversion policy, and builds a fresh
+// plan for other models. Without a client protocol, the other providers pass
+// because their execution adapters validate the selected entry later.
+func (p ModelPolicy) AllowsProtocol(ctx context.Context, model string) bool {
 	group, _ := requeststate.GroupFromContext(ctx)
 	if p.Record == nil || group != nil && (group.RequireOAuthOnly && !p.Record.IsOAuth() || group.RequirePrivacySet && !p.Record.IsPrivacySet()) {
 		return false
 	}
 	source, _ := requeststate.ClientProtocolFromContext(ctx)
-	if source != "" {
-		_, ok := p.ProtocolRoute(group, source)
-		return ok
-	}
-	// Model-independent callers also use this method for health inspection
-	// without a client entry; their eventual execution path supplies the protocol.
-	if !p.Record.IsOpenCode() {
-		return true
-	}
 	snapshot := p.CandidateSnapshot()
-	for _, target := range snapshot.EnabledProtocols {
-		if slices.Contains(capability.NativeProtocolOptions(snapshot.Platform, snapshot.Type, snapshot.AuthMode), target) {
+	if model == "" || snapshot.ModelProtocols == nil {
+		if source == "" {
 			return true
 		}
-	}
-	return false
-}
-
-// AllowsProtocol resolves an executable route for the supplied requested model.
-// Group OAuth and privacy requirements apply first. OpenCode requests without
-// a client protocol select an enabled native encoding; other platforms retain
-// their protocol-independent health checks when the client entry is absent.
-//
-// A retained request plan supplies group mapping and conversion policy when its
-// model matches this request. Auxiliary model queries build their own route so
-// an attempt for another model cannot supply its protocol. Every successful
-// OpenCode decision requires the final mapped model's declared protocol to be
-// enabled on the captured provider configuration.
-func (p ModelPolicy) AllowsProtocol(ctx context.Context, model string) bool {
-	if !p.HasProtocolRoute(ctx) {
-		return false
-	}
-	group, _ := requeststate.GroupFromContext(ctx)
-	source, _ := requeststate.ClientProtocolFromContext(ctx)
-	// Health-only model checks on other platforms historically omit the client
-	// protocol. Their execution adapters validate the selected entry when one exists.
-	if source == "" && !p.Record.IsOpenCode() {
-		return true
+		_, ok := p.ProtocolRoute(group, source)
+		return ok
 	}
 	plan := routing.Plan(routing.PlanInput{Group: group, ClientProtocol: source, RequestedModel: model})
 	if retained, planned := requeststate.RoutePlanFromContext(ctx); planned && (group == nil || retained.GroupID() == group.ID) {
@@ -114,7 +91,7 @@ func (p ModelPolicy) AllowsProtocol(ctx context.Context, model string) bool {
 			plan = retained.WithClientProtocol(source)
 		}
 	}
-	_, ok := plan.ResolveCandidate(p.CandidateSnapshot())
+	_, ok := plan.ResolveCandidate(snapshot)
 	return ok
 }
 

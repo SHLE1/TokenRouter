@@ -85,33 +85,16 @@ func (p ModelPolicy) finalModelWhitelisted(model string) bool {
 	return p.Record.FinalModelWhitelisted(model, provideradapter.ModelDefaults(), provideradapter.ModelRules(p.Record))
 }
 
-// forwardMappedModel resolves forwarding through the attempt's captured model
-// when present. Nil records return empty; legacy calls use configured mappings,
-// and empty configured targets retain the request spelling for ordinary platform
-// normalization.
+// forwardMappedModel resolves the outbound model through ResolveMapped, so an
+// admitted attempt forwards its captured model and other calls use the current
+// mapping. Nil records return empty, and a blank configured target keeps the
+// request spelling for ordinary platform normalization.
 func (p ModelPolicy) forwardMappedModel(model string) string {
 	if p.Record == nil {
 		return ""
 	}
 	mapped, matched := p.ResolveMapped(model)
-	if candidate, planned := p.Route.Candidate(); planned && (model == candidate.Models.RequestedModel || model == candidate.Models.GroupMappedModel || model == candidate.Models.ProviderMappedModel) {
-		// Ordinary provider mappings allow an empty target to retain the request
-		// name. Capturing a candidate does not turn that configured value into an
-		// empty wire model; model-specific OpenCode routes reject it during admission.
-		if strings.TrimSpace(mapped) == "" && !p.Record.IsOpenCode() {
-			return model
-		}
-		return strings.TrimSpace(mapped)
-	}
-	if p.Record.IsOpenCode() {
-		return strings.TrimSpace(mapped)
-	}
-	// Empty configured targets retain the caller identity, allowing platform
-	// normalization to apply its established default instead of sending an empty model.
-	if !matched || strings.TrimSpace(mapped) == "" {
-		return model
-	}
-	return strings.TrimSpace(mapped)
+	return provider.ForwardMappedTarget(model, mapped, matched)
 }
 
 // antigravityModel resolves Antigravity model and thinking variants through
@@ -152,9 +135,9 @@ func (p ModelPolicy) ResolveMapped(model string) (string, bool) {
 		if _, planned := p.Route.Candidate(); !planned {
 			return p.models.ResolveMappedModel(model)
 		}
-		return p.Route.ResolveModel(p.Record.ID, p.Record.Platform, p.models.Mapping(), model)
+		return p.Route.ResolveModel(p.Record.ID, p.models.Mapping(), model)
 	}
-	return p.Route.ResolveModel(p.Record.ID, p.Record.Platform, provider.ResolveModelMapping(p.Record, provideradapter.ModelDefaults()), model)
+	return p.Route.ResolveModel(p.Record.ID, provider.ResolveModelMapping(p.Record, provideradapter.ModelDefaults()), model)
 }
 
 // ForwardModel prefers a nonblank trimmed dispatchMapped value over requested,

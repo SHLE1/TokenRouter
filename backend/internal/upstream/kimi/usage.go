@@ -134,7 +134,7 @@ func (*KimiCodingUsageAdapter) Query(ctx context.Context, input *usagecontract.R
 	if err != nil {
 		return nil, err
 	}
-	if err := usageclient.ValidateCNUsageStatus(status); err != nil {
+	if err := usageclient.UpstreamUsageHTTPError(status, true); err != nil {
 		return nil, err
 	}
 	tiers := ParseKimiUsageTiers(body)
@@ -158,7 +158,7 @@ func (*KimiBalanceUsageAdapter) Query(ctx context.Context, input *usagecontract.
 	if err != nil {
 		return nil, err
 	}
-	if err := usageclient.ValidateCNUsageStatus(status); err != nil {
+	if err := usageclient.UpstreamUsageHTTPError(status, true); err != nil {
 		return nil, err
 	}
 	if code := gjson.GetBytes(body, "code"); code.Exists() && code.Int() != 0 {

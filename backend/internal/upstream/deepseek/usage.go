@@ -59,7 +59,7 @@ func (*DeepseekBalanceUsageAdapter) Query(ctx context.Context, input *usagecontr
 	if err != nil {
 		return nil, err
 	}
-	if err := usageclient.ValidateCNUsageStatus(status); err != nil {
+	if err := usageclient.UpstreamUsageHTTPError(status, true); err != nil {
 		return nil, err
 	}
 	var balances []usageview.UpstreamUsageBalanceEntry

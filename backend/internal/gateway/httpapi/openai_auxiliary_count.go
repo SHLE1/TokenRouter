@@ -71,10 +71,10 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 		return fmt.Errorf("count_tokens: missing provider")
 	}
 
-	// Grok, CN, and OpenCode counts use the local Anthropic estimator regardless of
-	// configured upstream protocol, leaving their inference transport and
-	// health state unused here.
-	if (provider.View().IsCNProvider() || provider.View().IsOpenCode()) || provider.View().IsGrok() {
+	// Compatible platforms other than OpenAI have no upstream count endpoint, so
+	// they use the local Anthropic estimator regardless of configured upstream
+	// protocol, leaving their inference transport and health state unused here.
+	if provider.View().IsOpenAICompatible() && !provider.View().IsOpenAI() {
 		estimated, err := tokenestimate.Anthropic(body)
 		if err != nil {
 			writeAnthropicCountTokensError(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")

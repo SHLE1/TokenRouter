@@ -153,7 +153,7 @@ func TestProviderCodecOpenCodeRetainsModelRoutes(t *testing.T) {
 			require.Contains(t, record.Credentials, provider.OpenCodeCatalogProtocolsKey)
 			resolved, ok = snapshot.ResolveModelRoute("public", "", nil)
 			require.True(t, ok)
-			require.Equal(t, "nvidia/nemotron-3.5-lightning", resolved.AttributeModel)
+			require.Equal(t, "nemotron-3.5-lightning-free", resolved.Model)
 		})
 	}
 }

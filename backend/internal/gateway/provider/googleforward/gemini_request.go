@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/opencode"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
@@ -25,7 +23,7 @@ import (
 // endpoint callbacks. Client and upstream stream modes stay separate,
 // forceAIStudio selects its request route, and unavailable token services
 // return a build error. The read callback supplies inbound client headers for
-// OpenCode requests; nil is permitted for callers without an HTTP client.
+// provider identity finalization; nil is permitted for callers without an HTTP client.
 func (s *Gemini) geminiRequestPlan(value *gatewayprovider.ExecutionProvider, model, action string, native, clientStream, upstreamStream, forceAIStudio bool, read func(string) string) gemininative.RequestPlan {
 	plan := gemininative.RequestPlan{
 		Mode:           gemininative.CredentialMode(value.Record.Type),
@@ -36,10 +34,8 @@ func (s *Gemini) geminiRequestPlan(value *gatewayprovider.ExecutionProvider, mod
 		UpstreamStream: upstreamStream,
 		ForceAIStudio:  forceAIStudio,
 		APIKey:         func() string { return value.View().GetCredential("api_key") },
-		// The Gemini wire builder appends v1beta itself. Remove a selected protocol
-		// root's terminal version here so default and custom OpenCode prefixes remain intact.
 		BaseURL: func() string {
-			return strings.TrimSuffix((providercore.ProtocolTarget{Record: value.View(), Protocol: capability.ProtocolGeminiGenerateContent}).BaseURL(), "/v1beta")
+			return (providercore.ProtocolTarget{Record: value.View(), Protocol: capability.ProtocolGeminiGenerateContent}).BaseURL()
 		},
 		ValidateURL: s.validateUpstreamBaseURL,
 		VertexURL: func(action string, stream bool) (string, error) {
@@ -56,11 +52,9 @@ func (s *Gemini) geminiRequestPlan(value *gatewayprovider.ExecutionProvider, mod
 		}
 		return gemininative.TokenSnapshot{AccessToken: token, ProjectID: value.View().GetCredential("project_id")}, nil
 	}
-	if value.View().IsOpenCode() {
-		plan.ApplyHeaders = func(h http.Header) {
-			gatewayprovider.BindExecutionHeaders(value)(h)
-			opencode.ApplyHeaders(h, value.View().GetCredential("api_key"), read)
-		}
+	plan.ApplyHeaders = func(h http.Header) {
+		gatewayprovider.BindExecutionHeaders(value)(h)
+		gatewayprovider.FinalizeRequestHeaders(value, "", read, h)
 	}
 	return plan
 }

@@ -196,7 +196,7 @@ func (s *compatiblePicker) isProviderRequestCompatibleReason(ctx context.Context
 	if s != nil && s.service != nil && !s.service.shadowProtocolsAllowed(ctx, provider) {
 		return false, "parent_protocol_unavailable"
 	}
-	if !gatewayprovider.ExecutionModelPolicy(provider).HasProtocolRoute(ctx) {
+	if !gatewayprovider.ExecutionModelPolicy(provider).AllowsProtocol(ctx, "") {
 		return false, "protocol_unavailable"
 	}
 	if provider == nil {

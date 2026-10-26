@@ -201,9 +201,6 @@ func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 	if err != nil {
 		return nil, c.GeminiOpenAICompatError(protocol, http.StatusBadRequest, "invalid_request_error", err.Error())
 	}
-	if err := gatewayprovider.ValidateResolvedModelRoute(provider, mappedModel, "gemini_generate_content"); err != nil {
-		return nil, err
-	}
 	attributes, err := gatewayprovider.ResolveModelAttributes(ctx, provider, mappedModel, s.Attributes, "gemini_generate_content")
 	if err != nil {
 		return nil, err
@@ -302,7 +299,7 @@ func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 				}
 
 				msg400 := strings.ToLower(strings.TrimSpace(upstream.ExtractErrorMessage(respBody)))
-				googleConfigError := !provider.View().IsOpenCode() && resp.StatusCode == http.StatusBadRequest && upstream.IsGoogleProjectConfigError(msg400)
+				googleConfigError := isGoogleAccount(provider) && resp.StatusCode == http.StatusBadRequest && upstream.IsGoogleProjectConfigError(msg400)
 				if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode, googleConfigError || s.shouldFailoverGeminiUpstreamError(resp.StatusCode)) {
 					upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(evBody)))
 					c.Observe(ops.OpsUpstreamErrorEvent{
@@ -318,7 +315,7 @@ func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 						Platform:               provider.Record.Platform,
 						StatusCode:             resp.StatusCode,
 						ResponseHeaders:        resp.Header.Clone(),
-						SameProviderRetryDelay: providerRetryDelay(provider, resp.Header),
+						SameProviderRetryDelay: relayRetryDelay(provider, resp.Header),
 						ResponseBody:           evBody,
 
 						RetryableOnSameProvider: decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode),

@@ -348,7 +348,7 @@ func (s *CNUsageMonitor) monitorCandidates(ctx context.Context) []Record {
 				continue
 			}
 			queryConfig, err := EffectiveUpstreamUsageConfig(&provider)
-			if err != nil || !queryConfig.Enabled || CNUpstreamUsageAdapterName(&provider) == "" {
+			if err != nil || !queryConfig.Enabled {
 				continue
 			}
 			result = append(result, provider)
@@ -380,10 +380,6 @@ func (s *CNUsageMonitor) probeOne(parent context.Context, providerID int64) {
 	}
 	queryConfig, err := EffectiveUpstreamUsageConfig(provider)
 	if err != nil || !queryConfig.Enabled {
-		return
-	}
-	queryConfig.Adapter = CNUpstreamUsageAdapterName(provider)
-	if queryConfig.Adapter == "" {
 		return
 	}
 	identityHash := cnMonitorFingerprint(provider, queryConfig)
@@ -440,7 +436,6 @@ func (s *CNUsageMonitor) persistAttempt(
 	if err != nil {
 		return
 	}
-	currentConfig.Adapter = CNUpstreamUsageAdapterName(provider)
 	if currentConfig != queryConfig || cnMonitorFingerprint(provider, currentConfig) != identityHash {
 		return
 	}
@@ -527,7 +522,6 @@ func (s *CNUsageMonitor) applyBalanceDecision(
 	if err != nil {
 		return
 	}
-	queryConfig.Adapter = CNUpstreamUsageAdapterName(provider)
 	if cnMonitorFingerprint(provider, queryConfig) != identityHash {
 		return
 	}
@@ -636,7 +630,6 @@ func ValidCNUsageMonitorSnapshot(provider *Record) *CNUsageMonitorSnapshot {
 	if err != nil {
 		return nil
 	}
-	queryConfig.Adapter = CNUpstreamUsageAdapterName(provider)
 	if queryConfig.Adapter == "" {
 		return nil
 	}

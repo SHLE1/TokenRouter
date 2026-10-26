@@ -140,7 +140,9 @@ func provideAdminModelCatalog(catalog *catalogprovider.Service) *routing.AdminCa
 // provideProviderModelSync constructs credential-aware model queries and
 // registers their shutdown wait. cfg and manager are required; operator hosts
 // are cloned, response bytes use the configured model-read limit, and the
-// shared task coordinator handles agent identity preparation.
+// shared task coordinator handles agent identity preparation. The live catalog
+// supplies OpenCode protocol suggestions, which use bundled tables until a
+// catalog is published.
 func provideProviderModelSync(catalog *catalogprovider.Service, store *providerpostgres.ProviderStore, transport httpclient.UpstreamTransport, claude *provider.ClaudeTokenSource, gemini *provider.GeminiTokenSource, grok *provider.GrokTokenSource, antigravity *provider.AntigravityTokenSource, profiles *egressadapter.TLSProfiles, tasks *provideradapter.ProbeTasks, settings *gateway.RuntimeSettings, cfg *config.Config, manager *lifecycle.Manager) *provider.ModelSyncService {
 	policy := egress.OperatorURLPolicy{Enabled: cfg.Security.URLAllowlist.Enabled, AllowInsecureHTTP: cfg.Security.URLAllowlist.AllowInsecureHTTP, AllowPrivateHosts: cfg.Security.URLAllowlist.AllowPrivateHosts, UpstreamHosts: slices.Clone(cfg.Security.URLAllowlist.UpstreamHosts)}
 	limit := resolveModelsListReadLimit(cfg)
@@ -149,7 +151,7 @@ func provideProviderModelSync(catalog *catalogprovider.Service, store *providerp
 		Options: provideradapter.ModelCatalogueOptions{ValidateURL: policy.Validate, OperatorValidator: policy.Validate, BodyLimit: limit, CodexModelsURL: provideradapter.DefaultCodexModelsURL},
 	}
 	core := provider.NewModelSyncService(queries.FetchUpstreamSupportedModels)
-	core.CatalogProtocols = catalog.OpenCodeProtocols
+	core.Suggest = provider.OpenCodeProtocolSuggestions(catalog.OpenCodeProtocols)
 	manager.Register(lifecycle.Hook{Name: "ProviderModelList", StopOrder: 26, Stop: core.StopContext})
 	return core
 }

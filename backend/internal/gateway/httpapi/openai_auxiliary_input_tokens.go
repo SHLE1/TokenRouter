@@ -60,7 +60,7 @@ func (s *OpenAIAuxiliary) ForwardResponsesInputTokens(
 	// Restrict this native count path to the platforms with a prepared
 	// Responses or local-estimate representation; other selections receive
 	// a handled unsupported response.
-	if provider.Record.Platform != "openai" && !provider.View().IsGrok() && !provider.View().IsCNProvider() && !provider.View().IsOpenCode() {
+	if !provider.View().IsOpenAICompatible() {
 		writeOpenAIResponsesInputTokensError(c, http.StatusNotFound, "not_found_error", "Responses input token counting is not supported for this provider")
 		return nil
 	}

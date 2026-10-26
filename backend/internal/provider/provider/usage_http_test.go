@@ -190,7 +190,6 @@ func TestCNUsageMonitorFailurePreservesLastSuccess(t *testing.T) {
 	provider := newCNUsageMonitorProvider(2, capability.PlatformDeepseek, acctcore.ProviderModePayG)
 	queryConfig, err := acctcore.EffectiveUpstreamUsageConfig(provider)
 	require.NoError(t, err)
-	queryConfig.Adapter = acctcore.CNUpstreamUsageAdapterName(provider)
 	observed := time.Date(2026, 8, 22, 3, 0, 0, 0, time.UTC)
 	remaining := 8.0
 	provider.Extra[acctcore.CNUsageMonitorSnapshotExtraKey] = &acctcore.CNUsageMonitorSnapshot{
@@ -458,20 +457,26 @@ func TestCNUpstreamUsageAdaptersPreserveConfiguredHostAndNormalizeResults(t *tes
 	}
 }
 
-// TestCNUpstreamUsageUnsupportedPayGDoesNotSendRequest selects Zhipu
-// pay-as-you-go usage with no supported balance adapter. Query must return
-// unsupported before any captured transport request is sent.
-func TestCNUpstreamUsageUnsupportedPayGDoesNotSendRequest(t *testing.T) {
-	provider := &acctcore.Record{
-		ID: 15, Platform: capability.PlatformZhipu, Type: capability.ProviderTypeAPIKey, Status: acctcore.StatusActive,
-		Credentials: map[string]any{"api_key": "zhipu-key", "provider_mode": acctcore.ProviderModePayG},
+// TestUpstreamUsageUnsupportedPayGDoesNotSendRequest selects Zhipu and
+// OpenCode pay-as-you-go usage, which have no platform query format, with a
+// saved request to enable queries. Query must return unsupported before any
+// captured transport request is sent.
+func TestUpstreamUsageUnsupportedPayGDoesNotSendRequest(t *testing.T) {
+	for _, platform := range []string{capability.PlatformZhipu, capability.PlatformOpenCode} {
+		t.Run(platform, func(t *testing.T) {
+			provider := &acctcore.Record{
+				ID: 15, Platform: platform, Type: capability.ProviderTypeAPIKey, Status: acctcore.StatusActive,
+				Credentials: map[string]any{"api_key": "payg-key", "provider_mode": acctcore.ProviderModePayG},
+				Extra:       map[string]any{acctcore.UpstreamUsageQueryExtraKey: map[string]any{"enabled": true}},
+			}
+			repo := &upstreamUsageProviderRepoStub{provider: provider}
+			upstream := &upstreamUsageHTTPStub{}
+			service := newUsageContractService(repo, upstream, testUpstreamUsageConfig())
+			_, err := service.QueryProvider(context.Background(), provider.ID)
+			require.ErrorIs(t, err, acctcore.ErrUpstreamUsageUnsupported)
+			require.Empty(t, upstream.requests)
+		})
 	}
-	repo := &upstreamUsageProviderRepoStub{provider: provider}
-	upstream := &upstreamUsageHTTPStub{}
-	service := newUsageContractService(repo, upstream, testUpstreamUsageConfig())
-	_, err := service.QueryProvider(context.Background(), provider.ID)
-	require.ErrorIs(t, err, acctcore.ErrUpstreamUsageUnsupported)
-	require.Empty(t, upstream.requests)
 }
 
 // TestZivvUsageQueryUsesVersionedBalanceEndpoint queries a relay using its

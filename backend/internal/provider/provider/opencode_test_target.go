@@ -8,25 +8,28 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/jev"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/opencode"
 )
 
 // opencode_test_target.go resolves and validates one OpenCode probe route before
 // protocol execution. The loaded provider snapshot supplies both the one-hop
 // model mapping and that final model's enabled protocol. Explicit selections
-// and group routes must agree with the selected encoding, so validation and
+// and group routes must agree with the selected protocol, so validation and
 // outbound model identity describe the same request.
 //
 // The target owns a single TestRun and OpenCode endpoint and authentication
-// preparation. The protocol executor receives the resolved model directly and
-// shares payload builders and stream readers with other probes. Group and
-// client-entry identity remain available to attribute lookups, while each
-// request's cancellation and sink failures belong to the original run.
+// preparation. Streaming protocols then use the native exchange shared with
+// CN adaptive probes, including its payload builders, stream readers, and
+// provider error-state write after a 401; SystemOne uses the decision exchange
+// shared with Jev. Group and client-entry identity remain available to
+// attribute lookups, while each request's cancellation and sink failures
+// belong to the original run.
 
 // openCodeTestTarget retains shared probe dependencies and one provider configuration.
 type openCodeTestTarget struct {
-	executor *NativeProviderTest // shared protocol probe executor
-	record   *provider.Record    // retained provider configuration
+	executor *CNProviderTest  // shared native probe executor
+	record   *provider.Record // retained provider configuration
 }
 
 // Information returns OpenCode identity and its configured protocol selection.
@@ -84,11 +87,66 @@ func (t openCodeTestTarget) Execute(ctx context.Context, request provider.Prepar
 	}
 	run.Context = provider.WithTestProtocolRoute(run.Context, run.ProtocolRoute)
 	probe := nativeProbe{
-		route: resolved, request: request, baseURL: base,
+		route: resolved, baseURL: base, label: "Native probe",
 		applyHeaders: func(headers http.Header) {
 			ApplyProviderHeaderOverrides(t.record, headers)
 			opencode.ApplyHeaders(headers, t.record.GetCredential("api_key"), run.GetHeader)
 		},
 	}
-	return run.Result(t.executor.execute(run, t.record, probe))
+	return run.Result(t.execute(run, request, probe))
+}
+
+// execute selects the probe kind, builds its payload, and runs the exchange for
+// the resolved protocol. The caller owns the TestRun and supplies a validated
+// root and header callback. Non-Gemini streaming protocols accept text probes
+// only, and attribute or payload failures emit an error before output begins.
+//
+// One start event commits before the request, and a cancelled run returns its
+// context error without contacting upstream. SystemOne skips output-type
+// inference because its decision body defines the probe; attribute failures for
+// that route still stop execution.
+func (t openCodeTestTarget) execute(run *TestRun, request provider.PreparedTestRequest, probe nativeProbe) error {
+	output := TestStreamOutput{}
+	route := probe.route
+	var body []byte
+	var err error
+	if route.Protocol == capability.ProtocolSystemOne {
+		if t.executor.Attributes != nil {
+			if _, err := t.executor.Attributes(run.Context, t.record, run.GroupID, route.Model, string(route.Protocol)); err != nil {
+				return output.Error(run, err.Error())
+			}
+		}
+		body, err = systemOneProbeBody(route.Model, request.Prompt, request.SystemOne)
+	} else {
+		kind := request.TestType
+		if route.Protocol != capability.ProtocolGeminiGenerateContent {
+			if kind == provider.ProviderTestTypeImage {
+				return output.Error(run, "Selected native protocol supports text probes")
+			}
+			kind = provider.ProviderTestTypeText
+		}
+		kind, err = resolveProbeType(run.Context, t.executor.Attributes, t.record, run.GroupID, route.Model, string(route.Protocol), kind)
+		if err != nil {
+			return output.Error(run, err.Error())
+		}
+		body, err = t.executor.probePayload(run, t.record, route, request.Prompt, kind)
+	}
+	if err != nil {
+		return output.Error(run, err.Error())
+	}
+	run.Begin(true)
+	output.SendEvent(run, provider.TestEvent{Type: "test_start", Model: route.Model})
+	// A sink can cancel during Begin or test_start. Observe that cancellation
+	// before starting an upstream request whose output cannot reach the caller.
+	if err := run.Context.Err(); err != nil {
+		return err
+	}
+	if route.Protocol == capability.ProtocolSystemOne {
+		return executeSystemOneProbe(run, &jev.Target{
+			ProviderID: t.record.ID, URL: jev.EndpointURL(probe.baseURL, "systemone"), Model: route.Model,
+			ApplyHeaders: probe.applyHeaders,
+			Do:           func(req *http.Request) (*http.Response, error) { return t.executor.send(req, t.record) },
+		}, body)
+	}
+	return t.executor.exchange(run, t.record, probe, body)
 }
