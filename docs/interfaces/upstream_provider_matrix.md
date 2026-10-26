@@ -37,14 +37,14 @@
 | OpenCode | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
 | Jev | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
 
-API Key 提供商可以在管理员列表里配置并手动查询上游用量。普通的兼容上游默认使用 Sub2API 适配器，New API、Zivv 和 derouter.ai Account Key 需要手动选择；Kimi、Zhipu、DeepSeek 按平台和 `provider_mode` 自动选择固定的只读适配器，Zhipu payg 没有公开的余额协议，所以不支持查询。手动查询的协议错误只影响展示，转发资格不受影响。API Key 行同时展示两类数据：TokenRouter 本地的今日统计和本地配额，以及上游的余额和周期限额。只有手动开启的 CN 周期监控，才会把同样的查询结果写进统一快照，并据此对这个身份临时停调，详见 [API Key 上游用量查询](upstream_usage.md)。
+API Key 提供商可以在管理员列表里配置并手动查询上游用量。普通的兼容上游默认使用 Sub2API 适配器，New API、Zivv 和 derouter.ai Account Key 需要手动选择；Kimi、Zhipu、DeepSeek 按平台和 `provider_mode` 自动选择固定的只读适配器，Zhipu payg 没有公开的余额协议，所以不支持查询。手动查询的协议错误只影响展示，转发资格不受影响。API Key 行同时展示两类数据：TokenRouter 本地的今日统计和本地配额，以及上游的余额和周期限额。只有手动开启的上游用量周期监控，才会把同样的查询结果写进统一快照，并据此对这个身份临时停调，详见 [API Key 上游用量查询](upstream_usage.md)。
 
 <a id="cn_provider_protocols"></a>
 ### 国产平台提供商协议
 
 Kimi、Zhipu 和 DeepSeek 只接受 `type=apikey`。提供商模式和原生协议集合互相独立：DeepSeek 只有 `payg`，Kimi 和 Zhipu 支持 `payg` 和 `coding`。DeepSeek 和 Kimi 的原生集合包括 Messages、Responses、Chat；Zhipu 只有 Messages 和 Chat。原生集合统一保存在 `credentials.upstream_protocols`，可以全部关闭；非法组合被拒绝。
 
-新建 CN 提供商的表单默认启用全部原生项。旧输入缺省时，按 `payg + chat_completions` 转换；旧的 `adaptive` 转成全部原生项，其他值转成对应的单项。旧协议出错时返回 HTTP 400 / `CN_PROVIDER_PROTOCOL_INVALID`。`api_base_urls` 保存自定义地址，详见[统一协议能力](protocol_capabilities.md#account_native_protocols)。用量查询和模型同步各自使用自己的地址。
+创建 Kimi、Zhipu、DeepSeek 提供商时，表单默认启用全部原生项。旧输入缺省时，按 `payg + chat_completions` 转换；旧的 `adaptive` 转成全部原生项，其他值转成对应的单项。旧协议出错时返回 HTTP 400 / `CN_PROVIDER_PROTOCOL_INVALID`。`api_base_urls` 保存自定义地址，详见[统一协议能力](protocol_capabilities.md#account_native_protocols)。用量查询和模型同步各自使用自己的地址。
 
 OpenCode API Key 支持 `payg` 和 `go` 两种模式，按最终模型选择协议。Go 提供手动用量查询，按量模式不查询余额；详见 [OpenCode 上游](opencode_upstream.md)。
 
@@ -69,7 +69,7 @@ Jev 的公开入口为 `POST /v1/systemone`，原生协议、模型同步和用�
 | 协议族或入口 | 平台支持情况 | 相关文档 |
 | --- | --- | --- |
 | Anthropic Messages：`/v1/messages` | 分组允许 Messages 后，从组内选出能处理这个模型的提供商，再按实际的提供商转换或原生转发 | 各平台文档；共同链路见[网关请求生命周期](../architecture/gateway_request_lifecycle.md) |
-| Anthropic token count：`/v1/messages/count_tokens`、`/messages/count_tokens` | Anthropic、OpenAI、Gemini 走各自的统计路径，Grok、OpenCode 和三个 CN 平台在本地估算；Antigravity 和 Qoder 返回 `404`，Anthropic 的 Bedrock 提供商也不支持 | 各平台文档；客户端应保留本地估算作为回退 |
+| Anthropic token count：`/v1/messages/count_tokens`、`/messages/count_tokens` | Anthropic、OpenAI、Gemini 走各自的统计路径，Grok、OpenCode、Kimi、Zhipu、DeepSeek 在本地估算；Antigravity 和 Qoder 返回 `404`，Anthropic 的 Bedrock 提供商也不支持 | 各平台文档；客户端应保留本地估算作为回退 |
 | OpenAI Responses：`/v1/responses`、`/responses` 和允许的子路径 | 最终分组允许 Responses 时，按选中的提供商进入十一个平台各自的适配；Kimi 和 Zhipu 不要求提供商有上游原生的 Responses，DeepSeek 可以手动使用它的 `/responses`；Qoder 不支持 Responses 子路径和 WebSocket | 各平台文档；WebSocket 和 Realtime 见 [OpenAI 上游](openai_upstream.md) |
 | OpenAI Chat Completions：`/v1/chat/completions`、`/chat/completions` | 最终分组允许 Chat 后，按组内候选的原生能力和允许的转换路线选择提供商 | 各平台文档 |
 | 模型和用量：`/v1/models`、`/models`、`/v1/usage` | 按 Key、分组和提供商解析可以请求的模型和本地额度；返回的是 TokenRouter 的结果，不是上游模型列表或账单的原样转发 | [模型目录与市场](model_catalog_and_marketplace.md) 和各平台文档 |

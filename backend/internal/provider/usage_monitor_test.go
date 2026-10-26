@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// cnLifecycleStore controls when platform reads begin and how they respond to
+// usageLifecycleStore controls when platform reads begin and how they respond to
 // cancellation.
-type cnLifecycleStore struct {
-	CNMonitorStore              // unused monitor store operations
-	reads          atomic.Int32 // observed platform read entries
+type usageLifecycleStore struct {
+	UsageMonitorStore              // unused monitor store operations
+	reads             atomic.Int32 // observed platform read entries
 	// started and release coordinate test observations across goroutines.
 	// The
 	// first read closes started; ignore makes each read wait for the test
@@ -26,15 +26,15 @@ type cnLifecycleStore struct {
 	ignore           bool // select cancellation-insensitive storage wait
 }
 
-// cnNoQueries leaves query methods unused in monitor startup and shutdown
+// usageNoQueries leaves query methods unused in monitor startup and shutdown
 // fixtures.
-type cnNoQueries struct {
-	CNMonitorQueries /* unused normalized query operations */
+type usageNoQueries struct {
+	UsageMonitorQueries /* unused normalized query operations */
 }
 
-// cnLeaseFixture records singleton lease arguments and returns configured
+// usageLeaseFixture records singleton lease arguments and returns configured
 // acquisition outcomes.
-type cnLeaseFixture struct {
+type usageLeaseFixture struct {
 	ok  bool  // configured lease acquisition success
 	err error // configured lease acquisition failure
 	// key records the lease name; owner records its acquiring instance.
@@ -46,7 +46,7 @@ type cnLeaseFixture struct {
 // ListByPlatform records entry and optionally blocks the monitor round. The
 // first read closes started; ignore selects a release-channel wait, while the
 // cancellation-aware path waits for ctx before returning no providers.
-func (s *cnLifecycleStore) ListByPlatform(ctx context.Context, _ string) ([]Record, error) {
+func (s *usageLifecycleStore) ListByPlatform(ctx context.Context, _ string) ([]Record, error) {
 	if s.reads.Add(1) == 1 && s.started != nil {
 		// Signal entry from the worker so the test begins shutdown only
 		// after
@@ -68,16 +68,16 @@ func (s *cnLifecycleStore) ListByPlatform(ctx context.Context, _ string) ([]Reco
 	return nil, nil
 }
 
-// TestCNMonitorStopPreventsLaterStart constructs disabled and subsequently
+// TestUsageMonitorStopPreventsLaterStart constructs disabled and subsequently
 // stopped monitors with a read counter. It asserts construction and disabled
 // startup create no loop, and stopped startup or manual rounds perform no
 // reads.
-func TestCNMonitorStopPreventsLaterStart(t *testing.T) {
-	store := &cnLifecycleStore{}
-	disabled := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{})
+func TestUsageMonitorStopPreventsLaterStart(t *testing.T) {
+	store := &usageLifecycleStore{}
+	disabled := NewUsageMonitor(store, usageNoQueries{}, UsageMonitorOptions{})
 	require.NoError(t, disabled.StartContext(context.Background()))
 	require.Nil(t, disabled.cancel, "默认关闭时不得创建后台上下文")
-	monitor := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{Enabled: true, Interval: time.Millisecond})
+	monitor := NewUsageMonitor(store, usageNoQueries{}, UsageMonitorOptions{Enabled: true, Interval: time.Millisecond})
 	monitor.Stop()
 	require.NoError(t, monitor.StartContext(context.Background()))
 	require.Nil(t, monitor.cancel)
@@ -86,13 +86,13 @@ func TestCNMonitorStopPreventsLaterStart(t *testing.T) {
 	require.Zero(t, store.reads.Load())
 }
 
-// TestCNMonitorWaitsFirstIntervalAndStopsInflight blocks a platform read until
-// monitor cancellation. It checks the first read waits for the configured
+// TestUsageMonitorWaitsFirstIntervalAndStopsInflight blocks a platform read
+// until monitor cancellation. It checks the first read waits for the configured
 // interval, stop finishes the active round, and later starts or manual runs add
 // no reads.
-func TestCNMonitorWaitsFirstIntervalAndStopsInflight(t *testing.T) {
-	store := &cnLifecycleStore{started: make(chan struct{})}
-	monitor := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{Enabled: true, Interval: 30 * time.Millisecond})
+func TestUsageMonitorWaitsFirstIntervalAndStopsInflight(t *testing.T) {
+	store := &usageLifecycleStore{started: make(chan struct{})}
+	monitor := NewUsageMonitor(store, usageNoQueries{}, UsageMonitorOptions{Enabled: true, Interval: 30 * time.Millisecond})
 	require.Zero(t, store.reads.Load())
 	require.NoError(t, monitor.StartContext(context.Background()))
 	require.NoError(t, monitor.StartContext(context.Background()))
@@ -118,12 +118,12 @@ func TestCNMonitorWaitsFirstIntervalAndStopsInflight(t *testing.T) {
 	require.Equal(t, reads, store.reads.Load())
 }
 
-// TestCNMonitorStopReportsBlockedStorage makes the store wait on a fixture
+// TestUsageMonitorStopReportsBlockedStorage makes the store wait on a fixture
 // channel while ignoring cancellation. It asserts a bounded stop reports
 // unfinished work and returns that same error after the channel is released.
-func TestCNMonitorStopReportsBlockedStorage(t *testing.T) {
-	store := &cnLifecycleStore{started: make(chan struct{}), release: make(chan struct{}), ignore: true}
-	monitor := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{Enabled: true, Interval: time.Millisecond})
+func TestUsageMonitorStopReportsBlockedStorage(t *testing.T) {
+	store := &usageLifecycleStore{started: make(chan struct{}), release: make(chan struct{}), ignore: true}
+	monitor := NewUsageMonitor(store, usageNoQueries{}, UsageMonitorOptions{Enabled: true, Interval: time.Millisecond})
 	require.NoError(t, monitor.StartContext(context.Background()))
 	// Confirm the cancellation-insensitive read is in flight before
 	// spending
@@ -133,7 +133,7 @@ func TestCNMonitorStopReportsBlockedStorage(t *testing.T) {
 	defer cancel()
 	err := monitor.StopContext(ctx)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
-	require.Contains(t, err.Error(), "CN usage monitor")
+	require.Contains(t, err.Error(), "upstream usage monitor")
 	// Release the deliberately blocked store after timeout;
 	// operationActivity
 	// still retains the first incomplete stop result for subsequent
@@ -145,7 +145,7 @@ func TestCNMonitorStopReportsBlockedStorage(t *testing.T) {
 // TryAcquireLeaderLock captures the round key, owner, and lease duration before
 // returning configured acquisition values. Calls are serial in these fixtures,
 // allowing assertions to inspect the captured fields after acquisition.
-func (s *cnLeaseFixture) TryAcquireLeaderLock(_ context.Context, key, owner string, ttl time.Duration) (bool, error) {
+func (s *usageLeaseFixture) TryAcquireLeaderLock(_ context.Context, key, owner string, ttl time.Duration) (bool, error) {
 	s.key = key
 	s.owner = owner
 	s.ttl = ttl
@@ -154,29 +154,29 @@ func (s *cnLeaseFixture) TryAcquireLeaderLock(_ context.Context, key, owner stri
 
 // ReleaseLeaderLock records whether both arguments match the captured lease
 // identity.
-func (s *cnLeaseFixture) ReleaseLeaderLock(_ context.Context, key, owner string) error {
+func (s *usageLeaseFixture) ReleaseLeaderLock(_ context.Context, key, owner string) error {
 	s.released = key == s.key && owner == s.owner
 	return nil
 }
 
-// TestCNMonitorLeasePreservesFallbackPolicy supplies successful, contended,
+// TestUsageMonitorLeasePreservesFallbackPolicy supplies successful, contended,
 // failed, and absent leader backends. It checks contention skips advisory
 // locking, errors invoke advisory locking, and successful release uses the
 // expected owner, key, and lease duration.
-func TestCNMonitorLeasePreservesFallbackPolicy(t *testing.T) {
+func TestUsageMonitorLeasePreservesFallbackPolicy(t *testing.T) {
 	for _, mode := range []string{"success", "contended", "redis_error", "no_backend"} {
 		t.Run(mode, func(t *testing.T) {
-			lock := &cnLeaseFixture{ok: mode == "success"}
+			lock := &usageLeaseFixture{ok: mode == "success"}
 			if mode == "redis_error" {
 				lock.err = errors.New("redis unavailable")
 			}
 			dbCalls := 0
-			o := CNMonitorOptions{InstanceID: "fixture", RoundTimeout: time.Minute, Leader: lock, Advisory: func(context.Context, string) (func(), bool) { dbCalls++; return func() {}, true }}
+			o := UsageMonitorOptions{InstanceID: "fixture", RoundTimeout: time.Minute, Leader: lock, Advisory: func(context.Context, string) (func(), bool) { dbCalls++; return func() {}, true }}
 			if mode == "no_backend" {
 				o.Leader = nil
 				o.Advisory = nil
 			}
-			m := NewCNUsageMonitor(nil, nil, o)
+			m := NewUsageMonitor(nil, nil, o)
 			release, ok := m.acquireLease(context.Background())
 			if mode == "contended" {
 				require.False(t, ok)

@@ -117,13 +117,13 @@ func ForbiddenObservation(value *providercore.Record, message string, body []byt
 	if kind == providercore.ForbiddenTypeValidation {
 		url = antigravity.ExtractValidationURL(string(body))
 	}
-	return providercore.ForbiddenObservation{Message: message, Body: body, HTML: upstream.IsHTMLResponse(body), Kind: kind, ValidationURL: url, ConcurrentRequestLimited: CNConcurrencyLimit403(value, message), ConcurrencyReason: "cn_concurrency_limit: " + kimi.ConcurrentRequestLimitMessage}
+	return providercore.ForbiddenObservation{Message: message, Body: body, HTML: upstream.IsHTMLResponse(body), Kind: kind, ValidationURL: url, ConcurrentRequestLimited: KimiConcurrencyLimit403(value, message), ConcurrencyReason: "cn_concurrency_limit: " + kimi.ConcurrentRequestLimitMessage}
 }
 
-// CNConcurrencyLimit403 reports the platform's recognized Kimi concurrency
+// KimiConcurrencyLimit403 reports the platform's recognized Kimi concurrency
 // message for a matching record. Nil records and other platforms return false,
 // and the platform helper determines which trimmed message spelling qualifies.
-func CNConcurrencyLimit403(value *providercore.Record, message string) bool {
+func KimiConcurrencyLimit403(value *providercore.Record, message string) bool {
 	return value != nil && value.Platform == providercore.PlatformKimi && kimi.IsConcurrencyLimitMessage(message)
 }
 

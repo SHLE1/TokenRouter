@@ -164,8 +164,8 @@ func (p ModelPolicy) NormalizeOpenAI(model string) string {
 
 // RawChat chooses Chat forwarding from a resolved attempt protocol before
 // consulting provider defaults. With no route, only API Key targets qualify;
-// CN adaptive routing uses native Responses capability, while other targets
-// resolve their text-protocol extras.
+// Kimi, Zhipu, and DeepSeek adaptive routing uses native Responses capability,
+// while other targets resolve their text-protocol extras.
 func (p ModelPolicy) RawChat() bool {
 	// A resolved attempt already chose its upstream protocol. Honor it before
 	// reading provider defaults so failover candidates keep their own admitted route.
@@ -175,12 +175,12 @@ func (p ModelPolicy) RawChat() bool {
 	if p.Record == nil || p.Record.Type != capability.ProviderTypeAPIKey {
 		return false
 	}
-	if p.Record.IsCNProvider() {
+	if p.Record.IsKimiZhipuOrDeepSeek() {
 		switch p.protocolTarget().GetAPIProtocol() {
 		case provider.APIProtocolChatCompletions:
 			return true
 		case provider.APIProtocolAdaptive:
-			return !p.Record.SupportsNativeCNResponses()
+			return !p.Record.SupportsKimiOrDeepSeekResponses()
 		default:
 			return false
 		}

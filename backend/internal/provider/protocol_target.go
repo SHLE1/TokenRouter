@@ -7,22 +7,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// protocol_target.go resolves provider protocol endpoints and CN variants for
-// a selected operation. BaseURL selects OpenCode mode and protocol slots,
-// native platform defaults, or CN-specific endpoint rules. CN endpoint selection
-// combines stored provider configuration with one operation's text protocol. A recognized selected
-// protocol overrides the stored variant, while a unified native-set key makes
-// unselected CN operations adaptive even when the set is empty or malformed.
-// Protocol admission is checked separately from these address and variant
-// helpers.
+// protocol_target.go resolves provider protocol endpoints and Kimi, Zhipu, and
+// DeepSeek variants for a selected operation. BaseURL selects OpenCode mode and
+// protocol slots, native platform defaults, or Kimi, Zhipu, and
+// DeepSeek-specific endpoint rules. Kimi, Zhipu, and DeepSeek endpoint
+// selection combines stored provider configuration with one operation's text
+// protocol. A recognized selected protocol overrides the stored variant, while
+// a unified native-set key makes unselected Kimi, Zhipu, and DeepSeek
+// operations adaptive even when the set is empty or malformed. Protocol
+// admission is checked separately from these address and variant helpers.
 //
-// Adaptive and unified CN addresses use protocol-specific slots, with legacy
-// base_url available as a Chat fallback. Fixed legacy Messages configurations
-// instead use their stored base directly. Model and OpenAI-format endpoint
-// lookup recognizes migrated Messages addresses, maps built-in addresses to
-// platform Chat defaults, and strips a custom relay's terminal /anthropic
-// path. Record configuration remains borrowed, and operation selection is
-// carried separately rather than written back to shared provider state.
+// Adaptive and unified Kimi, Zhipu, and DeepSeek addresses use
+// protocol-specific slots, with legacy base_url available as a Chat fallback.
+// Fixed legacy Messages configurations instead use their stored base directly.
+// Model and OpenAI-format endpoint lookup recognizes migrated Messages
+// addresses, maps built-in addresses to platform Chat defaults, and strips a
+// custom relay's terminal /anthropic path. Record configuration remains
+// borrowed, and operation selection is carried separately rather than written
+// back to shared provider state.
 
 // ProtocolTarget combines borrowed provider configuration with one operation's
 // selected text protocol for endpoint and variant resolution.
@@ -35,17 +37,19 @@ type ProtocolTarget struct {
 	Protocol protocolcore.ProtocolID
 }
 
-// ConfiguredAPIProtocol selects the stored CN endpoint variant, with Chat as
-// the default for nil, non-CN, or unrecognized configurations. A present
-// upstream_protocols key selects adaptive lookup ahead of any legacy variant,
-// including when that native selection is empty or malformed.
+// ConfiguredAPIProtocol selects the stored Kimi, Zhipu, and DeepSeek endpoint
+// variant, with Chat as the default for nil, other-platform, or unrecognized
+// configurations. A present upstream_protocols key selects adaptive lookup
+// ahead of any legacy variant, including when that native selection is empty or
+// malformed.
 //
-// With the unified key absent, trimmed legacy strings choose Messages, adaptive,
-// or Chat directly. Legacy Responses also requires native platform support;
-// Zhipu falls back to Chat. These rules choose endpoint lookup behavior, while
-// UpstreamProtocols and route admission interpret the enabled native selection.
+// With the unified key absent, trimmed legacy strings choose Messages,
+// adaptive, or Chat directly. Legacy Responses also requires native platform
+// support; Zhipu falls back to Chat. These rules choose endpoint lookup
+// behavior, while UpstreamProtocols and route admission interpret the enabled
+// native selection.
 func (r *Record) ConfiguredAPIProtocol() string {
-	if r == nil || !r.IsCNProvider() {
+	if r == nil || !r.IsKimiZhipuOrDeepSeek() {
 		return APIProtocolChatCompletions
 	}
 	// A unified set separates protocol admission from endpoint selection. Key
@@ -61,7 +65,7 @@ func (r *Record) ConfiguredAPIProtocol() string {
 	case APIProtocolResponses:
 		// Legacy Responses selection uses the same platform predicate as forwarding.
 		// Platforms lacking that endpoint fall through to the default Chat variant.
-		if r.SupportsNativeCNResponses() {
+		if r.SupportsKimiOrDeepSeekResponses() {
 			return APIProtocolResponses
 		}
 	case APIProtocolChatCompletions:
@@ -70,14 +74,15 @@ func (r *Record) ConfiguredAPIProtocol() string {
 	return APIProtocolChatCompletions
 }
 
-// BaseURL selects the endpoint for the operation's protocol and provider.
-// An absent protocol selects Chat. Callers validate the returned address before
+// BaseURL selects the endpoint for the operation's protocol and provider. An
+// absent protocol selects Chat. Callers validate the returned address before
 // connecting; protocol admission and Gemini version suffix handling remain with
 // the request builder consuming this base. OpenCode selects its mode and exact
 // protocol slot here. Other providers retain their platform-specific lookup,
-// including the CN distinction between fixed legacy bases and adaptive slots.
-// Endpoint selection does not enable a protocol or apply request-body storage
-// policy; callers establish an admitted route separately before dispatch.
+// including the Kimi, Zhipu, and DeepSeek distinction between fixed legacy
+// bases and adaptive slots. Endpoint selection does not enable a protocol or
+// apply request-body storage policy; callers establish an admitted route
+// separately before dispatch.
 func (a ProtocolTarget) BaseURL() string {
 	if a.Record == nil {
 		return ""
@@ -95,34 +100,36 @@ func (a ProtocolTarget) BaseURL() string {
 	case protocolcore.ProtocolGeminiGenerateContent:
 		return a.GetGeminiBaseURL("https://generativelanguage.googleapis.com")
 	case protocolcore.ProtocolAnthropicMessages:
-		if a.IsCNProvider() {
+		if a.IsKimiZhipuOrDeepSeek() {
 			return a.GetAnthropicProtocolBaseURL()
 		}
 		return a.GetBaseURL()
 	case protocolcore.ProtocolOpenAIResponses:
-		if _, unified := a.Credentials[UpstreamProtocolsKey]; a.UsesNativeCNResponses() && (unified || a.ConfiguredAPIProtocol() == APIProtocolAdaptive) {
-			return a.GetCNProtocolBaseURL(APIProtocolResponses)
+		if _, unified := a.Credentials[UpstreamProtocolsKey]; a.UsesKimiOrDeepSeekResponses() && (unified || a.ConfiguredAPIProtocol() == APIProtocolAdaptive) {
+			return a.GetTextAPIKeyProtocolBaseURL(APIProtocolResponses)
 		}
 	}
 	return a.GetOpenAIBaseURL()
 }
 
-// GetOpenAIBaseURL returns the provider's ordinary OpenAI-compatible base.
-// The record must be nonnil. Adaptive CN configuration selects its Chat slot;
-// callers needing a selected protocol's endpoint use BaseURL before validation.
+// GetOpenAIBaseURL returns the provider's ordinary OpenAI-compatible base. The
+// record must be nonnil. Adaptive Kimi, Zhipu, and DeepSeek configuration
+// selects its Chat slot; callers needing a selected protocol's endpoint use
+// BaseURL before validation.
 func (a ProtocolTarget) GetOpenAIBaseURL() string {
 	return a.OpenAIBaseURL(a.IsAdaptiveAPIProtocol())
 }
 
 // GetAPIProtocol selects a recognized operation text variant ahead of stored
 // configuration for a nonnil record. Messages, Responses, and Chat identifiers
-// override the record's variant even on a non-CN platform; other identifiers
+// override the record's variant even on another platform; other identifiers
 // defer to ConfiguredAPIProtocol.
 //
-// A nil record resolves to Chat, while a unified CN record with no recognized
-// operation selection resolves to adaptive. This helper does not validate native
-// membership or execution support. Callers supply a separately admitted route
-// before treating its selected variant as an executable endpoint.
+// A nil record resolves to Chat, while a unified Kimi, Zhipu, and DeepSeek
+// record with no recognized operation selection resolves to adaptive. This
+// helper does not validate native membership or execution support. Callers
+// supply a separately admitted route before treating its selected variant as an
+// executable endpoint.
 func (a ProtocolTarget) GetAPIProtocol() string {
 	if a.Record != nil && a.Protocol != "" {
 		switch a.Protocol {
@@ -138,12 +145,13 @@ func (a ProtocolTarget) GetAPIProtocol() string {
 	return a.ConfiguredAPIProtocol()
 }
 
-// UsesNativeCNResponses reports whether a supported CN platform resolves to
+// UsesKimiOrDeepSeekResponses reports whether Kimi or DeepSeek resolves to
 // Responses or adaptive lookup. Nil and unsupported records return false. This
-// predicate checks platform and variant, so an empty unified selection can still
-// return true; protocol admission checks its enabled identifiers separately.
-func (a ProtocolTarget) UsesNativeCNResponses() bool {
-	if a.Record == nil || !a.SupportsNativeCNResponses() {
+// predicate checks platform and variant, so an empty unified selection can
+// still return true; protocol admission checks its enabled identifiers
+// separately.
+func (a ProtocolTarget) UsesKimiOrDeepSeekResponses() bool {
+	if a.Record == nil || !a.SupportsKimiOrDeepSeekResponses() {
 		return false
 	}
 	switch a.GetAPIProtocol() {
@@ -162,18 +170,20 @@ func (a ProtocolTarget) IsAdaptiveAPIProtocol() bool {
 	return a.GetAPIProtocol() == APIProtocolAdaptive
 }
 
-// GetCNProtocolBaseURL returns a configured or default CN address
-// for a supported text protocol. Other platforms and nil records return empty. A unified key or adaptive operation first
-// checks that exact protocol slot for a nonblank string, then Chat alone accepts
-// a nonblank legacy base_url. Chosen custom strings are trimmed.
+// GetTextAPIKeyProtocolBaseURL returns a configured or default Kimi, Zhipu, and
+// DeepSeek address for a supported text protocol. Other platforms and nil
+// records return empty. A unified key or adaptive operation first checks that
+// exact protocol slot for a nonblank string, then Chat alone accepts a nonblank
+// legacy base_url. Chosen custom strings are trimmed.
 //
-// Other cases use DefaultCNProtocolBaseURL's platform and provider-mode defaults,
-// which return empty for unknown variants unless the earlier slot supplied an
-// address. Fixed legacy lookup bypasses slots here; GetAnthropicProtocolBaseURL
-// handles its stored Messages base separately. This helper selects an address
-// and leaves URL and protocol admission validation to execution callers.
-func (a ProtocolTarget) GetCNProtocolBaseURL(protocol string) string {
-	if a.Record == nil || !a.IsCNProvider() {
+// Other cases use DefaultTextAPIKeyProtocolBaseURL's platform and provider-mode
+// defaults, which return empty for unknown variants unless the earlier slot
+// supplied an address. Fixed legacy lookup bypasses slots here;
+// GetAnthropicProtocolBaseURL handles its stored Messages base separately. This
+// helper selects an address and leaves URL and protocol admission validation to
+// execution callers.
+func (a ProtocolTarget) GetTextAPIKeyProtocolBaseURL(protocol string) string {
+	if a.Record == nil || !a.IsKimiZhipuOrDeepSeek() {
 		return ""
 	}
 	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified || a.ConfiguredAPIProtocol() == APIProtocolAdaptive {
@@ -188,7 +198,7 @@ func (a ProtocolTarget) GetCNProtocolBaseURL(protocol string) string {
 	}
 	// Missing usable slots fall back to platform and mode defaults. Legacy base_url
 	// is a Chat fallback only, so another protocol does not inherit that relay address.
-	return a.DefaultCNProtocolBaseURL(protocol)
+	return a.DefaultTextAPIKeyProtocolBaseURL(protocol)
 }
 
 // IsAnthropicProtocol reports whether variant resolution selects fixed Messages.
@@ -200,22 +210,23 @@ func (a ProtocolTarget) IsAnthropicProtocol() bool {
 }
 
 // GetAnthropicProtocolBaseURL returns the Messages address for fixed Messages
-// or adaptive lookup. Nil records and other resolved variants return empty.
-// A present unified key or adaptive variant delegates to CN slot lookup, which
-// also returns empty for a non-CN record.
+// or adaptive lookup. Nil records and other resolved variants return empty. A
+// present unified key or adaptive variant delegates to Kimi, Zhipu, and
+// DeepSeek slot lookup, which also returns empty for records from other platforms.
 //
 // Fixed Messages lookup on API-key and upstream records prefers a trimmed
 // base_url, including operation-selected Messages on a legacy record. Supported
-// CN platforms then use their Messages defaults with Kimi's mode distinction.
-// This keeps a legacy single-protocol relay address separate from unified slots.
-// The helper performs no URL validation or enabled-selection check; execution
-// callers establish those requirements before sending requests.
+// Kimi, Zhipu, and DeepSeek platforms then use their Messages defaults with
+// Kimi's mode distinction. This keeps a legacy single-protocol relay address
+// separate from unified slots. The helper performs no URL validation or
+// enabled-selection check; execution callers establish those requirements
+// before sending requests.
 func (a ProtocolTarget) GetAnthropicProtocolBaseURL() string {
 	if a.Record == nil || (!a.IsAnthropicProtocol() && !a.IsAdaptiveAPIProtocol()) {
 		return ""
 	}
 	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified || a.ConfiguredAPIProtocol() == APIProtocolAdaptive {
-		return a.GetCNProtocolBaseURL(APIProtocolAnthropic)
+		return a.GetTextAPIKeyProtocolBaseURL(APIProtocolAnthropic)
 	}
 	// A fixed Messages lookup uses the record's single custom endpoint in base_url.
 	// Prefer that value before platform defaults because it can identify a relay prefix.
@@ -240,17 +251,18 @@ func (a ProtocolTarget) GetAnthropicProtocolBaseURL() string {
 }
 
 // GetOpenAIFormatBaseURL returns the model-list and OpenAI-format address for
-// the selected provider, or empty for a nil record. CN Messages-derived addresses
-// use platform Chat defaults for built-in endpoints. Custom bases delegate
-// terminal /anthropic path removal to StripCNAnthropicPathSuffix.
+// the selected provider, or empty for a nil record. Kimi, Zhipu, and DeepSeek
+// Messages-derived addresses use platform Chat defaults for built-in endpoints.
+// Custom bases delegate terminal /anthropic path removal to
+// StripAnthropicPathSuffix.
 //
-// On unified CN records, raw slot strings identify a migrated Messages base:
-// Chat is empty, Messages is nonempty, and Messages exactly equals base_url.
-// These comparisons precede trimming and override the operation's Messages flag.
-// Other configurations delegate to GetOpenAIBaseURL. Path stripping uses decoded
-// URL paths and clears RawPath when removing the suffix, so escaping can change.
-// Parse failures return trimmed input. Connecting callers validate the resulting
-// address before use.
+// On unified Kimi, Zhipu, and DeepSeek records, raw slot strings identify a
+// migrated Messages base: Chat is empty, Messages is nonempty, and Messages
+// exactly equals base_url. These comparisons precede trimming and override the
+// operation's Messages flag. Other configurations delegate to GetOpenAIBaseURL.
+// Path stripping uses decoded URL paths and clears RawPath when removing the
+// suffix, so escaping can change. Parse failures return trimmed input.
+// Connecting callers validate the resulting address before use.
 func (a ProtocolTarget) GetOpenAIFormatBaseURL() string {
 	if a.Record == nil {
 		return ""
@@ -260,7 +272,7 @@ func (a ProtocolTarget) GetOpenAIFormatBaseURL() string {
 	// slot. Recognize that exact raw equality before deriving the model-list address;
 	// a nonempty Chat slot selects ordinary Chat-base lookup even on a Messages operation.
 	anthropicBase := a.IsAnthropicProtocol()
-	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified && a.IsCNProvider() {
+	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified && a.IsKimiZhipuOrDeepSeek() {
 		urls, _ := a.Credentials["api_base_urls"].(map[string]any)
 		chat, _ := urls[APIProtocolChatCompletions].(string)
 		messages, _ := urls[APIProtocolAnthropic].(string)
@@ -274,8 +286,8 @@ func (a ProtocolTarget) GetOpenAIFormatBaseURL() string {
 		// Custom relay prefixes can expose sibling Messages and OpenAI routes. Strip
 		// the terminal Messages segment through the URL helper before model lookup;
 		// that helper owns decoding, path escaping, and trailing-slash handling.
-		if !IsDefaultCNAnthropicBaseURL(baseURL) {
-			return StripCNAnthropicPathSuffix(baseURL)
+		if !IsDefaultTextAPIKeyMessagesBaseURL(baseURL) {
+			return StripAnthropicPathSuffix(baseURL)
 		}
 	}
 	switch a.Platform {

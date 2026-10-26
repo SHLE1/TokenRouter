@@ -23,11 +23,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// openai_auxiliary_count.go executes Messages-compatible token counting
-// through OpenAI input_tokens or local compatibility estimates.
-// Messages-compatible counting converts Anthropic input to the Responses
-// counting format while retaining client, billing, and upstream model names in
-// preparation. Grok and CN targets instead estimate Anthropic input locally.
+// openai_auxiliary_count.go executes Messages-compatible token counting through
+// OpenAI input_tokens or local compatibility estimates. Messages-compatible
+// counting converts Anthropic input to the Responses counting format while
+// retaining client, billing, and upstream model names in preparation. Grok and
+// Kimi, Zhipu, and DeepSeek targets instead estimate Anthropic input locally.
 // Other targets send a controlled input_tokens request and return the count
 // using Anthropic's response shape, independently of generation completion.
 //
@@ -50,10 +50,10 @@ const (
 )
 
 // ForwardCountTokensAsAnthropic returns a Messages-compatible count using the
-// selected provider. Grok and CN targets estimate Anthropic input locally.
-// Other targets convert the body and map its model before credential resolution
-// and upstream counting; the upstream counter closes its response body before
-// returning.
+// selected provider. Grok and Kimi, Zhipu, and DeepSeek targets estimate
+// Anthropic input locally. Other targets convert the body and map its model
+// before credential resolution and upstream counting; the upstream counter
+// closes its response body before returning.
 //
 // OAuth incompatibility uses local estimation without reaching provider-health
 // updates. Unsupported API-key counting writes 404 and returns nil, while other

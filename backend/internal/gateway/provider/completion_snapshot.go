@@ -71,7 +71,7 @@ func ProjectCompletionProvider(v *provider.Record) *completion.ProviderSnapshot 
 		Platform:                   v.Platform,
 		RateMultiplier:             v.BillingRateMultiplier(),
 		OpenAI:                     v.IsOpenAI(),
-		CNProvider:                 v.IsCNProvider(),
+		KimiZhipuDeepSeek:          v.IsKimiZhipuOrDeepSeek(),
 		OAuthLike:                  v.IsOpenAIOAuthLike(),
 		QuotaEligible:              v.IsAPIKeyOrBedrock(),
 		HasQuotaLimit:              v.HasAnyQuotaLimit(),

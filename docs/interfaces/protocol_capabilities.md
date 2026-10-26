@@ -85,12 +85,12 @@ OpenAI API Key 提供商的 `credentials.images_generations_mode` 和 `credentia
 - OpenAI API Key：Responses、Chat、Embeddings、Images 生成和编辑、Responses WebSocket、Compact、Alpha Search。
 - OpenAI OAuth：Responses、WebSocket、Compact、Alpha Search、Live。PAT 没有 Alpha Search 和 Live，Agent Identity 没有 Live。OpenAI 没有 Messages 原生项。
 - Grok：HTTP Responses、Chat、Images、视频和 Voice 是原生项；WebSocket、搜索和 Compact 是转换入口。
-- CN API Key：Messages 和 Chat；DeepSeek 和 Kimi 另外有 Responses。
+- Kimi、Zhipu、DeepSeek API Key：Messages 和 Chat；DeepSeek 和 Kimi 另外有 Responses。
 - Gemini 和 Antigravity OAuth：GenerateContent。Antigravity 的 API Key 和历史 `upstream` 类型没有可用协议。
 - Qoder：专用的 Chat。
 - Gemini API Key 和 Vertex SA：各自的 Batch 协议。
 
-自定义的 `api_base_urls` 按协议分键：`chat_completions`、`anthropic`、`responses`；OpenCode 另有 `gemini`、`systemone`。旧的 CN 固定协议的 `base_url` 迁到对应的地址槽里，原来的 `base_url` 继续用于模型同步和用量查询。新表单直接编辑地址和原生集合，两者互相独立。
+自定义的 `api_base_urls` 按协议分键：`chat_completions`、`anthropic`、`responses`；OpenCode 另有 `gemini`、`systemone`。Kimi、Zhipu、DeepSeek 旧配置中的固定协议 `base_url` 迁到对应的地址槽里，原来的 `base_url` 继续用于模型同步和用量查询。新表单直接编辑地址和原生集合，两者互相独立。
 
 <a id="group_protocol_routes"></a>
 ## 分组准入与转换
@@ -132,7 +132,7 @@ Qoder 当前的原始响应解析还没有确认模型声明的位置，转换�
 
 ## 旧字段输入与升级切换
 
-历史的 `api_protocol`、OpenAI 文本路由和工作负载字段，只在接收旧输入时转换，新的保存和导出使用原生集合。历史缺省的 `payg + chat_completions` 转成只有 Chat 一项；新的 CN 表单默认启用全部原生项。旧的 `allowed_client_protocols` 输入只修改文本部分，它没有表达的非文本入口保持原样；旧的媒体和 Live 开关仍可作为兼容输入，新的响应不再返回它们。数据库内部保留派生的布尔镜像，供现有的任务和计价代码使用，管理员看到的配置只有原生集合这一份。
+历史的 `api_protocol`、OpenAI 文本路由和工作负载字段，只在接收旧输入时转换，新的保存和导出使用原生集合。历史缺省的 `payg + chat_completions` 转成只有 Chat 一项；Kimi、Zhipu、DeepSeek 的新表单默认启用全部原生项。旧的 `allowed_client_protocols` 输入只修改文本部分，它没有表达的非文本入口保持原样；旧的媒体和 Live 开关仍可作为兼容输入，新的响应不再返回它们。数据库内部保留派生的布尔镜像，供现有的任务和计价代码使用，管理员看到的配置只有原生集合这一份。
 
 提供商的兼容转换在 `provider/protocol_legacy.go`，分组的兼容配置在 `routing/group_protocols.go`；提供商的规范化、分组策略和请求选路各自维护自己的规则。保存分组时，先校验一次原始的协议集合，再应用受支持的旧字段补丁，并校验转换目标和图片策略；集合非法时返回 HTTP 400 / `INVALID_ALLOWED_CLIENT_PROTOCOLS`，兼容转换掩盖不了重复或未知的协议。分组的默认准入和默认转换映射由 `routing/capability` 提供。
 

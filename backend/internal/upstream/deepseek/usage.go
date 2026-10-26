@@ -51,7 +51,7 @@ func (*DeepseekBalanceUsageAdapter) Name() string {
 // returns the invalid-response error.
 func (*DeepseekBalanceUsageAdapter) Query(ctx context.Context, input *usagecontract.Request) (*usageview.UpstreamUsageInfo, error) {
 	client := usageclient.New(input)
-	endpoint, err := usageclient.CnUsageEndpoint(client.BaseURL, "/user/balance", false)
+	endpoint, err := usageclient.FixedUsageEndpoint(client.BaseURL, "/user/balance", false)
 	if err != nil {
 		return nil, usageview.ErrUpstreamUsageConfigInvalid.WithCause(err)
 	}
@@ -74,7 +74,7 @@ func (*DeepseekBalanceUsageAdapter) Query(ctx context.Context, input *usagecontr
 	balanceInfos.ForEach(func(_, item gjson.Result) bool {
 		currency := strings.ToUpper(strings.TrimSpace(item.Get("currency").String()))
 		totalBalance := item.Get("total_balance")
-		value, ok := usageclient.CnParseF64(totalBalance.Value())
+		value, ok := usageclient.ParseFloat64(totalBalance.Value())
 		// A malformed currency entry cannot contribute a usable amount.
 		// Continue collecting other currencies so one damaged entry
 		// does not discard their reported balances.

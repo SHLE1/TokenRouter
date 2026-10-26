@@ -12,24 +12,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/opencode"
 )
 
-// opencode_test_target.go resolves and validates one OpenCode probe route before
-// protocol execution. The loaded provider snapshot supplies both the one-hop
-// model mapping and that final model's enabled protocol. Explicit selections
-// and group routes must agree with the selected protocol, so validation and
-// outbound model identity describe the same request.
+// opencode_test_target.go resolves and validates one OpenCode probe route
+// before protocol execution. The loaded provider snapshot supplies both the
+// one-hop model mapping and that final model's enabled protocol. Explicit
+// selections and group routes must agree with the selected protocol, so
+// validation and outbound model identity describe the same request.
 //
 // The target owns a single TestRun and OpenCode endpoint and authentication
 // preparation. Streaming protocols then use the native exchange shared with
-// CN adaptive probes, including its payload builders, stream readers, and
-// provider error-state write after a 401; SystemOne uses the decision exchange
-// shared with Jev. Group and client-entry identity remain available to
-// attribute lookups, while each request's cancellation and sink failures
-// belong to the original run.
+// Kimi, Zhipu, and DeepSeek adaptive probes, including its payload builders,
+// stream readers, and provider error-state write after a 401; SystemOne uses
+// the decision exchange shared with Jev. Group and client-entry identity remain
+// available to attribute lookups, while each request's cancellation and sink
+// failures belong to the original run.
 
 // openCodeTestTarget retains shared probe dependencies and one provider configuration.
 type openCodeTestTarget struct {
-	executor *CNProviderTest  // shared native probe executor
-	record   *provider.Record // retained provider configuration
+	executor *NativeProtocolTest // shared native probe executor
+	record   *provider.Record    // retained provider configuration
 }
 
 // Information returns OpenCode identity and its configured protocol selection.

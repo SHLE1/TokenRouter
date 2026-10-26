@@ -949,8 +949,10 @@ type GatewayConfig struct {
 	// Grok configures Grok/xAI scheduling and the free-tier quota gate.
 	Grok GatewayGrokConfig `mapstructure:"grok"`
 
-	// CNProviders configures usage monitoring for Chinese OpenAI-compatible suppliers.
-	CNProviders GatewayCNProvidersConfig `mapstructure:"cn_providers"`
+	// UsageMonitor configures balance and quota polling for Kimi, Zhipu, and
+	// DeepSeek. The mapstructure key keeps existing deployment configuration
+	// valid.
+	UsageMonitor GatewayUsageMonitorConfig `mapstructure:"cn_providers"`
 }
 
 // GatewayGrokConfig supplies Grok password authorization and its free-tier
@@ -981,11 +983,10 @@ type GatewayGrokConfig struct {
 	FreeQuotaStatsCacheSeconds int `mapstructure:"free_quota_stats_cache_seconds"`
 }
 
-// GatewayCNProvidersConfig configures periodic balance and quota probes for
-// Chinese suppliers.
-// Disabled by default; when enabled it probes active API-key providers. Manual
-// queries run independently.
-type GatewayCNProvidersConfig struct {
+// GatewayUsageMonitorConfig configures periodic balance and quota probes for
+// Kimi, Zhipu, and DeepSeek API-key providers. Disabled by default; when
+// enabled it probes active API-key providers. Manual queries run independently.
+type GatewayUsageMonitorConfig struct {
 	// MonitorEnabled selects periodic supplier probes, while the deployment
 	// default leaves that monitor disabled. Administrator-initiated usage queries
 	// remain separate from this background availability choice.

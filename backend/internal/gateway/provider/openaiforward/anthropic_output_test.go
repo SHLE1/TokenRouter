@@ -70,11 +70,11 @@ func TestMergeAnthropicUsageNormalizesGLMAndDeepSeekAliases(t *testing.T) {
 	}
 }
 
-// TestClaudeUsageToOpenAIUsagePreservesCNProviderNativeAnthropicBuckets
-// converts already-normalized Anthropic token buckets for two CN fixtures.
-// Cache creation and reads must remain separate while their sum with uncached
-// input forms the OpenAI total.
-func TestClaudeUsageToOpenAIUsagePreservesCNProviderNativeAnthropicBuckets(t *testing.T) {
+// TestClaudeUsageToOpenAIUsagePreservesKimiZhipuDeepSeekNativeAnthropicBuckets
+// converts already-normalized Anthropic token buckets for two Kimi, Zhipu, and
+// DeepSeek fixtures. Cache creation and reads must remain separate while their
+// sum with uncached input forms the OpenAI total.
+func TestClaudeUsageToOpenAIUsagePreservesKimiZhipuDeepSeekNativeAnthropicBuckets(t *testing.T) {
 	tests := []struct {
 		name         string              // provider fixture name
 		usage        protocol.TokenUsage // normalized token buckets

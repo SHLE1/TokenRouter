@@ -67,7 +67,7 @@ func TestProtocolRouteNativeFirstAndExplicitFallback(t *testing.T) {
 	selected, err = ProviderForProtocolAttempt(ctx, provider)
 	require.NoError(t, err)
 	require.Equal(t, providercore.APIProtocolResponses, ExecutionProtocolTarget(selected).GetAPIProtocol())
-	require.Equal(t, "https://relay.example/responses", ExecutionProtocolTarget(selected).GetCNProtocolBaseURL(providercore.APIProtocolResponses))
+	require.Equal(t, "https://relay.example/responses", ExecutionProtocolTarget(selected).GetTextAPIKeyProtocolBaseURL(providercore.APIProtocolResponses))
 	// Conversion targets need not be exposed to clients; each failover candidate supplies its own protocol set.
 	require.False(t, group.AllowsClientProtocol(protocolcore.ProtocolOpenAIResponses))
 	next := *provider

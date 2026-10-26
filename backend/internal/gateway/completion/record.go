@@ -300,7 +300,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	if result == nil {
 		return errors.New("openai usage result is nil")
 	}
-	if s.health != nil && input.Provider != nil && (input.Provider.OpenAI || input.Provider.CNProvider) {
+	if s.health != nil && input.Provider != nil && (input.Provider.OpenAI || input.Provider.KimiZhipuDeepSeek) {
 		s.health.ResetOpenAI403Counter(ctx, input.Provider.ID)
 	}
 	apiKey, user, provider, subscription := s.keyWithBillingSettings(ctx, input.APIKey), input.User, input.Provider, input.Subscription
@@ -360,7 +360,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	var err error
 	billingModel := OpenAIUsageBillingModel(result, input.PricingUsageFields)
 	billingModels := s.models.Candidates(billingModel, result.BillingModel, input.GroupMappedModel, input.OriginalModel, result.UpstreamModel, result.Model)
-	billingModels = s.FilterCNProviderBillingModelCandidates(ctx, provider, apiKey, billingModels)
+	billingModels = s.FilterCompatibleClaudeBillingCandidates(ctx, provider, apiKey, billingModels)
 	serviceTier := ""
 	if result.ServiceTier != nil {
 		serviceTier = strings.TrimSpace(*result.ServiceTier)

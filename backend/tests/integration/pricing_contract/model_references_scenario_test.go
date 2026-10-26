@@ -93,10 +93,10 @@ func TestModelReferencesInheritTargetCardsAndKeepMissingUnpriced(t *testing.T) {
 	require.Equal(t, "unpriced", missing.PublicQuote(t.Context(), billing.PublicQuoteInput{PricingInput: input, RateMultiplier: 1}).PriceStatus)
 }
 
-// TestCNReferencePricingAdmissionAndCompletion compares reference preflight and settlement prices.
-// Catalog targets, free targets, and target modifiers survive CN alias filtering;
+// TestCompatibleClaudeReferencePricingAdmissionAndCompletion compares reference preflight and settlement prices.
+// Catalog targets, free targets, and target modifiers survive compatible Claude alias filtering;
 // missing targets and ordinary Claude catalog candidates retain rejection behavior.
-func TestCNReferencePricingAdmissionAndCompletion(t *testing.T) {
+func TestCompatibleClaudeReferencePricingAdmissionAndCompletion(t *testing.T) {
 	const alias = "claude-sonnet-4-5"
 	target, free, missing := "kimi-k2.5", "free-target", "missing-target"
 	factor := 2.0
@@ -109,7 +109,7 @@ func TestCNReferencePricingAdmissionAndCompletion(t *testing.T) {
 		name      string                      // reference pricing scenario
 		cards     []pricing.ModelPricingEntry // configured source and target cards
 		admission bool                        // expected preflight price availability
-		kept      bool                        // expected CN candidate retention
+		kept      bool                        // expected priced alias retention
 		cost      float64                     // expected user charge in USD
 	}{
 		{"catalog target", []pricing.ModelPricingEntry{{Models: []string{alias}, ReferenceModel: target}}, true, true, 0.1},
@@ -133,7 +133,7 @@ func TestCNReferencePricingAdmissionAndCompletion(t *testing.T) {
 			recorder := completion.NewRecorder(completion.Dependencies{Calculator: calculator, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
 			key := &completion.KeySnapshot{GroupID: &gid, Group: &completion.GroupSnapshot{ID: gid}}
 			candidates := modelidentity.UsageCandidates(alias, target)
-			filtered := recorder.FilterCNProviderBillingModelCandidates(t.Context(), &completion.ProviderSnapshot{CNProvider: true}, key, candidates)
+			filtered := recorder.FilterCompatibleClaudeBillingCandidates(t.Context(), &completion.ProviderSnapshot{KimiZhipuDeepSeek: true}, key, candidates)
 			effort := "max"
 			result := &completion.Result{Model: alias, UpstreamModel: target, ReasoningEffort: &effort}
 			if !tc.kept {
@@ -153,10 +153,10 @@ func TestCNReferencePricingAdmissionAndCompletion(t *testing.T) {
 	}
 }
 
-// TestCNReferencesKeepCatalogMediaPrices exercises unit prices without token rates.
+// TestCompatibleClaudeReferencesKeepCatalogMediaPrices exercises unit prices without token rates.
 // Reference selection preserves the Claude alias through filtering, then image
 // and video completion charge the target units instead of rejecting the candidate.
-func TestCNReferencesKeepCatalogMediaPrices(t *testing.T) {
+func TestCompatibleClaudeReferencesKeepCatalogMediaPrices(t *testing.T) {
 	const alias = "claude-media-alias"
 	calculator := newCalculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
 		"image-target": {OutputCostPerImage: 0.2, TokenPricingAbsent: true},
@@ -178,7 +178,7 @@ func TestCNReferencesKeepCatalogMediaPrices(t *testing.T) {
 			resolved := resolver.Resolve(t.Context(), billing.PricingInput{Model: alias, GroupID: &gid})
 			require.False(t, resolved.HasConfiguredPricing())
 			require.True(t, resolved.IsUnpriced())
-			filtered := recorder.FilterCNProviderBillingModelCandidates(t.Context(), &completion.ProviderSnapshot{CNProvider: true}, key, []string{alias})
+			filtered := recorder.FilterCompatibleClaudeBillingCandidates(t.Context(), &completion.ProviderSnapshot{KimiZhipuDeepSeek: true}, key, []string{alias})
 			require.Equal(t, []string{alias}, filtered)
 			cost, err := recorder.CalculateOpenAIRecordUsageCostAt(t.Context(), &tc.result, key, filtered, 1, 1, 1, 1, pricing.UsageTokens{}, "", time.Time{})
 			require.NoError(t, err)

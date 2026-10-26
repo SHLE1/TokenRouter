@@ -2,12 +2,14 @@ package provider
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
@@ -22,19 +24,46 @@ import (
 )
 
 // native_test_execution.go builds and exchanges native protocol probes whose
-// model and wire protocol a platform target has already fixed. CN adaptive
-// Messages and Responses coverage and every OpenCode protocol use this one
-// executor through CNProviderTest, which supplies attributes, transport, TLS
-// profiles, URL validation, and the optional provider error store.
+// model and wire protocol a platform target has already fixed. Kimi, Zhipu, and
+// DeepSeek adaptive Messages and Responses coverage and every OpenCode protocol
+// use this one executor through NativeProtocolTest, which supplies attributes,
+// transport, TLS profiles, URL validation, and the optional provider error
+// store.
 //
 // A target describes each exchange with a nativeProbe: the resolved route, a
 // validated protocol root, a diagnostic label, and a header callback that
 // installs platform authentication after protocol defaults. Payloads pass the
-// final model directly, so an alias target cannot become another mapping
-// input. A 401 reply records provider error state when a store is configured,
-// and the protocol's shared stream reader translates successful replies into
-// test events. SystemOne uses its buffered decision exchange instead and
-// reports response identity and usage validity.
+// final model directly, so an alias target cannot become another mapping input.
+// A 401 reply records provider error state when a store is configured, and the
+// protocol's shared stream reader translates successful replies into test
+// events. SystemOne uses its buffered decision exchange instead and reports
+// response identity and usage validity.
+
+// NativeProtocolTest prepares fixed and adaptive native-protocol probes for
+// Kimi, Zhipu, and DeepSeek API-key records and owns the native exchange that
+// OpenCode probes share.
+type NativeProtocolTest struct {
+	// Attributes resolves the final model for routed group probes. A nil callback
+	// skips profile lookup, leaving declared output and sampling permissions unknown.
+	Attributes ModelAttributeLookup
+	Transport  QoderTransport // provider-aware native probe sender
+	// Profiles optionally resolves native request fingerprints. A missing service
+	// sends no selected TLS profile through the shared transport.
+	Profiles    *egressprovider.TLSProfiles
+	ValidateURL func(string) (string, error) // native upstream root validator
+	// Store optionally records authentication failures from fixed Messages probes
+	// and from every shared native exchange, including OpenCode probes. A nil
+	// store skips these best-effort state writes.
+	Store interface {
+		// SetError records a native probe's provider authentication failure. The
+		// executor ignores write errors while returning the upstream status and
+		// available body as its test failure.
+		SetError(context.Context, int64, string) error
+	}
+	// Responses supplies the shared OpenAI executor for prepared Kimi and
+	// DeepSeek Responses targets. Configure it before that route is selected.
+	Responses *OpenAIProviderTest
+}
 
 // nativeProbe describes one streaming exchange prepared by a platform target.
 type nativeProbe struct {
@@ -51,9 +80,9 @@ type nativeProbe struct {
 // probePayload builds streaming protocol JSON for the final model and prompt.
 // The kind selects Gemini's text or image payload; other protocols send text.
 // Routed probes drop sampling fields that the model's attributes forbid, and
-// Responses requests to native CN endpoints become stateless. Unsupported
-// protocols return an error before any transport call.
-func (s *CNProviderTest) probePayload(run *TestRun, value *provider.Record, route provider.ResolvedModelRoute, prompt, kind string) ([]byte, error) {
+// Responses requests to Kimi and DeepSeek endpoints become stateless.
+// Unsupported protocols return an error before any transport call.
+func (s *NativeProtocolTest) probePayload(run *TestRun, value *provider.Record, route provider.ResolvedModelRoute, prompt, kind string) ([]byte, error) {
 	var object map[string]any
 	switch route.Protocol {
 	case protocol.ProtocolGeminiGenerateContent:
@@ -81,10 +110,11 @@ func (s *CNProviderTest) probePayload(run *TestRun, value *provider.Record, rout
 	if err != nil {
 		return nil, err
 	}
-	if route.Protocol == protocol.ProtocolOpenAIResponses && (provider.ProtocolTarget{Record: value}).UsesNativeCNResponses() {
-		// Native CN Responses use fresh stateless requests. Set store false and
-		// remove any continuation identifier before sending this probe through the
-		// platform endpoint; other platforms keep the builder's request fields.
+	if route.Protocol == protocol.ProtocolOpenAIResponses && (provider.ProtocolTarget{Record: value}).UsesKimiOrDeepSeekResponses() {
+		// Kimi and DeepSeek Responses use fresh stateless requests. Set store
+		// false and remove any continuation identifier before sending this
+		// probe through the platform endpoint; other platforms keep the
+		// builder's request fields.
 		body = openaiprotocol.StatelessResponsesRequest(body)
 	}
 	return body, nil
@@ -100,7 +130,7 @@ func (s *CNProviderTest) probePayload(run *TestRun, value *provider.Record, rout
 // prefix; a 401 also attempts a provider error-state write when Store is set.
 // Messages emits test_complete after its reader succeeds, matching the other
 // readers, and adaptive callers suppress those intermediate completions.
-func (s *CNProviderTest) exchange(run *TestRun, value *provider.Record, probe nativeProbe, body []byte) error {
+func (s *NativeProtocolTest) exchange(run *TestRun, value *provider.Record, probe nativeProbe, body []byte) error {
 	output := TestStreamOutput{}
 	endpoint, err := nativeProbeEndpoint(value.Platform, probe.route, probe.baseURL)
 	if err != nil {
@@ -171,7 +201,7 @@ func nativeProbeEndpoint(platform string, route provider.ResolvedModelRoute, bas
 	case protocol.ProtocolAnthropicMessages:
 		return httpclient.BuildOpenAIEndpointURL(baseURL, "/v1/messages"), nil
 	case protocol.ProtocolOpenAIResponses:
-		return cnTestResponsesURL(platform, baseURL), nil
+		return responsesProbeURL(platform, baseURL), nil
 	case protocol.ProtocolOpenAIChatCompletions:
 		return httpclient.BuildOpenAIEndpointURL(baseURL, "/v1/chat/completions"), nil
 	case protocol.ProtocolGeminiGenerateContent:
@@ -185,7 +215,7 @@ func nativeProbeEndpoint(platform string, route provider.ResolvedModelRoute, bas
 // request. A missing loaded proxy relation sends directly, and a missing
 // profile service sends no selected fingerprint. The caller owns the returned
 // response body; there is one transport attempt per invocation.
-func (s *CNProviderTest) send(req *http.Request, value *provider.Record) (*http.Response, error) {
+func (s *NativeProtocolTest) send(req *http.Request, value *provider.Record) (*http.Response, error) {
 	proxy := ""
 	if value.ProxyID != nil && value.Proxy != nil {
 		proxy = value.Proxy.URL()

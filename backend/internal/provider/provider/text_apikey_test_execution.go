@@ -2,14 +2,12 @@ package provider
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
-	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -21,42 +19,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/zhipu"
 )
 
-// cn_test_execution.go constructs and executes fixed-protocol CN API-key
-// probes with a mapped test model. CN API-key probes derive a platform default
-// model when the supplied name is blank, then apply one provider mapping. The
-// selected group route or record protocol selects Messages, Responses, or Chat request construction
-// and matching stream parsing, with allowed header overrides applied after
+// text_apikey_test_execution.go constructs and executes fixed-protocol Kimi,
+// Zhipu, and DeepSeek API-key probes with a mapped test model. Kimi, Zhipu, and
+// DeepSeek API-key probes derive a platform default model when the supplied
+// name is blank, then apply one provider mapping. The selected group route or
+// record protocol selects Messages, Responses, or Chat request construction and
+// matching stream parsing, with allowed header overrides applied after
 // authentication.
 
-// CNProviderTest prepares fixed and adaptive native-protocol probes for CN
-// API-key records and owns the native exchange that OpenCode probes share.
-type CNProviderTest struct {
-	// Attributes resolves the final model for routed group probes. A nil callback
-	// skips profile lookup, leaving declared output and sampling permissions unknown.
-	Attributes ModelAttributeLookup
-	Transport  QoderTransport // provider-aware native probe sender
-	// Profiles optionally resolves native request fingerprints. A missing service
-	// sends no selected TLS profile through the shared transport.
-	Profiles    *egressprovider.TLSProfiles
-	ValidateURL func(string) (string, error) // native upstream root validator
-	// Store optionally records authentication failures from fixed Messages probes
-	// and from every shared native exchange, including OpenCode probes. A nil
-	// store skips these best-effort state writes.
-	Store interface {
-		// SetError records a native probe's provider authentication failure. The
-		// executor ignores write errors while returning the upstream status and
-		// available body as its test failure.
-		SetError(context.Context, int64, string) error
-	}
-	// Responses supplies the shared OpenAI executor for prepared CN Responses
-	// targets. Configure it before that route is selected.
-	Responses *OpenAIProviderTest
-}
-
-// defaultCNProviderTestModel returns the platform's declared connection-test
+// defaultTextAPIKeyTestModel returns the platform's declared connection-test
 // model for Kimi, Zhipu, or DeepSeek. Other platforms return an empty string,
 // leaving Execute to report that no test model is available.
-func defaultCNProviderTestModel(platform string) string {
+func defaultTextAPIKeyTestModel(platform string) string {
 	switch platform {
 	case capability.PlatformKimi:
 		return kimi.DefaultTestModel
@@ -74,22 +48,22 @@ func defaultCNProviderTestModel(platform string) string {
 // and one model mapping, and closes the response after protocol-specific
 // parsing. A routed test uses its resolved protocol and checks that route
 // against group attributes before preparing the upstream request.
-func (s *CNProviderTest) Execute(
+func (s *NativeProtocolTest) Execute(
 	c *TestRun,
 	value *providercore.Record,
 	modelID string,
 	prompt string,
 ) error {
 	if value == nil || value.Type != capability.ProviderTypeAPIKey {
-		return (TestStreamOutput{}).Error(c, "CN provider tests require an API Key provider")
+		return (TestStreamOutput{}).Error(c, "Text protocol tests require an API Key provider")
 	}
-	apiKey := strings.TrimSpace(value.GetCNAPIKey())
+	apiKey := strings.TrimSpace(value.GetKimiZhipuDeepSeekAPIKey())
 	if apiKey == "" {
 		return (TestStreamOutput{}).Error(c, "No API key available")
 	}
 	testModelID := strings.TrimSpace(modelID)
 	if testModelID == "" {
-		testModelID = defaultCNProviderTestModel(value.Platform)
+		testModelID = defaultTextAPIKeyTestModel(value.Platform)
 	}
 	testModelID = mappedTestModel(value, testModelID)
 	if testModelID == "" {
@@ -113,7 +87,7 @@ func (s *CNProviderTest) Execute(
 		if err != nil {
 			return (TestStreamOutput{}).Error(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
 		}
-		if hint := cnAnthropicBaseURLMisconfigHint(baseURL); hint != "" {
+		if hint := messagesBaseURLMisconfigHint(baseURL); hint != "" {
 			return (TestStreamOutput{}).Error(c, hint)
 		}
 		apiURL = httpclient.BuildOpenAIEndpointURL(baseURL, "/v1/messages")
@@ -126,11 +100,11 @@ func (s *CNProviderTest) Execute(
 		if err != nil {
 			return (TestStreamOutput{}).Error(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
 		}
-		apiURL = cnTestResponsesURL(value.Platform, baseURL)
+		apiURL = responsesProbeURL(value.Platform, baseURL)
 		responsesPayload := openai.TestResponsesPayload(testModelID, prompt, false)
-		// CN Responses probes are stateless connection checks. Disable response
-		// storage in the outgoing native payload before it reaches the platform
-		// endpoint.
+		// Kimi and DeepSeek Responses probes are stateless connection checks.
+		// Disable response storage in the outgoing native payload before it
+		// reaches the platform endpoint.
 		responsesPayload["store"] = false
 		payload = responsesPayload
 	default:
@@ -201,7 +175,7 @@ func (s *CNProviderTest) Execute(
 // path supplies model defaults, authentication, allowed header overrides,
 // proxy, and TLS options; adaptive callers suppress its intermediate completion
 // event.
-func (s *CNProviderTest) executeChat(
+func (s *NativeProtocolTest) executeChat(
 	c *TestRun,
 	value *providercore.Record,
 	modelID string,
@@ -210,11 +184,11 @@ func (s *CNProviderTest) executeChat(
 	return s.Execute(c, value, modelID, prompt)
 }
 
-// cnTestResponsesURL returns the platform-specific Responses endpoint under the
+// responsesProbeURL returns the platform-specific Responses endpoint under the
 // supplied root. DeepSeek uses the unversioned responses suffix, while other
 // platforms use v1; endpoint construction retains supported version and path
 // prefixes.
-func cnTestResponsesURL(platform, base string) string {
+func responsesProbeURL(platform, base string) string {
 	if platform == capability.PlatformDeepseek {
 		return httpclient.BuildOpenAIEndpointURL(base, "/responses")
 	}

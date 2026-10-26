@@ -17,40 +17,39 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// A Claude-like client name on a CN provider needs an effective configured
+// A Claude-like client name on a Kimi, Zhipu, or DeepSeek provider needs an effective configured
 // price before it can become a billing candidate. The recorder fixtures
 // distinguish filtered aliases, administrator-priced aliases, and an empty
 // candidate list that reports unavailable pricing.
 
-// TestFilterCNProviderBillingModelCandidates passes Claude-like and CN model
+// TestFilterCompatibleClaudeBillingCandidates passes Claude-like and upstream model
 // names through Kimi candidate filtering. It checks retained order, an empty
 // all-Claude result, and the unchanged Claude candidate on an OpenAI provider.
-func TestFilterCNProviderBillingModelCandidates(t *testing.T) {
+func TestFilterCompatibleClaudeBillingCandidates(t *testing.T) {
 	svc := completion.NewRecorder(completion.Dependencies{}, completion.RecorderOptions{DefaultMultiplier: 1})
 
 	apiKey := &apikey.APIKey{Group: &routing.Group{ID: 1}}
-	cnProvider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformKimi}}
+	textAPIKeyProvider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformKimi}}
 
-	filtered := svc.FilterCNProviderBillingModelCandidates(
-		context.Background(), gatewayprovider.ProjectCompletionProvider(gatewayprovider.ExecutionCompletionRecord(cnProvider)), gatewayprovider.ProjectCompletionKey(apiKey), []string{"kimi-k2-0905-preview", "claude-sonnet-4-5", "sonnet-custom", "moonshot-v1-8k"},
+	filtered := svc.FilterCompatibleClaudeBillingCandidates(
+		context.Background(), gatewayprovider.ProjectCompletionProvider(gatewayprovider.ExecutionCompletionRecord(textAPIKeyProvider)), gatewayprovider.ProjectCompletionKey(apiKey), []string{"kimi-k2-0905-preview", "claude-sonnet-4-5", "sonnet-custom", "moonshot-v1-8k"},
 	)
 	require.Equal(t, []string{"kimi-k2-0905-preview", "moonshot-v1-8k"}, filtered)
 
-	require.Empty(t, svc.FilterCNProviderBillingModelCandidates(
-		context.Background(), gatewayprovider.ProjectCompletionProvider(gatewayprovider.ExecutionCompletionRecord(cnProvider)), gatewayprovider.ProjectCompletionKey(apiKey), []string{"claude-sonnet-4-5"},
+	require.Empty(t, svc.FilterCompatibleClaudeBillingCandidates(
+		context.Background(), gatewayprovider.ProjectCompletionProvider(gatewayprovider.ExecutionCompletionRecord(textAPIKeyProvider)), gatewayprovider.ProjectCompletionKey(apiKey), []string{"claude-sonnet-4-5"},
 	))
 
 	openAIProvider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI}}
-	require.Equal(t, []string{"claude-sonnet-4-5"}, svc.FilterCNProviderBillingModelCandidates(
+	require.Equal(t, []string{"claude-sonnet-4-5"}, svc.FilterCompatibleClaudeBillingCandidates(
 		context.Background(), gatewayprovider.ProjectCompletionProvider(gatewayprovider.ExecutionCompletionRecord(openAIProvider)), gatewayprovider.ProjectCompletionKey(apiKey), []string{"claude-sonnet-4-5"},
 	))
 }
 
-// TestFilterCNProviderBillingModelCandidatesKeepsExplicitConfigPricing gives a
-// Kimi route a manual Claude-name token card. It checks that an effective
-// input and output price keeps that candidate available to
-// the completion recorder.
-func TestFilterCNProviderBillingModelCandidatesKeepsExplicitConfigPricing(t *testing.T) {
+// TestFilterCompatibleClaudeBillingCandidatesKeepsExplicitConfigPricing gives a
+// Kimi route a manual Claude-name token card. It checks that an effective input
+// and output price keeps that candidate available to the completion recorder.
+func TestFilterCompatibleClaudeBillingCandidatesKeepsExplicitConfigPricing(t *testing.T) {
 	inputPrice := 0.000001
 	outputPrice := 0.000002
 	billing := billingtestkit.Calculator(nil, nil)
@@ -65,7 +64,7 @@ func TestFilterCNProviderBillingModelCandidatesKeepsExplicitConfigPricing(t *tes
 	apiKey := &apikey.APIKey{Group: group}
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformKimi}}
 
-	require.Equal(t, []string{"claude-sonnet-4-5"}, svc.FilterCNProviderBillingModelCandidates(
+	require.Equal(t, []string{"claude-sonnet-4-5"}, svc.FilterCompatibleClaudeBillingCandidates(
 		context.Background(), gatewayprovider.ProjectCompletionProvider(gatewayprovider.ExecutionCompletionRecord(provider)), gatewayprovider.ProjectCompletionKey(apiKey), []string{"claude-sonnet-4-5"},
 	))
 }

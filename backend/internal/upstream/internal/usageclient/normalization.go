@@ -12,9 +12,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )
 
-// cn.go normalizes CN provider usage amounts, percentage windows, reset times,
-// and adapter endpoint URLs.
-// CN providers expose balance amounts and reset times in several JSON
+// normalization.go normalizes upstream usage amounts, percentage windows,
+// reset times, and adapter endpoint URLs.
+// Usage adapters receive balance amounts and reset times in several JSON
 // representations. Numeric parsing accepts supported values before domain
 // validation, while reset timestamps are normalized to UTC and percentage
 // windows are kept even when their reset time cannot be parsed.
@@ -27,12 +27,12 @@ import (
 // destination policy, and later normalized-value validation belong to the
 // caller.
 
-// CnParseF64 converts float64, float32, int, int64, json.Number, or trimmed
+// ParseFloat64 converts float64, float32, int, int64, json.Number, or trimmed
 // numeric strings to float64. The boolean reports conversion success,
 // including parseable NaN or infinity; unsupported types return false. Callers
 // validate finiteness and domain ranges separately because integer conversion
 // can lose precision.
-func CnParseF64(raw any) (float64, bool) {
+func ParseFloat64(raw any) (float64, bool) {
 	// Numeric conversion accepts representable Go inputs before domain checks.
 	// Callers apply finite/range validation because conversion alone can retain
 	// nonfinite floats or round a large integer.
@@ -56,13 +56,13 @@ func CnParseF64(raw any) (float64, bool) {
 	}
 }
 
-// CnNormalizeResetTime formats supported timestamp strings or numeric epochs
+// NormalizeResetTime formats supported timestamp strings or numeric epochs
 // using UTC and the time.RFC3339 layout. Unrecognized strings, unsupported
 // types, and nonpositive integral epochs return empty; float64 epochs pass
 // through int64 conversion before seconds-or-milliseconds selection. Numeric
 // conversion does not check RFC3339's year range, so an extreme epoch can
-// produce text that CnUsageLimits later omits as an unparseable reset.
-func CnNormalizeResetTime(raw any) string {
+// produce text that PercentageUsageLimits later omits as an unparseable reset.
+func NormalizeResetTime(raw any) string {
 	switch v := raw.(type) {
 	case string:
 		s := strings.TrimSpace(v)
@@ -77,17 +77,17 @@ func CnNormalizeResetTime(raw any) string {
 		return ""
 	case float64:
 		// Finite in-range epochs discard fractional units before magnitude selection.
-		return CnMillisToRFC3339(int64(v))
+		return EpochToRFC3339(int64(v))
 	case int:
-		return CnMillisToRFC3339(int64(v))
+		return EpochToRFC3339(int64(v))
 	case int64:
-		return CnMillisToRFC3339(v)
+		return EpochToRFC3339(v)
 	case json.Number:
 		// JSON numbers require an in-range decimal Int64 spelling here. Omit
 		// the optional reset when parsing fails, including fractional or exponent
 		// notation, so usable percentage observations remain available.
 		if n, err := v.Int64(); err == nil {
-			return CnMillisToRFC3339(n)
+			return EpochToRFC3339(n)
 		}
 		return ""
 	default:
@@ -95,12 +95,12 @@ func CnNormalizeResetTime(raw any) string {
 	}
 }
 
-// CnMillisToRFC3339 formats a positive epoch using UTC and the time.RFC3339
+// EpochToRFC3339 formats a positive epoch using UTC and the time.RFC3339
 // layout. Values below one trillion represent seconds and larger values
-// represent milliseconds; nonpositive values mean an absent timestamp.
-// Extreme positive epochs can exceed the layout's four-digit year range,
-// leaving strict RFC3339 parsing to reject the formatted reset text.
-func CnMillisToRFC3339(n int64) string {
+// represent milliseconds; nonpositive values mean an absent timestamp. Extreme
+// positive epochs can exceed the layout's four-digit year range, leaving strict
+// RFC3339 parsing to reject the formatted reset text.
+func EpochToRFC3339(n int64) string {
 	if n <= 0 {
 		return ""
 	}
@@ -114,16 +114,16 @@ func CnMillisToRFC3339(n int64) string {
 	return time.UnixMilli(ms).UTC().Format(time.RFC3339)
 }
 
-// CnUsageLimits builds normalized percentage limits from a nonempty list of
-// provider windows. Blank names, negative usage, and nonfinite percentages
-// reject the entire result. Reported usage can exceed one hundred percent and
-// is retained beside a fixed one-hundred-percent limit.
+// PercentageUsageLimits builds normalized percentage limits from a nonempty
+// list of provider windows. Blank names, negative usage, and nonfinite
+// percentages reject the entire result. Reported usage can exceed one hundred
+// percent and is retained beside a fixed one-hundred-percent limit.
 //
 // Remaining percentage is clamped at zero, while an invalid or zero reset time
 // is omitted without discarding the window. Each numeric pointer receives
 // separate storage. Window order is retained; duplicate-name validation and
 // provider-label validation are left to the normalized-result consumer.
-func CnUsageLimits(provider string, tiers []usageview.CNQuotaTier) (*usageview.UpstreamUsageInfo, error) {
+func PercentageUsageLimits(provider string, tiers []usageview.PercentageQuotaWindow) (*usageview.UpstreamUsageInfo, error) {
 	if len(tiers) == 0 {
 		return nil, usageview.ErrUpstreamUsageInvalidResponse
 	}
@@ -153,7 +153,7 @@ func CnUsageLimits(provider string, tiers []usageview.CNQuotaTier) (*usageview.U
 	return &usageview.UpstreamUsageInfo{Provider: provider, Mode: "limits", Unit: "PERCENT", Limits: limits}, nil
 }
 
-// CnUsageEndpoint builds a fixed adapter path on the trimmed provider base. It
+// FixedUsageEndpoint builds a fixed adapter path on the trimmed provider base. It
 // requires scheme and host; destination policy is validated elsewhere, and URL
 // credentials, query contents, and fragments are discarded. ForceQuery remains,
 // so a forced empty query can retain its bare question mark.
@@ -163,7 +163,7 @@ func CnUsageLimits(provider string, tiers []usageview.CNQuotaTier) (*usageview.U
 // other base path components are discarded, and RawPath is cleared to match
 // the rebuilt path. The supplied adapter path is trusted configuration from
 // the caller.
-func CnUsageEndpoint(base, path string, preserveCodingPrefix bool) (string, error) {
+func FixedUsageEndpoint(base, path string, preserveCodingPrefix bool) (string, error) {
 	parsed, err := url.Parse(strings.TrimSpace(base))
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", errors.New("invalid base URL")

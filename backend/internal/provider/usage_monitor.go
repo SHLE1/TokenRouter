@@ -14,12 +14,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// cn_monitor.go polls CN provider usage and writes identity-checked balance
-// decisions and observation snapshots.
-// CN usage monitoring records failed attempts alongside the last successful
-// balance or Coding Plan observation. Each result belongs to a fingerprint of
-// the provider's query identity, and snapshot writes compare the reread row
-// version so delayed polls do not overwrite later configuration changes.
+// usage_monitor.go polls Kimi, Zhipu, and DeepSeek provider usage and writes
+// identity-checked balance decisions and observation snapshots. upstream usage
+// monitoring records failed attempts alongside the last successful balance or
+// Coding Plan observation. Each result belongs to a fingerprint of the
+// provider's query identity, and snapshot writes compare the reread row version
+// so delayed polls do not overwrite later configuration changes.
 //
 // Periodic polling waits for the first full interval and requests singleton
 // ownership through the configured lease backends. Each round bounds concurrent
@@ -29,46 +29,44 @@ import (
 // leave a retained timeout result. Manual RunOnce calls share this completion
 // tracking.
 
-// CNUsageMonitorSnapshotVersion, cnUsageMonitorLeaderLockKey, and
-// cnUsageMonitorReasonPrefix identify stored observations, shared round
-// ownership, and identity-labelled balance pauses.
+// UsageMonitorSnapshotVersion, usageMonitorLeaderLockKey, and
+// usageMonitorReasonPrefix identify stored observations, shared round
+// ownership, and identity-labelled balance pauses. The lock key and reason
+// prefix retain their stored spelling so mixed-version instances coordinate the
+// same rounds and recognize existing pauses.
 const (
-	CNUsageMonitorSnapshotVersion = 1                         // accepted monitor snapshot format version
-	cnUsageMonitorLeaderLockKey   = "cn:usage:monitor:leader" // shared periodic round lease key
-	cnUsageMonitorReasonPrefix    = "cn_usage_monitor:"       // prefix for fingerprint balance reasons
+	UsageMonitorSnapshotVersion = 1                         // accepted monitor snapshot format version
+	usageMonitorLeaderLockKey   = "cn:usage:monitor:leader" // shared periodic round lease key
+	usageMonitorReasonPrefix    = "cn_usage_monitor:"       // prefix for fingerprint balance reasons
 )
 
-// ErrCNMonitorStopped rejects newly registered rounds after the monitor
+// ErrUsageMonitorStopped rejects newly registered rounds after the monitor
 // activity has stopped. StartContext also keeps a stopped monitor from
 // launching its loop.
-var ErrCNMonitorStopped = errors.New("CN usage monitor is stopped")
+var ErrUsageMonitorStopped = errors.New("upstream usage monitor is stopped")
 
-// CNMonitorStore supplies current provider records and conditional monitor
+// UsageMonitorStore supplies current provider records and conditional monitor
 // snapshot and health writes.
-type CNMonitorStore interface {
+type UsageMonitorStore interface {
 	// GetByID reads the current provider version used for identity
 	// rechecks.
 	GetByID(context.Context, int64) (*Record, error)
-	// ListByPlatform returns records for one CN platform before monitor
-	// eligibility filtering.
+	// ListByPlatform returns records for one Kimi, Zhipu, or DeepSeek platform
+	// before monitor eligibility filtering.
 	ListByPlatform(context.Context, string) ([]Record, error)
-	// UpdateCNUsageMonitorSnapshotCAS writes a snapshot when UpdatedAt
-	// matches
-	// the supplied version. Its final string optionally names an Extra key
-	// to
+	// UpdateUsageMonitorSnapshotCAS writes a snapshot when UpdatedAt matches
+	// the supplied version. Its final string optionally names an Extra key to
 	// clear; false identifies a stale or missing row.
-	UpdateCNUsageMonitorSnapshotCAS(context.Context, int64, time.Time, *CNUsageMonitorSnapshot, string) (bool, error)
-	// SetCNUsageDecisionCAS pauses or clears a matching UpdatedAt version.
-	// A
-	// clear requires the stored reason to match, and an extension requires
-	// a
+	UpdateUsageMonitorSnapshotCAS(context.Context, int64, time.Time, *UsageMonitorSnapshot, string) (bool, error)
+	// SetUsageMonitorDecisionCAS pauses or clears a matching UpdatedAt version.
+	// A clear requires the stored reason to match, and an extension requires a
 	// later deadline; false reports no matched write.
-	SetCNUsageDecisionCAS(context.Context, int64, time.Time, time.Time, string, bool) (bool, error)
+	SetUsageMonitorDecisionCAS(context.Context, int64, time.Time, time.Time, string, bool) (bool, error)
 }
 
-// CNMonitorQueries supplies normalized upstream observations for one persisted
-// provider identity.
-type CNMonitorQueries interface {
+// UsageMonitorQueries supplies normalized upstream observations for one
+// persisted provider identity.
+type UsageMonitorQueries interface {
 	// QueryProvider queries normalized upstream usage by provider ID. The
 	// monitor supplies a bounded context and rereads the provider
 	// afterward, so
@@ -78,29 +76,12 @@ type CNMonitorQueries interface {
 	QueryProvider(context.Context, int64) (*UpstreamUsageQueryResult, error)
 }
 
-// CNMonitorLeader leases the shared monitor-round key to one named instance.
-type CNMonitorLeader interface {
-	// TryAcquireLeaderLock leases key to owner for the supplied duration.
-	// False
-	// with nil error identifies contention, while errors allow
-	// AcquireSingletonLease to try the configured advisory backend for this
-	// round.
-	TryAcquireLeaderLock(context.Context, string, string, time.Duration) (bool, error)
-	// ReleaseLeaderLock releases key for the same owner used at
-	// acquisition.
-	// AcquireSingletonLease calls it with a separate cleanup budget after
-	// admitted work finishes, and discards release errors.
-	ReleaseLeaderLock(context.Context, string, string) error
-}
-
-// CNMonitorOptions configures probe budgets, host admission, round ownership,
-// and diagnostic callbacks.
-type CNMonitorOptions struct {
+// UsageMonitorOptions configures probe budgets, host admission, round
+// ownership, and diagnostic callbacks.
+type UsageMonitorOptions struct {
 	Enabled bool // permits periodic loop startup
-	// Interval, ProbeTimeout, and RoundTimeout are replaced when
-	// nonpositive by
-	// NewCNUsageMonitor. They independently bound tick spacing, each
-	// upstream
+	// Interval, ProbeTimeout, and RoundTimeout are replaced when nonpositive by
+	// NewUsageMonitor. They independently bound tick spacing, each upstream
 	// query, and the complete leased round.
 	Interval, ProbeTimeout, RoundTimeout time.Duration // Interval tick spacing; ProbeTimeout query budget; RoundTimeout round budget
 	Concurrency                          int           // maximum concurrent round probes
@@ -113,7 +94,7 @@ type CNMonitorOptions struct {
 	// Leader optionally supplies the first lease backend; contention skips
 	// the
 	// round and errors permit the Advisory backend to run.
-	Leader CNMonitorLeader
+	Leader LeaderLocker
 	// Advisory optionally acquires database ownership after absent or
 	// failed
 	// Leader acquisition; its release function is called when the admitted
@@ -127,15 +108,15 @@ type CNMonitorOptions struct {
 	Warn, Debug func(string, ...any)
 }
 
-// CNUsageMonitor owns periodic polling and tracked manual rounds for CN
-// provider usage.
-type CNUsageMonitor struct {
-	providerRepo                         CNMonitorStore   // provider and conditional-write storage
-	usageService                         CNMonitorQueries // normalized upstream query dependency
-	options                              CNMonitorOptions // normalized callbacks and admission options
-	interval, probeTimeout, roundTimeout time.Duration    // interval tick spacing; probeTimeout query budget; roundTimeout round budget
-	concurrency                          int              // active probe worker limit
-	mu                                   sync.Mutex       // start and stop state lock
+// UsageMonitor owns periodic polling and tracked manual rounds for Kimi, Zhipu,
+// and DeepSeek provider usage.
+type UsageMonitor struct {
+	providerRepo                         UsageMonitorStore   // provider and conditional-write storage
+	usageService                         UsageMonitorQueries // normalized upstream query dependency
+	options                              UsageMonitorOptions // normalized callbacks and admission options
+	interval, probeTimeout, roundTimeout time.Duration       // interval tick spacing; probeTimeout query budget; roundTimeout round budget
+	concurrency                          int                 // active probe worker limit
+	mu                                   sync.Mutex          // start and stop state lock
 	// started and stopped are accessed under mu. Startup sets started once;
 	// StopContext sets stopped permanently before activity cancellation so
 	// later startup cannot launch another loop.
@@ -153,11 +134,11 @@ type CNUsageMonitor struct {
 	activity operationActivity
 }
 
-// NewCNUsageMonitor constructs an idle monitor with a cloned host policy.
+// NewUsageMonitor constructs an idle monitor with a cloned host policy.
 // Nonpositive timing and concurrency select ten-minute intervals, twenty-second
 // probes, five-minute rounds, and four workers; missing clock and log callbacks
 // receive defaults.
-func NewCNUsageMonitor(store CNMonitorStore, queries CNMonitorQueries, options CNMonitorOptions) *CNUsageMonitor {
+func NewUsageMonitor(store UsageMonitorStore, queries UsageMonitorQueries, options UsageMonitorOptions) *UsageMonitor {
 	if options.Interval <= 0 {
 		options.Interval = 10 * time.Minute
 	}
@@ -180,7 +161,7 @@ func NewCNUsageMonitor(store CNMonitorStore, queries CNMonitorQueries, options C
 		options.Debug = func(string, ...any) {}
 	}
 	options.HostPolicy = options.HostPolicy.Clone()
-	return &CNUsageMonitor{providerRepo: store, usageService: queries, options: options, interval: options.Interval, probeTimeout: options.ProbeTimeout, roundTimeout: options.RoundTimeout, concurrency: options.Concurrency}
+	return &UsageMonitor{providerRepo: store, usageService: queries, options: options, interval: options.Interval, probeTimeout: options.ProbeTimeout, roundTimeout: options.RoundTimeout, concurrency: options.Concurrency}
 }
 
 // StartContext launches one polling loop when the monitor is enabled and both
@@ -192,7 +173,7 @@ func NewCNUsageMonitor(store CNMonitorStore, queries CNMonitorQueries, options C
 // activity before publication. The first round waits for a full interval.
 // Parent or shutdown cancellation ends the loop, while its deferred finish
 // keeps shutdown waiting until the loop has actually exited.
-func (s *CNUsageMonitor) StartContext(parent context.Context) error {
+func (s *UsageMonitor) StartContext(parent context.Context) error {
 	if s == nil || s.providerRepo == nil || s.usageService == nil || !s.options.Enabled {
 		return nil
 	}
@@ -202,7 +183,7 @@ func (s *CNUsageMonitor) StartContext(parent context.Context) error {
 		return nil
 	}
 	loopParent, cancel := context.WithCancel(parent)
-	ctx, finish, err := s.activity.begin(loopParent, ErrCNMonitorStopped)
+	ctx, finish, err := s.activity.begin(loopParent, ErrUsageMonitorStopped)
 	if err != nil {
 		cancel()
 		return err
@@ -232,7 +213,7 @@ func (s *CNUsageMonitor) StartContext(parent context.Context) error {
 // Stop cancels tracked monitor work and waits with a background context. It
 // discards the delegated shutdown result; callers requiring a bounded wait or
 // failure reporting use StopContext.
-func (s *CNUsageMonitor) Stop() { _ = s.StopContext(context.Background()) }
+func (s *UsageMonitor) Stop() { _ = s.StopContext(context.Background()) }
 
 // StopContext prevents later startup, cancels tracked work, and waits within
 // ctx for completion. Nil receivers succeed; a dependency that ignores
@@ -242,7 +223,7 @@ func (s *CNUsageMonitor) Stop() { _ = s.StopContext(context.Background()) }
 // cancellation begins, so a racing StartContext cannot admit another loop.
 // operationActivity keeps every accepted round registered until it finishes
 // and retains the first stop result, including timeout, for subsequent calls.
-func (s *CNUsageMonitor) StopContext(ctx context.Context) error {
+func (s *UsageMonitor) StopContext(ctx context.Context) error {
 	if s == nil {
 		return nil
 	}
@@ -252,18 +233,18 @@ func (s *CNUsageMonitor) StopContext(ctx context.Context) error {
 	s.mu.Lock()
 	s.stopped = true
 	s.mu.Unlock()
-	return s.activity.stop(ctx, "CN usage monitor")
+	return s.activity.stop(ctx, "upstream usage monitor")
 }
 
 // acquireLease requests singleton round ownership and returns the release
 // function when admitted. Contention skips the round, leader errors try
 // advisory locking, and absent backends admit work; callers release the lease
 // after their round finishes.
-func (s *CNUsageMonitor) acquireLease(ctx context.Context) (func(), bool) {
+func (s *UsageMonitor) acquireLease(ctx context.Context) (func(), bool) {
 	// Keep the lease thirty seconds beyond the round budget so ordinary
 	// timeout
 	// cleanup can complete before lease expiry.
-	return AcquireSingletonLease(ctx, s.options.Leader, s.options.Advisory, cnUsageMonitorLeaderLockKey, s.options.InstanceID, s.roundTimeout+30*time.Second)
+	return AcquireSingletonLease(ctx, s.options.Leader, s.options.Advisory, usageMonitorLeaderLockKey, s.options.InstanceID, s.roundTimeout+30*time.Second)
 }
 
 // RunOnce performs a tracked round with its configured timeout context, using
@@ -278,7 +259,7 @@ func (s *CNUsageMonitor) acquireLease(ctx context.Context) (func(), bool) {
 // its own failures so one provider does not cancel the others.
 // Shutdown cancellation reaches the round, and activity completion follows the
 // worker wait and lease release.
-func (s *CNUsageMonitor) RunOnce(parents ...context.Context) {
+func (s *UsageMonitor) RunOnce(parents ...context.Context) {
 	parent := context.Background()
 	if len(parents) > 0 && parents[0] != nil {
 		parent = parents[0]
@@ -293,7 +274,7 @@ func (s *CNUsageMonitor) RunOnce(parents ...context.Context) {
 	// lease
 	// or probe is admitted; RunOnce returns silently because it has no
 	// result.
-	parent, finish, err := s.activity.begin(parent, ErrCNMonitorStopped)
+	parent, finish, err := s.activity.begin(parent, ErrUsageMonitorStopped)
 	if err != nil {
 		return
 	}
@@ -326,7 +307,7 @@ func (s *CNUsageMonitor) RunOnce(parents ...context.Context) {
 // usage queries across Kimi, Zhipu, and DeepSeek. Cancellation returns the
 // records already collected, while a failed platform listing is logged and the
 // remaining platforms are still examined.
-func (s *CNUsageMonitor) monitorCandidates(ctx context.Context) []Record {
+func (s *UsageMonitor) monitorCandidates(ctx context.Context) []Record {
 	result := make([]Record, 0)
 	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek} {
 		if ctx.Err() != nil {
@@ -334,11 +315,9 @@ func (s *CNUsageMonitor) monitorCandidates(ctx context.Context) []Record {
 		}
 		providers, err := s.providerRepo.ListByPlatform(ctx, platform)
 		if err != nil {
-			// A failed platform list must not discard already
-			// collected
-			// candidates or prevent the remaining CN platforms from
-			// being
-			// considered.
+			// A failed platform list must not discard already collected
+			// candidates or prevent the remaining Kimi, Zhipu, and DeepSeek
+			// platforms from being considered.
 			s.options.Warn("cn_usage_monitor_list_failed", "platform", platform, "error", err)
 			continue
 		}
@@ -367,7 +346,7 @@ func (s *CNUsageMonitor) monitorCandidates(ctx context.Context) []Record {
 // persistAttempt rechecks the original query identity against that current row
 // before a conditional snapshot write. Failed queries retain previous
 // successful display data through that same persistence path.
-func (s *CNUsageMonitor) probeOne(parent context.Context, providerID int64) {
+func (s *UsageMonitor) probeOne(parent context.Context, providerID int64) {
 	if parent.Err() != nil {
 		return
 	}
@@ -382,7 +361,7 @@ func (s *CNUsageMonitor) probeOne(parent context.Context, providerID int64) {
 	if err != nil || !queryConfig.Enabled {
 		return
 	}
-	identityHash := cnMonitorFingerprint(provider, queryConfig)
+	identityHash := usageMonitorFingerprint(provider, queryConfig)
 	if err := s.validateMonitorHost(provider, queryConfig); err != nil {
 		s.persistAttempt(parent, provider, queryConfig, identityHash, nil, err)
 		return
@@ -416,9 +395,9 @@ func (s *CNUsageMonitor) probeOne(parent context.Context, providerID int64) {
 // Failure updates attempt time and a sanitized error code while retaining
 // matching successful data. Success installs the observation and clears the
 // error. Snapshot and scheduler-event consistency belongs to
-// UpdateCNUsageMonitorSnapshotCAS; write errors and clean version misses are
+// UpdateUsageMonitorSnapshotCAS; write errors and clean version misses are
 // logged through separate callbacks, with no retry here.
-func (s *CNUsageMonitor) persistAttempt(
+func (s *UsageMonitor) persistAttempt(
 	ctx context.Context,
 	provider *Record,
 	queryConfig UpstreamUsageQueryConfig,
@@ -436,14 +415,14 @@ func (s *CNUsageMonitor) persistAttempt(
 	if err != nil {
 		return
 	}
-	if currentConfig != queryConfig || cnMonitorFingerprint(provider, currentConfig) != identityHash {
+	if currentConfig != queryConfig || usageMonitorFingerprint(provider, currentConfig) != identityHash {
 		return
 	}
 	now := s.options.Now().UTC()
-	snapshot := CNUsageMonitorSnapshotFromExtra(provider.Extra)
-	if snapshot == nil || snapshot.Version != CNUsageMonitorSnapshotVersion || snapshot.IdentityHash != identityHash {
-		snapshot = &CNUsageMonitorSnapshot{
-			Version:      CNUsageMonitorSnapshotVersion,
+	snapshot := UsageMonitorSnapshotFromExtra(provider.Extra)
+	if snapshot == nil || snapshot.Version != UsageMonitorSnapshotVersion || snapshot.IdentityHash != identityHash {
+		snapshot = &UsageMonitorSnapshot{
+			Version:      UsageMonitorSnapshotVersion,
 			Adapter:      queryConfig.Adapter,
 			IdentityHash: identityHash,
 		}
@@ -458,7 +437,7 @@ func (s *CNUsageMonitor) persistAttempt(
 		// only the
 		// attempt timestamp and sanitized error describe this failed
 		// poll.
-		snapshot.LastError = &CNUsageMonitorError{Code: code, ObservedAt: now}
+		snapshot.LastError = &UsageMonitorError{Code: code, ObservedAt: now}
 	} else {
 		observedAt := result.ObservedAt.UTC()
 		snapshot.Adapter = result.Adapter
@@ -478,7 +457,7 @@ func (s *CNUsageMonitor) persistAttempt(
 	// a
 	// concurrent configuration or health update suppresses stale
 	// publication.
-	written, err := s.providerRepo.UpdateCNUsageMonitorSnapshotCAS(
+	written, err := s.providerRepo.UpdateUsageMonitorSnapshotCAS(
 		ctx,
 		provider.ID,
 		provider.UpdatedAt,
@@ -502,7 +481,7 @@ func (s *CNUsageMonitor) persistAttempt(
 // for this identity. Both writes compare the reread UpdatedAt, so a later row
 // change can suppress the decision; errors are logged and clean comparison
 // misses are ignored.
-func (s *CNUsageMonitor) applyBalanceDecision(
+func (s *UsageMonitor) applyBalanceDecision(
 	ctx context.Context,
 	providerID int64,
 	identityHash string,
@@ -522,15 +501,15 @@ func (s *CNUsageMonitor) applyBalanceDecision(
 	if err != nil {
 		return
 	}
-	if cnMonitorFingerprint(provider, queryConfig) != identityHash {
+	if usageMonitorFingerprint(provider, queryConfig) != identityHash {
 		return
 	}
 	threshold := s.options.BalanceThreshold
-	low, known := CNUsageBalanceBelowThreshold(result, threshold)
+	low, known := UsageBalanceBelowThreshold(result, threshold)
 	if !known {
 		return
 	}
-	reason := CNUsageMonitorReason(identityHash)
+	reason := UsageMonitorReason(identityHash)
 	if low {
 		if !provider.IsSchedulable() {
 			return
@@ -539,7 +518,7 @@ func (s *CNUsageMonitor) applyBalanceDecision(
 		// pause
 		// expires, leaving the next observation a chance to recover it.
 		until := s.options.Now().Add(2 * s.interval)
-		if _, err := s.providerRepo.SetCNUsageDecisionCAS(ctx, provider.ID, provider.UpdatedAt, until, reason, false); err != nil {
+		if _, err := s.providerRepo.SetUsageMonitorDecisionCAS(ctx, provider.ID, provider.UpdatedAt, until, reason, false); err != nil {
 			s.options.Warn("cn_usage_monitor_pause_failed", "provider_id", provider.ID, "error", err)
 		}
 		return
@@ -548,13 +527,13 @@ func (s *CNUsageMonitor) applyBalanceDecision(
 	// cannot
 	// undo a pause recorded for a different cause.
 	if provider.TempUnschedulableUntil != nil && provider.TempUnschedulableReason == reason {
-		if _, err := s.providerRepo.SetCNUsageDecisionCAS(ctx, provider.ID, provider.UpdatedAt, time.Time{}, reason, true); err != nil {
+		if _, err := s.providerRepo.SetUsageMonitorDecisionCAS(ctx, provider.ID, provider.UpdatedAt, time.Time{}, reason, true); err != nil {
 			s.options.Warn("cn_usage_monitor_resume_failed", "provider_id", provider.ID, "error", err)
 		}
 	}
 }
 
-// CNUsageBalanceBelowThreshold returns whether a balance is low and whether
+// UsageBalanceBelowThreshold returns whether a balance is low and whether
 // that conclusion is known. Nil and other modes are unknown. An explicit
 // unavailable account is low regardless of the balances recorded alongside it.
 //
@@ -562,7 +541,7 @@ func (s *CNUsageMonitor) applyBalanceDecision(
 // the account usable, even if another currency is low. The single-balance path
 // requires a remaining value. This comparison uses supplied units and threshold
 // directly; it performs no currency conversion or numeric validation.
-func CNUsageBalanceBelowThreshold(result *UpstreamUsageQueryResult, threshold float64) (bool, bool) {
+func UsageBalanceBelowThreshold(result *UpstreamUsageQueryResult, threshold float64) (bool, bool) {
 	if result == nil || result.Mode != "balance" {
 		return false, false
 	}
@@ -584,28 +563,28 @@ func CNUsageBalanceBelowThreshold(result *UpstreamUsageQueryResult, threshold fl
 	return *result.Balance.Remaining < threshold, true
 }
 
-// CNUsageMonitorReason embeds the query fingerprint in the persisted
-// low-balance reason.
-func CNUsageMonitorReason(identityHash string) string {
-	return cnUsageMonitorReasonPrefix + identityHash + ": balance is below the monitoring threshold"
+// UsageMonitorReason embeds the query fingerprint in the persisted low-balance
+// reason.
+func UsageMonitorReason(identityHash string) string {
+	return usageMonitorReasonPrefix + identityHash + ": balance is below the monitoring threshold"
 }
 
-// CNUsageMonitorSnapshotFromExtra decodes the stored monitor value through a
-// JSON round trip. Missing values and serialization or decoding errors return
-// nil; snapshot version and current query identity are checked separately by
-// ValidCNUsageMonitorSnapshot.
-func CNUsageMonitorSnapshotFromExtra(extra map[string]any) *CNUsageMonitorSnapshot {
-	if len(extra) == 0 || extra[CNUsageMonitorSnapshotExtraKey] == nil {
+// UsageMonitorSnapshotFromExtra decodes the stored monitor value through a JSON
+// round trip. Missing values and serialization or decoding errors return nil;
+// snapshot version and current query identity are checked separately by
+// ValidUsageMonitorSnapshot.
+func UsageMonitorSnapshotFromExtra(extra map[string]any) *UsageMonitorSnapshot {
+	if len(extra) == 0 || extra[UsageMonitorSnapshotExtraKey] == nil {
 		return nil
 	}
-	payload, err := json.Marshal(extra[CNUsageMonitorSnapshotExtraKey])
+	payload, err := json.Marshal(extra[UsageMonitorSnapshotExtraKey])
 	if err != nil {
 		// An unencodable Extra value is unusable display data; treat it
 		// as
 		// absent so consumers can obtain a fresh observation.
 		return nil
 	}
-	var snapshot CNUsageMonitorSnapshot
+	var snapshot UsageMonitorSnapshot
 	if err := json.Unmarshal(payload, &snapshot); err != nil {
 		// Malformed stored snapshot data is treated as absent; callers
 		// then
@@ -615,12 +594,12 @@ func CNUsageMonitorSnapshotFromExtra(extra map[string]any) *CNUsageMonitorSnapsh
 	return &snapshot
 }
 
-// ValidCNUsageMonitorSnapshot returns a decoded snapshot whose version,
-// adapter, and query fingerprint match the current CN provider. Nil,
-// unsupported configuration, and stale identities return nil so consumers
+// ValidUsageMonitorSnapshot returns a decoded snapshot whose version, adapter,
+// and query fingerprint match the current Kimi, Zhipu, and DeepSeek provider.
+// Nil, unsupported configuration, and stale identities return nil so consumers
 // cannot use an earlier identity's observation.
-func ValidCNUsageMonitorSnapshot(provider *Record) *CNUsageMonitorSnapshot {
-	if provider == nil || !provider.IsCNProvider() {
+func ValidUsageMonitorSnapshot(provider *Record) *UsageMonitorSnapshot {
+	if provider == nil || !provider.IsKimiZhipuOrDeepSeek() {
 		return nil
 	}
 	// A malformed query configuration supplies no trusted current identity,
@@ -633,19 +612,20 @@ func ValidCNUsageMonitorSnapshot(provider *Record) *CNUsageMonitorSnapshot {
 	if queryConfig.Adapter == "" {
 		return nil
 	}
-	snapshot := CNUsageMonitorSnapshotFromExtra(provider.Extra)
-	if snapshot == nil || snapshot.Version != CNUsageMonitorSnapshotVersion ||
+	snapshot := UsageMonitorSnapshotFromExtra(provider.Extra)
+	if snapshot == nil || snapshot.Version != UsageMonitorSnapshotVersion ||
 		snapshot.Adapter != queryConfig.Adapter ||
-		snapshot.IdentityHash != cnMonitorFingerprint(provider, queryConfig) {
+		snapshot.IdentityHash != usageMonitorFingerprint(provider, queryConfig) {
 		return nil
 	}
 	return snapshot
 }
 
-// CNUsageOfficialHost reports whether a trimmed, case-folded host matches a
-// listed official CN platform endpoint. Unknown platforms and unlisted hosts
-// return false for MonitorHostPolicy's custom-host admission checks.
-func CNUsageOfficialHost(platform, host string) bool {
+// UsageMonitorOfficialHost reports whether a trimmed, case-folded host matches
+// a listed official Kimi, Zhipu, and DeepSeek platform endpoint. Unknown
+// platforms and unlisted hosts return false for MonitorHostPolicy's custom-host
+// admission checks.
+func UsageMonitorOfficialHost(platform, host string) bool {
 	host = strings.ToLower(strings.TrimSpace(host))
 	switch platform {
 	case PlatformKimi:
@@ -659,9 +639,9 @@ func CNUsageOfficialHost(platform, host string) bool {
 	}
 }
 
-// cnMonitorFingerprint hashes the provider query context and its selected
+// usageMonitorFingerprint hashes the provider query context and its selected
 // protocol base URL.
-func cnMonitorFingerprint(value *Record, config UpstreamUsageQueryConfig) string {
+func usageMonitorFingerprint(value *Record, config UpstreamUsageQueryConfig) string {
 	return UpstreamUsageContextFingerprint(value, config, value.OpenAIBaseURL(value.ConfiguredAPIProtocol() == APIProtocolAdaptive))
 }
 
@@ -669,12 +649,12 @@ func cnMonitorFingerprint(value *Record, config UpstreamUsageQueryConfig) string
 // selected endpoint against the cloned monitor host policy. Invalid URL errors
 // become ErrUpstreamUsageConfigInvalid; other host-policy failures retain their
 // original error.
-func (s *CNUsageMonitor) validateMonitorHost(value *Record, config UpstreamUsageQueryConfig) error {
+func (s *UsageMonitor) validateMonitorHost(value *Record, config UpstreamUsageQueryConfig) error {
 	base := strings.TrimSpace(config.BaseURL)
 	if base == "" {
 		base = value.OpenAIBaseURL(value.ConfiguredAPIProtocol() == APIProtocolAdaptive)
 	}
-	err := s.options.HostPolicy.Validate(base, func(host string) bool { return CNUsageOfficialHost(value.Platform, host) })
+	err := s.options.HostPolicy.Validate(base, func(host string) bool { return UsageMonitorOfficialHost(value.Platform, host) })
 	// Use the administrator-facing configuration error for malformed
 	// monitor
 	// URLs while retaining distinct policy errors for denied hosts.

@@ -28,7 +28,10 @@ import (
 // These Extra keys name query configuration and platform-maintained usage
 // snapshots shared by provider administration, monitoring and usage display.
 const (
-	CNUsageMonitorSnapshotExtraKey   = "cn_usage_monitor_snapshot"
+	// UsageMonitorSnapshotExtraKey retains the persisted name read by existing
+	// provider records and administrative clients when displaying upstream
+	// usage.
+	UsageMonitorSnapshotExtraKey     = "cn_usage_monitor_snapshot"
 	UpstreamUsageQueryExtraKey       = "upstream_usage_query"
 	OllamaCloudUsageSnapshotExtraKey = "ollama_cloud_usage_snapshot"
 )
@@ -245,14 +248,14 @@ func IsKnownUpstreamUsageAdapter(name string) bool {
 }
 
 // PlatformUsageAdapter reports the query format selected by a provider's
-// platform and mode. fixed is true for CN and OpenCode providers, whose saved
-// generic adapter choice is ignored; other platforms and nil return "", false
-// and use the administrator's choice.
+// platform and mode. fixed is true for Kimi, Zhipu, and DeepSeek and OpenCode
+// providers, whose saved generic adapter choice is ignored; other platforms and
+// nil return "", false and use the administrator's choice.
 //
 // A fixed result with an empty name means the current mode has no registered
-// query format, such as Zhipu or OpenCode pay-as-you-go. EffectiveUpstreamUsageConfig
-// resolves that case as disabled, and query execution reports it as
-// unsupported before sending a request.
+// query format, such as Zhipu or OpenCode pay-as-you-go.
+// EffectiveUpstreamUsageConfig resolves that case as disabled, and query
+// execution reports it as unsupported before sending a request.
 func PlatformUsageAdapter(provider *Record) (name string, fixed bool) {
 	if provider.IsOpenCode() {
 		if provider.OpenCodeMode() == ProviderModeGo {
@@ -260,7 +263,7 @@ func PlatformUsageAdapter(provider *Record) (name string, fixed bool) {
 		}
 		return "", true
 	}
-	if !provider.IsCNProvider() {
+	if !provider.IsKimiZhipuOrDeepSeek() {
 		return "", false
 	}
 	if provider.IsCodingPlan() {
@@ -279,9 +282,9 @@ func PlatformUsageAdapter(provider *Record) (name string, fixed bool) {
 	case PlatformDeepseek:
 		return UpstreamUsageAdapterDeepseekBalance, true
 	default:
-		// Zhipu PAYG and unsupported CN combinations have no registered balance
-		// format; the empty fixed adapter keeps a saved generic format from
-		// querying them.
+		// Zhipu PAYG and unsupported Kimi, Zhipu, and DeepSeek combinations
+		// have no registered balance format; the empty fixed adapter keeps a
+		// saved generic format from querying them.
 		return "", true
 	}
 }

@@ -273,10 +273,10 @@ func TestTestingBackgroundPreservesWireTextAndClock(t *testing.T) {
 	require.Equal(t, int64(59), loader.request.GroupID)
 }
 
-// TestTestingRejectsProtocolOutsideProviderCapability supplies OpenAI and CN
-// text protocol choices with differing eligibility. It verifies execution agrees
-// with each expected decision and a Gemini image accepts a known explicit
-// protocol.
+// TestTestingRejectsProtocolOutsideProviderCapability supplies OpenAI and Kimi,
+// Zhipu, and DeepSeek text protocol choices with differing eligibility. It
+// verifies execution agrees with each expected decision and a Gemini image
+// accepts a known explicit protocol.
 func TestTestingRejectsProtocolOutsideProviderCapability(t *testing.T) {
 	cases := []struct {
 		name     string           // protocol scenario display name

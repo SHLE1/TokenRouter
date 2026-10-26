@@ -14,16 +14,16 @@ import (
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
-// CN-compatible Messages usage can include cached tokens inside the reported
+// Kimi, Zhipu, and DeepSeek Messages usage can include cached tokens inside the reported
 // input total. The fixtures pass Kimi, GLM, and DeepSeek observations through
 // Anthropic parsing and OpenAI adaptation before checking that only the
 // uncached remainder receives the input price.
 
-// TestCNProviderAnthropicUsageBillsUncachedInput supplies three CN-compatible
-// usage payloads with cached input included in their totals. It checks the
-// uncached remainder and its positive dollar charge against the fixture
-// model's per-token price.
-func TestCNProviderAnthropicUsageBillsUncachedInput(t *testing.T) {
+// TestKimiZhipuDeepSeekAnthropicUsageBillsUncachedInput supplies three
+// Kimi, Zhipu, and DeepSeek usage payloads with cached input included in their totals. It
+// checks the uncached remainder and its positive dollar charge against the
+// fixture model's per-token price.
+func TestKimiZhipuDeepSeekAnthropicUsageBillsUncachedInput(t *testing.T) {
 	tests := []struct {
 		name      string // subtest provider label
 		model     string // priced fixture model

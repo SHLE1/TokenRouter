@@ -3,14 +3,14 @@ package provider
 import "github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 
 // usage_catalog.go lists supported upstream usage adapters and filters
-// administrator-selectable formats.
-// Usage queries expose administrator-selectable relay formats alongside
-// platform-selected CN and OpenCode Go formats. The catalog keeps those categories together so
-// diagnostics can name every adapter while administrator choices remain limited
-// to the manual formats.
+// administrator-selectable formats. Usage queries expose
+// administrator-selectable relay formats alongside platform-selected Kimi,
+// Zhipu, and DeepSeek and OpenCode Go formats. The catalog keeps those
+// categories together so diagnostics can name every adapter while administrator
+// choices remain limited to the manual formats.
 
 // Adapter identifiers select fixed registered usage formats and identify
-// normalized results returned by manual queries or CN monitoring.
+// normalized results returned by manual queries or upstream usage monitoring.
 const (
 	UpstreamUsageAdapterOpenCodeGo      = usageview.UpstreamUsageAdapterOpenCodeGo      // OpenCode Go allowance format
 	UpstreamUsageAdapterSub2API         = usageview.UpstreamUsageAdapterSub2API         // Sub2API relay usage format

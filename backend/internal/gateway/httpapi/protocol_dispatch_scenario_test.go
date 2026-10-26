@@ -46,9 +46,9 @@ import (
 // share the selected provider while retaining their distinct inbound preparation
 // and returned result fields.
 
-// cnProtocolIngressCase pairs one inbound representation with its matching
+// textAPIKeyProtocolIngressCase pairs one inbound representation with its matching
 // fixture forward call.
-type cnProtocolIngressCase struct {
+type textAPIKeyProtocolIngressCase struct {
 	// name, path, body and forward describe one inbound protocol together. Tests
 	// pass that same body to its matching entry callback, then inspect the
 	// configured provider destination independently of inbound shape.
@@ -75,12 +75,12 @@ type tokenContractTarget struct {
 	id int64                   // selected fixture provider number
 }
 
-// cnProtocolIngressCases constructs Chat, Messages and Responses inputs for
+// textAPIKeyProtocolIngressCases constructs Chat, Messages and Responses inputs for
 // configured-protocol assertions. Each case pairs its path/body with the
 // matching forward call, letting tests compare the same provider policy across
 // distinct inbound representations.
-func cnProtocolIngressCases() []cnProtocolIngressCase {
-	return []cnProtocolIngressCase{
+func textAPIKeyProtocolIngressCases() []textAPIKeyProtocolIngressCase {
+	return []textAPIKeyProtocolIngressCase{
 		{
 			name: "chat completions",
 			path: "/v1/chat/completions",
@@ -111,12 +111,12 @@ func cnProtocolIngressCases() []cnProtocolIngressCase {
 	}
 }
 
-// TestFixedCNChatProtocolOverridesStaleResponsesMode supplies a fixed Deepseek
-// Chat protocol with stale force-Responses metadata. Every inbound form must
-// dispatch to the configured Chat endpoint before the injected transport
-// failure returns.
-func TestFixedCNChatProtocolOverridesStaleResponsesMode(t *testing.T) {
-	for _, tc := range cnProtocolIngressCases() {
+// TestFixedTextAPIKeyChatProtocolOverridesStaleResponsesMode supplies a fixed
+// Deepseek Chat protocol with stale force-Responses metadata. Every inbound
+// form must dispatch to the configured Chat endpoint before the injected
+// transport failure returns.
+func TestFixedTextAPIKeyChatProtocolOverridesStaleResponsesMode(t *testing.T) {
+	for _, tc := range textAPIKeyProtocolIngressCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			upstream := &auxiliaryHTTPRecorder{err: errors.New("stop after capture")}
 			svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
@@ -135,12 +135,12 @@ func TestFixedCNChatProtocolOverridesStaleResponsesMode(t *testing.T) {
 	}
 }
 
-// TestFixedCNResponsesProtocolOverridesStaleChatMode supplies a fixed Deepseek
-// Responses protocol with stale force-Chat metadata. Every inbound form must
-// select the configured bare /responses endpoint despite the conflicting old
-// route mode.
-func TestFixedCNResponsesProtocolOverridesStaleChatMode(t *testing.T) {
-	for _, tc := range cnProtocolIngressCases() {
+// TestFixedTextAPIKeyResponsesProtocolOverridesStaleChatMode supplies a fixed
+// Deepseek Responses protocol with stale force-Chat metadata. Every inbound
+// form must select the configured bare /responses endpoint despite the
+// conflicting old route mode.
+func TestFixedTextAPIKeyResponsesProtocolOverridesStaleChatMode(t *testing.T) {
+	for _, tc := range textAPIKeyProtocolIngressCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			upstream := &auxiliaryHTTPRecorder{err: errors.New("stop after capture")}
 			svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
@@ -637,7 +637,7 @@ func TestOpenAITokensNativeHTTPContracts(t *testing.T) {
 // unset after forwarding.
 func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 	for _, platform := range []string{capability.PlatformDeepseek, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformGrok, capability.PlatformOpenCode} {
-		for _, ingress := range cnProtocolIngressCases() {
+		for _, ingress := range textAPIKeyProtocolIngressCases() {
 			if platform == capability.PlatformGrok {
 				ingress.body = bytes.ReplaceAll(ingress.body, []byte("deepseek-chat"), []byte("grok-4.5"))
 			}

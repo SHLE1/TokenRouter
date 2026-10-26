@@ -7,13 +7,13 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// input_validation.go validates platform credential choices and normalizes
-// Grok media eligibility updates.
-// CN provider credentials carry a mode and either legacy protocol selection or
-// a unified protocol set. Creation records legacy defaults when needed, while
-// editing can validate historical missing fields without writing those
-// defaults. Platform-specific protocol checks reject combinations that the
-// forwarding capability rules cannot serve.
+// input_validation.go validates platform credential choices and normalizes Grok
+// media eligibility updates. Kimi, Zhipu, and DeepSeek provider credentials
+// carry a mode and either legacy protocol selection or a unified protocol set.
+// Creation records legacy defaults when needed, while editing can validate
+// historical missing fields without writing those defaults. Platform-specific
+// protocol checks reject combinations that the forwarding capability rules
+// cannot serve.
 //
 // Grok media eligibility has a separate administrator override. An omitted
 // update retains a saved boolean, explicit null removes the override, and a
@@ -34,24 +34,25 @@ func NormalizeProviderConcurrency(platform, providerType string, concurrency int
 	return concurrency
 }
 
-// NormalizeCNProviderCredentials validates API Key type, mode, and legacy
-// protocol for CN providers. Nil and non-CN records are skipped. Absent,
-// non-string, or blank mode and protocol values are interpreted as payg and
-// chat_completions. Creation stores an interpreted mode default regardless of
-// unified protocol presence. An interpreted legacy protocol default is stored
-// only when that unified key is absent.
+// NormalizeKimiZhipuDeepSeekCredentials validates API Key type, mode, and
+// legacy protocol for Kimi, Zhipu, and DeepSeek providers. Nil and records from
+// other platforms are skipped. Absent, non-string, or blank mode and protocol
+// values are interpreted as payg and chat_completions. Creation stores an
+// interpreted mode default regardless of unified protocol presence. An
+// interpreted legacy protocol default is stored only when that unified key is
+// absent.
 //
 // The credentials map is initialized when absent. Editing leaves missing
 // default keys absent while still checking their interpreted values. Responses
 // uses the provider's native platform capability check, and DeepSeek rejects
 // coding mode before the record can be accepted.
 // @project-doc docs/interfaces/upstream_provider_matrix.md#cn_provider_protocols
-func NormalizeCNProviderCredentials(provider *Record, isCreate bool) error {
-	if provider == nil || !IsCNProvider(provider.Platform) {
+func NormalizeKimiZhipuDeepSeekCredentials(provider *Record, isCreate bool) error {
+	if provider == nil || !IsKimiZhipuOrDeepSeek(provider.Platform) {
 		return nil
 	}
 	if provider.Type != ProviderTypeAPIKey {
-		return infraerrors.BadRequest("CN_PROVIDER_PROVIDER_TYPE_INVALID", "CN providers must use API Key credentials")
+		return infraerrors.BadRequest("CN_PROVIDER_PROVIDER_TYPE_INVALID", "Kimi, Zhipu, and DeepSeek require API Key credentials")
 	}
 	if provider.Credentials == nil {
 		provider.Credentials = make(map[string]any)
@@ -83,7 +84,7 @@ func NormalizeCNProviderCredentials(provider *Record, isCreate bool) error {
 		// Forwarding uses the same platform Responses capability. Reject a
 		// legacy selection that cannot be served before it is saved as provider
 		// configuration.
-		if !provider.SupportsNativeCNResponses() {
+		if !provider.SupportsKimiOrDeepSeekResponses() {
 			return infraerrors.BadRequest("CN_PROVIDER_PROTOCOL_INVALID", "only DeepSeek and Kimi support Responses protocol")
 		}
 	default:

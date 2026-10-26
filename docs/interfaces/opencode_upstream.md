@@ -54,11 +54,11 @@ Gemini 编码的普通失败交给提供商外层重试和换号策略，429 使
 
 ## 管理与用量
 
-创建和编辑页面在「基本信息」页编辑 `provider_mode` 和 `base_url`，在「请求与协议」页编辑 `api_base_urls` 协议地址槽。模式选择和协议地址槽与 CN 提供商共用控件，留空的地址槽显示由根地址推导的默认地址。模型同步由模型页的通用模型白名单执行；同步结果带有 `model_protocols` 时，表单把它存为当前模式的目录建议。模型协议覆盖表只列出已启用的原生协议。`ModelSyncService.Query` 一次返回 `models` 数组和 `model_protocols` 目录建议。建议来自 app 注入的 `Suggest` 钩子，OpenCode 的实现是 `provider.OpenCodeProtocolSuggestions`：读取在线目录中当前模式的协议表，目录尚未发布时使用内嵌表；已发布的表即使为空也以它为准。创建预览由 HTTP handler 用调用者提供的 Key、根地址和模式构造临时记录，再调用同一个 `Query`，和已保存提供商的同步共用在途跟踪和取消。
+创建和编辑页面在「基本信息」页编辑 `provider_mode` 和 `base_url`，在「请求与协议」页编辑 `api_base_urls` 协议地址槽。模式选择和协议地址槽与 Kimi、Zhipu、DeepSeek 提供商共用控件，留空的地址槽显示由根地址推导的默认地址。模型同步由模型页的通用模型白名单执行；同步结果带有 `model_protocols` 时，表单把它存为当前模式的目录建议。模型协议覆盖表只列出已启用的原生协议。`ModelSyncService.Query` 一次返回 `models` 数组和 `model_protocols` 目录建议。建议来自 app 注入的 `Suggest` 钩子，OpenCode 的实现是 `provider.OpenCodeProtocolSuggestions`：读取在线目录中当前模式的协议表，目录尚未发布时使用内嵌表；已发布的表即使为空也以它为准。创建预览由 HTTP handler 用调用者提供的 Key、根地址和模式构造临时记录，再调用同一个 `Query`，和已保存提供商的同步共用在途跟踪和取消。
 
 已保存提供商的同步只使用保存的 Key、地址、模式和代理，不接受临时配置请求体，空请求或空对象用于兼容调用。MCP 同步权限因此只授权查询已保存目的地。创建预览接受调用者提供的 Key、根地址和模式。编辑已保存的 API Key 提供商时，替换 Key、改变地址或模式后需要先保存，再同步；表单此时不提供已保存提供商的同步入口，防止混用草稿地址和服务器保存的密钥。
 
-OpenCode 测试先解析一份最终模型和协议，再在同一个 `TestRun` 中执行。Messages、Responses、Chat 和 Gemini 使用 `CNProviderTest` 的原生交换，CN adaptive 测试的 Messages 和 Responses 也走这里；它负责协议载荷、流读取，并在上游返回 401 时写入提供商错误状态。最终模型直接写进载荷和 URL，整个探针只做一次模型映射。SystemOne 与 Jev 共用决策交换，401 时不写错误状态。分组探测按探测模型解析出的协议判断 OpenCode 候选能否测试。
+OpenCode 测试先解析一份最终模型和协议，再在同一个 `TestRun` 中执行。Messages、Responses、Chat 和 Gemini 使用 `NativeProtocolTest` 的原生交换，Kimi、Zhipu、DeepSeek 的多协议测试也通过这里执行 Messages 和 Responses；它负责协议载荷、流读取，并在上游返回 401 时写入提供商错误状态。最终模型直接写进载荷和 URL，整个探针只做一次模型映射。SystemOne 与 Jev 共用决策交换，401 时不写错误状态。分组探测按探测模型解析出的协议判断 OpenCode 候选能否测试。
 
 Go 使用固定适配器 `opencode_go`，请求 `GET https://opencode.ai/zen/go/v1/usage`，以提供商 API Key 做 Bearer 认证。查询根地址在界面和 API 中独立配置，留空使用官方管理根地址，不复用自定义推理地址。结果包含滚动五小时、周和月窗口的使用百分比、状态及 UTC 重置时间。超过 100% 的已用百分比保留，剩余额度最低为零。
 

@@ -3085,13 +3085,14 @@ func testEndpoints() map[protocolcore.ProtocolID]string {
 
 // newAppHealthObserverFixture binds provider health observation to the supplied
 // store. A nil config uses zero option values; otherwise OAuth unauthorized,
-// overload, and CN-provider intervals come from that configuration.
+// overload, and Kimi, Zhipu, and DeepSeek-provider intervals come from that
+// configuration.
 func newAppHealthObserverFixture(store gatewayprovider.ExecutionProviderStore, cfg *config.Config) *provideradapter.UpstreamHealth {
 	options := providercore.HealthOptions{}
 	if cfg != nil {
 		options.UnauthorizedCooldownMinutes = cfg.RateLimit.OAuth401CooldownMinutes
 		options.OverloadMinutes = cfg.RateLimit.OverloadCooldownMinutes
-		options.CNIntervalMinutes = cfg.Gateway.CNProviders.IntervalMinutes
+		options.UsageMonitorIntervalMinutes = cfg.Gateway.UsageMonitor.IntervalMinutes
 	}
 	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: store, Options: options})
 }

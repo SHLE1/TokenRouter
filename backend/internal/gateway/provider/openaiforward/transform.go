@@ -80,7 +80,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 	reqModel, promptCacheKey := requestView.Model, requestView.PromptCacheKey
 	canonicalImageIntentBody := prepared.CanonicalImageIntentBody
 	codexImageGenerationExplicitToolPolicy := prepared.ImageToolPolicy
-	isCodexCLI, compactPath, compatMessagesBridge, nativeCNResponses := prepared.CodexCLI, prepared.Compact, prepared.MessagesBridge, profile.NativeCN
+	isCodexCLI, compactPath, compatMessagesBridge, kimiOrDeepSeekResponses := prepared.CodexCLI, prepared.Compact, prepared.MessagesBridge, profile.KimiOrDeepSeekResponses
 	wsDecision := prepared.Transport
 	bodyModified := false
 	clientPromptCacheKey := promptCacheKey
@@ -181,9 +181,9 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 	instructions := gjson.GetBytes(body, "instructions")
 	instructionsEmpty := !instructions.Exists() || instructions.Type != gjson.String || strings.TrimSpace(instructions.String()) == ""
 	// Synthesize missing usable instructions for this Codex route before queued
-	// edits are adopted; Messages bridges and native CN requests use their own
-	// instruction preparation.
-	if instructionsEmpty && profile.UsesCodex && !compatMessagesBridge && !nativeCNResponses {
+	// edits are adopted; Messages bridges and Kimi and DeepSeek requests use
+	// their own instruction preparation.
+	if instructionsEmpty && profile.UsesCodex && !compatMessagesBridge && !kimiOrDeepSeekResponses {
 		markPatchSet("instructions", openai.DefaultCodexSynthInstructions(reqModel))
 	}
 

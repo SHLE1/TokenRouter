@@ -86,10 +86,11 @@ func TestEffectiveUpstreamUsageConfigDerouter(t *testing.T) {
 	}
 }
 
-// TestEffectiveUpstreamUsageConfigPlatformAdapters resolves CN and OpenCode
-// providers whose saved settings request a generic relay format and enable
-// queries. Platform and mode must select the fixed adapter and management root,
-// and modes without a format must resolve to an empty disabled adapter.
+// TestEffectiveUpstreamUsageConfigPlatformAdapters resolves Kimi, Zhipu, and
+// DeepSeek and OpenCode providers whose saved settings request a generic relay
+// format and enable queries. Platform and mode must select the fixed adapter
+// and management root, and modes without a format must resolve to an empty
+// disabled adapter.
 func TestEffectiveUpstreamUsageConfigPlatformAdapters(t *testing.T) {
 	const override = "https://usage.example.test/prefix"
 	tests := []struct {

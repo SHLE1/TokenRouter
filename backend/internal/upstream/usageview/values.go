@@ -112,15 +112,16 @@ type UpstreamUsageInfo struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"` // optional upstream expiry instant
 }
 
-// CNQuotaTier carries one reported coding-plan percentage window before
-// normalized limit construction.
-type CNQuotaTier struct {
+// PercentageQuotaWindow carries one reported coding-plan percentage window
+// before normalized limit construction.
+type PercentageQuotaWindow struct {
 	Window string `json:"window"` // coding quota window name
-	// UsedPercent is the reported percentage. usageclient.CnUsageLimits accepts
-	// finite nonnegative values, retains overuse, and floors its derived
-	// remainder at zero.
+	// UsedPercent is the reported percentage. usageclient.PercentageUsageLimits
+	// accepts finite nonnegative values, retains overuse, and floors its
+	// derived remainder at zero.
 	UsedPercent float64 `json:"used_percent"` // percent
-	// ResetAt supplies reset text to usageclient.CnUsageLimits. That function
-	// omits invalid or zero RFC3339 resets while retaining the percentage window.
+	// ResetAt supplies reset text to usageclient.PercentageUsageLimits. That
+	// function omits invalid or zero RFC3339 resets while retaining the
+	// percentage window.
 	ResetAt string `json:"reset_at,omitempty"` // supplied reset timestamp text
 }

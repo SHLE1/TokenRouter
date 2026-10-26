@@ -14,24 +14,24 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// cn_test_adaptive.go tests enabled CN native protocols in sequence,
-// optionally narrowed to one selected protocol. An empty selection checks
-// enabled Chat, Messages, and Responses endpoints in that order, ending at the
-// first failed endpoint.
+// text_apikey_test_adaptive.go tests enabled Kimi, Zhipu, and DeepSeek native
+// protocols in sequence, optionally narrowed to one selected protocol. An empty
+// selection checks enabled Chat, Messages, and Responses endpoints in that
+// order, ending at the first failed endpoint.
 //
 // Each endpoint can emit content and status events, but completion is
-// suppressed until every selected endpoint succeeds. Chat owns its start
-// event; tests without Chat commit one start before the other endpoints run.
-// Model preparation applies one mapping for Messages and Responses, while Chat
+// suppressed until every selected endpoint succeeds. Chat owns its start event;
+// tests without Chat commit one start before the other endpoints run. Model
+// preparation applies one mapping for Messages and Responses, while Chat
 // delegates its original supplied model to the fixed executor. Messages and
 // Responses run through the native exchange shared with OpenCode probes, which
-// sends stateless CN Responses and attempts provider error persistence after
-// an authentication failure.
+// sends stateless Kimi and DeepSeek Responses and attempts provider error
+// persistence after an authentication failure.
 
 // ExecuteAdaptive tests one selected native protocol or every enabled protocol
-// for a CN record. Empty protocol sets and disabled explicit selections fail
-// before an upstream request; a blank Messages or Responses model uses the
-// OpenAI test default before mapping.
+// for a Kimi, Zhipu, or DeepSeek record. Empty protocol sets and disabled
+// explicit selections fail before an upstream request; a blank Messages or
+// Responses model uses the OpenAI test default before mapping.
 //
 // Chat, Messages, and Responses execute in a fixed order and stop on their
 // first failure. Completion suppression spans those attempts so intermediate
@@ -39,7 +39,7 @@ import (
 // start event; otherwise this coordinator emits one before execution. The
 // suppression flag is cleared on return and before the single final success
 // event.
-func (s *CNProviderTest) ExecuteAdaptive(c *TestRun, value *providercore.Record, modelID string, prompt string, selected protocol.ProtocolID) error {
+func (s *NativeProtocolTest) ExecuteAdaptive(c *TestRun, value *providercore.Record, modelID string, prompt string, selected protocol.ProtocolID) error {
 	testModelID := strings.TrimSpace(modelID)
 	if testModelID == "" {
 		testModelID = openai.DefaultTestModel
@@ -100,14 +100,15 @@ func (s *CNProviderTest) ExecuteAdaptive(c *TestRun, value *providercore.Record,
 
 // executeAdaptiveEndpoint runs one mapped native Messages or Responses probe
 // with the supplied key and prompt through the shared native exchange. It
-// validates that protocol's CN root, then brackets the exchange with testing
-// and verified status events so adaptive output names each endpoint.
+// validates that protocol's Kimi, Zhipu, and DeepSeek root, then brackets the
+// exchange with testing and verified status events so adaptive output names
+// each endpoint.
 //
 // Messages sends Claude default headers, the API-key beta, and the record's
 // API-key scheme; Responses sends a Bearer key with Codex probe identity. Both
 // apply allowed header overrides last. The shared exchange closes the response
 // and attempts a provider error-state write after a 401.
-func (s *CNProviderTest) executeAdaptiveEndpoint(c *TestRun, value *providercore.Record, testModelID, prompt, authToken string, wire protocol.ProtocolID) error {
+func (s *NativeProtocolTest) executeAdaptiveEndpoint(c *TestRun, value *providercore.Record, testModelID, prompt, authToken string, wire protocol.ProtocolID) error {
 	name, path, apiProtocol := "Anthropic", "/v1/messages", providercore.APIProtocolAnthropic
 	authenticate := func(headers http.Header) {
 		for key, text := range claude.DefaultHeaders {
@@ -123,7 +124,7 @@ func (s *CNProviderTest) executeAdaptiveEndpoint(c *TestRun, value *providercore
 			openai.ApplyOpenAICodexProbeHeaders(headers)
 		}
 	}
-	baseURL, err := s.ValidateURL((providercore.ProtocolTarget{Record: value}).GetCNProtocolBaseURL(apiProtocol))
+	baseURL, err := s.ValidateURL((providercore.ProtocolTarget{Record: value}).GetTextAPIKeyProtocolBaseURL(apiProtocol))
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Invalid adaptive %s base URL: %s", name, err.Error()))
 	}
@@ -148,11 +149,11 @@ func (s *CNProviderTest) executeAdaptiveEndpoint(c *TestRun, value *providercore
 	return nil
 }
 
-// cnAnthropicBaseURLMisconfigHint returns a diagnostic for OpenAI-shaped paths
+// messagesBaseURLMisconfigHint returns a diagnostic for OpenAI-shaped paths
 // in an Anthropic root. Invalid or incomplete URLs and unrecognized paths
 // return empty text; callers validate the root separately before using this
 // hint.
-func cnAnthropicBaseURLMisconfigHint(baseURL string) string {
+func messagesBaseURLMisconfigHint(baseURL string) string {
 	parsed, err := url.Parse(strings.TrimSpace(baseURL))
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return ""

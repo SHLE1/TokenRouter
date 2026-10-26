@@ -575,23 +575,25 @@ func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel st
 	return cost, nil
 }
 
-// FilterCNProviderBillingModelCandidates selects explicitly priced Claude aliases
-// for compatible CN providers. A configured amount or an available profile
-// reference establishes the administrator's price choice. Ordinary catalog
-// prices and source-only modifiers leave these aliases excluded.
+// FilterCompatibleClaudeBillingCandidates selects explicitly priced Claude
+// aliases for compatible Kimi, Zhipu, and DeepSeek providers. A configured
+// amount or an available profile reference establishes the administrator's
+// price choice. Ordinary catalog prices and source-only modifiers leave these
+// aliases excluded.
 //
 // Reference selection retains catalog provenance, so its target can have usable
 // token or media prices without a custom card. Media availability uses the same
 // resolved lookup identity as public quotes and completion charges. Other
-// providers retain the supplied slice; CN results contain trimmed nonblank
-// identities and can be empty when every candidate is excluded.
-func (s *Recorder) FilterCNProviderBillingModelCandidates(
+// providers retain the supplied slice; Kimi, Zhipu, and DeepSeek results
+// contain trimmed nonblank identities and can be empty when every candidate is
+// excluded.
+func (s *Recorder) FilterCompatibleClaudeBillingCandidates(
 	ctx context.Context,
 	provider *ProviderSnapshot,
 	apiKey *KeySnapshot,
 	candidates []string,
 ) []string {
-	if provider == nil || !provider.CNProvider {
+	if provider == nil || !provider.KimiZhipuDeepSeek {
 		return candidates
 	}
 	filtered := make([]string, 0, len(candidates))
@@ -600,7 +602,7 @@ func (s *Recorder) FilterCNProviderBillingModelCandidates(
 		if candidate == "" {
 			continue
 		}
-		if IsCNProviderClaudeFallbackCandidate(candidate) {
+		if IsClaudeModelAlias(candidate) {
 			if s.resolver == nil || apiKey == nil || apiKey.Group == nil {
 				continue
 			}
@@ -621,10 +623,11 @@ func (s *Recorder) FilterCNProviderBillingModelCandidates(
 	return filtered
 }
 
-// IsCNProviderClaudeFallbackCandidate reports whether a trimmed, case-folded name
-// contains claude, opus, sonnet, or haiku. These substring heuristics identify
-// candidates requiring an effective override for CN billing, including larger custom names.
-func IsCNProviderClaudeFallbackCandidate(model string) bool {
+// IsClaudeModelAlias reports whether a trimmed, case-folded name contains
+// claude, opus, sonnet, or haiku. These substring heuristics identify
+// candidates requiring an effective override for Kimi, Zhipu, and DeepSeek
+// billing, including larger custom names.
+func IsClaudeModelAlias(model string) bool {
 	model = strings.ToLower(strings.TrimSpace(model))
 	return strings.Contains(model, "claude") ||
 		strings.Contains(model, "opus") ||

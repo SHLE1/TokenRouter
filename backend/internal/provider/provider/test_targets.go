@@ -11,8 +11,9 @@ import (
 // test_targets.go loads provider records and selects the platform executor for
 // administrative tests.
 // Provider test handles use the stored platform to choose execution after
-// loading the requested provider ID. OpenCode, Jev, Qoder, Gemini, Grok, OpenAI, CN, and
-// Antigravity have explicit routes; remaining platforms enter the Anthropic
+// loading the requested provider ID. OpenCode, Jev, Qoder, Gemini, Grok, OpenAI,
+// Kimi, Zhipu, DeepSeek, and Antigravity have explicit routes; remaining
+// platforms enter the Anthropic
 // executor, which validates supported provider types during execution. Automatic
 // text and image probes select their payload using declared final-model output;
 // explicit image probes require the same positive capability evidence.
@@ -35,7 +36,7 @@ type TestTargets struct {
 	Grok        *GrokProviderTest        // Grok platform probe executor
 	Anthropic   *AnthropicProviderTest   // default Anthropic probe executor
 	OpenAI      *OpenAIProviderTest      // OpenAI platform probe executor
-	CN          *CNProviderTest          // CN and OpenCode native probe executor
+	Native      *NativeProtocolTest      // shared API-key protocol probe executor
 	Antigravity *AntigravityProviderTest // Antigravity platform probe executor
 }
 
@@ -56,7 +57,7 @@ func (t *TestTargets) LoadTestTarget(ctx context.Context, request provider.TestR
 	}
 	switch value.Platform {
 	case provider.PlatformOpenCode:
-		return openCodeTestTarget{executor: t.CN, record: value}, nil
+		return openCodeTestTarget{executor: t.Native, record: value}, nil
 	case provider.PlatformJev:
 		return t.Jev.Target(value), nil
 	case provider.PlatformQoder:
@@ -68,7 +69,7 @@ func (t *TestTargets) LoadTestTarget(ctx context.Context, request provider.TestR
 	case provider.PlatformOpenAI:
 		return t.OpenAI.Target(value), nil
 	case provider.PlatformKimi, provider.PlatformZhipu, provider.PlatformDeepseek:
-		return t.CN.Target(value), nil
+		return t.Native.Target(value), nil
 	case provider.PlatformAntigravity:
 		return t.Antigravity.Target(value), nil
 	default:

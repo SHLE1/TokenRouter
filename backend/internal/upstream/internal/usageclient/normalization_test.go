@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCNParseF64 supplies numeric values, trimmed numeric strings, invalid
+// TestParseFloat64 supplies numeric values, trimmed numeric strings, invalid
 // text, and nil. It checks conversion presence and the accepted numeric
 // results within a small floating-point tolerance.
-func TestCNParseF64(t *testing.T) {
+func TestParseFloat64(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name string  // named numeric input scenario
@@ -28,7 +28,7 @@ func TestCNParseF64(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, ok := CnParseF64(tc.raw)
+			got, ok := ParseFloat64(tc.raw)
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				// Allow rounding differences within a billionth unit.
@@ -38,31 +38,31 @@ func TestCNParseF64(t *testing.T) {
 	}
 }
 
-// TestCNMillisToRFC3339 supplies seconds and milliseconds identifying the same
+// TestEpochToRFC3339 supplies seconds and milliseconds identifying the same
 // instant. It checks a common UTC RFC3339 representation and absence for zero
 // and negative epochs.
-func TestCNMillisToRFC3339(t *testing.T) {
+func TestEpochToRFC3339(t *testing.T) {
 	t.Parallel()
 	// 1700000000 seconds equals 1700000000000 milliseconds.
 	want := time.UnixMilli(1700000000000).UTC().Format(time.RFC3339)
-	require.Equal(t, want, CnMillisToRFC3339(1700000000))    // seconds
-	require.Equal(t, want, CnMillisToRFC3339(1700000000000)) // milliseconds
-	require.Equal(t, "", CnMillisToRFC3339(0))               // absent timestamp
-	require.Equal(t, "", CnMillisToRFC3339(-1))
+	require.Equal(t, want, EpochToRFC3339(1700000000))    // seconds
+	require.Equal(t, want, EpochToRFC3339(1700000000000)) // milliseconds
+	require.Equal(t, "", EpochToRFC3339(0))               // absent timestamp
+	require.Equal(t, "", EpochToRFC3339(-1))
 }
 
-// TestCnnormalizeResetTime supplies an RFC3339 string and a numeric
-// millisecond epoch. It checks UTC formatting for those forms and empty
-// results for invalid and empty strings.
-func TestCnnormalizeResetTime(t *testing.T) {
+// TestNormalizeResetTime supplies an RFC3339 string and a numeric millisecond
+// epoch. It checks UTC formatting for those forms and empty results for invalid
+// and empty strings.
+func TestNormalizeResetTime(t *testing.T) {
 	t.Parallel()
 	// String timestamps use UTC RFC3339.
-	require.Equal(t, "2026-08-14T10:00:00Z", CnNormalizeResetTime("2026-08-14T10:00:00Z"))
+	require.Equal(t, "2026-08-14T10:00:00Z", NormalizeResetTime("2026-08-14T10:00:00Z"))
 	// This float64 fixture represents an epoch in milliseconds.
 	require.Equal(t,
 		time.UnixMilli(1700000000000).UTC().Format(time.RFC3339),
-		CnNormalizeResetTime(float64(1700000000000)))
+		NormalizeResetTime(float64(1700000000000)))
 	// Invalid and empty strings carry no reset time.
-	require.Equal(t, "", CnNormalizeResetTime("not-a-time"))
-	require.Equal(t, "", CnNormalizeResetTime(""))
+	require.Equal(t, "", NormalizeResetTime("not-a-time"))
+	require.Equal(t, "", NormalizeResetTime(""))
 }

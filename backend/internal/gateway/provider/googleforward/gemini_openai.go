@@ -274,8 +274,8 @@ func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 			} else {
 				reasoningEffort = protocolforward.ExtractEffort(originalBody, true, capability.NormalizeRecordedOpenAIEffortForModel, mappedModel)
 			}
-			// Supply a display effort when a CN model enables
-			// thinking without an explicit effort.
+			// Supply a display effort when a Kimi, Zhipu, or DeepSeek model
+			// enables thinking without an explicit effort.
 			reasoningEffort = gatewayprovider.ApplyThinkingEnabledFallback(reasoningEffort, originalBody, mappedModel)
 
 			if resp.StatusCode >= 400 {

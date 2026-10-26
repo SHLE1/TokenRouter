@@ -35,10 +35,11 @@ type modelCatalogueTransportFixture struct {
 	lastReq *http.Request // captured model catalogue request
 }
 
-// TestBuildUpstreamModelsRequest_CNProviders selects CN pay-as-you-go and
-// coding credentials without custom roots. Each request must use its platform's
-// OpenAI-format models endpoint and the configured bearer key.
-func TestBuildUpstreamModelsRequest_CNProviders(t *testing.T) {
+// TestBuildUpstreamModelsRequest_KimiZhipuDeepSeek selects Kimi, Zhipu, and
+// DeepSeek pay-as-you-go and coding credentials without custom roots. Each
+// request must use its platform's OpenAI-format models endpoint and the
+// configured bearer key.
+func TestBuildUpstreamModelsRequest_KimiZhipuDeepSeek(t *testing.T) {
 	t.Parallel()
 
 	svc := &ModelCatalogue{Options: upstreamModelSyncTestConfig()}

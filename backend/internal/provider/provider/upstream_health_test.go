@@ -161,15 +161,15 @@ func TestJevOverloadHonorsTemporaryRule(t *testing.T) {
 	require.Equal(t, 1, repo.tempCalls)
 }
 
-// TestIsCNProviderConcurrencyLimit403_ExactClassification checks Kimi's
-// recognized message, trimmed form, near matches, and other platforms. Only the
-// exact platform-supported concurrency wording must classify as that
-// recoverable limit.
-func TestIsCNProviderConcurrencyLimit403_ExactClassification(t *testing.T) {
+// TestKimiConcurrencyLimit403_ExactClassification checks Kimi's recognized
+// message, trimmed form, near matches, and other platforms. Only the exact
+// platform-supported concurrency wording must classify as that recoverable
+// limit.
+func TestKimiConcurrencyLimit403_ExactClassification(t *testing.T) {
 	kimi := &providercore.Record{Platform: capability.PlatformKimi}
 
-	require.True(t, CNConcurrencyLimit403(kimi, upstreamkimi.ConcurrentRequestLimitMessage))
-	require.True(t, CNConcurrencyLimit403(kimi, "  "+upstreamkimi.ConcurrentRequestLimitMessage+"\n"))
+	require.True(t, KimiConcurrencyLimit403(kimi, upstreamkimi.ConcurrentRequestLimitMessage))
+	require.True(t, KimiConcurrencyLimit403(kimi, "  "+upstreamkimi.ConcurrentRequestLimitMessage+"\n"))
 
 	for name, tc := range map[string]struct {
 		provider *providercore.Record // provider record under evaluation
@@ -178,12 +178,12 @@ func TestIsCNProviderConcurrencyLimit403_ExactClassification(t *testing.T) {
 		"permission denied":              {kimi, "You do not have permission to access this resource."},
 		"generic concurrency wording":    {kimi, "concurrent request limit reached"},
 		"near match missing punctuation": {kimi, "You've reached your concurrent request limit. Please wait for your ongoing requests to finish and try again"},
-		"other CN provider":              {&providercore.Record{Platform: capability.PlatformZhipu}, upstreamkimi.ConcurrentRequestLimitMessage},
-		"non CN provider":                {&providercore.Record{Platform: capability.PlatformOpenAI}, upstreamkimi.ConcurrentRequestLimitMessage},
+		"Zhipu provider":                 {&providercore.Record{Platform: capability.PlatformZhipu}, upstreamkimi.ConcurrentRequestLimitMessage},
+		"OpenAI provider":                {&providercore.Record{Platform: capability.PlatformOpenAI}, upstreamkimi.ConcurrentRequestLimitMessage},
 		"nil provider":                   {nil, upstreamkimi.ConcurrentRequestLimitMessage},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.False(t, CNConcurrencyLimit403(tc.provider, tc.message))
+			require.False(t, KimiConcurrencyLimit403(tc.provider, tc.message))
 		})
 	}
 }

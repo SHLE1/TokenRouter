@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// cn_health.go applies CN concurrency, balance, and Coding Plan cooldowns to
-// runtime scheduling and stored provider state.
-// CN rejection handling keeps concurrency, balance, and Coding Plan pauses
+// health_usage.go applies concurrency, balance, and Coding Plan cooldowns
+// to runtime scheduling and stored provider state. Kimi, Zhipu, and DeepSeek
+// rejection handling keeps concurrency, balance, and Coding Plan pauses
 // distinct. A concurrency response uses the shared 403 cooldown length without
 // updating the forbidden-response counter. A balance response carries the
 // current query fingerprint in its stored reason so the monitor can recognize
@@ -20,12 +20,12 @@ import (
 // matching limits snapshot, even when another window resets later; the caller
 // receives a handled result once that deadline is selected.
 
-// CNConcurrencyLimitReason labels the runtime scheduling block raised for a CN
-// concurrency rejection. The stored pause receives the caller's reason
-// separately.
-const CNConcurrencyLimitReason = "cn_concurrency_limit"
+// KimiConcurrencyLimitReason labels the runtime block for Kimi concurrency
+// rejections. Its stored spelling remains compatible with existing diagnostic
+// consumers; the temporary pause receives the caller's reason separately.
+const KimiConcurrencyLimitReason = "cn_concurrency_limit"
 
-// ApplyCNConcurrencyLimit notifies scheduling and attempts a temporary pause
+// ApplyKimiConcurrencyLimit notifies scheduling and attempts a temporary pause
 // after a concurrency rejection. Callers provide a valid provider and store;
 // the deadline uses the shared ten-minute 403 cooldown duration, while the
 // reason supplied to persistence can contain the upstream explanation.
@@ -33,7 +33,7 @@ const CNConcurrencyLimitReason = "cn_concurrency_limit"
 // The scheduling callback runs before the store write. A failed write logs a
 // warning and leaves any callback-installed block in place, so the caller can
 // switch providers immediately even when persistence fails.
-func (s *HealthService) ApplyCNConcurrencyLimit(
+func (s *HealthService) ApplyKimiConcurrencyLimit(
 	ctx context.Context,
 	provider *Record, reason string,
 ) {
@@ -42,7 +42,7 @@ func (s *HealthService) ApplyCNConcurrencyLimit(
 	// Notify the request-side blocker before persistence so store failure
 	// still
 	// leaves the observed provider temporarily excluded.
-	s.notifyProviderSchedulingBlocked(provider, until, CNConcurrencyLimitReason)
+	s.notifyProviderSchedulingBlocked(provider, until, KimiConcurrencyLimitReason)
 	if err := s.providerRepo.SetTempUnschedulable(ctx, provider.ID, until, reason); err != nil {
 		s.options.Warn("cn_concurrency_limit_set_temp_unschedulable_failed", "provider_id", provider.ID, "error", err)
 		return
@@ -54,23 +54,24 @@ func (s *HealthService) ApplyCNConcurrencyLimit(
 	)
 }
 
-// ApplyCNInsufficientBalance notifies scheduling and attempts an identity-
+// ApplyInsufficientBalance notifies scheduling and attempts an identity-
 // labelled pause for an insufficient-balance response. Callers provide the
-// observed provider; an unavailable CN query fingerprint is represented by
-// "unknown", and trimmed upstream text is appended to the stored reason.
+// observed provider; an unavailable usage-query fingerprint
+// is represented by "unknown", and trimmed upstream text is appended to the
+// stored reason.
 //
 // The deadline spans two configured monitor intervals, using
-// CNBalanceCooldownDuration for defaults. Notification precedes persistence, so
-// a failed store write leaves any runtime block in effect. Later balance
+// BalanceCooldownDuration for defaults. Notification precedes persistence, so a
+// failed store write leaves any runtime block in effect. Later balance
 // monitoring clears a pause only when its reason exactly matches the monitor
 // reason for that fingerprint. An appended upstream explanation leaves this
 // request-side reason different, so that recovery branch does not clear it.
-func (s *HealthService) ApplyCNInsufficientBalance(
+func (s *HealthService) ApplyInsufficientBalance(
 	ctx context.Context,
 	provider *Record,
 	upstreamMsg string,
 ) {
-	identityHash := CNUsageMonitorIdentityFingerprint(provider)
+	identityHash := UsageMonitorIdentityFingerprint(provider)
 	if identityHash == "" {
 		// Fingerprint validation can fail for unsupported query
 		// identities;
@@ -78,12 +79,12 @@ func (s *HealthService) ApplyCNInsufficientBalance(
 		// pause.
 		identityHash = "unknown"
 	}
-	msg := CNUsageMonitorReason(identityHash)
+	msg := UsageMonitorReason(identityHash)
 	if upstreamMsg = strings.TrimSpace(upstreamMsg); upstreamMsg != "" {
 		msg += ": " + upstreamMsg
 	}
 
-	until := s.options.Now().Add(CNBalanceCooldownDuration(s.options.CNIntervalMinutes))
+	until := s.options.Now().Add(BalanceCooldownDuration(s.options.UsageMonitorIntervalMinutes))
 	// Publish the immediate block before storing its fingerprint reason; a
 	// failed write cannot retract the callback result.
 	s.notifyProviderSchedulingBlocked(provider, until, "cn_insufficient_balance")
@@ -98,10 +99,10 @@ func (s *HealthService) ApplyCNInsufficientBalance(
 	)
 }
 
-// CNBalanceCooldownDuration returns twice a positive monitoring interval in
+// BalanceCooldownDuration returns twice a positive monitoring interval in
 // minutes, defaulting to twenty minutes. A computed duration below one minute
 // is replaced by ten minutes before the caller stores a balance pause.
-func CNBalanceCooldownDuration(intervalMinutes int) time.Duration {
+func BalanceCooldownDuration(intervalMinutes int) time.Duration {
 	minutes := 10
 	if intervalMinutes > 0 {
 		minutes = intervalMinutes
@@ -115,20 +116,20 @@ func CNBalanceCooldownDuration(intervalMinutes int) time.Duration {
 	return cooldown
 }
 
-// CNProviderQuotaSnapshotReset returns a copied earliest future reset from an
-// identity-valid CN Coding Plan limits snapshot. Nil, other platforms, pay-as-
-// you-go records, and snapshots with another mode return nil.
+// CodingPlanQuotaSnapshotReset returns a copied earliest future reset from an
+// identity-valid Coding Plan limits snapshot. Nil, other platforms,
+// pay-as-you-go records, and snapshots with another mode return nil.
 //
 // All windows contribute reset times regardless of their recorded utilization.
 // Expired or missing resets are skipped, so a short-window reset can end the
 // pause before a later weekly reset. Callers can reevaluate remaining quota
 // after that earlier deadline; nil means this snapshot supplies no future
 // deadline.
-func CNProviderQuotaSnapshotReset(provider *Record, now time.Time) *time.Time {
-	if provider == nil || !provider.IsCNProvider() || !provider.IsCodingPlan() {
+func CodingPlanQuotaSnapshotReset(provider *Record, now time.Time) *time.Time {
+	if provider == nil || !provider.IsKimiZhipuOrDeepSeek() || !provider.IsCodingPlan() {
 		return nil
 	}
-	snapshot := ValidCNUsageMonitorSnapshot(provider)
+	snapshot := ValidUsageMonitorSnapshot(provider)
 	if snapshot == nil || snapshot.Mode != "limits" {
 		return nil
 	}
@@ -148,17 +149,17 @@ func CNProviderQuotaSnapshotReset(provider *Record, now time.Time) *time.Time {
 	return earliest
 }
 
-// ApplyCNQuotaSnapshotCooldown applies a Coding Plan snapshot deadline and
-// reports whether that path handled the response. Nil or non-CN providers, pay-
-// as-you-go records, and snapshots without a future reset return false for the
-// caller's other rate-limit handling.
+// ApplyCodingPlanQuotaCooldown applies a Coding Plan snapshot deadline and
+// reports whether that path handled the response. Nil or providers from other
+// platforms, pay-as-you-go records, and snapshots without a future reset
+// return false for the caller's other rate-limit handling.
 //
 // A selected deadline is sent to the scheduling callback before persistence.
 // Store failure is logged and still returns true, because this snapshot path
 // already issued its block notification. Success records the rate-limit
 // deadline and logs the selected reset.
-func (s *HealthService) ApplyCNQuotaSnapshotCooldown(ctx context.Context, provider *Record) bool {
-	if provider == nil || !provider.IsCNProvider() {
+func (s *HealthService) ApplyCodingPlanQuotaCooldown(ctx context.Context, provider *Record) bool {
+	if provider == nil || !provider.IsKimiZhipuOrDeepSeek() {
 		return false
 	}
 	// For Coding Plans, pause until the earliest future reset in the
@@ -167,7 +168,7 @@ func (s *HealthService) ApplyCNQuotaSnapshotCooldown(ctx context.Context, provid
 	// blocks
 	// scheduling.
 	if provider.IsCodingPlan() {
-		if until := CNProviderQuotaSnapshotReset(provider, s.options.Now()); until != nil {
+		if until := CodingPlanQuotaSnapshotReset(provider, s.options.Now()); until != nil {
 			// Issue the scheduling block first; a persistence
 			// failure still
 			// counts as handling this snapshot-derived rate-limit

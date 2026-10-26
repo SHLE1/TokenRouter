@@ -33,18 +33,18 @@ import (
 // TestRoute values identify execution families selected from provider metadata
 // before a prepared test request reaches its platform target.
 const (
-	TestRouteClaude      TestRoute = iota // default Anthropic execution family
-	TestRouteCNAdaptive                   // CN configured-protocol adaptive test
-	TestRouteCNResponses                  // CN shared Responses execution
-	TestRouteCNChat                       // CN fixed Chat execution
-	TestRouteCNAnthropic                  // CN fixed Messages execution
-	TestRouteOpenAI                       // OpenAI platform execution family
-	TestRouteGemini                       // Gemini platform execution family
-	TestRouteGrok                         // Grok platform execution family
-	TestRouteAntigravity                  // Antigravity platform execution family
-	TestRouteQoder                        // Qoder platform execution family
-	TestRouteJev                          // Jev SystemOne execution family
-	TestRouteOpenCode                     // OpenCode per-model protocol family
+	TestRouteClaude              TestRoute = iota // default Anthropic execution family
+	TestRouteTextAPIKeyAdaptive                   // Kimi/Zhipu/DeepSeek configured-protocol adaptive test
+	TestRouteTextAPIKeyResponses                  // Kimi/Zhipu/DeepSeek shared Responses execution
+	TestRouteTextAPIKeyChat                       // Kimi/Zhipu/DeepSeek fixed Chat execution
+	TestRouteTextAPIKeyMessages                   // Kimi/Zhipu/DeepSeek fixed Messages execution
+	TestRouteOpenAI                               // OpenAI platform execution family
+	TestRouteGemini                               // Gemini platform execution family
+	TestRouteGrok                                 // Grok platform execution family
+	TestRouteAntigravity                          // Antigravity platform execution family
+	TestRouteQoder                                // Qoder platform execution family
+	TestRouteJev                                  // Jev SystemOne execution family
+	TestRouteOpenCode                             // OpenCode per-model protocol family
 
 	// Provider test-type and mode strings normalize administrator selections and
 	// recognized legacy arguments before a request reaches its platform executor.
@@ -345,12 +345,13 @@ func (s *TestService) Test(ctx context.Context, request TestRequest, sink TestEv
 // input requires a platform whose native protocols include SystemOne; explicit
 // images require OpenAI, Gemini, or Grok and select default mode. A known
 // explicit image protocol bypasses the separate provider protocol check. Other
-// selected protocols use testProtocolAllowed. CN routing uses APIProtocol:
-// adaptive, Responses, and Chat select their dedicated families, while other
-// values select Messages. Remaining platforms choose their family with
-// Anthropic as the default. Routed probes validate the exact endpoint for the
-// requested model and retain its protocol pair in the execution context.
-// Target execution receives the original borrowed payload storage.
+// selected protocols use testProtocolAllowed. Kimi, Zhipu, and DeepSeek routing
+// uses APIProtocol: adaptive, Responses, and Chat select their dedicated
+// families, while other values select Messages. Remaining platforms choose
+// their family with Anthropic as the default. Routed probes validate the exact
+// endpoint for the requested model and retain its protocol pair in the
+// execution context. Target execution receives the original borrowed payload
+// storage.
 func (s *TestService) execute(ctx context.Context, request TestRequest, sink TestEventSink) error {
 	if request.Protocol != "" && TestProtocolID(request.Protocol) == "" {
 		return s.fail(ctx, sink, "Invalid test protocol")
@@ -404,21 +405,22 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 		return s.fail(ctx, sink, fmt.Sprintf("Test protocol %s is not supported for this provider", request.Protocol))
 	}
 	prepared := PreparedTestRequest{TestRequest: request, TestType: kind, ExplicitType: explicit}
-	// CN target execution consumes Route together with its configured protocol.
-	// Choose that combination after eligibility validation; other platform targets
-	// receive their corresponding prepared family.
+	// Kimi, Zhipu, and DeepSeek target execution consumes Route together with
+	// its configured protocol. Choose that combination after eligibility
+	// validation; other platform targets receive their corresponding prepared
+	// family.
 	prepared.Mode = mode
 	switch info.Platform {
 	case PlatformKimi, PlatformZhipu, PlatformDeepseek:
 		switch info.APIProtocol {
 		case APIProtocolAdaptive:
-			prepared.Route = TestRouteCNAdaptive
+			prepared.Route = TestRouteTextAPIKeyAdaptive
 		case APIProtocolResponses:
-			prepared.Route = TestRouteCNResponses
+			prepared.Route = TestRouteTextAPIKeyResponses
 		case APIProtocolChatCompletions:
-			prepared.Route = TestRouteCNChat
+			prepared.Route = TestRouteTextAPIKeyChat
 		default:
-			prepared.Route = TestRouteCNAnthropic
+			prepared.Route = TestRouteTextAPIKeyMessages
 		}
 	case PlatformOpenAI:
 		prepared.Route = TestRouteOpenAI
@@ -463,9 +465,10 @@ func TestProtocolID(protocol string) capability.ProtocolID {
 
 // testProtocolAllowed reports whether provider metadata permits a selected test
 // protocol. OpenAI API keys allow Responses or Chat regardless of enabled
-// protocols, and other OpenAI types permit Responses. Jev, OpenCode, and CN
-// targets honor the selection, so they allow a protocol that is both enabled
-// and among the supplied native options for the provider's type.
+// protocols, and other OpenAI types permit Responses. Jev, OpenCode, and Kimi,
+// Zhipu, and DeepSeek targets honor the selection, so they allow a protocol
+// that is both enabled and among the supplied native options for the provider's
+// type.
 //
 // Remaining platforms run one fixed probe and reject explicit text protocol
 // selection. execute calls this helper after spelling validation and image

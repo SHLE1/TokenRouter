@@ -1,6 +1,6 @@
 # API Key 上游用量查询
 
-本文定义 `type=apikey` 提供商的上游用量查询、钱包余额邮件提醒，以及国产供应商可选的周期监控。管理员手动查询只用于展示，和 TokenRouter 的调度、自动暂停、提供商倍率、本地配额和结算都无关；只有手动开启的 CN 周期监控，才会写入统一快照，并在余额过低时临时停调。`type=bedrock` 不在本文范围内；OAuth 和 Setup Token 的官方用量窗口由 `provider.OAuthUsageService` 单独维护。
+本文定义 `type=apikey` 提供商的上游用量查询、钱包余额邮件提醒，以及国产供应商可选的周期监控。管理员手动查询只用于展示，和 TokenRouter 的调度、自动暂停、提供商倍率、本地配额和结算都无关；只有手动开启的上游用量周期监控，才会写入统一快照，并在余额过低时临时停调。`type=bedrock` 不在本文范围内；OAuth 和 Setup Token 的官方用量窗口由 `provider.OAuthUsageService` 单独维护。
 
 ## 配置
 
@@ -82,7 +82,7 @@ Sub2API、New API、Zivv、derouter.ai 的固定查询和归一化在 `upstream/
 
 Ollama 的固定设置页抓取、HTML 解析、Retry-After、Chat 思考字段补齐和输出上限处理，在 `upstream/ollama`。`provider/provider.OllamaUsageFetcher` 只把受控的 Cookie、代理和并发参数交给共享的 HTTP 池；app 直接构造一个 `provider.OllamaCloudUsageService`，由它负责浏览器会话、分组、加密、singleflight、身份 CAS 和周期维护，HTTP 直接绑定它的 Handler。
 
-用量查询是 OpenAI 兼容提供商的一项能力，没有对应的独立提供商平台。CN 的通用文本执行复用 Anthropic 和 OpenAI 的协议链；平台资格和全局重试与用量适配器无关。
+用量查询是 OpenAI 兼容提供商的一项能力，没有对应的独立提供商平台。Kimi、Zhipu、DeepSeek 的通用文本执行复用 Anthropic 和 OpenAI 的协议链；平台资格和全局重试与用量适配器无关。
 
 ## 管理员接口
 
@@ -112,7 +112,9 @@ API Key 提供商（包括 Kimi、Zhipu、DeepSeek）的用量栏，按以下顺
 
 ## 国产供应商周期监控
 
-`gateway.cn_providers.monitor_enabled` 默认是 `false`。开启后，`provider.CNUsageMonitor` 只扫描满足以下条件的 Kimi、Zhipu、DeepSeek 提供商：active、`type=apikey`、没有关闭用量查询、有固定的适配器。
+监控由 `provider.UsageMonitor` 实现，启动配置对应 `GatewayUsageMonitorConfig`。部署键 `gateway.cn_providers`、快照键 `extra.cn_usage_monitor_snapshot`、共享锁键和停调原因前缀保留既有格式，已有配置、快照和多实例协调继续使用这些键。
+
+`gateway.cn_providers.monitor_enabled` 默认是 `false`。开启后，`provider.UsageMonitor` 只扫描满足以下条件的 Kimi、Zhipu、DeepSeek 提供商：active、`type=apikey`、没有关闭用量查询、有固定的适配器。
 
 - 第一次探测在一个完整周期之后执行。
 - 多实例通过共享的 leader lock 保证每一轮只有一个执行者。
@@ -123,9 +125,9 @@ API Key 提供商（包括 Kimi、Zhipu、DeepSeek）的用量栏，按以下顺
 
 余额模式下，余额低于 `balance_threshold` 时，监控写入一个带身份 hash 的临时不可调度原因；余额恢复到阈值以上时，只清除同一个身份创建的那个状态。健康状态的暂停和恢复，同样以读取时的 `updated_at` 做条件写入，恢复时还检查原因是否一致；管理员换了凭据或有其他健康写入之后，旧的观测结果无法覆盖新的状态。事务提交后尽力写 outbox，健康状态和 Redis 的更新不在同一个事务里。coding 模式的百分比窗口快照，用于已有的额度阈值和重置时间判断，它表示的是百分比，不是货币余额。
 
-官方域名可以直接监控；自定义中继只有在开启 URL allowlist、并且 host 命中 `security.url_allowlist.upstream_hosts` 时，后台才会自动访问。监控复用提供商的代理、TLS 指纹、受保护的 Header Override 和 `UpstreamUsageService`，没有 CN 专用的 HTTP 管理接口。
+官方域名可以直接监控；自定义中继只有在开启 URL allowlist、并且 host 命中 `security.url_allowlist.upstream_hosts` 时，后台才会自动访问。监控复用提供商的代理、TLS 指纹、受保护的 Header Override 和通用的 `UpstreamUsageService` 查询服务。
 
-旧的 `upstream_billing_probe` 是已经移除的自动倍率探测功能，本功能与它无关，不写它的旧快照，也不影响调度状态。
+旧的 `upstream_billing_probe` 自动倍率探测功能已经移除。用量监控使用自己的快照和余额停调规则。
 
 ## 钱包余额邮件提醒
 

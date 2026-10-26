@@ -26,18 +26,18 @@ import (
 
 // model_catalogue.go fetches upstream model lists and extracts
 // platform-appropriate model identifiers. Upstream model lists use different
-// endpoints and identity fields across API-key and OAuth services. OpenAI
-// OAuth reads a Codex manifest, CN providers query an OpenAI-format root, Grok
-// can place protocol IDs in metadata, and Jev names retain their complete path
-// spelling.
+// endpoints and identity fields across API-key and OAuth services. OpenAI OAuth
+// reads a Codex manifest, Kimi, Zhipu, and DeepSeek providers query an
+// OpenAI-format root, Grok can place protocol IDs in metadata, and Jev names
+// retain their complete path spelling.
 //
 // Requests resolve platform authentication and loaded proxy or TLS settings
 // before reading a bounded response. Generic model extraction chooses standard
 // ID, slug, then name, while Grok uses protocol fields before display labels.
 // Both supported object wrappers and top-level arrays feed sorted distinct
 // results. Typed synchronization errors distinguish configuration, unsupported
-// routes, and upstream failures, and non-success HTTP diagnostics report
-// status without copying the upstream response body into the error.
+// routes, and upstream failures, and non-success HTTP diagnostics report status
+// without copying the upstream response body into the error.
 
 // DefaultCodexModelsURL supplies the OAuth manifest endpoint configured for
 // administrative model synchronization and authenticated catalogue queries.
@@ -214,9 +214,9 @@ func (s *ModelCatalogue) FetchUpstreamSupportedModels(ctx context.Context, value
 }
 
 // buildUpstreamModelsRequest selects the model-list builder for a nonnil
-// provider record. CN platforms use OpenAI-format requests, while unknown
-// platforms return an unsupported synchronization error before transport
-// execution.
+// provider record. Kimi, Zhipu, and DeepSeek platforms use OpenAI-format
+// requests, while unknown platforms return an unsupported synchronization error
+// before transport execution.
 func (s *ModelCatalogue) buildUpstreamModelsRequest(ctx context.Context, value *providercore.Record) (*http.Request, error) {
 	switch {
 	case value.IsOpenCode():
@@ -239,9 +239,10 @@ func (s *ModelCatalogue) buildUpstreamModelsRequest(ctx context.Context, value *
 		return s.buildJevUpstreamModelsRequest(ctx, value)
 	case value.IsGrok():
 		return s.buildGrokUpstreamModelsRequest(ctx, value)
-	case value.IsOpenAI() || value.IsCNProvider():
-		// CN inference can use Messages, but its model catalogue still follows OpenAI
-		// format. Choose that root before appending the shared models endpoint.
+	case value.IsOpenAI() || value.IsKimiZhipuOrDeepSeek():
+		// Kimi, Zhipu, and DeepSeek inference can use Messages, but its model
+		// catalogue still follows OpenAI format. Choose that root before
+		// appending the shared models endpoint.
 		return s.buildOpenAIUpstreamModelsRequest(ctx, value)
 	case value.IsGemini():
 		return s.buildGeminiUpstreamModelsRequest(ctx, value)
