@@ -93,6 +93,10 @@ type ExecutionRules struct {
 // Resolution contains a route's model attributes, field sources, and
 // message-encoding rules.
 type Resolution struct {
+	// ReferenceModel identifies the profile target supplying effective attributes.
+	// Target continues to describe the actual outbound model and execution route.
+	ReferenceModel string `json:"reference_model,omitempty"`
+
 	Target     Target            `json:"target"`     // route inputs with detected service
 	Attributes Attributes        `json:"attributes"` // resolved model capability values
 	Sources    map[string]string `json:"sources"`    // effective attribute source labels
@@ -292,12 +296,17 @@ func (r *Resolution) patch(attrs Attributes, source string) {
 //
 // Missing thinking state uses adaptive-mode defaults for Claude Messages and enabled
 // thinking for DeepSeek. The retained canonical identity supplies these defaults
-// for OpenCode aliases. Missing effort defaults to none for the registered
+// for OpenCode aliases. Profile references use their target model for these
+// conditions while retaining the outbound Target. Missing effort defaults to none for the registered
 // GPT-5.2 and GPT-5.4 identities. Every supplied condition must match its
 // request state; a mismatch disables that parameter without changing the
 // display attributes retained by the receiver.
 func (r Resolution) ForRequest(state RequestState) Resolution {
-	author, model := r.Target.modelEncodingIdentity()
+	target := r.Target
+	if r.ReferenceModel != "" {
+		target.Model = r.ReferenceModel
+	}
+	author, model := target.modelEncodingIdentity()
 	r.Attributes = r.Attributes.Clone()
 	if state.Thinking == nil {
 		// Conditional parameters need the adapter's default thinking state when

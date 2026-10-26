@@ -53,12 +53,13 @@ func (s *Recorder) CalculateRecordUsageCost(
 	// The configured mode determines whether counts or measured tokens are charged;
 	// retain image units only after the token-card and catalogue-evidence decisions decline.
 	if result.ImageCount > 0 {
-		if resolved, pricingModel := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey); resolved != nil && resolved.Mode == BillingModeToken {
+		resolved, pricingModel := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey)
+		if resolved != nil && resolved.Mode == BillingModeToken {
 			return s.CalculateTokenCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, multiplier, opts)
 		} else if resolved != nil {
 			return s.CalculateImageCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, pricingModel, resolved, imageMultiplier, opts.PricingAt)
 		}
-		if s.imageUsesTokenPricing(billingModel, result.ImageSize, result.Usage) {
+		if s.imageUsesTokenPricing(pricingModel, result.ImageSize, result.Usage) {
 			return s.CalculateTokenCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, multiplier, opts)
 		}
 		return s.CalculateImageCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, billingModel, nil, imageMultiplier, opts.PricingAt)
@@ -118,15 +119,8 @@ func (s *Recorder) CalculateRecordUsageCost(
 // the key's group snapshot ID. Missing resolver, key, or group yields nil; a
 // catalogue-only resolution also returns nil for caller-specific catalogue handling.
 func (s *Recorder) ResolveConfigPricing(ctx context.Context, billingModel string, apiKey *KeySnapshot) *ResolvedPricing {
-	if s.resolver == nil || apiKey == nil || apiKey.Group == nil {
-		return nil
-	}
-	gid := apiKey.Group.ID
-	resolved := s.resolver.Resolve(ctx, PricingInput{Model: billingModel, GroupID: &gid})
-	if resolved.HasConfiguredPricing() {
-		return resolved
-	}
-	return nil
+	resolved, _ := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey)
+	return resolved
 }
 
 // CalculateImageCost charges native image usage through supplied or resolved
@@ -181,7 +175,7 @@ func (s *Recorder) CalculateImageCost(
 		return cost
 	}
 
-	cost, err := s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, multiplier)
+	cost, err := s.billingService.CalculateImageCost(resolvedModel, sizeTier, result.ImageCount, multiplier)
 	if err != nil {
 		// Missing catalogue image pricing retains image mode for the measured output
 		// row, leaving the actual charge at zero and reporting the failed price lookup.
@@ -344,11 +338,11 @@ func (s *Recorder) CalculateOpenAIRecordUsageCostAt(
 	if result != nil && result.ImageCount > 0 {
 		// Positive image quantity can still use a token card; catalogue token pricing
 		// requires observed usage and a failed per-image lookup before this media path declines.
-		resolved := s.ResolveConfigPricing(ctx, billingModel, apiKey)
+		resolved, lookupModel := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey)
 		if resolved != nil && resolved.Mode != BillingModeToken {
 			return s.CalculateOpenAIImageCost(ctx, billingModel, apiKey, result, imageMultiplier)
 		}
-		if resolved == nil && !s.imageUsesTokenPricing(billingModel, result.ImageSize, result.Usage) {
+		if resolved == nil && !s.imageUsesTokenPricing(lookupModel, result.ImageSize, result.Usage) {
 			return s.CalculateOpenAIImageCost(ctx, billingModel, apiKey, result, imageMultiplier)
 		}
 	}
@@ -512,7 +506,7 @@ func (s *Recorder) imageUsesTokenPricing(model, size string, usage TokenUsage) b
 // calculator; failures return both a mode-tagged zero breakdown and the pricing error.
 func (s *Recorder) CalculateOpenAIImageCost(ctx context.Context, billingModel string, apiKey *KeySnapshot, result *Result, multiplier float64) (*CostBreakdown, error) {
 	sizeTier := NormalizeImageBillingTierOrDefault(result.ImageSize)
-	resolved := s.ResolveConfigPricing(ctx, billingModel, apiKey)
+	resolved, lookupModel := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey)
 	if resolved != nil {
 		cost, err := s.billingService.CalculateCostUnified(CostInput{
 			Ctx: ctx, Model: billingModel, GroupID: apiKey.GroupID,
@@ -527,7 +521,7 @@ func (s *Recorder) CalculateOpenAIImageCost(ctx context.Context, billingModel st
 		}
 		return cost, nil
 	}
-	cost, err := s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, multiplier)
+	cost, err := s.billingService.CalculateImageCost(lookupModel, sizeTier, result.ImageCount, multiplier)
 	if err != nil {
 		// Retain image mode beside the catalogue failure so the recorder can classify
 		// measured media while choosing whether this pricing error allows zero charging.
@@ -551,7 +545,7 @@ func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel st
 	}
 	resolution := NormalizeVideoBillingResolutionOrDefault(result.VideoResolution)
 	durationSeconds := NormalizeVideoBillingDurationSecondsOrDefault(result.VideoDurationSeconds)
-	resolved := s.ResolveConfigPricing(ctx, billingModel, apiKey)
+	resolved, lookupModel := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey)
 	if resolved != nil {
 		units := float64(videoCount)
 		// Video cards price seconds for each output; count alone is the unit for
@@ -572,7 +566,7 @@ func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel st
 		}
 		return cost, nil
 	}
-	cost, err := s.billingService.CalculateVideoCost(billingModel, resolution, videoCount, durationSeconds, multiplier)
+	cost, err := s.billingService.CalculateVideoCost(lookupModel, resolution, videoCount, durationSeconds, multiplier)
 	if err != nil {
 		// Retain video mode beside the catalogue failure so missing-price handling can
 		// keep completed output count, normalized resolution, and duration in its row.

@@ -400,3 +400,19 @@ func TestCanonicalModelParameterBodyParity(t *testing.T) {
 		})
 	}
 }
+
+// TestReferencedAttributesPreserveOutboundModel borrows sampling rules for a custom alias.
+// Parameter preparation applies the target's effort condition while the JSON
+// model and retained route still name the actual upstream alias.
+func TestReferencedAttributesPreserveOutboundModel(t *testing.T) {
+	repo := &mediaAttributeRepo{config: &routing.ModelAttributeConfig{Status: routing.StatusActive, Rules: []routing.ModelAttributeRule{{Models: []string{"custom-*"}, ReferenceModel: "gpt-5.4"}}}}
+	service := &routing.ModelAttributeService{Repo: repo, Catalog: routing.ModelAttributeCatalog{View: testkit.OfflineView}}
+	target := modelcatalog.Target{Model: "custom-openai", Platform: "openai", ProviderType: "apikey", ClientProtocol: "openai_chat_completions", UpstreamProtocol: "openai_chat_completions"}
+	result, err := service.NewSession().Resolve(t.Context(), 7, target)
+	require.NoError(t, err)
+	require.Equal(t, "custom-openai", result.Target.Model)
+	body, err := ApplyModelAttributeParameters([]byte(`{"model":"custom-openai","reasoning":{"effort":"high"},"temperature":0.5}`), result)
+	require.NoError(t, err)
+	require.Equal(t, "custom-openai", gjson.GetBytes(body, "model").String())
+	require.False(t, gjson.GetBytes(body, "temperature").Exists())
+}
