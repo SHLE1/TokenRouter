@@ -102,7 +102,7 @@
           </SettingsSection>
 
           <SettingsSection :title="t('admin.providers.sections.platformAndType')">
-            <!-- Platform choices keep international and CN providers on separate rows. -->
+            <!-- Platform choices fill two balanced rows and wrap within each row on narrow screens. -->
             <div class="space-y-2">
               <span class="input-label">{{ t('admin.providers.platform') }}</span>
               <div
@@ -137,13 +137,6 @@
                 </button>
               </div>
             </div>
-
-            <SettingsNotice
-              v-if="platformApiKeyPreset.descriptionKey"
-              :data-testid="`${form.platform}-provider-type-api-key`"
-            >
-              {{ t(platformApiKeyPreset.descriptionKey) }}
-            </SettingsNotice>
 
             <!-- Anthropic provider authentication category. -->
             <div v-if="form.platform === 'anthropic'" v-content-reveal class="space-y-2">
@@ -2747,8 +2740,8 @@ const isManualInputMethod = computed(() => {
   return oauthFlowRef.value?.inputMethod === 'manual'
 })
 
-// Platform rows preserve the rendered international and CN grouping; labels come from the
-// shared platform catalog, and CN selection also resets authentication and endpoint defaults.
+// platformRows distributes the platform choices across rows of six and five;
+// labels and brand colors come from the shared platform catalog.
 const platformRows: Array<
   Array<{
     value: ProviderPlatform // selected upstream platform
@@ -2762,10 +2755,14 @@ const platformRows: Array<
     { value: 'antigravity' },
     { value: 'qoder', testid: 'create-provider-platform-qoder' },
     { value: 'grok' },
+  ],
+  [
     { value: 'jev', testid: 'create-provider-platform-jev' },
     { value: 'opencode', testid: 'create-provider-platform-opencode' },
+    { value: 'kimi' },
+    { value: 'zhipu' },
+    { value: 'deepseek' },
   ],
-  [{ value: 'kimi' }, { value: 'zhipu' }, { value: 'deepseek' }],
 ]
 // selectPlatform selects a platform through the CN preset reset when
 // applicable. International platforms update the platform field directly,

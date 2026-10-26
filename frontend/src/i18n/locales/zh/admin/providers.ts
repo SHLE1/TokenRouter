@@ -13,14 +13,12 @@ export default {
       paygDesc: '通过 OpenCode Zen 按用量计费。',
       go: 'OpenCode Go',
       goDesc: '订阅制，按滚动的五小时、每周和每月窗口计算用量。',
-      description: '使用 API Key 接入 OpenCode 模型。Go 用量可在提供商列表中手动刷新。',
       modelProtocols: '模型协议',
       modelProtocolsHint:
         '查看目录建议，或为指定模型手动设置协议。删除覆盖后使用目录选择，两种服务模式分别保存配置。',
       catalogSuggestion: '目录建议',
       selectProtocol: '选择协议',
     },
-    jev: { description: '使用 API Key 调用 TypeSafe 的 SystemOne 决策模型。' },
     title: '提供商管理',
     description: '管理上游 AI 服务的接入配置和凭据',
     tabs: {

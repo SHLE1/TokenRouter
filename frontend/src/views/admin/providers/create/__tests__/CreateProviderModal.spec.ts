@@ -936,7 +936,6 @@ describe('Jev 提供商', () => {
     const wrapper = mountModal()
     await wrapper.get('[data-testid="create-provider-platform-jev"]').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-testid="jev-provider-type-api-key"]').exists()).toBe(true)
     await wrapper.get('form#create-provider-form input[type="text"]').setValue('Jev test')
     await wrapper.get('form#create-provider-form input[type="password"]').setValue('test-key')
     await wrapper.get('form#create-provider-form').trigger('submit.prevent')

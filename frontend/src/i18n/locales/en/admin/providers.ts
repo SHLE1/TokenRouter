@@ -13,15 +13,12 @@ export default {
       paygDesc: 'Pay per use through OpenCode Zen.',
       go: 'OpenCode Go',
       goDesc: 'Subscription with rolling five-hour, weekly, and monthly usage windows.',
-      description:
-        'Use one API key for OpenCode models. Go usage can be refreshed from the provider list.',
       modelProtocols: 'Model protocols',
       modelProtocolsHint:
         'View catalog suggestions or set an exact model override. Delete an override to use the catalog. Each service mode keeps its own overrides.',
       catalogSuggestion: 'Catalog',
       selectProtocol: 'Select a protocol',
     },
-    jev: { description: 'Call TypeSafe SystemOne decision models with an API key.' },
     title: 'Provider Management',
     description: 'Manage upstream AI connections and credentials',
     tabs: {

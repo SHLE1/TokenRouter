@@ -392,7 +392,6 @@ interface PlatformApiKeyPreset {
   // baseUrlHintKey selects the address hint; an empty string hides it and an
   // omitted key uses the generic hint.
   baseUrlHintKey?: string
-  descriptionKey?: string // Platform notice shown under the platform choice.
   apiKeyOnly?: boolean // Platform accepts only API-key credentials.
 }
 
@@ -427,7 +426,6 @@ const PLATFORM_APIKEY_PRESETS: Partial<Record<string, PlatformApiKeyPreset>> = {
   jev: {
     defaultBaseUrl: 'https://api.typesafe.ai',
     apiKeyPlaceholder: 'api-key-...',
-    descriptionKey: 'admin.providers.jev.description',
     apiKeyOnly: true,
   },
   opencode: {
@@ -435,7 +433,6 @@ const PLATFORM_APIKEY_PRESETS: Partial<Record<string, PlatformApiKeyPreset>> = {
     baseUrlPlaceholder: openCodeServiceRoot,
     apiKeyPlaceholder: 'oc_sk_...',
     baseUrlHintKey: 'admin.providers.opencode.baseUrlHint',
-    descriptionKey: 'admin.providers.opencode.description',
     apiKeyOnly: true,
   },
 }
@@ -446,7 +443,6 @@ export interface ApiKeyPreset {
   baseUrlPlaceholder: string // Example address for the empty input.
   apiKeyPlaceholder: string // Example key prefix.
   baseUrlHintKey: string // Address hint key; empty hides the hint.
-  descriptionKey: string // Platform notice key; empty shows no notice.
   apiKeyOnly: boolean // Platform accepts only API-key credentials.
 }
 
@@ -461,7 +457,6 @@ export function apiKeyPreset(platform: string, mode = ''): ApiKeyPreset {
     baseUrlPlaceholder: typeof placeholder === 'function' ? placeholder(mode) : placeholder,
     apiKeyPlaceholder: preset.apiKeyPlaceholder,
     baseUrlHintKey: preset.baseUrlHintKey ?? 'admin.providers.baseUrlHint',
-    descriptionKey: preset.descriptionKey ?? '',
     apiKeyOnly: preset.apiKeyOnly === true,
   }
 }
