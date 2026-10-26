@@ -239,7 +239,7 @@ func (s *ModelCatalogue) buildUpstreamModelsRequest(ctx context.Context, value *
 		return s.buildJevUpstreamModelsRequest(ctx, value)
 	case value.IsGrok():
 		return s.buildGrokUpstreamModelsRequest(ctx, value)
-	case value.IsOpenAI() || value.IsKimiZhipuOrDeepSeek():
+	case value.IsOpenAI() || value.HasProtocolEndpointDefaults():
 		// Kimi, Zhipu, and DeepSeek inference can use Messages, but its model
 		// catalogue still follows OpenAI format. Choose that root before
 		// appending the shared models endpoint.

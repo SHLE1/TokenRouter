@@ -77,7 +77,7 @@ func BuildProviderForCreate(input *CreateProviderInput, providerExtra map[string
 		Status:      StatusActive,
 		Schedulable: true,
 	}
-	if err := NormalizeKimiZhipuDeepSeekCredentials(provider, true); err != nil {
+	if err := NormalizeTextEndpointCredentials(provider, true); err != nil {
 		return nil, err
 	}
 	if err := NormalizeOpenAIAPIKeyConfiguration(provider); err != nil {

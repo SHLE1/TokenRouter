@@ -60,19 +60,6 @@ func TestGetCodingPlanProviderUsesPlatformInsteadOfURL(t *testing.T) {
 	require.Equal(t, capability.PlatformZhipu, zhipu.GetCodingPlanProvider(), "中继路径不得改变平台身份")
 }
 
-// TestSupportsKimiOrDeepSeekResponses compares DeepSeek, Kimi, Zhipu, and
-// OpenAI platform records, including Kimi coding mode. It checks that native
-// Responses support follows platform identity for those supplied
-// configurations.
-func TestSupportsKimiOrDeepSeekResponses(t *testing.T) {
-	t.Parallel()
-	require.True(t, (ProtocolTarget{Record: &Record{Platform: capability.PlatformDeepseek}}).SupportsKimiOrDeepSeekResponses())
-	require.True(t, (ProtocolTarget{Record: &Record{Platform: capability.PlatformKimi}}).SupportsKimiOrDeepSeekResponses())
-	require.True(t, (ProtocolTarget{Record: &Record{Platform: capability.PlatformKimi, Credentials: map[string]any{"provider_mode": ProviderModeCoding}}}).SupportsKimiOrDeepSeekResponses())
-	require.False(t, (ProtocolTarget{Record: &Record{Platform: capability.PlatformZhipu}}).SupportsKimiOrDeepSeekResponses())
-	require.False(t, (ProtocolTarget{Record: &Record{Platform: capability.PlatformOpenAI}}).SupportsKimiOrDeepSeekResponses())
-}
-
 // TestAdaptiveProtocolBaseURLs combines adaptive selection with each supported
 // Kimi, Zhipu, and DeepSeek platform and provider mode. It checks their default
 // Chat, Messages, and Responses addresses plus the Messages endpoint
@@ -234,7 +221,7 @@ func TestOpenCodeProtocolEndpointsKeepProviderPolicySeparate(t *testing.T) {
 	} {
 		target := ProtocolTarget{Record: r, Protocol: selected}
 		require.Equal(t, "https://opencode.ai/inference"+suffix, target.BaseURL())
-		require.False(t, target.UsesKimiOrDeepSeekResponses())
+		require.False(t, target.UsesStatelessResponses())
 		require.Empty(t, target.GetTextAPIKeyProtocolBaseURL(APIProtocolResponses))
 	}
 	require.Equal(t, DefaultJevBaseURL, r.GetJevBaseURL())
@@ -288,4 +275,24 @@ func TestSupportsHTTPResponsesContinuation(t *testing.T) {
 		})
 	}
 	require.False(t, (ProtocolTarget{}).SupportsHTTPResponsesContinuation())
+}
+
+// TestResponsesOperationPoliciesResolveSelectedProtocol exercises platform
+// rules on explicit Responses and Chat operations over an adaptive provider.
+// It checks that endpoint slots, continuation removal, and client-tool encoding
+// retain separate platform choices and never leak into a selected Chat route.
+func TestResponsesOperationPoliciesResolveSelectedProtocol(t *testing.T) {
+	t.Parallel()
+	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformOpenAI, PlatformOpenCode} {
+		for _, protocol := range []capability.ProtocolID{capability.ProtocolOpenAIResponses, capability.ProtocolOpenAIChatCompletions} {
+			t.Run(platform+"/"+string(protocol), func(t *testing.T) {
+				target := ProtocolTarget{Record: &Record{Platform: platform, Type: ProviderTypeAPIKey, Credentials: map[string]any{UpstreamProtocolsKey: []string{}}}, Protocol: protocol}
+				responses := protocol == capability.ProtocolOpenAIResponses
+				slots := responses && (platform == PlatformKimi || platform == PlatformDeepseek)
+				require.Equal(t, slots, target.UsesResponsesEndpointSlots())
+				require.Equal(t, slots, target.UsesStatelessResponses())
+				require.Equal(t, responses && platform == PlatformDeepseek, target.RequiresResponsesClientToolEncoding())
+			})
+		}
+	}
 }

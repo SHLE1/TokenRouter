@@ -45,7 +45,7 @@ func (r *Record) ModelAttributeTarget(model, upstreamProtocol string) modelcatal
 	// Catalogue identity must follow the endpoint used by this protocol. A
 	// provider can configure separate Chat, Messages, and Responses addresses
 	// whose service identities cannot be inferred from base_url alone.
-	if r.IsKimiZhipuOrDeepSeek() {
+	if r.HasProtocolEndpointDefaults() {
 		target.ProviderMode = r.GetProviderMode()
 		protocol := APIProtocolChatCompletions
 		switch upstreamProtocol {

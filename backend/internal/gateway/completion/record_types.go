@@ -144,12 +144,17 @@ type ProviderSnapshot struct {
 	ID                         int64   // executing provider identifier
 	Type                       string  // captured provider category
 	RateMultiplier             float64 // provider cost multiplier
-	// OpenAI: OpenAI platform classification. KimiZhipuDeepSeek: Kimi, Zhipu,
-	// or DeepSeek platform. OAuthLike: OpenAI credential classification.
-	// QuotaEligible: API-key/Bedrock classification. HasQuotaLimit: configured
-	// quota presence. These flags govern tier exceptions, health resets,
-	// candidate filtering, and provider quota updates at their consumers.
-	OpenAI, KimiZhipuDeepSeek, OAuthLike, QuotaEligible, HasQuotaLimit bool
+	// OpenAI, OAuthLike, QuotaEligible, and HasQuotaLimit retain independent
+	// classification and quota inputs for tier exceptions and provider usage updates.
+	// OpenAI identifies the platform; OAuthLike identifies its credential lifecycle.
+	// QuotaEligible identifies API-key/Bedrock usage; HasQuotaLimit records configured limits.
+	OpenAI, OAuthLike, QuotaEligible, HasQuotaLimit bool
+	// RequiresExplicitClaudePricing prevents compatible aliases from inheriting
+	// ordinary Claude catalogue prices unless the price configuration permits them.
+	RequiresExplicitClaudePricing bool
+	// ResetForbiddenCounterOnSuccess clears accumulated forbidden evidence after
+	// a result is accepted, independently of the model's pricing policy.
+	ResetForbiddenCounterOnSuccess bool
 	// CredentialProviderID names a shadow's credential parent. OpenAI tier and
 	// free-Fast eligibility use that parent; usage attribution keeps this provider ID.
 	CredentialProviderID *int64

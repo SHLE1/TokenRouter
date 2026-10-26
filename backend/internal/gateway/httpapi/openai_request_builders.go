@@ -38,7 +38,7 @@ func (s *OpenAIRequests) Target(c *gin.Context, a *gatewayprovider.ExecutionProv
 			// Responses builder before an operation protocol is attached.
 			// Preserve its Responses slot selection while BaseURL owns
 			// platform-specific address resolution.
-			if target.UsesKimiOrDeepSeekResponses() {
+			if target.UsesStatelessResponses() {
 				target.Protocol = capability.ProtocolOpenAIResponses
 			}
 			return target.BaseURL()
@@ -107,7 +107,7 @@ func (s *OpenAIRequests) Build(ctx context.Context, c *gin.Context, provider *ga
 		return nil, err
 	}
 	return forward.BuildResponsesRequest(ctx, body, promptCacheKey, s.Target(c, provider, false), func(path string) { SetActualOpenAIUpstreamEndpoint(c, path) }, func(b []byte) []byte {
-		return forward.NormalizeStatelessResponsesBody(provider != nil && gatewayprovider.ExecutionProtocolTarget(provider).UsesKimiOrDeepSeekResponses(), b)
+		return forward.NormalizeStatelessResponsesBody(provider != nil && gatewayprovider.ExecutionProtocolTarget(provider).UsesStatelessResponses(), b)
 	}, func(target string) openai.ResponsesRequestOptions {
 		return s.ResponseOptions(ctx, c, provider, token, target, isCodexCLI, routerMatch...)
 	})
@@ -132,7 +132,7 @@ func (s *OpenAIRequests) BuildPassthrough(
 		return nil, err
 	}
 	return forward.BuildPassthroughRequest(ctx, body, s.Target(c, provider, true), func(b []byte) []byte {
-		return forward.NormalizeStatelessResponsesBody(provider != nil && gatewayprovider.ExecutionProtocolTarget(provider).UsesKimiOrDeepSeekResponses(), b)
+		return forward.NormalizeStatelessResponsesBody(provider != nil && gatewayprovider.ExecutionProtocolTarget(provider).UsesStatelessResponses(), b)
 	}, func(target string) openai.PassthroughRequestOptions {
 		options := s.ResponseOptions(ctx, c, provider, token, target, false, routerMatch...)
 		// Passthrough can be built without inbound headers; a nil

@@ -133,7 +133,7 @@ func TestCompatibleClaudeReferencePricingAdmissionAndCompletion(t *testing.T) {
 			recorder := completion.NewRecorder(completion.Dependencies{Calculator: calculator, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
 			key := &completion.KeySnapshot{GroupID: &gid, Group: &completion.GroupSnapshot{ID: gid}}
 			candidates := modelidentity.UsageCandidates(alias, target)
-			filtered := recorder.FilterCompatibleClaudeBillingCandidates(t.Context(), &completion.ProviderSnapshot{KimiZhipuDeepSeek: true}, key, candidates)
+			filtered := recorder.FilterCompatibleClaudeBillingCandidates(t.Context(), &completion.ProviderSnapshot{RequiresExplicitClaudePricing: true}, key, candidates)
 			effort := "max"
 			result := &completion.Result{Model: alias, UpstreamModel: target, ReasoningEffort: &effort}
 			if !tc.kept {
@@ -178,7 +178,7 @@ func TestCompatibleClaudeReferencesKeepCatalogMediaPrices(t *testing.T) {
 			resolved := resolver.Resolve(t.Context(), billing.PricingInput{Model: alias, GroupID: &gid})
 			require.False(t, resolved.HasConfiguredPricing())
 			require.True(t, resolved.IsUnpriced())
-			filtered := recorder.FilterCompatibleClaudeBillingCandidates(t.Context(), &completion.ProviderSnapshot{KimiZhipuDeepSeek: true}, key, []string{alias})
+			filtered := recorder.FilterCompatibleClaudeBillingCandidates(t.Context(), &completion.ProviderSnapshot{RequiresExplicitClaudePricing: true}, key, []string{alias})
 			require.Equal(t, []string{alias}, filtered)
 			cost, err := recorder.CalculateOpenAIRecordUsageCostAt(t.Context(), &tc.result, key, filtered, 1, 1, 1, 1, pricing.UsageTokens{}, "", time.Time{})
 			require.NoError(t, err)

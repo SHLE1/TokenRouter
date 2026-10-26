@@ -137,9 +137,10 @@ func UpstreamUsageBaseURL(value *provider.Record) string {
 	if value == nil {
 		return ""
 	}
-	switch value.Platform {
-	case capability.PlatformOpenAI, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek:
+	if value.IsOpenAI() || value.HasProtocolEndpointDefaults() {
 		return (provider.ProtocolTarget{Record: value}).GetOpenAIBaseURL()
+	}
+	switch value.Platform {
 	case capability.PlatformAnthropic:
 		return value.GetBaseURL()
 	case capability.PlatformGrok:

@@ -142,7 +142,7 @@ func (p *openAIMessagesExecutionAdapter) Prepare(ctx context.Context) (openaiexe
 	route := openaiexecution.DispatchResponses
 	if gatewayprovider.ExecutionProtocolTarget(provider).IsAnthropicProtocol() || gatewayprovider.ExecutionProtocolTarget(provider).IsAdaptiveAPIProtocol() {
 		route = openaiexecution.DispatchAnthropic
-	} else if gatewayprovider.ExecutionModelPolicy(provider).RawChat() || (!provider.View().IsKimiZhipuOrDeepSeek() && resolveOpenAITextProtocolForAttempt(p.c, provider, providercore.TextProtocolResponses) == providercore.TextProtocolChatCompletions) {
+	} else if gatewayprovider.ExecutionModelPolicy(provider).RawChat() || (!provider.View().HasProtocolEndpointDefaults() && resolveOpenAITextProtocolForAttempt(p.c, provider, providercore.TextProtocolResponses) == providercore.TextProtocolChatCompletions) {
 		route = openaiexecution.DispatchRawChat
 	}
 	return profile, route, nil

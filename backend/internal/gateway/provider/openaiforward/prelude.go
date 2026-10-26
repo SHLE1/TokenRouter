@@ -59,12 +59,13 @@ type Profile struct {
 	// OAuthLike includes compatible credential types; APIKey identifies API Key
 	// credentials.
 	OpenAI, OAuth, OAuthLike, APIKey bool
-	// Grok identifies the xAI platform; DeepSeek identifies its platform;
-	// KimiOrDeepSeekResponses selects Kimi and DeepSeek Responses policy;
+	// Grok identifies the xAI platform; EncodeResponsesClientTools selects native
+	// client-tool envelopes;
+	// StatelessResponses selects removal of stored Responses continuation;
 	// Anthropic selects Anthropic conversion; RawChat selects raw Chat
 	// forwarding; ResolvedChat identifies the resolved Chat route; Passthrough
 	// enables body passthrough.
-	Grok, DeepSeek, KimiOrDeepSeekResponses, Anthropic, RawChat, ResolvedChat, Passthrough bool
+	Grok, EncodeResponsesClientTools, StatelessResponses, Anthropic, RawChat, ResolvedChat, Passthrough bool
 }
 
 // Rejection describes the client response and diagnostic markers for local denial.
@@ -325,7 +326,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 	// Native DeepSeek API Key Responses lowers client-tool shapes after namespace
 	// preparation, allowing the response adapter to restore those tools for the
 	// caller.
-	if profile.DeepSeek && profile.KimiOrDeepSeekResponses && profile.APIKey && !value.Compact && p.NeedsClientTools(body) {
+	if profile.EncodeResponsesClientTools && profile.APIKey && !value.Compact && p.NeedsClientTools(body) {
 		body, err = p.AdaptClientTools(body)
 		if err != nil {
 			return nil, fmt.Errorf("adapt DeepSeek Responses client tools: %w", err)

@@ -290,7 +290,7 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 	// unified set, so saved modern fields cannot override an older client's
 	// requested protocol change.
 	ApplyLegacyProtocolPatch(provider, input.Credentials, input.Extra)
-	if err := NormalizeKimiZhipuDeepSeekCredentials(provider, false); err != nil {
+	if err := NormalizeTextEndpointCredentials(provider, false); err != nil {
 		return nil, err
 	}
 	if err := NormalizeOpenAIAPIKeyConfiguration(provider); err != nil {
@@ -680,7 +680,7 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 				prospective.Credentials = make(map[string]any, len(input.Credentials))
 			}
 			maps.Copy(prospective.Credentials, input.Credentials)
-			if err := NormalizeKimiZhipuDeepSeekCredentials(&prospective, false); err != nil {
+			if err := NormalizeTextEndpointCredentials(&prospective, false); err != nil {
 				return nil, err
 			}
 			prospective.Extra = maps.Clone(provider.Extra)

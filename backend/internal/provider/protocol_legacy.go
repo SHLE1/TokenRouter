@@ -39,7 +39,7 @@ func (r *Record) LegacyUpstreamProtocols(legacyMode string) []capability.Protoco
 	// Fixed Kimi, Zhipu, and DeepSeek legacy variants declare one text
 	// protocol, while adaptive variants enumerate platform options. Save
 	// validation separately rejects unsupported fixed choices.
-	if r.IsKimiZhipuOrDeepSeek() {
+	if r.HasProtocolEndpointDefaults() {
 		switch legacyMode {
 		case APIProtocolAdaptive:
 			return options
@@ -193,7 +193,7 @@ func MigrateLegacyProtocolCredentials(provider *Record) {
 	// A fixed Kimi, Zhipu, and DeepSeek base belongs to its stored legacy
 	// variant. Copy it into a missing protocol slot before deleting
 	// api_protocol, preserving any explicitly present slot value.
-	if provider.IsKimiZhipuOrDeepSeek() {
+	if provider.HasProtocolEndpointDefaults() {
 		legacy := provider.GetCredential("api_protocol")
 		if legacy != "" && legacy != APIProtocolAdaptive {
 			// Saved endpoint slots use map[string]any. Other container types provide no

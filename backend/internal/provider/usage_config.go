@@ -263,28 +263,8 @@ func PlatformUsageAdapter(provider *Record) (name string, fixed bool) {
 		}
 		return "", true
 	}
-	if !provider.IsKimiZhipuOrDeepSeek() {
+	if !provider.rules().usage.fixedAdapter {
 		return "", false
 	}
-	if provider.IsCodingPlan() {
-		switch provider.Platform {
-		case PlatformKimi:
-			return UpstreamUsageAdapterKimiCoding, true
-		case PlatformZhipu:
-			return UpstreamUsageAdapterZhipuCoding, true
-		default:
-			return "", true
-		}
-	}
-	switch provider.Platform {
-	case PlatformKimi:
-		return UpstreamUsageAdapterKimiBalance, true
-	case PlatformDeepseek:
-		return UpstreamUsageAdapterDeepseekBalance, true
-	default:
-		// Zhipu PAYG and unsupported Kimi, Zhipu, and DeepSeek combinations
-		// have no registered balance format; the empty fixed adapter keeps a
-		// saved generic format from querying them.
-		return "", true
-	}
+	return provider.textMode().usageAdapter, true
 }

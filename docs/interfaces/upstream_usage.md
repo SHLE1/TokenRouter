@@ -76,7 +76,7 @@ Zhipu payg 没有公开的余额协议，DeepSeek coding 也不是合法的提�
 <a id="native_usage_adapters"></a>
 ## 原生查询与提供商编排
 
-Sub2API、New API、Zivv、derouter.ai 的固定查询和归一化在 `upstream/usageprovider`，OpenCode、Kimi、Zhipu、DeepSeek 分别在对应的 `upstream` 包里。平台和模式决定适配器的规则集中在 `provider.PlatformUsageAdapter`；`provider.EffectiveUpstreamUsageConfig` 用它解析有效配置，并为管理根地址独立的适配器填入默认根地址，执行和身份复核因此使用同一个目的地。`provider/provider.UpstreamUsageExecution` 持有唯一的适配器注册表，`NewUpstreamUsageHTTPExecution` 根据提供商记录构造凭据、代理、TLS 和 Header 的技术快照。app 只整理出站配置和共享的传输接口，直接绑定一个 `provider.UpstreamUsageService`。
+Sub2API、New API、Zivv、derouter.ai 的固定查询和归一化在 `upstream/usageprovider`，OpenCode、Kimi、Zhipu、DeepSeek 分别在对应的 `upstream` 包里。各平台的模式声明决定固定的用量适配器，`provider.PlatformUsageAdapter` 读取这份规则；`provider.EffectiveUpstreamUsageConfig` 用它解析有效配置，并为管理根地址独立的适配器填入默认根地址，执行和身份复核因此使用同一个目的地。`provider/provider.UpstreamUsageExecution` 持有唯一的适配器注册表，`NewUpstreamUsageHTTPExecution` 根据提供商记录构造凭据、代理、TLS 和 Header 的技术快照。app 只整理出站配置和共享的传输接口，直接绑定一个 `provider.UpstreamUsageService`。
 
 `upstream/usageview` 保存归一化后的值、错误和验证规则，provider 通过类型别名复用它们。`upstream/usagecontract.Request` 是一次查询的技术快照，其中的敏感字段不会出现在 JSON 或普通的字符串格式化结果里。共享的 `upstream/internal/usageclient` 负责固定的读取上限、请求头覆盖顺序、状态映射和关闭响应体。这些原生包不读取提供商仓储，也不写健康、调度或资金数据。
 
@@ -112,7 +112,7 @@ API Key 提供商（包括 Kimi、Zhipu、DeepSeek）的用量栏，按以下顺
 
 ## 国产供应商周期监控
 
-监控由 `provider.UsageMonitor` 实现，启动配置对应 `GatewayUsageMonitorConfig`。部署键 `gateway.cn_providers`、快照键 `extra.cn_usage_monitor_snapshot`、共享锁键和停调原因前缀保留既有格式，已有配置、快照和多实例协调继续使用这些键。
+监控由 `provider.UsageMonitor` 实现，候选平台从各自声明的监控资格中枚举，官方域名也由对应平台声明。当前启用资格的平台为 Kimi、Zhipu 和 DeepSeek；每条记录仍需通过类型、状态及查询配置检查。启动配置对应 `GatewayUsageMonitorConfig`。部署键 `gateway.cn_providers`、快照键 `extra.cn_usage_monitor_snapshot`、共享锁键和停调原因前缀保留既有格式，已有配置、快照和多实例协调继续使用这些键。
 
 `gateway.cn_providers.monitor_enabled` 默认是 `false`。开启后，`provider.UsageMonitor` 只扫描满足以下条件的 Kimi、Zhipu、DeepSeek 提供商：active、`type=apikey`、没有关闭用量查询、有固定的适配器。
 

@@ -163,12 +163,17 @@ func NativeProtocolOptions(platform, providerType, authMode string) []ProtocolID
 				selected = append(selected, ProtocolLive)
 			}
 		}
-	case PlatformKimi, PlatformDeepseek, PlatformZhipu:
+	case PlatformKimi:
+		if providerType == ProviderTypeAPIKey {
+			selected = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses}
+		}
+	case PlatformDeepseek:
+		if providerType == ProviderTypeAPIKey {
+			selected = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses}
+		}
+	case PlatformZhipu:
 		if providerType == ProviderTypeAPIKey {
 			selected = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIChatCompletions}
-			if platform != PlatformZhipu {
-				selected = append(selected, ProtocolOpenAIResponses)
-			}
 		}
 	case PlatformGemini:
 		switch providerType {
@@ -218,7 +223,9 @@ func ProtocolFallbackTargets(platform string, source ProtocolID) []ProtocolID {
 			targets = []ProtocolID{ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}
 		case PlatformOpenCode:
 			targets = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolGeminiGenerateContent}
-		case PlatformKimi, PlatformDeepseek:
+		case PlatformKimi:
+			targets = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}
+		case PlatformDeepseek:
 			targets = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}
 		case PlatformZhipu:
 			targets = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIChatCompletions}

@@ -25,11 +25,11 @@ type ChatProfile struct {
 	MessagesProfile // selected provider capability snapshot
 	// resolved upstream protocol identifier
 	Protocol protocol.ProtocolID
-	// Adaptive enables shape-sensitive dispatch;
-	// KimiOrDeepSeekResponsesSupported permits Responses-shaped Kimi and
-	// DeepSeek input; KimiZhipuDeepSeek identifies a Kimi, Zhipu, or DeepSeek
-	// platform; OpenAIAPIKey identifies an OpenAI API Key target.
-	Adaptive, KimiOrDeepSeekResponsesSupported, KimiZhipuDeepSeek, OpenAIAPIKey bool
+	// Adaptive selects request-shape dispatch; NativeResponsesSupported permits
+	// Responses-shaped input without Chat conversion. ProtocolSlotDefaults keeps
+	// endpoint selection with configured slots instead of the generic Chat default.
+	// OpenAIAPIKey identifies the OpenAI credential path used for cache isolation.
+	Adaptive, NativeResponsesSupported, ProtocolSlotDefaults, OpenAIAPIKey bool
 }
 
 // ChatPorts supplies request preparation, routing, and Responses-to-Chat output for one attempt.

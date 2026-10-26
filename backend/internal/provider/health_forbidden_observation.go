@@ -34,9 +34,9 @@ type ForbiddenObservation struct {
 	// stable until the synchronous health call finishes formatting the selected
 	// message.
 	Body []byte
-	// HTML supplies handleOpenAI403's provider-penalty exemption.
+	// HTML supplies handleCountedForbidden's provider-penalty exemption.
 	// ApplyForbiddenObservation considers Antigravity and Kimi concurrency
-	// before reaching that OpenAI/Kimi, Zhipu, and DeepSeek path.
+	// before applying a platform's counted-forbidden policy.
 	HTML bool
 	// Kind and ValidationURL determine Antigravity's account diagnostic together.
 	// A validation classification can append its URL; violation and unrecognized
@@ -88,8 +88,8 @@ func buildForbiddenErrorMessage(prefix string, upstreamMsg string, responseBody 
 // data. Antigravity account handling runs first; Kimi concurrency selects its
 // temporary command before other Kimi, Zhipu, and DeepSeek denial policy.
 //
-// OpenAI and remaining Usage observations reach handleOpenAI403, where HTML can
-// return false and non-HTML responses enter administrator cooldown/threshold
+// Platforms with counted-forbidden policy reach handleCountedForbidden, where
+// HTML can return false and non-HTML responses enter administrator cooldown/threshold
 // handling. Other platforms receive an account-error diagnostic. Each true
 // result denotes selected response handling even when the delegated health
 // write fails, while the HTML false result lets the caller retain its separate
@@ -104,8 +104,8 @@ func (s *HealthService) ApplyForbiddenObservation(ctx context.Context, provider 
 		s.ApplyKimiConcurrencyLimit(ctx, provider, observation.ConcurrencyReason)
 		return true
 	}
-	if provider.Platform == capability.PlatformOpenAI || provider.IsKimiZhipuOrDeepSeek() {
-		return s.handleOpenAI403(ctx, provider, observation)
+	if provider.UsesCountedForbiddenPolicy() {
+		return s.handleCountedForbidden(ctx, provider, observation)
 	}
 	msg := buildForbiddenErrorMessage(
 		"Access forbidden (403):",
@@ -117,11 +117,11 @@ func (s *HealthService) ApplyForbiddenObservation(ctx context.Context, provider 
 	return true
 }
 
-// handleOpenAI403 applies the OpenAI/Kimi, Zhipu, and DeepSeek HTML exemption
-// before administrator 403 policy. HTML observations are logged and return
+// handleCountedForbidden applies the HTML exemption before administrator
+// cooldown and threshold rules. HTML observations are logged and return
 // false; other observations build a diagnostic and delegate their handled
 // result to ApplyForbidden.
-func (s *HealthService) handleOpenAI403(ctx context.Context, provider *Record, observation ForbiddenObservation) (shouldDisable bool) {
+func (s *HealthService) handleCountedForbidden(ctx context.Context, provider *Record, observation ForbiddenObservation) (shouldDisable bool) {
 	// The HTML exemption skips both shared 403 counting and provider writes. Keep
 	// that omission local to health handling while the caller retains its own
 	// response retry decision.

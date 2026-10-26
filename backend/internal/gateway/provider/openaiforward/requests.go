@@ -7,7 +7,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
@@ -92,10 +92,7 @@ func BuildPassthroughRequest(ctx context.Context, body []byte, target RequestTar
 // base URL. DeepSeek uses an unversioned suffix; the endpoint joiner handles a
 // version already present in the base.
 func ResponsesEndpoint(platform, base string) string {
-	if platform == capability.PlatformDeepseek {
-		return httpclient.BuildOpenAIEndpointURL(base, "/responses")
-	}
-	return httpclient.BuildOpenAIEndpointURL(base, "/v1/responses")
+	return httpclient.BuildOpenAIEndpointURL(base, provider.ResponsesOperationPath(platform))
 }
 
 // NormalizeStatelessResponsesBody attempts stateless preparation for Kimi and

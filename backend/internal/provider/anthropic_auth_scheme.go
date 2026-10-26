@@ -29,7 +29,7 @@ func (r *Record) GetAnthropicAPIKeyAuthScheme() string {
 	if r == nil || r.Type != capability.ProviderTypeAPIKey {
 		return AnthropicAPIKeyAuthSchemeXAPIKey
 	}
-	if r.Platform != capability.PlatformAnthropic && !r.IsKimiZhipuOrDeepSeek() {
+	if !r.rules().messagesAuthOverride {
 		return AnthropicAPIKeyAuthSchemeXAPIKey
 	}
 

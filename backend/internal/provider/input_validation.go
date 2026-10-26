@@ -34,21 +34,23 @@ func NormalizeProviderConcurrency(platform, providerType string, concurrency int
 	return concurrency
 }
 
-// NormalizeKimiZhipuDeepSeekCredentials validates API Key type, mode, and
-// legacy protocol for Kimi, Zhipu, and DeepSeek providers. Nil and records from
-// other platforms are skipped. Absent, non-string, or blank mode and protocol
-// values are interpreted as payg and chat_completions. Creation stores an
-// interpreted mode default regardless of unified protocol presence. An
-// interpreted legacy protocol default is stored only when that unified key is
-// absent.
+// NormalizeTextEndpointCredentials validates declared text endpoint modes and
+// legacy protocol selections. Nil records and platforms without declarations
+// are skipped. Creation stores missing mode defaults and stores a legacy
+// protocol default only when the unified selection key is absent; editing
+// validates missing defaults without persisting them. An absent credentials
+// map is initialized for both operations.
 //
-// The credentials map is initialized when absent. Editing leaves missing
-// default keys absent while still checking their interpreted values. Responses
-// uses the provider's native platform capability check, and DeepSeek rejects
-// coding mode before the record can be accepted.
+// The selected platform owns its recognized modes and mode rejection
+// diagnostics. Protocol validation precedes a mode-specific rejection,
+// preserving the error returned for records with multiple invalid settings.
+// Responses admission uses the native API-key capability independently of
+// continuation policy. Existing public error codes remain stable for clients
+// consuming validation failures.
+//
 // @project-doc docs/interfaces/upstream_provider_matrix.md#cn_provider_protocols
-func NormalizeKimiZhipuDeepSeekCredentials(provider *Record, isCreate bool) error {
-	if provider == nil || !IsKimiZhipuOrDeepSeek(provider.Platform) {
+func NormalizeTextEndpointCredentials(provider *Record, isCreate bool) error {
+	if provider == nil || !provider.HasProtocolEndpointDefaults() {
 		return nil
 	}
 	if provider.Type != ProviderTypeAPIKey {
@@ -60,12 +62,13 @@ func NormalizeKimiZhipuDeepSeekCredentials(provider *Record, isCreate bool) erro
 	mode, _ := provider.Credentials["provider_mode"].(string)
 	mode = strings.TrimSpace(mode)
 	if mode == "" {
-		mode = ProviderModePayG
+		mode = provider.rules().text.defaultMode
 		if isCreate {
 			provider.Credentials["provider_mode"] = mode
 		}
 	}
-	if mode != ProviderModePayG && mode != ProviderModeCoding {
+	modeRules, knownMode := provider.rules().text.modes[mode]
+	if !knownMode {
 		return infraerrors.BadRequest("CN_PROVIDER_PROVIDER_MODE_INVALID", "provider_mode must be payg or coding")
 	}
 	// Interpret historical missing protocol keys for validation. Creation persists
@@ -84,14 +87,14 @@ func NormalizeKimiZhipuDeepSeekCredentials(provider *Record, isCreate bool) erro
 		// Forwarding uses the same platform Responses capability. Reject a
 		// legacy selection that cannot be served before it is saved as provider
 		// configuration.
-		if !provider.SupportsKimiOrDeepSeekResponses() {
+		if !provider.SupportsAPIKeyResponses() {
 			return infraerrors.BadRequest("CN_PROVIDER_PROTOCOL_INVALID", "only DeepSeek and Kimi support Responses protocol")
 		}
 	default:
 		return infraerrors.BadRequest("CN_PROVIDER_PROTOCOL_INVALID", "api_protocol is unsupported")
 	}
-	if mode == ProviderModeCoding && provider.Platform == PlatformDeepseek {
-		return infraerrors.BadRequest("CN_PROVIDER_MODE_INVALID", "DeepSeek does not support coding plan mode")
+	if modeRules.rejectionCode != "" {
+		return infraerrors.BadRequest(modeRules.rejectionCode, modeRules.rejectionMessage)
 	}
 	return nil
 }

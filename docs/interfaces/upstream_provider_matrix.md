@@ -40,7 +40,13 @@
 API Key 提供商可以在管理员列表里配置并手动查询上游用量。普通的兼容上游默认使用 Sub2API 适配器，New API、Zivv 和 derouter.ai Account Key 需要手动选择；Kimi、Zhipu、DeepSeek 按平台和 `provider_mode` 自动选择固定的只读适配器，Zhipu payg 没有公开的余额协议，所以不支持查询。手动查询的协议错误只影响展示，转发资格不受影响。API Key 行同时展示两类数据：TokenRouter 本地的今日统计和本地配额，以及上游的余额和周期限额。只有手动开启的上游用量周期监控，才会把同样的查询结果写进统一快照，并据此对这个身份临时停调，详见 [API Key 上游用量查询](upstream_usage.md)。
 
 <a id="cn_provider_protocols"></a>
-### 国产平台提供商协议
+### Kimi、Zhipu 与 DeepSeek 平台规则
+
+平台规则分别由 `provider/kimi_rules.go`、`provider/zhipu_rules.go` 和 `provider/deepseek_rules.go` 声明，包括可读模式、默认端点、用量适配器、监控域名、余额冷却、403 计数和兼容别名的计费要求。`provider/platform_rules.go` 提供各项策略的查询方法，网关、健康服务和计费完成器分别读取自己需要的值。三个平台在协议能力目录中各有独立条目。
+
+协议能力、地址选择和 Responses 状态策略分别判断。支持原生 Responses 的平台可以保留或去掉续接状态；协议地址槽和 DeepSeek 的 `/responses` 路径由端点规则选择。DeepSeek 的客户端工具转换由自己的操作策略启用。模型别名是否要求显式 Claude 价格、成功后是否清除 403 计数，作为两个独立字段进入完成快照。
+
+模式读取保留历史配置的解释方式，保存时再执行平台的校验规则。例如 DeepSeek 的历史 `coding` 值仍能读取原有端点，但没有用量适配器，重新保存时返回既有错误码。配置键、监控快照键和错误码保留原有格式。
 
 Kimi、Zhipu 和 DeepSeek 只接受 `type=apikey`。提供商模式和原生协议集合互相独立：DeepSeek 只有 `payg`，Kimi 和 Zhipu 支持 `payg` 和 `coding`。DeepSeek 和 Kimi 的原生集合包括 Messages、Responses、Chat；Zhipu 只有 Messages 和 Chat。原生集合统一保存在 `credentials.upstream_protocols`，可以全部关闭；非法组合被拒绝。
 

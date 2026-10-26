@@ -69,7 +69,7 @@ func (s *OpenAIWebSocketExecutor) buildOpenAIResponsesWSURL(provider *gatewaypro
 		}
 	case capability.ProviderTypeAPIKey:
 		baseURL := gatewayprovider.ExecutionProtocolTarget(provider).BaseURL()
-		if _, unified := provider.Record.Credentials[providercore.UpstreamProtocolsKey]; gatewayprovider.ExecutionProtocolTarget(provider).UsesKimiOrDeepSeekResponses() && (unified || gatewayprovider.ExecutionProtocolTarget(provider).IsAdaptiveAPIProtocol()) {
+		if _, unified := provider.Record.Credentials[providercore.UpstreamProtocolsKey]; gatewayprovider.ExecutionProtocolTarget(provider).UsesResponsesEndpointSlots() && (unified || gatewayprovider.ExecutionProtocolTarget(provider).IsAdaptiveAPIProtocol()) {
 			// Unified or adaptive Kimi and DeepSeek Responses configuration
 			// chooses its protocol-specific base URL before validation,
 			// matching the endpoint used by Responses HTTP.

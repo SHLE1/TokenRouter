@@ -81,7 +81,7 @@ func (s *HealthService) ApplyPaymentRequired(ctx context.Context, provider *Reco
 	// Insufficient balance on supported Kimi, Zhipu, and DeepSeek platforms is
 	// recoverable after a top-up. Use a temporary pause so cooldown or recovery
 	// checks can restore scheduling.
-	if provider.IsKimiZhipuOrDeepSeek() {
+	if provider.UsesTemporaryBalanceCooldown() {
 		s.ApplyInsufficientBalance(ctx, provider, observation.Message)
 		return true
 	}

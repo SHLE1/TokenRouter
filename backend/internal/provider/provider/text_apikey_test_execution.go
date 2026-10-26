@@ -13,10 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/deepseek"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/kimi"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/zhipu"
 )
 
 // text_apikey_test_execution.go constructs and executes fixed-protocol Kimi,
@@ -27,43 +24,33 @@ import (
 // matching stream parsing, with allowed header overrides applied after
 // authentication.
 
-// defaultTextAPIKeyTestModel returns the platform's declared connection-test
-// model for Kimi, Zhipu, or DeepSeek. Other platforms return an empty string,
-// leaving Execute to report that no test model is available.
-func defaultTextAPIKeyTestModel(platform string) string {
-	switch platform {
-	case capability.PlatformKimi:
-		return kimi.DefaultTestModel
-	case capability.PlatformZhipu:
-		return zhipu.DefaultTestModel
-	case capability.PlatformDeepseek:
-		return deepseek.DefaultTestModel
-	default:
-		return ""
-	}
-}
-
-// Execute runs the record's fixed native-protocol probe and emits test events.
-// It requires an API-key record and nonblank key, applies a platform default
-// and one model mapping, and closes the response after protocol-specific
-// parsing. A routed test uses its resolved protocol and checks that route
-// against group attributes before preparing the upstream request.
+// Execute runs a fixed native-protocol probe for an API-key record. The
+// platform target supplies defaultModel for a blank request model; one
+// provider mapping follows that selection. Missing keys or models fail before
+// an upstream request.
+//
+// The selected operation resolves its own endpoint and sampling attributes.
+// Messages, Responses, and Chat use their existing payloads and stream
+// readers, while platform continuation policy controls Responses storage
+// fields. The executor owns response-body cleanup and preserves the original
+// run's cancellation and event sink.
 func (s *NativeProtocolTest) Execute(
 	c *TestRun,
 	value *providercore.Record,
 	modelID string,
 	prompt string,
+	defaultModel string,
 ) error {
 	if value == nil || value.Type != capability.ProviderTypeAPIKey {
 		return (TestStreamOutput{}).Error(c, "Text protocol tests require an API Key provider")
 	}
-	apiKey := strings.TrimSpace(value.GetKimiZhipuDeepSeekAPIKey())
+	apiKey := strings.TrimSpace(value.GetCredential("api_key"))
 	if apiKey == "" {
 		return (TestStreamOutput{}).Error(c, "No API key available")
 	}
 	testModelID := strings.TrimSpace(modelID)
 	if testModelID == "" {
-		testModelID = defaultTextAPIKeyTestModel(value.Platform)
+		testModelID = defaultModel
 	}
 	testModelID = mappedTestModel(value, testModelID)
 	if testModelID == "" {
@@ -180,8 +167,9 @@ func (s *NativeProtocolTest) executeChat(
 	value *providercore.Record,
 	modelID string,
 	prompt string,
+	defaultModel string,
 ) error {
-	return s.Execute(c, value, modelID, prompt)
+	return s.Execute(c, value, modelID, prompt, defaultModel)
 }
 
 // responsesProbeURL returns the platform-specific Responses endpoint under the
@@ -189,8 +177,5 @@ func (s *NativeProtocolTest) executeChat(
 // platforms use v1; endpoint construction retains supported version and path
 // prefixes.
 func responsesProbeURL(platform, base string) string {
-	if platform == capability.PlatformDeepseek {
-		return httpclient.BuildOpenAIEndpointURL(base, "/responses")
-	}
-	return httpclient.BuildOpenAIEndpointURL(base, "/v1/responses")
+	return httpclient.BuildOpenAIEndpointURL(base, providercore.ResponsesOperationPath(platform))
 }

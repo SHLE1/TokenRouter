@@ -263,7 +263,7 @@ func ApplyConfigurationChange(current, desired *Record, change ConfigurationChan
 		// set. Keep the locked seed when present so editing routes cannot reset
 		// the provider identity used by outgoing fingerprinted requests.
 		ApplyLegacyProtocolPatch(out, change.CredentialInput, change.ProtocolExtra)
-		if err := NormalizeKimiZhipuDeepSeekCredentials(out, false); err != nil {
+		if err := NormalizeTextEndpointCredentials(out, false); err != nil {
 			return nil, err
 		}
 		if err := NormalizeOpenAIAPIKeyConfiguration(out); err != nil {

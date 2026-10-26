@@ -45,22 +45,22 @@ type openAIForwardPreludeAdapter struct {
 // values used by prelude dispatch.
 func openAIForwardProfile(provider *gatewayprovider.ExecutionProvider) forward.Profile {
 	return forward.Profile{
-		Platform:                provider.Record.Platform,
-		Name:                    provider.Record.Name,
-		Type:                    provider.Record.Type,
-		HTTPContinuation:        gatewayprovider.ExecutionProtocolTarget(provider).SupportsHTTPResponsesContinuation(),
-		UsesCodex:               provider.View().UsesOpenAICodexProtocol(),
-		OpenAI:                  provider.View().IsOpenAI(),
-		OAuth:                   provider.View().IsOAuth(),
-		OAuthLike:               provider.View().IsOpenAIOAuthLike(),
-		APIKey:                  provider.Record.Type == capability.ProviderTypeAPIKey,
-		Grok:                    provider.Record.Platform == capability.PlatformGrok,
-		DeepSeek:                provider.Record.Platform == capability.PlatformDeepseek,
-		KimiOrDeepSeekResponses: gatewayprovider.ExecutionProtocolTarget(provider).UsesKimiOrDeepSeekResponses(),
-		Anthropic:               gatewayprovider.ExecutionProtocolTarget(provider).IsAnthropicProtocol(),
-		RawChat:                 gatewayprovider.ExecutionModelPolicy(provider).RawChat(),
-		ResolvedChat:            provider.Route.Protocol() == protocol.ProtocolOpenAIChatCompletions,
-		Passthrough:             provider.View().IsOpenAIPassthroughEnabled(),
+		Platform:                   provider.Record.Platform,
+		Name:                       provider.Record.Name,
+		Type:                       provider.Record.Type,
+		HTTPContinuation:           gatewayprovider.ExecutionProtocolTarget(provider).SupportsHTTPResponsesContinuation(),
+		UsesCodex:                  provider.View().UsesOpenAICodexProtocol(),
+		OpenAI:                     provider.View().IsOpenAI(),
+		OAuth:                      provider.View().IsOAuth(),
+		OAuthLike:                  provider.View().IsOpenAIOAuthLike(),
+		APIKey:                     provider.Record.Type == capability.ProviderTypeAPIKey,
+		Grok:                       provider.Record.Platform == capability.PlatformGrok,
+		EncodeResponsesClientTools: gatewayprovider.ExecutionProtocolTarget(provider).RequiresResponsesClientToolEncoding(),
+		StatelessResponses:         gatewayprovider.ExecutionProtocolTarget(provider).UsesStatelessResponses(),
+		Anthropic:                  gatewayprovider.ExecutionProtocolTarget(provider).IsAnthropicProtocol(),
+		RawChat:                    gatewayprovider.ExecutionModelPolicy(provider).RawChat(),
+		ResolvedChat:               provider.Route.Protocol() == protocol.ProtocolOpenAIChatCompletions,
+		Passthrough:                provider.View().IsOpenAIPassthroughEnabled(),
 	}
 }
 

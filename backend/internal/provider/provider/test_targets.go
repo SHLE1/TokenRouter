@@ -6,6 +6,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/deepseek"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/kimi"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/zhipu"
 )
 
 // test_targets.go loads provider records and selects the platform executor for
@@ -68,8 +71,12 @@ func (t *TestTargets) LoadTestTarget(ctx context.Context, request provider.TestR
 		return t.Grok.Target(value), nil
 	case provider.PlatformOpenAI:
 		return t.OpenAI.Target(value), nil
-	case provider.PlatformKimi, provider.PlatformZhipu, provider.PlatformDeepseek:
-		return t.Native.Target(value), nil
+	case provider.PlatformKimi:
+		return t.Native.Target(value, kimi.DefaultTestModel), nil
+	case provider.PlatformDeepseek:
+		return t.Native.Target(value, deepseek.DefaultTestModel), nil
+	case provider.PlatformZhipu:
+		return t.Native.Target(value, zhipu.DefaultTestModel), nil
 	case provider.PlatformAntigravity:
 		return t.Antigravity.Target(value), nil
 	default:

@@ -64,15 +64,16 @@ func (r TestProtocolRoute) SupportsProvider(value ProviderSnapshot, model string
 	if !ok || resolved.Protocol != r.UpstreamProtocol {
 		return false
 	}
+	if platformRuleRegistry[value.Platform].text != nil {
+		return r.UpstreamProtocol == capability.ProtocolAnthropicMessages ||
+			r.UpstreamProtocol == capability.ProtocolOpenAIResponses ||
+			r.UpstreamProtocol == capability.ProtocolOpenAIChatCompletions
+	}
 	switch value.Platform {
 	case PlatformOpenAI:
 		return r.UpstreamProtocol == capability.ProtocolOpenAIResponses ||
 			r.UpstreamProtocol == capability.ProtocolOpenAIChatCompletions ||
 			r.UpstreamProtocol == capability.ProtocolImagesGenerations
-	case PlatformKimi, PlatformZhipu, PlatformDeepseek:
-		return r.UpstreamProtocol == capability.ProtocolAnthropicMessages ||
-			r.UpstreamProtocol == capability.ProtocolOpenAIResponses ||
-			r.UpstreamProtocol == capability.ProtocolOpenAIChatCompletions
 	case PlatformAnthropic:
 		return r.UpstreamProtocol == capability.ProtocolAnthropicMessages
 	case PlatformGemini, PlatformAntigravity:

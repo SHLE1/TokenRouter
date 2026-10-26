@@ -175,12 +175,12 @@ func (p ModelPolicy) RawChat() bool {
 	if p.Record == nil || p.Record.Type != capability.ProviderTypeAPIKey {
 		return false
 	}
-	if p.Record.IsKimiZhipuOrDeepSeek() {
+	if p.Record.HasProtocolEndpointDefaults() {
 		switch p.protocolTarget().GetAPIProtocol() {
 		case provider.APIProtocolChatCompletions:
 			return true
 		case provider.APIProtocolAdaptive:
-			return !p.Record.SupportsKimiOrDeepSeekResponses()
+			return !p.Record.SupportsAPIKeyResponses()
 		default:
 			return false
 		}

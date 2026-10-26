@@ -9,6 +9,8 @@
 //     conditional persistence.
 //
 // Files by responsibility:
+//   - platform_rules.go, kimi_rules.go, zhipu_rules.go, and deepseek_rules.go:
+//     platform-owned endpoint, usage, health, and billing policies.
 //   - admin*.go, create*.go, management*.go: provider creation, editing,
 //     queries, and administration.
 //   - archive*.go, codex_import*.go, crs_*.go: import/export, credential

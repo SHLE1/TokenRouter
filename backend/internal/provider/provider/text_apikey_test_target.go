@@ -16,17 +16,19 @@ import (
 // textAPIKeyTestTarget retains Kimi, Zhipu, and DeepSeek probe dependencies and
 // the record selected for execution.
 type textAPIKeyTestTarget struct {
-	executor *NativeProtocolTest // shared Kimi/Zhipu/DeepSeek probe dependencies
+	defaultModel string              // platform-selected default test model
+	executor     *NativeProtocolTest // shared Kimi/Zhipu/DeepSeek probe dependencies
 	// record retains the provider's authentication and selected protocols. Keep it
 	// stable until the prepared probe and information reads finish.
 	record *provider.Record
 }
 
-// Target binds the selected record to this Kimi, Zhipu, and DeepSeek executor
-// and returns a prepared test handle. The handle retains the record, so callers
-// keep its credentials and protocol configuration stable during execution.
-func (s *NativeProtocolTest) Target(value *provider.Record) provider.TestTarget {
-	return textAPIKeyTestTarget{executor: s, record: value}
+// Target binds a provider record and its platform-selected default model to
+// the shared protocol executor. The returned handle borrows the record;
+// callers keep its credentials, protocol selection, and endpoint configuration
+// stable until execution finishes.
+func (s *NativeProtocolTest) Target(value *provider.Record, defaultModel string) provider.TestTarget {
+	return textAPIKeyTestTarget{executor: s, record: value, defaultModel: defaultModel}
 }
 
 // Information returns the Kimi, Zhipu, and DeepSeek record's routing snapshot
@@ -51,18 +53,18 @@ func (t textAPIKeyTestTarget) Execute(ctx context.Context, request provider.Prep
 	if request.ProtocolRoute.UpstreamProtocol != "" {
 		// Group routing already chose one enabled endpoint. Narrow adaptive execution
 		// to that endpoint so the record's other protocols cannot add requests.
-		return run.Result(t.executor.ExecuteAdaptive(run, t.record, request.Model, request.Prompt, request.ProtocolRoute.UpstreamProtocol))
+		return run.Result(t.executor.ExecuteAdaptive(run, t.record, request.Model, request.Prompt, t.defaultModel, request.ProtocolRoute.UpstreamProtocol))
 	}
 	switch request.Route {
 	case provider.TestRouteTextAPIKeyAdaptive:
 		// Adaptive preparation distinguishes an omitted protocol from a selected one.
 		// Pass that selection through so the executor can reject disabled protocols
 		// before any upstream request.
-		err = t.executor.ExecuteAdaptive(run, t.record, request.Model, request.Prompt, provider.TestProtocolID(request.Protocol))
+		err = t.executor.ExecuteAdaptive(run, t.record, request.Model, request.Prompt, t.defaultModel, provider.TestProtocolID(request.Protocol))
 	case provider.TestRouteTextAPIKeyResponses:
 		err = t.executor.Responses.Execute(run, t.record, request.Model, request.Prompt, request.Mode, request.TestType)
 	default:
-		err = t.executor.Execute(run, t.record, request.Model, request.Prompt)
+		err = t.executor.Execute(run, t.record, request.Model, request.Prompt, t.defaultModel)
 	}
 	return run.Result(err)
 }

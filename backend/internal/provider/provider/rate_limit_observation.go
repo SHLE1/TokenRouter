@@ -69,7 +69,7 @@ func (s *RateLimitObserver) Observe429(ctx context.Context, provider *providerco
 	}
 	// Kimi, Zhipu, and DeepSeek balance failures trigger temporary suspension; exhausted
 	// Coding Plan windows cool down until the snapshot reset. Other failures continue below.
-	if provider.IsKimiZhipuOrDeepSeek() {
+	if provider.UsesTemporaryBalanceCooldown() {
 		if s.observeAPIKeyQuota(ctx, provider, responseBody) {
 			return
 		}
@@ -202,7 +202,7 @@ func (s *RateLimitObserver) PersistCodexSnapshot(ctx context.Context, value *pro
 // Other records return false; insufficient-balance classification returns true
 // after requesting its health update.
 func (s *RateLimitObserver) observeAPIKeyQuota(ctx context.Context, value *providercore.Record, body []byte) bool {
-	if !value.IsKimiZhipuOrDeepSeek() {
+	if !value.UsesTemporaryBalanceCooldown() {
 		return false
 	}
 	if upstream.ResponseIndicatesInsufficientBalance(body) {

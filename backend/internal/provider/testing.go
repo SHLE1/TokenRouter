@@ -410,8 +410,7 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 	// validation; other platform targets receive their corresponding prepared
 	// family.
 	prepared.Mode = mode
-	switch info.Platform {
-	case PlatformKimi, PlatformZhipu, PlatformDeepseek:
+	if platformRuleRegistry[info.Platform].text != nil {
 		switch info.APIProtocol {
 		case APIProtocolAdaptive:
 			prepared.Route = TestRouteTextAPIKeyAdaptive
@@ -422,22 +421,25 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 		default:
 			prepared.Route = TestRouteTextAPIKeyMessages
 		}
-	case PlatformOpenAI:
-		prepared.Route = TestRouteOpenAI
-	case PlatformGemini:
-		prepared.Route = TestRouteGemini
-	case PlatformGrok:
-		prepared.Route = TestRouteGrok
-	case PlatformAntigravity:
-		prepared.Route = TestRouteAntigravity
-	case PlatformJev:
-		prepared.Route = TestRouteJev
-	case PlatformQoder:
-		prepared.Route = TestRouteQoder
-	case PlatformOpenCode:
-		prepared.Route = TestRouteOpenCode
-	default:
-		prepared.Route = TestRouteClaude
+	} else {
+		switch info.Platform {
+		case PlatformOpenAI:
+			prepared.Route = TestRouteOpenAI
+		case PlatformGemini:
+			prepared.Route = TestRouteGemini
+		case PlatformGrok:
+			prepared.Route = TestRouteGrok
+		case PlatformAntigravity:
+			prepared.Route = TestRouteAntigravity
+		case PlatformJev:
+			prepared.Route = TestRouteJev
+		case PlatformQoder:
+			prepared.Route = TestRouteQoder
+		case PlatformOpenCode:
+			prepared.Route = TestRouteOpenCode
+		default:
+			prepared.Route = TestRouteClaude
+		}
 	}
 	return target.Execute(ctx, prepared, sink)
 }
@@ -475,13 +477,17 @@ func TestProtocolID(protocol string) capability.ProtocolID {
 // eligibility; explicit images skip this check once their protocol spelling is
 // known.
 func testProtocolAllowed(info TestTargetInfo, native []capability.ProtocolID, protocol string) bool {
+	if platformRuleRegistry[info.Platform].text != nil {
+		selected := TestProtocolID(protocol)
+		return slices.Contains(info.EnabledProtocols, selected) && slices.Contains(native, selected)
+	}
 	switch info.Platform {
 	case PlatformOpenAI:
 		if info.Type == ProviderTypeAPIKey {
 			return protocol == APIProtocolResponses || protocol == APIProtocolChatCompletions
 		}
 		return protocol == APIProtocolResponses
-	case PlatformJev, PlatformOpenCode, PlatformKimi, PlatformZhipu, PlatformDeepseek:
+	case PlatformJev, PlatformOpenCode:
 		selected := TestProtocolID(protocol)
 		return slices.Contains(info.EnabledProtocols, selected) && slices.Contains(native, selected)
 	default:

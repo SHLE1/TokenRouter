@@ -96,12 +96,12 @@ func UpstreamUsageContextFingerprint(provider *Record, config UpstreamUsageQuery
 	return hex.EncodeToString(hash[:])
 }
 
-// UsageMonitorIdentityFingerprint returns the query identity for a supported
-// Kimi, Zhipu, and DeepSeek API Key provider. Invalid configuration or an
-// unavailable platform/mode adapter returns empty, leaving monitor consumers
-// without trusted snapshot identity.
+// UsageMonitorIdentityFingerprint hashes the query identity for a
+// monitoring-enabled API-key record. Invalid query configuration or an
+// unavailable adapter returns empty, leaving snapshot consumers without a
+// trusted identity for that configuration.
 func UsageMonitorIdentityFingerprint(provider *Record) string {
-	if provider == nil || !provider.IsKimiZhipuOrDeepSeek() || provider.Type != ProviderTypeAPIKey {
+	if provider == nil || !provider.SupportsUsageMonitoring() || provider.Type != ProviderTypeAPIKey {
 		return ""
 	}
 	queryConfig, err := EffectiveUpstreamUsageConfig(provider)

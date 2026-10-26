@@ -593,7 +593,7 @@ func (s *Recorder) FilterCompatibleClaudeBillingCandidates(
 	apiKey *KeySnapshot,
 	candidates []string,
 ) []string {
-	if provider == nil || !provider.KimiZhipuDeepSeek {
+	if provider == nil || !provider.RequiresExplicitClaudePricing {
 		return candidates
 	}
 	filtered := make([]string, 0, len(candidates))

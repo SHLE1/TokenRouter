@@ -126,7 +126,7 @@ func BalanceCooldownDuration(intervalMinutes int) time.Duration {
 // after that earlier deadline; nil means this snapshot supplies no future
 // deadline.
 func CodingPlanQuotaSnapshotReset(provider *Record, now time.Time) *time.Time {
-	if provider == nil || !provider.IsKimiZhipuOrDeepSeek() || !provider.IsCodingPlan() {
+	if provider == nil || !provider.SupportsUsageMonitoring() || !provider.IsCodingPlan() {
 		return nil
 	}
 	snapshot := ValidUsageMonitorSnapshot(provider)
@@ -159,7 +159,7 @@ func CodingPlanQuotaSnapshotReset(provider *Record, now time.Time) *time.Time {
 // already issued its block notification. Success records the rate-limit
 // deadline and logs the selected reset.
 func (s *HealthService) ApplyCodingPlanQuotaCooldown(ctx context.Context, provider *Record) bool {
-	if provider == nil || !provider.IsKimiZhipuOrDeepSeek() {
+	if provider == nil || !provider.SupportsUsageMonitoring() {
 		return false
 	}
 	// For Coding Plans, pause until the earliest future reset in the

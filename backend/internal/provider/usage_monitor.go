@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -303,13 +304,13 @@ func (s *UsageMonitor) RunOnce(parents ...context.Context) {
 	_ = group.Wait()
 }
 
-// monitorCandidates collects active API Key records with enabled supported
-// usage queries across Kimi, Zhipu, and DeepSeek. Cancellation returns the
-// records already collected, while a failed platform listing is logged and the
-// remaining platforms are still examined.
+// monitorCandidates loads active API-key records from platform-declared
+// monitoring sources. Unsupported or disabled queries are skipped.
+// Cancellation retains candidates already collected, while a failed platform
+// listing is logged and other declared platforms are still examined.
 func (s *UsageMonitor) monitorCandidates(ctx context.Context) []Record {
 	result := make([]Record, 0)
-	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek} {
+	for _, platform := range usageMonitorPlatforms() {
 		if ctx.Err() != nil {
 			return result
 		}
@@ -594,12 +595,12 @@ func UsageMonitorSnapshotFromExtra(extra map[string]any) *UsageMonitorSnapshot {
 	return &snapshot
 }
 
-// ValidUsageMonitorSnapshot returns a decoded snapshot whose version, adapter,
-// and query fingerprint match the current Kimi, Zhipu, and DeepSeek provider.
-// Nil, unsupported configuration, and stale identities return nil so consumers
-// cannot use an earlier identity's observation.
+// ValidUsageMonitorSnapshot reads a snapshot whose format version, adapter,
+// and query identity match a monitored platform. Nil records, unavailable
+// adapters, and stale identities return nil so consumers cannot apply
+// observations from an earlier configuration.
 func ValidUsageMonitorSnapshot(provider *Record) *UsageMonitorSnapshot {
-	if provider == nil || !provider.IsKimiZhipuOrDeepSeek() {
+	if provider == nil || !provider.SupportsUsageMonitoring() {
 		return nil
 	}
 	// A malformed query configuration supplies no trusted current identity,
@@ -621,22 +622,12 @@ func ValidUsageMonitorSnapshot(provider *Record) *UsageMonitorSnapshot {
 	return snapshot
 }
 
-// UsageMonitorOfficialHost reports whether a trimmed, case-folded host matches
-// a listed official Kimi, Zhipu, and DeepSeek platform endpoint. Unknown
-// platforms and unlisted hosts return false for MonitorHostPolicy's custom-host
-// admission checks.
+// UsageMonitorOfficialHost matches a host against the selected platform's
+// automatic-query allowlist. Matching trims whitespace and ignores case; an
+// undeclared platform or host returns false for custom-host admission checks.
 func UsageMonitorOfficialHost(platform, host string) bool {
 	host = strings.ToLower(strings.TrimSpace(host))
-	switch platform {
-	case PlatformKimi:
-		return host == "api.moonshot.cn" || host == "api.kimi.com"
-	case PlatformZhipu:
-		return host == "open.bigmodel.cn" || host == "api.z.ai"
-	case PlatformDeepseek:
-		return host == "api.deepseek.com"
-	default:
-		return false
-	}
+	return slices.Contains(platformRuleRegistry[platform].usage.officialHosts, host)
 }
 
 // usageMonitorFingerprint hashes the provider query context and its selected

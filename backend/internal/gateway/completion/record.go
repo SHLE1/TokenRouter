@@ -300,7 +300,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	if result == nil {
 		return errors.New("openai usage result is nil")
 	}
-	if s.health != nil && input.Provider != nil && (input.Provider.OpenAI || input.Provider.KimiZhipuDeepSeek) {
+	if s.health != nil && input.Provider != nil && input.Provider.ResetForbiddenCounterOnSuccess {
 		s.health.ResetOpenAI403Counter(ctx, input.Provider.ID)
 	}
 	apiKey, user, provider, subscription := s.keyWithBillingSettings(ctx, input.APIKey), input.User, input.Provider, input.Subscription

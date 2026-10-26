@@ -39,9 +39,9 @@ import (
 // events. SystemOne uses its buffered decision exchange instead and reports
 // response identity and usage validity.
 
-// NativeProtocolTest prepares fixed and adaptive native-protocol probes for
-// Kimi, Zhipu, and DeepSeek API-key records and owns the native exchange that
-// OpenCode probes share.
+// NativeProtocolTest holds protocol probe dependencies used by independently
+// registered platform targets. Those targets supply model defaults, selected
+// protocols, endpoint roots, and authentication before a shared exchange runs.
 type NativeProtocolTest struct {
 	// Attributes resolves the final model for routed group probes. A nil callback
 	// skips profile lookup, leaving declared output and sampling permissions unknown.
@@ -110,7 +110,7 @@ func (s *NativeProtocolTest) probePayload(run *TestRun, value *provider.Record, 
 	if err != nil {
 		return nil, err
 	}
-	if route.Protocol == protocol.ProtocolOpenAIResponses && (provider.ProtocolTarget{Record: value}).UsesKimiOrDeepSeekResponses() {
+	if route.Protocol == protocol.ProtocolOpenAIResponses && (provider.ProtocolTarget{Record: value}).UsesStatelessResponses() {
 		// Kimi and DeepSeek Responses use fresh stateless requests. Set store
 		// false and remove any continuation identifier before sending this
 		// probe through the platform endpoint; other platforms keep the

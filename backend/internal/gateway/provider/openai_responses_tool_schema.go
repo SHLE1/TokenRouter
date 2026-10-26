@@ -20,7 +20,7 @@ import (
 // paths. Other platform names return false, leaving their schema values for
 // that path's own handling.
 func ShouldRepairOpenAIResponsesNullToolSchemaType(platform string) bool {
-	return platform == capability.PlatformOpenAI || platform == capability.PlatformAnthropic || platform == capability.PlatformGrok || provider.IsKimiZhipuOrDeepSeek(platform)
+	return provider.SupportsToolSchemaRepair(platform)
 }
 
 // ShouldSanitizeOpenAIResponsesToolSchemaPatterns enables Responses

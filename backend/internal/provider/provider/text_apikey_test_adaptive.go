@@ -28,18 +28,17 @@ import (
 // sends stateless Kimi and DeepSeek Responses and attempts provider error
 // persistence after an authentication failure.
 
-// ExecuteAdaptive tests one selected native protocol or every enabled protocol
-// for a Kimi, Zhipu, or DeepSeek record. Empty protocol sets and disabled
-// explicit selections fail before an upstream request; a blank Messages or
-// Responses model uses the OpenAI test default before mapping.
+// ExecuteAdaptive tests one selected text protocol or every enabled protocol.
+// Disabled or empty selections fail before an upstream request. Blank Messages
+// and Responses models retain the OpenAI probe default; Chat uses the platform
+// target's supplied defaultModel.
 //
-// Chat, Messages, and Responses execute in a fixed order and stop on their
-// first failure. Completion suppression spans those attempts so intermediate
-// parsers cannot declare the entire test successful. Chat supplies its own
-// start event; otherwise this coordinator emits one before execution. The
-// suppression flag is cleared on return and before the single final success
-// event.
-func (s *NativeProtocolTest) ExecuteAdaptive(c *TestRun, value *providercore.Record, modelID string, prompt string, selected protocol.ProtocolID) error {
+// Chat, Messages, and Responses execute in order and stop on the first
+// failure. Completion suppression prevents intermediate stream readers from
+// marking the whole probe successful. Chat owns its start event, while a
+// selection without Chat emits one before its first request. The original run
+// owns cancellation, output errors, and the final completion event.
+func (s *NativeProtocolTest) ExecuteAdaptive(c *TestRun, value *providercore.Record, modelID string, prompt string, defaultModel string, selected protocol.ProtocolID) error {
 	testModelID := strings.TrimSpace(modelID)
 	if testModelID == "" {
 		testModelID = openai.DefaultTestModel
@@ -79,7 +78,7 @@ func (s *NativeProtocolTest) ExecuteAdaptive(c *TestRun, value *providercore.Rec
 		(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_start", Model: testModelID})
 	}
 	if slices.Contains(enabled, protocol.ProtocolOpenAIChatCompletions) {
-		if err := s.executeChat(c, value, modelID, prompt); err != nil {
+		if err := s.executeChat(c, value, modelID, prompt, defaultModel); err != nil {
 			return err
 		}
 	}

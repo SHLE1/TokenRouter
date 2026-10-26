@@ -119,7 +119,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 		if !isResponsesShape {
 			return p.DispatchChat(ctx, DispatchRawChat, body, promptCacheKey, defaultMappedModel)
 		}
-		if !profile.KimiOrDeepSeekResponsesSupported {
+		if !profile.NativeResponsesSupported {
 			var responsesReq protocolopenai.ResponsesRequest
 			if err := json.Unmarshal(body, &responsesReq); err != nil {
 				return nil, fmt.Errorf("parse responses-shaped chat completions request: %w", err)
@@ -148,7 +148,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 	if profile.RawChat {
 		return p.DispatchChat(ctx, DispatchRawChat, body, promptCacheKey, defaultMappedModel)
 	}
-	if !profile.KimiZhipuDeepSeek && p.DefaultChat() {
+	if !profile.ProtocolSlotDefaults && p.DefaultChat() {
 		return p.DispatchChat(ctx, DispatchRawChat, body, promptCacheKey, defaultMappedModel)
 	}
 

@@ -25,7 +25,7 @@ func TestKimiZhipuDeepSeekProviderModeAndCredentialValidation(t *testing.T) {
 	}
 	require.Equal(t, ProviderModePayG, historical.GetProviderMode())
 	require.Equal(t, APIProtocolChatCompletions, (ProtocolTarget{Record: historical}).GetAPIProtocol())
-	require.NoError(t, NormalizeKimiZhipuDeepSeekCredentials(historical, false))
+	require.NoError(t, NormalizeTextEndpointCredentials(historical, false))
 	require.NotContains(t, historical.Credentials, "provider_mode", "编辑历史提供商不应强制回写默认字段")
 
 	created := &Record{
@@ -33,7 +33,7 @@ func TestKimiZhipuDeepSeekProviderModeAndCredentialValidation(t *testing.T) {
 		Type:        capability.ProviderTypeAPIKey,
 		Credentials: map[string]any{"api_key": "sk-test"},
 	}
-	require.NoError(t, NormalizeKimiZhipuDeepSeekCredentials(created, true))
+	require.NoError(t, NormalizeTextEndpointCredentials(created, true))
 	require.Equal(t, ProviderModePayG, created.Credentials["provider_mode"])
 	require.Equal(t, APIProtocolChatCompletions, created.Credentials["api_protocol"])
 
@@ -41,9 +41,9 @@ func TestKimiZhipuDeepSeekProviderModeAndCredentialValidation(t *testing.T) {
 		Platform: capability.PlatformZhipu, Type: capability.ProviderTypeAPIKey,
 		Credentials: map[string]any{"api_protocol": APIProtocolResponses},
 	}
-	require.Error(t, NormalizeKimiZhipuDeepSeekCredentials(invalidResponses, false))
+	require.Error(t, NormalizeTextEndpointCredentials(invalidResponses, false))
 	invalidType := &Record{Platform: capability.PlatformDeepseek, Type: capability.ProviderTypeOAuth}
-	require.Error(t, NormalizeKimiZhipuDeepSeekCredentials(invalidType, false))
+	require.Error(t, NormalizeTextEndpointCredentials(invalidType, false))
 }
 
 // TestNormalizeProviderConcurrencyDefaultsInvalidGrokOAuthToOne passes zero and
@@ -119,7 +119,7 @@ func TestKimiZhipuDeepSeekCredentialValidationRejectsInvalid(t *testing.T) {
 					Platform: tc.platform, Type: tc.providerType,
 					Credentials: textAPIKeyTestCredentials(tc.platform, tc.mode, tc.protocol),
 				}
-				err := NormalizeKimiZhipuDeepSeekCredentials(provider, create)
+				err := NormalizeTextEndpointCredentials(provider, create)
 				require.Error(t, err)
 				require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err))
 				require.Equal(t, tc.reason, apperror.Reason(err))
