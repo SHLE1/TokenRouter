@@ -18,10 +18,11 @@ import (
 // catalog.go parses model catalogs and resolves qualified, public, and
 // ambiguous model identities.
 // Catalog providers can offer the same bare model with different prices and
-// capabilities. Qualified keys retain each provider's complete entry, while a
-// bare key prefers one identified first party record and otherwise remains
-// ambiguous when several records compete. Public model metadata is queryable
-// even when its price fields are absent.
+// capabilities. Parsing retains author records and registered runtime services
+// before constructing lookup keys. Qualified keys retain each accepted
+// provider's complete entry, while a bare key prefers one identified first
+// party record and otherwise remains ambiguous when several records compete.
+// Public model metadata is queryable even when its price fields are absent.
 //
 // An ambiguous bare name can still acquire public attributes when every
 // competing entry names the same canonical model. That metadata path leaves
@@ -96,9 +97,11 @@ type Catalog struct {
 	// Entries, Providers, Ambiguous, attributeFallbacks, and publicEntries are
 	// prepared before publication. Existing views retain these maps, so callers
 	// finish supplement mutations before sharing a catalog with readers.
-	Entries   map[string]Entry // normalized queryable model identities
-	Providers map[string]bool  // known catalog provider qualifiers
-	Ambiguous map[string]bool  // ambiguous bare price identities
+	Entries map[string]Entry // normalized queryable model identities
+	// Providers includes filtered services so their qualified names remain
+	// isolated during lookup. Displayed provider choices come from retained rows.
+	Providers map[string]bool // known catalog provider qualifiers
+	Ambiguous map[string]bool // ambiguous bare price identities
 	// attributeFallbacks holds public attributes when all competing provider
 	// records agree on one canonical identity that has public metadata available.
 	attributeFallbacks map[string]Attributes
@@ -169,9 +172,11 @@ func Offline() ([]byte, error) {
 }
 
 // Parse validates catalog records and constructs qualified entries, preferred
-// bare identities, and public metadata lookups. The provider collection is
-// required, and malformed public canonical IDs, attributes, prices, or context
-// tiers reject the candidate catalog before it is returned.
+// bare identities, and public metadata lookups for authors and registered
+// runtime services. Other provider offerings are excluded from attributes and
+// prices, while their provider names remain recognized lookup qualifiers. The
+// provider collection is required, and malformed public canonical IDs,
+// attributes, prices, or context tiers reject the candidate catalog.
 //
 // Bare-name selection prefers a unique first party entry, with the author's
 // own endpoint preferred among those entries. Multiple remaining candidates
@@ -203,23 +208,14 @@ func Parse(body []byte) (*Catalog, error) {
 	}
 	for provider, models := range source.Providers {
 		catalog.Providers[provider] = true
-		lab, knownOrigin := firstPartyProviderLab(provider)
 		for id, model := range models.Models {
 			entry, err := model.entry(id, provider)
 			if err != nil {
 				return nil, fmt.Errorf("%s/%s: %w", provider, id, err)
 			}
-			_, canonicalExists := source.Models[lab+"/"+id]
-			entry.FirstParty = canonicalExists || knownOrigin
-			// An author's endpoint can also host another author's model. Prefer
-			// a supplied canonical identity over endpoint recognition when
-			// deciding bare-name ownership.
-			if model.Canonical != "" {
-				entry.FirstParty = strings.HasPrefix(model.Canonical, lab+"/")
-			}
-			entry.originalEndpoint = entry.FirstParty && provider == lab
-			if entry.Canonical == "" && canonicalExists {
-				entry.Canonical = lab + "/" + id
+			entry = classifyModelOrigin(entry, source.Models)
+			if !entry.FirstParty && !retainedServiceProvider(provider) {
+				continue
 			}
 			catalog.Entries[normalize(provider+"/"+id)] = entry
 			bare[normalize(id)] = append(bare[normalize(id)], entry)
@@ -276,7 +272,7 @@ func Parse(body []byte) (*Catalog, error) {
 		}
 	}
 	catalog.attributeFallbacks = make(map[string]Attributes)
-	// Ambiguous relay prices remain qualified, but unanimous canonical authorship
+	// Ambiguous service prices remain qualified, but unanimous canonical authorship
 	// permits public attribute lookup for the bare identity when that metadata
 	// exists.
 	for id, candidates := range bare {
@@ -304,19 +300,17 @@ func Parse(body []byte) (*Catalog, error) {
 	return catalog, nil
 }
 
-// firstPartyProviderLab returns the recognized author identity for a catalog
-// provider. Unrecognized providers return their own name and false, requiring
-// canonical model metadata to establish first party authorship.
-func firstPartyProviderLab(provider string) (string, bool) {
+// retainedServiceProvider reports whether runtime routes need this service's
+// complete model offerings. These records participate in default directory
+// queries and exact route lookups; their independently determined FirstParty
+// value controls author preference when resolving bare names.
+func retainedServiceProvider(provider string) bool {
 	switch provider {
-	case "openai", "anthropic", "google", "xai", "deepseek", "moonshotai", "mistral", "typesafe":
-		return provider, true
-	case "moonshotai-cn":
-		return "moonshotai", true
-	case "zai", "zhipuai":
-		return "zhipuai", true
+	case "amazon-bedrock", "google-vertex", "google-vertex-anthropic", "ollama-cloud",
+		"kimi-code-plan-cn", "kimi-code-plan-global", "zhipuai-coding-plan", "zai-coding-plan":
+		return true
 	default:
-		return provider, false
+		return false
 	}
 }
 

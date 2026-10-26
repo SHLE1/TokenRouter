@@ -7,6 +7,7 @@
 - [目录解析](#目录解析)：修改 `/models`、默认模型或可请求的交集时读取。
 - [市场可见性](#市场可见性)：修改公开分组的过滤、品牌或排序时读取。
 - [目录元数据查询](#目录元数据查询)：修改名称写法、档位别名和能力来源时读取。
+- [原厂归属](#model_catalog_origins)：维护厂商别名、区域入口和原厂筛选时读取。
 - [目录价格换算](#目录价格换算)：修改 models.dev 报价的换算、补充文件或发布校验时读取。
 - [价格展示](#价格展示)：修改价格配置的价格、倍率或未知价格时读取。
 - [管理员默认价格查询](#gateway_default_pricing)：修改默认价格页或目录更新时读取。
@@ -70,7 +71,13 @@ TypeSafe 品牌键为 `typesafe`，`jev`、`jev-latest` 和 `typesafe/jev-latest
 
 生产环境只使用 models.dev 的加载流程，远程入口是 `https://models.dev/catalog.json?type=all`，按 `pricing.check_interval_minutes` 检查（默认每 10 分钟），使用 ETag 条件请求和本地的内容摘要；管理员可以强制更新。程序内嵌了一份经过解析验证的压缩离线快照和官方价格补充，并附上 models.dev 的 MIT 许可。官方补充随二进制一起升级和回退，不依赖外部的资源目录。首次启动和网络故障时，可以使用磁盘上或内嵌的离线目录；缓存文件是 `models_dev_catalog.json`，完整解析成功后，通过临时文件替换。管理员接口返回版本、最近一次成功更新的时间和最近一次更新的错误。本地文件在合并之前，把旧的 `litellm_provider` 归一化为 `provider`，同时有新字段时（包括空值和 `null`）以新字段为准；内部的来源分类是 `catalog`，不会覆盖实际的数据出处。远程返回 304 时，本地层照常校验。
 
-裸模型名优先选择原厂的记录。明确的 `canonical_model_id` 归属优先；没有这个关联时，已知的原厂端点（包括 OpenAI、Anthropic、Google、xAI、Mistral 等）仍然可以被识别为原厂，不要求每个模型都出现在公共资料表里。原厂端点托管的其他作者的模型，继续按明确的 canonical 归属识别。Azure、OpenRouter 等独立的供应商，不会通过这条规则获得原厂身份；其他来源无法确定时，保留歧义，不会按遍历顺序挑一个价格。供应商限定的名称先精确匹配，已知的供应商前缀不会在查询时被删掉，从而借用其他来源的数据。只有模型公共资料的记录也能参与属性查询，不要求有价格。
+目录解析保留全部 `models` 公共资料，并逐条筛选 `providers` 中的服务记录。原厂识别独立于网关平台、协议和已配置的提供商，未接入的视频、语音、图片等模型也可进入目录。`modelcatalog/origins.go` 维护[厂商归属](#model_catalog_origins)，明确的 `canonical_model_id` 优先于公共资料匹配、端点和型号家族规则。
+
+运行时另外保留 `amazon-bedrock`、`google-vertex`、`google-vertex-anthropic`、`ollama-cloud`、`kimi-code-plan-cn`、`kimi-code-plan-global`、`zhipuai-coding-plan` 和 `zai-coding-plan` 的完整属性与价格。这些服务继续出现在默认目录中，其原厂身份仍由同一套归属规则判断。其他未识别为原厂的记录从默认属性、价格、模型搜索和自动补全中排除。例如 Azure 上的 Microsoft Phi 和 Copilot 上的 MAI 属于原厂记录，其托管的 OpenAI、Anthropic 型号按其他作者识别。
+
+筛选在建立型号索引之前执行，远程下载、磁盘重载和内嵌快照使用相同规则。缓存保存原始响应，ETag 和校验发布流程照常执行。查询仍识别原始服务商名称，被排除的供应商限定名返回缺失，不能去掉前缀借用原厂属性或报价；页面的服务商选项由保留条目生成。本地补充和管理员已保存的价格、属性覆盖继续生效，可按完整 ID 配置所需型号。原先依赖被排除渠道默认报价的型号，在没有明确配置价格时保持未定价。
+
+裸模型名在保留记录中优先选择原厂端点，多条候选无法确定唯一来源时保留歧义。公共模型资料即使没有服务商记录或报价，也参与属性查询。
 
 公开市场通过 `billing.PriceResolver.PublicQuote`，使用和实际扣费一致的价卡解析。价格和属性按完整的模型 ID 查询，只清理大小写、首尾空白和已知的 Google 资源路径；供应商限定的名称保持来源隔离。Claude 的点号和短横线、日期版本和档位后缀，都代表不同的身份，不互换，也不补全。完整的目录条目各自生效，价格、缓存、上下文阶梯和能力字段不会从基础条目拼接过来。
 
@@ -82,13 +89,44 @@ GPT-5.6 系列按完整型号查询目录。`gpt-5.6-sol/terra/luna` 与裸的 `
 
 模型属性读取 models.dev 的 `modalities.input/output`，支持文字、图片、音频、视频和 PDF。字段缺失和零长度表示未知或不适用；明确的 false 和空的模态数组会保留。本地旧价格 JSON 里的模态推断，只用于兼容价格的使用方，分组的有效属性使用上述统一解析器。
 
-裸模型名因为有多个供应商的记录而产生歧义时，属性查询在精确查询失败之后，检查这些记录的 `canonical_model_id`。所有记录都明确指向同一个公共模型、并且公共资料存在时，使用这个公共模型的属性；归属缺失、不一致或者公共资料缺失时，保持未知。供应商限定的名称不使用这条回退，已经有精确条目的也不会用公共资料补字段。属性的回退不影响价格索引和价格歧义的状态，不会借用任何中继的报价。
+裸模型名因为有多个保留服务的记录而产生歧义时，属性查询在精确查询失败之后，检查这些记录的 `canonical_model_id`。所有记录都明确指向同一个公共模型、并且公共资料存在时，使用这个公共模型的属性；归属缺失、不一致或者公共资料缺失时，保持未知。供应商限定的名称不使用这条回退，已经有精确条目的也不会用公共资料补字段。属性的回退不影响价格索引和价格歧义的状态，不会借用任何中继的报价。
 
 目录和手动配置都没有命中时，返回缺价，不再查询 Go 里的静态价格表；也不会使用日期、系列、Spark 跨型号重定向或默认型号去猜价格。离线启动使用同一份 models.dev 快照，网络失败时保留最近一次有效的目录。价格规则不作为能力查询的继承依据，也不改写公开的模型 ID 或上游的请求 ID。
 
 models.dev 的目录、属性和本地补充在同一个版本里发布，只读快照使用同样的完整身份规则。原厂的裸名和明确的供应商记录，按来源索引查询；手动填写的零价和本地新增的条目保持有效；未知型号不会按目录的遍历顺序选价格。
 
-目录从 `https://models.dev/catalog.json?type=all` 读取，包括 Jev 所属的 decision 类型。TypeSafe 直连型号的缺失属性由模型补充文件填写，渠道条目按完整 ID 查询自己的属性和报价。特殊模型可以进入属性目录和查价索引，网关可请求性仍由提供商配置及协议判断。
+目录从 `https://models.dev/catalog.json?type=all` 读取，包括 Jev 所属的 decision 类型。TypeSafe 直连型号的缺失属性由模型补充文件填写，第三方渠道报价按上述筛选规则排除。特殊模型可以进入属性目录和查价索引，网关可请求性仍由提供商配置及协议判断。
+
+<a id="model_catalog_origins"></a>
+## 原厂归属
+
+服务商 ID 表示 API 产品，模型作者 ID 表示研发厂商，两者可能不同。归属判定先读取明确的 canonical 作者；缺失时检查同一作者的公共资料，包括已经带作者前缀的请求 ID。资料仍缺失时，原厂专用入口接受新增型号，混合托管入口只接受已核验的原厂型号家族或命名空间。新版本号无需逐个登记；不能确认的新品牌或家族需要核实后补充归属。
+
+以下关系覆盖区域、套餐和独立品牌入口，实际服务 ID 及匹配规则集中在 `origins.go`：
+
+| 服务入口 | 模型作者 | 归属依据与保留范围 |
+| --- | --- | --- |
+| MiniMax 国内、国际及 Token/Coding Plan | `minimax` | [MiniMax 文档](https://platform.minimax.io/docs/guides/quickstart)，包含文本、[视频](https://platform.minimax.io/docs/guides/video-generation)、图像和语音型号 |
+| 火山方舟、火山 Coding Plan、BytePlus | `bytedance-seed` | [火山视频 API](https://docs.volcengine.com/docs/ark/video-generation-tutorial?lang=en)、[BytePlus 视频 API](https://docs.byteplus.com/en/docs/ModelArk/create-video-generation-task-api)；Doubao、Seed、Seedance、Seedream、Dreamina 等自研家族 |
+| 阿里国内、国际、Coding/Token Plan、ModelScope | `alibaba` | [阿里模型目录](https://www.alibabacloud.com/help/en/model-studio/models)；Qwen、QwQ、QVQ、Wan、HappyHorse、HappyOyster、通义及自研语音和嵌入家族 |
+| 腾讯 Coding Plan、Token Plan、TokenHub | `tencent` | [TokenHub 文档](https://cloud.tencent.com/document/product/1823/130050)；Hunyuan、HunyuanVideo 和 HY 家族 |
+| StepFun 国内、国际及 Step Plan | `stepfun` | [国内](https://platform.stepfun.com/docs/zh/overview/concept)与[国际](https://platform.stepfun.ai/docs/en/overview/concept)官方端点 |
+| Xiaomi 各地区 Token Plan | `xiaomi` | [MiMo 平台](https://platform.xiaomimimo.com/#/docs)，地区差异保留各自服务属性 |
+| Moonshot 国内、国际及 Kimi Coding | `moonshotai` | [Moonshot](https://platform.moonshot.ai/docs/api/chat)、[Kimi Coding](https://www.kimi.com/code/docs/en/kimi-code/models.html) |
+| Zhipu、Z.AI 及 Coding Plan | `zhipuai` | [GLM 官方文档](https://docs.z.ai/guides/overview/pricing)，保留国内和国际服务身份 |
+| 百灵 Bailing | `inclusionai` | [蚂蚁百灵](https://www.antgroup.com/technology/new-tech-Technology-Antfocuses-Tabcomnent-detail/20241028001)，包含 Ling、Ring、Ming |
+| LongCat | `meituan` | [LongCat 官方 API](https://longcat.chat/platform/docs/APIDocs.html) |
+| Nova、Bedrock 的 Amazon 型号 | `amazon` | [Nova 官方端点](https://nova.amazon.com/dev/documentation)；Bedrock 另保留运行时所需的托管型号 |
+| Meta 的 Llama API | `meta` | [Meta 模型文档](https://dev.meta.ai/docs)，保留快照中的官方 Llama 入口 |
+| Arcee | `arcee-ai` | [Arcee 文档](https://docs.arcee.ai)，包括 Trinity 家族 |
+| watsonx | `ibm` | [IBM 官方目录](https://www.ibm.com/docs/en/watsonx/saas?topic=solutions-supported-foundation-models)，保留 IBM/Granite 型号 |
+| Azure、Azure Cognitive Services、GitHub Copilot | `microsoft` | [Microsoft MAI](https://microsoft.ai/news/introducingmai-code-1-flash/) 和 Phi；其他作者的托管记录按其 canonical 归属筛选 |
+| Fireworks | `fireworks` | [Ember 自研模型](https://fireworks.ai/blog/ember-1)，`accounts/fireworks/models/` 本身是托管路径，不能整段放行 |
+| Pioneer | `fastino` | [Fastino 的 Pioneer](https://fastino.ai/blog/introducing-pioneer)与[自研模型](https://fastino.ai/models/fastino-models)，保留 `fastino/` 型号 |
+
+NVIDIA、Vispark、Clarifai、Cloudflare 等混合目录通过作者命名空间和公共资料识别自研条目。Inception、Morph、Agnes、Abliteration、LucidQuery 等厂商的自研或自行训练的模型同样保留。路由器、第三方模型套餐、仅更换服务别名的条目不因提供商有自己的品牌就成为原厂模型。Liquid Inference 交易平台与 Liquid AI 的公共作者同名，二者在归属表中分开处理，Liquid AI 公共模型资料照常保留。
+
+`catalog.json?type=all` 包含上游实际导出的各类模型；模型类型、缺少 token 价格或上下文为零都不构成原厂过滤条件。仅存在于上游源码、或被其生成器标为 `v2_only` 的条目，不一定进入此接口。目录不会凭型号名称补造其属性、报价或网关能力。
 
 ## 目录价格换算
 
