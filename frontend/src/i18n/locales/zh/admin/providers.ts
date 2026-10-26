@@ -8,7 +8,7 @@ export default {
   providers: {
     opencode: {
       baseUrlHint:
-        '留空使用当前模式的官方地址。自定义根地址填到 /inference 或 /inference/go，各协议地址可在下方单独覆盖。',
+        '留空使用当前模式的官方地址。自定义根地址填到 /inference 或 /inference/go，各协议地址可在「请求与协议」中单独覆盖。',
       payg: 'Console / Zen（按量）',
       paygDesc: '通过 OpenCode Zen 按用量计费。',
       go: 'OpenCode Go',

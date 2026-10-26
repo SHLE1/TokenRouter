@@ -826,30 +826,6 @@
                   @select="onCnPresetSelect"
                 />
               </div>
-              <div v-if="endpointSlots.length > 0" class="space-y-4">
-                <p class="input-label mb-0">
-                  {{ t('admin.providers.cnProviders.apiProtocol.endpoints') }}
-                </p>
-                <div v-for="item in endpointSlots" :key="item.slot">
-                  <label :for="`create-provider-endpoint-${item.slot}`" class="input-label">
-                    {{ item.label }}
-                  </label>
-                  <input
-                    :id="`create-provider-endpoint-${item.slot}`"
-                    v-model="adaptiveBaseUrls[item.slot]"
-                    type="text"
-                    class="input"
-                    :placeholder="item.placeholder"
-                    :data-testid="`provider-endpoint-${item.slot}`"
-                  />
-                </div>
-                <p
-                  v-if="isCNPlatform && !cnSupportsNativeResponses(form.platform)"
-                  class="input-hint"
-                >
-                  {{ t('admin.providers.cnProviders.apiProtocol.responsesFallbackDesc') }}
-                </p>
-              </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div
                   data-provider-field="api-key"
@@ -1236,6 +1212,28 @@
                   : ''
             "
           />
+
+          <SettingsSection
+            v-if="isApiKeyCredentials && endpointSlots.length > 0"
+            :title="t('admin.providers.cnProviders.apiProtocol.endpoints')"
+          >
+            <div v-for="item in endpointSlots" :key="item.slot">
+              <label :for="`create-provider-endpoint-${item.slot}`" class="input-label">
+                {{ item.label }}
+              </label>
+              <input
+                :id="`create-provider-endpoint-${item.slot}`"
+                v-model="adaptiveBaseUrls[item.slot]"
+                type="text"
+                class="input"
+                :placeholder="item.placeholder"
+                :data-testid="`provider-endpoint-${item.slot}`"
+              />
+            </div>
+            <p v-if="isCNPlatform && !cnSupportsNativeResponses(form.platform)" class="input-hint">
+              {{ t('admin.providers.cnProviders.apiProtocol.responsesFallbackDesc') }}
+            </p>
+          </SettingsSection>
 
           <SettingsSection :title="t('admin.providers.sections.requestHeaders')">
             <UpstreamRequestIdHeaderField
@@ -1981,8 +1979,8 @@ const withUpstreamRequestIdHeader = <T extends Record<string, unknown> | undefin
   return { ...(extra || {}), upstream_request_id_header: name }
 }
 
-// baseUrlHint and apiKeyHint describe the selected platform and Gemini source
-// beside credential inputs; Grok uses empty hints for both displayed fields.
+// baseUrlHint describes the selected platform's address and Gemini connection source.
+// apiKeyHint supplies credential guidance for Anthropic, OpenAI, and Gemini.
 const baseUrlHint = computed(() => {
   if (form.platform === 'gemini' && geminiProviderType.value === 'third_party') {
     return t('admin.providers.gemini.connectionSource.thirdPartyBaseUrlHint')
@@ -1997,8 +1995,8 @@ const apiKeyHint = computed(() => {
     return t('admin.providers.gemini.connectionSource.thirdPartyApiKeyHint')
   }
   if (form.platform === 'gemini') return t('admin.providers.gemini.apiKeyHint')
-  if (form.platform === 'grok') return ''
-  return t('admin.providers.apiKeyHint')
+  if (form.platform === 'anthropic') return t('admin.providers.apiKeyHint')
+  return ''
 })
 
 // Gemini tier and source options keep submitted identifiers stable while

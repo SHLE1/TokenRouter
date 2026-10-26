@@ -146,28 +146,36 @@
                   @select="onCnPresetSelect"
                 />
               </div>
-              <div v-if="endpointSlots.length > 0" class="space-y-4">
-                <p class="input-label mb-0">
-                  {{ t('admin.providers.cnProviders.apiProtocol.endpoints') }}
-                </p>
-                <div v-for="item in endpointSlots" :key="item.slot">
-                  <label :for="`edit-provider-endpoint-${item.slot}`" class="input-label">
-                    {{ item.label }}
-                  </label>
+              <div class="grid gap-4 md:grid-cols-2">
+                <div data-provider-field="api-key" :class="{ 'md:col-span-2': !showGeminiTier }">
+                  <label for="edit-provider-api-key" class="input-label">{{
+                    t('admin.providers.apiKey')
+                  }}</label>
                   <input
-                    :id="`edit-provider-endpoint-${item.slot}`"
-                    v-model="editAdaptiveBaseUrls[item.slot]"
-                    type="text"
-                    class="input"
-                    :placeholder="item.placeholder"
+                    id="edit-provider-api-key"
+                    v-model="editApiKey"
+                    type="password"
+                    class="input font-mono"
+                    autocomplete="new-password"
+                    data-1p-ignore
+                    data-lpignore="true"
+                    data-bwignore="true"
+                    :placeholder="apiKeyPlaceholder"
                   />
+                  <p class="input-hint">{{ t('admin.providers.leaveEmptyToKeep') }}</p>
                 </div>
-                <p
-                  v-if="isCNApiKeyProvider && !cnSupportsNativeResponses(provider.platform)"
-                  class="input-hint"
-                >
-                  {{ t('admin.providers.cnProviders.apiProtocol.responsesFallbackDesc') }}
-                </p>
+                <div v-if="showGeminiTier" data-testid="edit-gemini-tier">
+                  <label for="edit-gemini-tier" class="input-label">{{
+                    t('admin.providers.gemini.tier.label')
+                  }}</label>
+                  <Select
+                    id="edit-gemini-tier"
+                    v-model="geminiAIStudioTier"
+                    :options="geminiAIStudioTierOptions"
+                    data-testid="edit-gemini-tier-select"
+                  />
+                  <p class="input-hint">{{ t('admin.providers.gemini.tier.aiStudioHint') }}</p>
+                </div>
               </div>
               <!-- Zhipu Coding Plan accepts optional organization and project IDs; clearing the organization selects personal quota endpoints. -->
               <div
@@ -224,37 +232,6 @@
                   </div>
                 </div>
                 <p class="input-hint">{{ t('admin.providers.cnProviders.zhipuTeam.hint') }}</p>
-              </div>
-              <div class="grid gap-4 md:grid-cols-2">
-                <div data-provider-field="api-key" :class="{ 'md:col-span-2': !showGeminiTier }">
-                  <label for="edit-provider-api-key" class="input-label">{{
-                    t('admin.providers.apiKey')
-                  }}</label>
-                  <input
-                    id="edit-provider-api-key"
-                    v-model="editApiKey"
-                    type="password"
-                    class="input font-mono"
-                    autocomplete="new-password"
-                    data-1p-ignore
-                    data-lpignore="true"
-                    data-bwignore="true"
-                    :placeholder="apiKeyPlaceholder"
-                  />
-                  <p class="input-hint">{{ t('admin.providers.leaveEmptyToKeep') }}</p>
-                </div>
-                <div v-if="showGeminiTier" data-testid="edit-gemini-tier">
-                  <label for="edit-gemini-tier" class="input-label">{{
-                    t('admin.providers.gemini.tier.label')
-                  }}</label>
-                  <Select
-                    id="edit-gemini-tier"
-                    v-model="geminiAIStudioTier"
-                    :options="geminiAIStudioTierOptions"
-                    data-testid="edit-gemini-tier-select"
-                  />
-                  <p class="input-hint">{{ t('admin.providers.gemini.tier.aiStudioHint') }}</p>
-                </div>
               </div>
             </template>
 
@@ -716,6 +693,30 @@
               )
             "
           />
+
+          <SettingsSection
+            v-if="showCredentialsSection && provider.type === 'apikey' && endpointSlots.length > 0"
+            :title="t('admin.providers.cnProviders.apiProtocol.endpoints')"
+          >
+            <div v-for="item in endpointSlots" :key="item.slot">
+              <label :for="`edit-provider-endpoint-${item.slot}`" class="input-label">
+                {{ item.label }}
+              </label>
+              <input
+                :id="`edit-provider-endpoint-${item.slot}`"
+                v-model="editAdaptiveBaseUrls[item.slot]"
+                type="text"
+                class="input"
+                :placeholder="item.placeholder"
+              />
+            </div>
+            <p
+              v-if="isCNApiKeyProvider && !cnSupportsNativeResponses(provider.platform)"
+              class="input-hint"
+            >
+              {{ t('admin.providers.cnProviders.apiProtocol.responsesFallbackDesc') }}
+            </p>
+          </SettingsSection>
 
           <SettingsSection :title="t('admin.providers.sections.requestHeaders')">
             <UpstreamRequestIdHeaderField

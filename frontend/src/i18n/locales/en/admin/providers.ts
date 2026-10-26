@@ -8,7 +8,7 @@ export default {
   providers: {
     opencode: {
       baseUrlHint:
-        'Leave blank for the selected service mode. A custom root should end at /inference or /inference/go; protocol addresses can be set individually below.',
+        'Leave blank for the selected service mode. A custom root should end at /inference or /inference/go. Set individual protocol addresses in Requests & protocols.',
       payg: 'Console / Zen (pay as you go)',
       paygDesc: 'Pay per use through OpenCode Zen.',
       go: 'OpenCode Go',
