@@ -14,6 +14,8 @@ import "strings"
 // author endpoints accept new unlinked model IDs, while mixed catalogs require
 // verified author families or namespaces. These restrictions prevent a cloud
 // provider's hosted third-party models from inheriting the cloud owner's status.
+// Subscription service identity is recorded independently of authorship so
+// bare lookups can prefer ordinary APIs while keeping plan records queryable.
 
 // originRule identifies a catalog provider's author and its unlinked offerings.
 type originRule struct {
@@ -23,6 +25,9 @@ type originRule struct {
 	// use verified model families or namespaces before granting author status.
 	allowUnlinked bool     // unlinked author model acceptance
 	prefixes      []string // verified author model prefixes
+	// subscription marks plan-specific offerings whose bare aliases yield to
+	// ordinary author APIs. Qualified lookups retain each service's full record.
+	subscription bool
 }
 
 // classifyModelOrigin assigns authorship and inferred public identity to one
@@ -31,9 +36,11 @@ type originRule struct {
 // including already author-qualified IDs, and then use the endpoint's rule.
 //
 // Provider brands and regional aliases resolve to their owning lab independently
-// of runtime adapters. Original-endpoint preference retains the catalog's
-// provider-equals-lab rule; multiple remaining first-party candidates can still
-// be ambiguous. The returned entry shares attributes and prices with its input.
+// of runtime adapters. Subscription identity is recorded separately from
+// authorship so ordinary APIs can precede plans during bare-name selection.
+// Original-endpoint preference retains the provider-equals-lab rule among the
+// selected service class. The returned entry shares attributes and prices with
+// its input, and equally preferred offerings can still be ambiguous.
 func classifyModelOrigin(entry Entry, public map[string]sourceModel) Entry {
 	origin := catalogProviderOrigin(entry.Provider)
 	if entry.Canonical != "" {
@@ -60,6 +67,7 @@ func classifyModelOrigin(entry Entry, public map[string]sourceModel) Entry {
 		}
 	}
 	entry.originalEndpoint = entry.FirstParty && entry.Provider == origin.lab
+	entry.subscriptionEndpoint = origin.subscription
 	return entry
 }
 
@@ -75,16 +83,24 @@ func catalogProviderOrigin(provider string) originRule {
 		"sakana", "sarvam", "thinkingmachines", "xiaomi", "inception", "reflection",
 		"agnes", "abliteration-ai", "lucidquery":
 		return originRule{lab: provider, allowUnlinked: true}
-	case "moonshotai-cn", "kimi-code-plan-cn", "kimi-code-plan-global":
+	case "moonshotai-cn":
 		return originRule{lab: "moonshotai", allowUnlinked: true}
-	case "zai", "zhipuai", "zai-coding-plan", "zhipuai-coding-plan":
+	case "kimi-code-plan-cn", "kimi-code-plan-global":
+		return originRule{lab: "moonshotai", allowUnlinked: true, subscription: true}
+	case "zai", "zhipuai":
 		return originRule{lab: "zhipuai", allowUnlinked: true}
-	case "minimax-cn", "minimax-coding-plan", "minimax-cn-coding-plan":
+	case "zai-coding-plan", "zhipuai-coding-plan":
+		return originRule{lab: "zhipuai", allowUnlinked: true, subscription: true}
+	case "minimax-cn":
 		return originRule{lab: "minimax", allowUnlinked: true}
-	case "stepfun-ai", "stepfun-step-plan", "stepfun-ai-step-plan":
+	case "minimax-coding-plan", "minimax-cn-coding-plan":
+		return originRule{lab: "minimax", allowUnlinked: true, subscription: true}
+	case "stepfun-ai":
 		return originRule{lab: "stepfun", allowUnlinked: true}
+	case "stepfun-step-plan", "stepfun-ai-step-plan":
+		return originRule{lab: "stepfun", allowUnlinked: true, subscription: true}
 	case "xiaomi-token-plan-cn", "xiaomi-token-plan-ams", "xiaomi-token-plan-sgp":
-		return originRule{lab: "xiaomi", allowUnlinked: true}
+		return originRule{lab: "xiaomi", allowUnlinked: true, subscription: true}
 	case "bailing":
 		return originRule{lab: "inclusionai", allowUnlinked: true}
 	case "longcat":
@@ -95,16 +111,28 @@ func catalogProviderOrigin(provider string) originRule {
 		return originRule{lab: "meta", allowUnlinked: true}
 	case "alibaba", "alibaba-cn", "alibaba-coding-plan", "alibaba-coding-plan-cn",
 		"alibaba-token-plan", "alibaba-token-plan-cn", "modelscope":
-		return originRule{lab: "alibaba", prefixes: []string{
-			"alibaba/", "qwen", "qwq", "qvq", "wan", "happyhorse", "happyoyster", "tongyi",
-			"text-embedding", "gte", "paraformer", "cosyvoice", "sambert", "funasr", "fun-asr",
-		}}
+		return originRule{
+			lab:          "alibaba",
+			subscription: provider != "alibaba" && provider != "alibaba-cn" && provider != "modelscope",
+			prefixes: []string{
+				"alibaba/", "qwen", "qwq", "qvq", "wan", "happyhorse", "happyoyster", "tongyi",
+				"text-embedding", "gte", "paraformer", "cosyvoice", "sambert", "funasr", "fun-asr",
+			},
+		}
 	case "volcengine", "volcengine-coding-plan", "byteplus":
-		return originRule{lab: "bytedance-seed", prefixes: []string{
-			"bytedance/", "bytedance-seed/", "doubao", "seed", "seedance", "seedream", "dreamina", "omnihuman",
-		}}
+		return originRule{
+			lab:          "bytedance-seed",
+			subscription: provider == "volcengine-coding-plan",
+			prefixes: []string{
+				"bytedance/", "bytedance-seed/", "doubao", "seed", "seedance", "seedream", "dreamina", "omnihuman",
+			},
+		}
 	case "tencent-coding-plan", "tencent-token-plan", "tencent-tokenhub":
-		return originRule{lab: "tencent", prefixes: []string{"tencent/", "hunyuan", "hunyuanvideo", "hy"}}
+		return originRule{
+			lab:          "tencent",
+			subscription: provider != "tencent-tokenhub",
+			prefixes:     []string{"tencent/", "hunyuan", "hunyuanvideo", "hy"},
+		}
 	case "google-vertex", "google-vertex-anthropic":
 		return originRule{lab: "google", prefixes: []string{"google/", "gemini", "gemma", "imagen", "veo", "lyria"}}
 	case "arcee":

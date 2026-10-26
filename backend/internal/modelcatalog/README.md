@@ -4,9 +4,9 @@
 
 目录解析保留公共模型资料、识别出的原厂记录和运行时需要的服务记录。`origins.go` 将区域、套餐和独立品牌入口映射到模型作者，识别范围独立于当前网关支持的平台。原厂归属优先读取 `canonical_model_id`，缺失时查公共资料，再按原厂专用入口或混合目录中的自研家族、命名空间识别。未接入的视频、语音、图片等型号也会保留；厂商归属和依据见[原厂归属](../../../docs/interfaces/model_catalog_and_marketplace.md#model_catalog_origins)。
 
-运行时保留服务包括 Bedrock、Gemini Vertex、Anthropic Vertex、Ollama Cloud，以及 Kimi、GLM 的国内和国际 Coding 服务。它们的属性和价格继续进入默认目录，原厂优先级仍由归属规则决定。其他中转记录从默认属性、价格、模型搜索和自动补全中排除。完整服务 ID 和筛选规则见[目录元数据查询](../../../docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup)。
+运行时保留服务包括 Bedrock、Gemini Vertex、Anthropic Vertex、Ollama Cloud，以及 Kimi、GLM 的国内和国际 Coding 服务。它们的属性和价格继续进入默认目录。裸名优先选择原厂普通 API，再在同类来源中优先选择作者主入口；供应商限定名查询对应服务。套餐身份与原厂身份分开判断，明确零价保持有效。其他中转记录从默认属性、价格、模型搜索和自动补全中排除。完整服务 ID 和筛选规则见[目录元数据查询](../../../docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup)。
 
-远程更新、磁盘重载和内嵌快照共用筛选规则，缓存保存原始响应。被排除的供应商限定名返回缺失；原先依赖该渠道默认报价的型号，需要明确配置价格。本地补充、价卡和属性覆盖继续生效，显式零价与缺价分别处理。
+远程更新、磁盘重载和内嵌快照共用筛选规则，缓存保存原始响应。完整供应商限定名和公共 canonical ID 的别名保持来源隔离。被排除的供应商限定名返回缺失；原先依赖该渠道默认报价的型号，需要明确配置价格。本地补充、价卡和属性覆盖继续生效，显式零价与缺价分别处理。
 
 官方补充随二进制更新和回退，无需安装外部资源，不依赖工作目录。仓库中的 JSON 仍是唯一维护源，修改后需要重新编译。每个模型条目记录 `source_url` 和 `verified_at`，填写目录缺失、已核实的字段。价格字段放在模型条目内，展示属性放在同一条目的 `attributes` 对象中。目录已有的价格、明确零价、属性值及空模态集合优先。型号按完整 ID 匹配。
 

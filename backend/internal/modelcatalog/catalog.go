@@ -20,9 +20,10 @@ import (
 // Catalog providers can offer the same bare model with different prices and
 // capabilities. Parsing retains author records and registered runtime services
 // before constructing lookup keys. Qualified keys retain each accepted
-// provider's complete entry, while a bare key prefers one identified first
-// party record and otherwise remains ambiguous when several records compete.
-// Public model metadata is queryable even when its price fields are absent.
+// provider's complete entry. Bare keys prefer ordinary author APIs before plan
+// offerings and remain ambiguous when equally preferred records compete.
+// Qualified service and public author identities are protected from aliases
+// supplied by other hosts. Public metadata remains queryable without a price.
 //
 // An ambiguous bare name can still acquire public attributes when every
 // competing entry names the same canonical model. That metadata path leaves
@@ -88,6 +89,9 @@ type Entry struct {
 	// Canonical identity. Bare-name selection uses it to prefer an author's record.
 	FirstParty       bool `json:"-"`
 	originalEndpoint bool // original author endpoint match
+	// subscriptionEndpoint identifies a plan-specific offering. Bare-name
+	// selection prefers ordinary author APIs while qualified queries keep this record.
+	subscriptionEndpoint bool
 }
 
 // Catalog holds a parsed catalog version. Apply supplements before publishing
@@ -178,9 +182,11 @@ func Offline() ([]byte, error) {
 // provider collection is required, and malformed public canonical IDs,
 // attributes, prices, or context tiers reject the candidate catalog.
 //
-// Bare-name selection prefers a unique first party entry, with the author's
-// own endpoint preferred among those entries. Multiple remaining candidates
-// produce a pricing ambiguity instead of selecting by map iteration order.
+// Bare-name selection prefers ordinary first-party APIs over subscription
+// offerings, then the author's own endpoint within that class. Qualified
+// identities accept aliases from their own service; public-only canonical IDs
+// can also use a first-party offering linked to that exact model. Multiple
+// remaining candidates produce ambiguity instead of selecting by iteration order.
 // Public metadata can resolve attributes for that bare name when all provider
 // records agree on one canonical identity. Callers apply supplements to the
 // returned mutable catalog before sharing its maps through views or indexes.
@@ -200,11 +206,13 @@ func Parse(body []byte) (*Catalog, error) {
 	hash := sha256.Sum256(body)
 	catalog := &Catalog{Version: hex.EncodeToString(hash[:]), Entries: map[string]Entry{}, Providers: map[string]bool{}, Ambiguous: map[string]bool{}}
 	bare := map[string][]Entry{}
+	publicIdentities := make(map[string]bool, len(source.Models))
 	for id := range source.Models {
 		lab, model, ok := strings.Cut(id, "/")
 		if !ok || lab == "" || model == "" {
 			return nil, fmt.Errorf("invalid canonical model ID: %s", id)
 		}
+		publicIdentities[normalize(id)] = true
 	}
 	for provider, models := range source.Providers {
 		catalog.Providers[provider] = true
@@ -225,11 +233,39 @@ func Parse(body []byte) (*Catalog, error) {
 		if _, exact := catalog.Entries[id]; exact {
 			continue
 		}
+		// Qualified service names remain owned by that service. Public author
+		// identities can additionally use their own linked first-party offering
+		// when the author has no serving-provider qualifier in this catalog.
+		prefix, _, qualified := strings.Cut(id, "/")
+		if qualified && (catalog.Providers[prefix] || publicIdentities[id]) {
+			scoped := make([]Entry, 0, len(candidates))
+			for _, entry := range candidates {
+				sameProvider := normalize(entry.Provider) == prefix
+				samePublicModel := !catalog.Providers[prefix] && entry.FirstParty && normalize(entry.Canonical) == id
+				if sameProvider || samePublicModel {
+					scoped = append(scoped, entry)
+				}
+			}
+			candidates = scoped
+			if len(candidates) == 0 {
+				continue
+			}
+		}
 		var preferred []Entry
+		var ordinary []Entry
 		for _, entry := range candidates {
 			if entry.FirstParty {
 				preferred = append(preferred, entry)
+				if !entry.subscriptionEndpoint {
+					ordinary = append(ordinary, entry)
+				}
 			}
+		}
+		// Plan prices describe subscription access and can be zero even when
+		// the author's ordinary API bills tokens. Prefer the ordinary source
+		// class independently of the quoted amounts, including genuine free APIs.
+		if len(ordinary) > 0 {
+			preferred = ordinary
 		}
 		var original []Entry
 		for _, entry := range preferred {

@@ -160,3 +160,31 @@ func TestMatchesOriginPrefix(t *testing.T) {
 		require.Equal(t, test.want, matchesOriginPrefix(test.model, test.prefix), test.model)
 	}
 }
+
+// TestClassifyModelOriginSubscriptionIdentity enumerates ordinary and plan
+// endpoints sharing author identities. Subscription classification must remain
+// separate from first-party ownership so every author's records stay available.
+func TestClassifyModelOriginSubscriptionIdentity(t *testing.T) {
+	for subscription, providers := range map[bool][]string{
+		true: {
+			"kimi-code-plan-cn", "kimi-code-plan-global", "zai-coding-plan", "zhipuai-coding-plan",
+			"minimax-coding-plan", "minimax-cn-coding-plan", "stepfun-step-plan", "stepfun-ai-step-plan",
+			"xiaomi-token-plan-cn", "xiaomi-token-plan-ams", "xiaomi-token-plan-sgp",
+			"alibaba-coding-plan", "alibaba-coding-plan-cn", "alibaba-token-plan", "alibaba-token-plan-cn",
+			"volcengine-coding-plan", "tencent-coding-plan", "tencent-token-plan",
+		},
+		false: {
+			"moonshotai", "moonshotai-cn", "zai", "zhipuai", "minimax", "minimax-cn", "stepfun", "stepfun-ai",
+			"xiaomi", "alibaba", "alibaba-cn", "modelscope", "volcengine", "byteplus", "tencent-tokenhub",
+		},
+	} {
+		for _, provider := range providers {
+			t.Run(provider, func(t *testing.T) {
+				lab := catalogProviderOrigin(provider).lab
+				entry := classifyModelOrigin(Entry{Provider: provider, Model: "future-model", Canonical: lab + "/future-model"}, nil)
+				require.True(t, entry.FirstParty)
+				require.Equal(t, subscription, entry.subscriptionEndpoint)
+			})
+		}
+	}
+}

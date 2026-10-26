@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 )
@@ -136,4 +137,53 @@ func assertCatalogResponse(t *testing.T, w http.ResponseWriter, r *http.Request,
 	w.Header().Set("ETag", etag)
 	_, err := w.Write([]byte(body))
 	require.NoError(t, err)
+}
+
+// TestOfflineCatalogPrefersOrdinaryAPIPrice loads GLM's ordinary and subscription
+// offerings from the embedded catalog. Bare pricing must select the ordinary
+// API, while the qualified subscription identity retains its explicit zero rate.
+func TestOfflineCatalogPrefersOrdinaryAPIPrice(t *testing.T) {
+	service := newOfflinePricingFixture(t)
+	t.Cleanup(service.Stop)
+	for _, reader := range []*Service{service, service.ReadOnlySnapshot()} {
+		price := reader.GetModelPricing("glm-5-turbo")
+		require.NotNil(t, price)
+		_, err := pricing.ResolveModelPricing("glm-5-turbo", price)
+		require.NoError(t, err)
+		require.Equal(t, "zhipu", price.Provider)
+		// Allow binary rounding from million-token price conversion.
+		require.InDelta(t, 1.2e-6, price.InputCostPerToken, 1e-12)
+		require.InDelta(t, 4e-6, price.OutputCostPerToken, 1e-12)
+		plan := reader.GetModelPricing("zai-coding-plan/glm-5-turbo")
+		require.NotNil(t, plan)
+		require.True(t, plan.InputPricePresent)
+		require.False(t, plan.TokenPricingAbsent)
+		require.Zero(t, plan.InputCostPerToken)
+		require.Zero(t, plan.OutputCostPerToken)
+	}
+}
+
+// TestOfflineCatalogKeepsQualifiedPublicIdentity resolves a public xAI model
+// and Vertex's offering of that model. Public attributes and absent pricing
+// must remain separate from Vertex's smaller context and service-specific quote.
+func TestOfflineCatalogKeepsQualifiedPublicIdentity(t *testing.T) {
+	service := newOfflinePricingFixture(t)
+	t.Cleanup(service.Stop)
+	for _, reader := range []*Service{service, service.ReadOnlySnapshot()} {
+		model := "xai/grok-4.1-fast-reasoning"
+		require.Equal(t, "xai", reader.ModelEntry(model).Provider)
+		require.Equal(t, 2000000, *reader.ModelAttributes(model).Context)
+		_, err := pricing.ResolveModelPricing(model, reader.GetModelPricing(model))
+		require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
+		hosted := "google-vertex/" + model
+		require.Equal(t, "google-vertex", reader.ModelEntry(hosted).Provider)
+		require.Equal(t, 128000, *reader.ModelAttributes(hosted).Context)
+		price := reader.GetModelPricing(hosted)
+		_, err = pricing.ResolveModelPricing(hosted, price)
+		require.NoError(t, err)
+		require.Equal(t, "google-vertex", price.Provider)
+		// Allow binary rounding from million-token price conversion.
+		require.InDelta(t, 0.2e-6, price.InputCostPerToken, 1e-12)
+		require.InDelta(t, 0.5e-6, price.OutputCostPerToken, 1e-12)
+	}
 }

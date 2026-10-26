@@ -449,3 +449,122 @@ func TestCatalogRetainsFutureMediaModels(t *testing.T) {
 	require.NotContains(t, catalog.Entries, "vercel/seedance-2.5")
 	require.Contains(t, NewIndex(catalog).ModelIDs(), "minimax-cn/minimax-h3")
 }
+
+// TestCatalogOrdinaryAPIPreference compares ordinary, subscription, and regional
+// offerings for one model. Service class determines preference independently
+// of zero prices, while equally preferred sources remain ambiguous.
+func TestCatalogOrdinaryAPIPreference(t *testing.T) {
+	tests := []struct {
+		name      string  // named source selection scenario
+		model     string  // shared complete model identity
+		providers string  // source provider JSON object
+		provider  string  // expected bare-name provider
+		input     float64 // expected source-unit input price
+	}{
+		{"ordinary before free plan", "glm-test", `{
+			"zai":{"models":{"glm-test":{"cost":{"input":2,"output":3}}}},
+			"zai-coding-plan":{"models":{"glm-test":{"cost":{"input":0,"output":0}}}}
+		}`, "zai", 2},
+		{"free ordinary before paid plan", "glm-test", `{
+			"zai":{"models":{"glm-test":{"cost":{"input":0,"output":0}}}},
+			"zai-coding-plan":{"models":{"glm-test":{"cost":{"input":2,"output":3}}}}
+		}`, "zai", 0},
+		{"original ordinary endpoint", "glm-test", `{
+			"zai":{"models":{"glm-test":{"cost":{"input":2,"output":3}}}},
+			"zhipuai":{"models":{"glm-test":{"cost":{"input":1,"output":2}}}},
+			"zai-coding-plan":{"models":{"glm-test":{"cost":{"input":0,"output":0}}}}
+		}`, "zhipuai", 1},
+		{"single plan remains queryable", "glm-test", `{
+			"zai-coding-plan":{"models":{"glm-test":{"cost":{"input":0,"output":0}}}}
+		}`, "zai-coding-plan", 0},
+		{"two plans remain ambiguous", "glm-test", `{
+			"zhipuai-coding-plan":{"models":{"glm-test":{"cost":{"input":0,"output":0}}}},
+			"zai-coding-plan":{"models":{"glm-test":{"cost":{"input":0,"output":0}}}}
+		}`, "", 0},
+		{"ordinary peers remain ambiguous", "qwen-test", `{
+			"alibaba-cn":{"models":{"qwen-test":{"cost":{"input":1,"output":2}}}},
+			"modelscope":{"models":{"qwen-test":{"cost":{"input":1,"output":2}}}},
+			"alibaba-coding-plan":{"models":{"qwen-test":{"cost":{"input":0,"output":0}}}}
+		}`, "", 0},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			catalog, err := Parse([]byte(`{"providers":` + test.providers + `}`))
+			require.NoError(t, err)
+			entry, found := catalog.Lookup([]string{test.model})
+			if test.provider == "" {
+				require.False(t, found)
+				require.True(t, catalog.Ambiguous[test.model])
+			} else {
+				require.True(t, found)
+				require.Equal(t, test.provider, entry.Provider)
+				require.Equal(t, test.input, *entry.Cost.Input)
+			}
+			for provider := range catalog.Providers {
+				qualified, found := catalog.Lookup([]string{provider + "/" + test.model})
+				require.True(t, found)
+				require.True(t, qualified.FirstParty)
+				require.NotNil(t, qualified.Cost.Input)
+			}
+		})
+	}
+	t.Run("ordinary metadata remains unpriced", func(t *testing.T) {
+		catalog, err := Parse([]byte(`{"providers":{
+			"zai":{"models":{"glm-test":{"limit":{"context":200000}}}},
+			"zai-coding-plan":{"models":{"glm-test":{"cost":{"input":0,"output":0}}}}
+		}}`))
+		require.NoError(t, err)
+		entry, found := catalog.Lookup([]string{"glm-test"})
+		require.True(t, found)
+		require.Equal(t, "zai", entry.Provider)
+		require.Nil(t, entry.Cost.Input)
+		require.Nil(t, entry.Cost.Output)
+	})
+}
+
+// TestCatalogProtectsQualifiedAliases mixes hosted names with public identities
+// and original author namespaces. Hosted aliases must respect service ownership,
+// while NVIDIA and an author's independent brand retain legitimate exact aliases.
+func TestCatalogProtectsQualifiedAliases(t *testing.T) {
+	catalog, err := Parse([]byte(`{
+		"models":{
+			"xai/public":{"limit":{"context":2000000}},
+			"lab/public-only":{"limit":{"context":80}},
+			"nvidia/model":{"limit":{"context":300}},
+			"fastino/model":{"limit":{"context":80}}
+		},
+		"providers":{
+			"xai":{"models":{"other":{}}},
+			"openai":{"models":{"other":{}}},
+			"nvidia":{"models":{"nvidia/model":{"limit":{"context":400},"cost":{"input":1,"output":2}}}},
+			"pioneer":{"models":{"fastino/model":{"limit":{"context":100},"cost":{"input":1,"output":2}}}},
+			"google-vertex":{"models":{
+				"xai/public":{"limit":{"context":128000},"cost":{"input":9,"output":10}},
+				"lab/public-only":{"limit":{"context":7},"cost":{"input":9,"output":10}},
+				"openai/missing":{"limit":{"context":7},"cost":{"input":9,"output":10}},
+				"custom/path":{"limit":{"context":12},"cost":{"input":1,"output":2}}
+			}}
+		}
+	}`))
+	require.NoError(t, err)
+	for id, context := range map[string]int{"xai/public": 2000000, "lab/public-only": 80} {
+		entry, found := catalog.Lookup([]string{id})
+		require.True(t, found)
+		require.Equal(t, context, *entry.Attributes.Context)
+		require.Nil(t, entry.Cost.Input)
+		hosted, found := catalog.Lookup([]string{"google-vertex/" + id})
+		require.True(t, found)
+		require.Equal(t, 9.0, *hosted.Cost.Input)
+	}
+	require.NotContains(t, catalog.Entries, "openai/missing")
+	require.Contains(t, catalog.Entries, "google-vertex/openai/missing")
+	for id, provider := range map[string]string{
+		"nvidia/model": "nvidia", "nvidia/nvidia/model": "nvidia",
+		"fastino/model": "pioneer", "pioneer/fastino/model": "pioneer", "custom/path": "google-vertex",
+	} {
+		entry, found := catalog.Lookup([]string{id})
+		require.True(t, found)
+		require.Equal(t, provider, entry.Provider)
+		require.Equal(t, 1.0, *entry.Cost.Input)
+	}
+}
