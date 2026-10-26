@@ -1,56 +1,48 @@
 import type { ProtocolID } from '@/api/protocols.types'
+import { providerModeChoices } from './providerEndpoints'
 
-// openCodeDraft.ts translates OpenCode form state into mode-scoped credentials.
-// Each mode owns its accepted catalogue suggestions and manual overrides, while
-// protocol addresses apply to the selected provider. Accepted suggestions retain
-// newly discovered model routes after saving. A manual choice takes precedence;
-// deleting that choice restores the accepted catalogue protocol for that model.
+// openCodeDraft.ts copies OpenCode model protocol tables between provider
+// credentials and the form draft. Each provider_mode owns two tables: accepted
+// catalog suggestions from model synchronization and manual overrides. A manual
+// choice takes precedence, and deleting it restores the accepted catalog protocol
+// for that model, so the tables stay separate through the save round trip.
 //
-// Hydration copies every mode table so canceling a dialog cannot modify the
-// provider response retained by its parent. Serialization also copies both
-// tables, keeping accepted catalogue results separate from manual choices during
-// the save round trip. Empty address overrides are omitted so runtime mode
-// defaults remain available.
+// Hydration copies every mode table, so canceling a dialog leaves the provider
+// response retained by its parent unchanged. Serialization copies them again and
+// writes only the modes OpenCode accepts. Mode, root address, and address slots
+// belong to the shared provider form fields.
 
-// OpenCodeDraft contains the editable service mode, model encodings, and addresses.
+// OpenCodeProtocolTable maps a provider_mode to exact model IDs and their protocols.
+type OpenCodeProtocolTable = Record<string, Record<string, ProtocolID>>
+
+// OpenCodeDraft contains the editable model protocol tables for every mode.
 export interface OpenCodeDraft {
-  mode: 'payg' | 'go' // Selected inference service mode.
-  // protocols owns manual choices; suggestions owns the last accepted catalogue results.
-  // Persistence keeps both tables separate so deleting an override restores its catalogue choice.
-  suggestions: Record<'payg' | 'go', Record<string, ProtocolID>> // Accepted mode catalogue suggestions.
-  protocols: Record<'payg' | 'go', Record<string, ProtocolID>> // Independent exact-model encodings.
-  baseUrls: Record<string, string> // Complete protocol endpoint bases.
+  suggestions: OpenCodeProtocolTable // Accepted catalog suggestions per mode.
+  protocols: OpenCodeProtocolTable // Manual exact-model overrides per mode.
 }
 
-// openCodeDraft copies saved OpenCode settings or creates an empty payg draft.
-// Missing mode tables become independently owned objects. Secret credentials
-// stay in the owning provider form and are excluded from this draft.
+// copyModeTables returns independent copies of the payg and go tables. Missing
+// or malformed mode entries become empty tables.
+function copyModeTables(source: unknown): OpenCodeProtocolTable {
+  const tables = source as Partial<OpenCodeProtocolTable> | undefined
+  return Object.fromEntries(
+    providerModeChoices('opencode').map(({ value }) => [value, { ...tables?.[value] }]),
+  )
+}
+
+// openCodeDraft copies saved OpenCode protocol tables or creates empty ones.
 export function openCodeDraft(credentials: Record<string, unknown> = {}): OpenCodeDraft {
-  const modes = credentials.opencode_model_protocols as OpenCodeDraft['protocols'] | undefined
-  const catalog = credentials.opencode_catalog_protocols as OpenCodeDraft['suggestions'] | undefined
   return {
-    mode: credentials.provider_mode === 'go' ? 'go' : 'payg',
-    suggestions: { payg: { ...catalog?.payg }, go: { ...catalog?.go } },
-    protocols: { payg: { ...modes?.payg }, go: { ...modes?.go } },
-    baseUrls: { ...(credentials.api_base_urls as Record<string, string> | undefined) },
+    suggestions: copyModeTables(credentials.opencode_catalog_protocols),
+    protocols: copyModeTables(credentials.opencode_model_protocols),
   }
 }
 
-// openCodeCredentials serializes independent mode tables for provider persistence.
-// Empty addresses are omitted so the selected mode supplies official defaults.
-// Calling forms merge this result into their credential payload before saving.
+// openCodeCredentials serializes both protocol tables for provider persistence.
+// Calling forms merge the result into their credential payload before saving.
 export function openCodeCredentials(draft: OpenCodeDraft): Record<string, unknown> {
   return {
-    provider_mode: draft.mode,
-    opencode_catalog_protocols: {
-      payg: { ...draft.suggestions.payg },
-      go: { ...draft.suggestions.go },
-    },
-    opencode_model_protocols: { payg: { ...draft.protocols.payg }, go: { ...draft.protocols.go } },
-    api_base_urls: Object.fromEntries(
-      Object.entries(draft.baseUrls)
-        .filter(([, value]) => value.trim())
-        .map(([key, value]) => [key, value.trim()]),
-    ),
+    opencode_catalog_protocols: copyModeTables(draft.suggestions),
+    opencode_model_protocols: copyModeTables(draft.protocols),
   }
 }

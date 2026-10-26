@@ -399,7 +399,7 @@ describe('ProviderUpstreamUsageCell', () => {
     })
     expect(wrapper.findAll('.usage-bar')).toHaveLength(3)
     expect(wrapper.text()).toContain('5h|125|2026-10-26T05:00:00Z')
-    expect(wrapper.text()).toContain('admin.providers.opencode.rateLimited')
+    expect(wrapper.text()).toContain('admin.providers.upstreamUsage.status.rateLimited')
     expect(wrapper.text()).not.toContain('PERCENT')
   })
 

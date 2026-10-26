@@ -8,20 +8,18 @@ export default {
   providers: {
     opencode: {
       baseUrlHint:
-        'Leave blank for the selected service mode. A custom root should end at /inference or /inference/go; protocol addresses can be set under Models.',
-      rateLimited: 'Usage limit reached',
-      mode: 'Service mode',
+        'Leave blank for the selected service mode. A custom root should end at /inference or /inference/go; protocol addresses can be set individually below.',
       payg: 'Console / Zen (pay as you go)',
+      paygDesc: 'Pay per use through OpenCode Zen.',
+      go: 'OpenCode Go',
+      goDesc: 'Subscription with rolling five-hour, weekly, and monthly usage windows.',
       description:
         'Use one API key for OpenCode models. Go usage can be refreshed from the provider list.',
       modelProtocols: 'Model protocols',
       modelProtocolsHint:
         'View catalog suggestions or set an exact model override. Delete an override to use the catalog. Each service mode keeps its own overrides.',
-      syncSavedSettings: 'Sync uses the saved API key, service mode, and root address.',
-      saveBeforeSync: 'Save API key, service mode, and root address changes before syncing.',
       catalogSuggestion: 'Catalog',
       selectProtocol: 'Select a protocol',
-      endpointOverrides: 'Custom protocol addresses',
     },
     jev: { description: 'Call TypeSafe SystemOne decision models with an API key.' },
     title: 'Provider Management',
@@ -189,13 +187,10 @@ export default {
         endpoints: 'Protocol endpoints',
         responsesFallbackDesc:
           'Responses requests are converted to Chat Completions because this provider has no native Responses endpoint.',
-        chatCompletions: 'Chat Completions',
         chatCompletionsDesc:
           'Standard OpenAI-compatible endpoint; requests in other formats are converted.',
-        anthropic: 'Anthropic',
         anthropicDesc:
           'Native passthrough to the provider’s Anthropic endpoint — ideal for Claude Code.',
-        responses: 'Responses',
         responsesDesc: 'Provider’s native Responses endpoint — ideal for Codex.',
       },
       zhipuTeam: {
@@ -489,6 +484,7 @@ export default {
         'The selected adapter keeps its own fixed paths and request format. Leave blank to reuse the provider base URL.',
       openCodeBaseUrlHint:
         'Leave blank to query https://opencode.ai. The Go management address is configured independently of the inference address.',
+      status: { rateLimited: 'Usage limit reached' },
       derouterBaseUrlHint:
         'Uses the provider Account Key to query available USD. Leave blank to use https://cf-api.derouter.ai, or enter a management base URL.',
       walletAccessToken: 'New API user access token (optional)',
@@ -1063,6 +1059,7 @@ export default {
     syncUpstreamModelsEmpty: 'Upstream returned no models to sync',
     syncUpstreamModelsFailed: 'Failed to sync upstream models',
     syncUpstreamModelsError: 'Failed to sync upstream models: {message}',
+    saveBeforeSync: 'Save the connection changes before syncing upstream models.',
     clearAllModels: 'Clear all models',
     customModelName: 'Custom model name',
     enterCustomModelName: 'Enter custom model name',

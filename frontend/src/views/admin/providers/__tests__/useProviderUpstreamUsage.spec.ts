@@ -259,6 +259,21 @@ describe('useProviderUpstreamUsage OpenCode Go', () => {
     expect(querySingle).toHaveBeenCalledTimes(1)
   })
 
+  // A page lists payg providers that were never queried in this session. Hydration must
+  // skip invalidation for them, leaving session storage unscanned on each list refresh.
+  it('skips invalidation for ineligible providers without in-memory state', () => {
+    const payg = goProvider()
+    payg.credentials.provider_mode = 'payg'
+    const controller = useProviderUpstreamUsage(ref([payg]), ref([]))
+    sessionStorage.setItem('unrelated', 'kept')
+    const keySpy = vi.spyOn(Storage.prototype, 'key')
+    controller.hydrateUpstreamUsageCache()
+    expect(keySpy).not.toHaveBeenCalled()
+    expect(controller.upstreamUsageByProviderId.value['1']).toBeUndefined()
+    keySpy.mockRestore()
+    sessionStorage.removeItem('unrelated')
+  })
+
   // A Go batch remains pending when its provider is edited or invalidated.
   // Completing that batch cannot reintroduce its old result or leave the row loading.
   it.each(['mode', 'invalidate'])('discards batch responses after %s changes', async (change) => {

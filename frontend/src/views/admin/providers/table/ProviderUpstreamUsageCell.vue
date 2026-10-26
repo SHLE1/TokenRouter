@@ -36,7 +36,7 @@
         <p
           v-if="limit.status === 'rate-limited'"
           class="text-xs text-amber-600 dark:text-amber-400"
-          >{{ t('admin.providers.opencode.rateLimited') }}</p
+          >{{ t('admin.providers.upstreamUsage.status.rateLimited') }}</p
         >
         <div
           v-if="limit.hasAmount && limit.showAmount"

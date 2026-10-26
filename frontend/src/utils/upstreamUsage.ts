@@ -5,13 +5,67 @@ import type { Provider, UpstreamUsageAdapter } from '@/api/admin/providers.types
  * for provider forms and manual usage controls. API-key platform and mode rules
  * select fixed vendor adapters before saved relay preferences are considered.
  * OpenCode Go therefore uses the same adapter identity for visible controls,
- * response validation, and session-cache restoration.
+ * response validation, and session-cache restoration. UPSTREAM_USAGE_ADAPTERS
+ * then tells forms which controls the resolved adapter needs.
  *
  * Query support and the saved switch are separate facts: a supported provider
  * may have queries disabled. Missing switches use the platform default, with
  * Jev disabled by default. Consumers read the resolved values together when
  * validating an observation, or use the predicates for a single UI decision.
  */
+
+/**
+ * UpstreamUsageAdapterInfo describes how provider forms present one usage-query
+ * adapter. It mirrors the backend adapter catalog's Automatic flag.
+ */
+export interface UpstreamUsageAdapterInfo {
+  // automatic marks adapters chosen by platform and mode; forms hide the manual
+  // adapter selector and keep the saved relay preference untouched.
+  automatic: boolean
+  // baseUrl describes the editable management address. Null means the adapter
+  // queries a fixed vendor endpoint and forms show no address input. A missing
+  // placeholder uses the translated "reuse the forwarding address" text.
+  baseUrl: { placeholder?: string; hintKey: string } | null
+}
+
+/**
+ * RELAY_ADAPTER and FIXED_VENDOR_ADAPTER describe manually selected relay formats
+ * that default to the provider forwarding address, and platform-selected vendor
+ * adapters with fixed endpoints.
+ */
+const RELAY_ADAPTER: UpstreamUsageAdapterInfo = {
+  automatic: false,
+  baseUrl: { hintKey: 'admin.providers.upstreamUsage.baseUrlHint' },
+}
+const FIXED_VENDOR_ADAPTER: UpstreamUsageAdapterInfo = { automatic: true, baseUrl: null }
+
+/**
+ * UPSTREAM_USAGE_ADAPTERS maps every adapter to its form presentation. Derouter and
+ * OpenCode Go query dedicated management roots, which their placeholders show.
+ */
+export const UPSTREAM_USAGE_ADAPTERS: Record<UpstreamUsageAdapter, UpstreamUsageAdapterInfo> = {
+  sub2api: RELAY_ADAPTER,
+  new_api: RELAY_ADAPTER,
+  zivv: RELAY_ADAPTER,
+  derouter: {
+    automatic: false,
+    baseUrl: {
+      placeholder: 'https://cf-api.derouter.ai',
+      hintKey: 'admin.providers.upstreamUsage.derouterBaseUrlHint',
+    },
+  },
+  opencode_go: {
+    automatic: true,
+    baseUrl: {
+      placeholder: 'https://opencode.ai',
+      hintKey: 'admin.providers.upstreamUsage.openCodeBaseUrlHint',
+    },
+  },
+  kimi_balance: FIXED_VENDOR_ADAPTER,
+  kimi_coding: FIXED_VENDOR_ADAPTER,
+  zhipu_coding: FIXED_VENDOR_ADAPTER,
+  deepseek_balance: FIXED_VENDOR_ADAPTER,
+}
 
 /** UpstreamUsageProvider contains the saved fields required to resolve query configuration. */
 type UpstreamUsageProvider = Pick<Provider, 'type' | 'platform' | 'credentials' | 'extra'>

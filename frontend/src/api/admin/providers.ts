@@ -945,11 +945,13 @@ export async function syncUpstreamModels(
  * credentials for an upstream model preview.
  */
 export interface SyncUpstreamPreviewParams {
-  provider_mode?: 'payg' | 'go' // OpenCode inference service mode.
   platform: string // Provider platform identifier.
   type: string // Represented record category.
   base_url?: string // Requested base url.
   api_key: string // Upstream provider credential.
+  // provider_mode is the drafted credentials.provider_mode for platforms with modes;
+  // OpenCode selects its payg or Go service root and catalog from it.
+  provider_mode?: string
 }
 
 /**

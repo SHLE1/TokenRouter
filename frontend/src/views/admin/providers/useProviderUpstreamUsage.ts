@@ -449,7 +449,8 @@ export function useProviderUpstreamUsage(
   // providers and administrator. An administrator change clears all in-memory
   // results and token entries before any snapshots are read. Enabled providers
   // restore valid cached observations; cache misses clear idle rows while an
-  // active request keeps its current loading state.
+  // active request keeps its current loading state. Providers that lost
+  // eligibility are invalidated when they still hold in-memory state.
   //
   // This ordering prevents account changes from displaying a previous
   // administrator's observations. The page invokes hydration after list loads and
@@ -469,9 +470,17 @@ export function useProviderUpstreamUsage(
     }
     for (const provider of providers.value) {
       if (!isUpstreamUsageQueryEnabled(provider)) {
-        // Removing eligibility also retires pending requests and old revisions,
-        // preventing Go observations from resurfacing after a switch to payg.
-        invalidateUpstreamUsageCache(provider.id)
+        // Removing eligibility retires a displayed, failed, or pending observation and
+        // its stored revisions, so Go windows cannot resurface after a switch to payg.
+        // Providers with nothing in memory are skipped: invalidation scans session
+        // storage, and cache keys already include the adapter and provider mode.
+        const key = String(provider.id)
+        if (
+          upstreamUsageByProviderId.value[key] ||
+          upstreamUsageErrorByProviderId.value[key] ||
+          upstreamUsageLoadingByProviderId.value[key]
+        )
+          invalidateUpstreamUsageCache(provider.id)
         continue
       }
       const cached = readUpstreamUsageCache(provider)

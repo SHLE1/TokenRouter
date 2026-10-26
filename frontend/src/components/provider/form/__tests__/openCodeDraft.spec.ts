@@ -11,7 +11,7 @@ import type { Provider } from '@/api/admin/providers.types'
 describe('OpenCode provider drafts', () => {
   // A hydrated draft is edited in both modes before serialization. The source
   // record stays intact, and each model retains its mode-specific wire encoding.
-  it('copies nested mode maps and omits empty endpoint overrides', () => {
+  it('copies nested mode maps for both protocol tables', () => {
     const source = {
       provider_mode: 'go',
       opencode_model_protocols: {
@@ -19,15 +19,13 @@ describe('OpenCode provider drafts', () => {
         go: { 'minimax-m3': 'anthropic_messages' },
       },
       opencode_catalog_protocols: { go: { known: 'anthropic_messages' } },
-      api_base_urls: { gemini: '', responses: ' https://relay.example/v1 ' },
     }
     const draft = openCodeDraft(source)
-    draft.protocols.go.custom = 'systemone'
-    draft.suggestions.go.suggested = 'anthropic_messages'
+    draft.protocols.go!.custom = 'systemone'
+    draft.suggestions.go!.suggested = 'anthropic_messages'
     expect(source.opencode_model_protocols.go).not.toHaveProperty('custom')
     expect(source.opencode_catalog_protocols.go).not.toHaveProperty('suggested')
     expect(openCodeCredentials(draft)).toEqual({
-      provider_mode: 'go',
       opencode_catalog_protocols: {
         payg: {},
         go: { known: 'anthropic_messages', suggested: 'anthropic_messages' },
@@ -36,8 +34,15 @@ describe('OpenCode provider drafts', () => {
         payg: source.opencode_model_protocols.payg,
         go: { ...source.opencode_model_protocols.go, custom: 'systemone' },
       },
-      api_base_urls: { responses: 'https://relay.example/v1' },
     })
+  })
+
+  // A draft table receives an entry for a mode OpenCode does not accept. Serialization
+  // writes only payg and go, so the backend never sees an unknown mode key.
+  it('serializes only the modes OpenCode accepts', () => {
+    const draft = openCodeDraft()
+    draft.protocols.coding = { stray: 'systemone' }
+    expect(openCodeCredentials(draft).opencode_model_protocols).toEqual({ payg: {}, go: {} })
   })
 
   // OpenCode keys can belong to payg or Go. The shared query predicate exposes

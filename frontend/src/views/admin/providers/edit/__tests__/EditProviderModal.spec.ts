@@ -20,10 +20,8 @@ const {
   getSettingsMock,
   listTLSProfilesMock,
   getBalanceAlertStatusMock,
-  syncUpstreamModelsMock,
 } = vi.hoisted(() => ({
   getBalanceAlertStatusMock: vi.fn(),
-  syncUpstreamModelsMock: vi.fn(),
   updateProviderMock: vi.fn(),
   checkMixedChannelRiskMock: vi.fn(),
   getWebSearchEmulationConfigMock: vi.fn(),
@@ -71,7 +69,6 @@ vi.mock('@/api/admin', () => ({
 vi.mock('@/api/admin/providers', () => ({
   getAntigravityDefaultModelMapping: vi.fn(),
   getUpstreamBalanceAlertStatus: getBalanceAlertStatusMock,
-  syncUpstreamModels: syncUpstreamModelsMock,
 }))
 
 vi.mock('vue-i18n', async () => {
@@ -112,8 +109,13 @@ const ModelWhitelistSelectorStub = defineComponent({
       type: Array,
       default: () => [],
     },
+    // providerId is the saved identity offered for upstream sync; undefined withholds it.
+    providerId: {
+      type: Number,
+      default: undefined,
+    },
   },
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'synced'],
   template: `
     <div>
       <button
@@ -2220,13 +2222,10 @@ describe('EditProviderModal', () => {
     )
     wrapper.unmount()
   })
-  // A saved OpenCode provider deletes an override, then accepts newly discovered models.
-  // Saving persists accepted catalogue routes separately and leaves the manual deletion intact.
+  // A saved OpenCode provider deletes an override, then the shared selector reports newly
+  // discovered models. Saving persists the reported catalog routes separately and leaves
+  // the manual deletion intact.
   it('saves synchronized OpenCode catalog routes after deleting an override', async () => {
-    syncUpstreamModelsMock.mockReset().mockResolvedValue({
-      models: ['custom', 'new'],
-      model_protocols: { custom: 'anthropic_messages', new: 'openai_responses' },
-    })
     const provider = {
       ...buildProvider(),
       platform: 'opencode',
@@ -2240,12 +2239,15 @@ describe('EditProviderModal', () => {
     const wrapper = mountModal(provider)
     await flushPromises()
     await wrapper.get('[data-settings-tab-button="models"]').trigger('click')
-    const fields = wrapper.get('[data-testid="opencode-fields"]')
-    expect(fields.find('button').attributes('disabled')).toBeUndefined()
-    await fields.get('button[aria-label="common.delete"]').trigger('click')
-    await fields.find('button').trigger('click')
-    await flushPromises()
-    expect(syncUpstreamModelsMock).toHaveBeenCalledWith(1, expect.any(AbortSignal))
+    const selector = wrapper.getComponent(ModelWhitelistSelectorStub)
+    expect(selector.props('providerId')).toBe(1)
+    await wrapper
+      .get('[data-testid="opencode-fields"] button[aria-label="common.delete"]')
+      .trigger('click')
+    selector.vm.$emit('synced', {
+      models: ['custom', 'new'],
+      model_protocols: { custom: 'anthropic_messages', new: 'openai_responses' },
+    })
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
     expect(updateProviderMock.mock.calls[0]?.[1]?.credentials).toEqual(
@@ -2262,24 +2264,80 @@ describe('EditProviderModal', () => {
     wrapper.unmount()
   })
 
-  // Changing the root in the saved provider dialog leaves its stored query identity available.
-  // The model panel detects the unsaved difference and blocks synchronization until saving.
-  it('passes saved OpenCode settings to the sync guard', async () => {
-    syncUpstreamModelsMock.mockReset()
+  // A saved OpenCode provider with a blank root and one protocol override is opened. The
+  // root stays blank with the Go placeholder, the override is restored into its slot, and
+  // saving keeps both without filling in another platform's default address.
+  it('round-trips a blank OpenCode root and its protocol address overrides', async () => {
     const provider = {
       ...buildProvider(),
       platform: 'opencode',
-      credentials: { api_key: 'saved', provider_mode: 'go', base_url: 'https://saved.example' },
+      credentials: {
+        api_key: 'saved',
+        provider_mode: 'go',
+        api_base_urls: { gemini: 'https://relay.example/google/v1beta' },
+      },
     }
     const wrapper = mountModal(provider)
     await flushPromises()
-    await wrapper.get('#edit-provider-base-url').setValue('https://unsaved.example')
+    const baseUrl = wrapper.get('#edit-provider-base-url')
+    expect((baseUrl.element as HTMLInputElement).value).toBe('')
+    expect(baseUrl.attributes('placeholder')).toBe('https://opencode.ai/inference/go')
+    expect((wrapper.get('#edit-provider-endpoint-gemini').element as HTMLInputElement).value).toBe(
+      'https://relay.example/google/v1beta',
+    )
+    expect(wrapper.get('#edit-provider-endpoint-responses').attributes('placeholder')).toBe(
+      'https://opencode.ai/inference/go/openai/v1',
+    )
+    await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(updateProviderMock.mock.calls[0]?.[1]?.credentials).toEqual(
+      expect.objectContaining({
+        base_url: '',
+        provider_mode: 'go',
+        api_base_urls: { gemini: 'https://relay.example/google/v1beta' },
+      }),
+    )
+    wrapper.unmount()
+  })
+
+  // Saved-provider sync reads stored credentials. Editing the forwarding address or
+  // entering a replacement key must withhold the saved identity from the selector and
+  // explain that saving comes first, for any API-key platform.
+  it.each(['base-url', 'api-key'])(
+    'withholds saved-provider sync after an unsaved %s change',
+    async (field) => {
+      const wrapper = mountModal()
+      await flushPromises()
+      await wrapper.get('[data-settings-tab-button="models"]').trigger('click')
+      expect(wrapper.getComponent(ModelWhitelistSelectorStub).props('providerId')).toBe(1)
+      expect(wrapper.find('[data-testid="model-sync-save-first"]').exists()).toBe(false)
+
+      await wrapper
+        .get(field === 'base-url' ? '#edit-provider-base-url' : '#edit-provider-api-key')
+        .setValue(field === 'base-url' ? 'https://unsaved.example' : 'sk-replacement')
+
+      expect(wrapper.getComponent(ModelWhitelistSelectorStub).props('providerId')).toBeUndefined()
+      expect(wrapper.get('[data-testid="model-sync-save-first"]').text()).toContain(
+        'admin.providers.saveBeforeSync',
+      )
+      wrapper.unmount()
+    },
+  )
+
+  // An OpenCode provider switches service mode before saving. The mode is part of the
+  // sync destination, so the saved identity is withheld until the new mode is saved.
+  it('withholds saved-provider sync after an unsaved OpenCode mode change', async () => {
+    const provider = {
+      ...buildProvider(),
+      platform: 'opencode',
+      credentials: { api_key: 'saved', provider_mode: 'payg', base_url: '' },
+    }
+    const wrapper = mountModal(provider)
+    await flushPromises()
+    wrapper.getComponent({ name: 'SettingsSegmented' }).vm.$emit('update:modelValue', 'go')
+    await flushPromises()
     await wrapper.get('[data-settings-tab-button="models"]').trigger('click')
-    const fields = wrapper.get('[data-testid="opencode-fields"]')
-    expect(fields.find('button').attributes('disabled')).toBeDefined()
-    expect(fields.text()).toContain('admin.providers.opencode.saveBeforeSync')
-    await fields.find('button').trigger('click')
-    expect(syncUpstreamModelsMock).not.toHaveBeenCalled()
+    expect(wrapper.getComponent(ModelWhitelistSelectorStub).props('providerId')).toBeUndefined()
     wrapper.unmount()
   })
 })

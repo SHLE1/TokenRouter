@@ -1,8 +1,11 @@
+import { CONCRETE_PLATFORM_OPTIONS } from '@/constants/platforms'
+
 /**
  * platformColors.ts supplies platform labels and shared class strings for badges, text,
  * icons, and selected choices. Recognized platform identifiers receive their configured
  * palette. Unrecognized values use purpose-specific default colors, while label helpers
- * retain nonempty custom platform text.
+ * read display names from the shared platform catalog and retain nonempty custom
+ * platform text.
  */
 
 /**
@@ -127,22 +130,10 @@ const SOLID: Record<Platform, string> = {
 const SOLID_DEFAULT = 'bg-primary-600 text-white'
 
 /**
- * isPlatform recognizes exact identifiers with dedicated platform labels and palettes.
+ * isPlatform recognizes exact identifiers with dedicated platform palettes.
  */
 function isPlatform(p: string): p is Platform {
-  return (
-    p === 'anthropic' ||
-    p === 'openai' ||
-    p === 'antigravity' ||
-    p === 'gemini' ||
-    p === 'qoder' ||
-    p === 'grok' ||
-    p === 'kimi' ||
-    p === 'zhipu' ||
-    p === 'deepseek' ||
-    p === 'jev' ||
-    p === 'opencode'
-  )
+  return Object.prototype.hasOwnProperty.call(TEXT, p)
 }
 
 /**
@@ -173,37 +164,12 @@ export function platformIconClass(p: string): string {
 }
 
 /**
- * platformLabel returns the display spelling of a known platform identifier. Unknown
- * nonempty strings pass through unchanged, and empty input uses API as the generic
- * platform label.
+ * platformLabel returns the display spelling of a known platform identifier from the shared
+ * platform catalog. Unknown nonempty strings pass through unchanged, and empty input uses API
+ * as the generic platform label.
  */
 export function platformLabel(p: string): string {
-  switch (p) {
-    case 'anthropic':
-      return 'Anthropic'
-    case 'openai':
-      return 'OpenAI'
-    case 'antigravity':
-      return 'Antigravity'
-    case 'gemini':
-      return 'Gemini'
-    case 'qoder':
-      return 'Qoder'
-    case 'grok':
-      return 'Grok'
-    case 'kimi':
-      return 'Kimi'
-    case 'zhipu':
-      return 'Zhipu GLM'
-    case 'deepseek':
-      return 'DeepSeek'
-    case 'opencode':
-      return 'OpenCode'
-    case 'jev':
-      return 'Jev'
-    default:
-      return p || 'API'
-  }
+  return CONCRETE_PLATFORM_OPTIONS.find((option) => option.value === p)?.label ?? (p || 'API')
 }
 
 /**

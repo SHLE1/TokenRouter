@@ -55,11 +55,11 @@ describe('UpstreamUsageConfigEditor', () => {
     expect(wrapper.find('[data-testid="select"]').exists()).toBe(false)
   })
 
-  // OpenCode chooses its adapter automatically but allows a separate management
+  // OpenCode Go is selected by platform and mode but queries a separate management
   // endpoint. Editing that address emits its draft while the adapter selector stays hidden.
   it('edits the management address with an automatic Go adapter', async () => {
     const wrapper = mount(UpstreamUsageConfigEditor, {
-      props: { enabled: true, adapter: 'opencode_go', baseUrl: '', automaticAdapter: true },
+      props: { enabled: true, adapter: 'opencode_go', baseUrl: '' },
       global: { stubs: { Select: SelectStub } },
     })
     expect(wrapper.find('[data-testid="upstream-usage-adapter"]').exists()).toBe(false)
@@ -72,17 +72,11 @@ describe('UpstreamUsageConfigEditor', () => {
     expect(wrapper.find('[data-testid="upstream-usage-base-url"]').exists()).toBe(false)
   })
 
-  // Fixed CN forms opt out of management-address editing separately from adapter
-  // selection. Their automatic adapter still leaves the query enable switch available.
-  it('hides the management address when the caller uses a fixed CN form', () => {
+  // CN vendor adapters query fixed endpoints selected by platform and mode. The editor
+  // hides both the selector and the management address but keeps the query switch.
+  it('hides the management address for fixed CN vendor adapters', () => {
     const wrapper = mount(UpstreamUsageConfigEditor, {
-      props: {
-        enabled: true,
-        adapter: 'kimi_coding',
-        baseUrl: '',
-        automaticAdapter: true,
-        baseUrlEditable: false,
-      },
+      props: { enabled: true, adapter: 'kimi_coding', baseUrl: '' },
       global: { stubs: { Select: SelectStub } },
     })
     expect(wrapper.find('[data-testid="upstream-usage-enabled"]').exists()).toBe(true)
@@ -115,7 +109,7 @@ describe('UpstreamUsageConfigEditor', () => {
   // must explain that leaving this field blank does not reuse inference credentials' destination.
   it('shows the official Go management root independently from inference', () => {
     const wrapper = mount(UpstreamUsageConfigEditor, {
-      props: { enabled: true, adapter: 'opencode_go', baseUrl: '', automaticAdapter: true },
+      props: { enabled: true, adapter: 'opencode_go', baseUrl: '' },
       global: { stubs: { Select: SelectStub } },
     })
     expect(wrapper.get('[data-testid="upstream-usage-base-url"]').attributes('placeholder')).toBe(

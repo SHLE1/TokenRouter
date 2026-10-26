@@ -89,18 +89,18 @@
           >
             <!-- API-key credential fields. -->
             <template v-if="provider.type === 'apikey'">
-              <!-- CN billing-mode selection. -->
-              <div v-if="isCNApiKeyProvider">
+              <!-- Provider mode selection for platforms with billing or service modes. -->
+              <div v-if="modeChoices.length > 0">
                 <span class="input-label">{{
                   t('admin.providers.cnProviders.providerMode.title')
                 }}</span>
                 <SettingsSegmented
                   v-model="editProviderMode"
                   :ariaLabel="t('admin.providers.cnProviders.providerMode.title')"
-                  :options="cnProviderModeSegmentOptions"
+                  :options="providerModeSegmentOptions"
                 />
-                <p class="input-hint">
-                  {{ t(`admin.providers.cnProviders.providerMode.${editProviderMode}Desc`) }}
+                <p v-if="selectedModeChoice" class="input-hint">
+                  {{ t(selectedModeChoice.descriptionKey) }}
                 </p>
               </div>
               <div v-if="provider.platform === 'gemini'">
@@ -146,22 +146,26 @@
                   @select="onCnPresetSelect"
                 />
               </div>
-              <div v-else class="space-y-4">
+              <div v-if="endpointSlots.length > 0" class="space-y-4">
                 <p class="input-label mb-0">
                   {{ t('admin.providers.cnProviders.apiProtocol.endpoints') }}
                 </p>
-                <div v-for="item in editAdaptiveProtocolOptions" :key="item.value">
-                  <label :for="`edit-provider-endpoint-${item.value}`" class="input-label">
-                    {{ t(`admin.providers.cnProviders.apiProtocol.${item.labelKey}`) }}
+                <div v-for="item in endpointSlots" :key="item.slot">
+                  <label :for="`edit-provider-endpoint-${item.slot}`" class="input-label">
+                    {{ item.label }}
                   </label>
                   <input
-                    :id="`edit-provider-endpoint-${item.value}`"
-                    v-model="editAdaptiveBaseUrls[item.value]"
+                    :id="`edit-provider-endpoint-${item.slot}`"
+                    v-model="editAdaptiveBaseUrls[item.slot]"
                     type="text"
                     class="input"
+                    :placeholder="item.placeholder"
                   />
                 </div>
-                <p v-if="!cnSupportsNativeResponses(provider.platform)" class="input-hint">
+                <p
+                  v-if="isCNApiKeyProvider && !cnSupportsNativeResponses(provider.platform)"
+                  class="input-hint"
+                >
                   {{ t('admin.providers.cnProviders.apiProtocol.responsesFallbackDesc') }}
                 </p>
               </div>
@@ -398,16 +402,13 @@
         </template>
 
         <template #models>
-          <OpenCodeFields
-            v-if="provider.platform === 'opencode'"
-            v-model="openCodeConfig"
-            :api-key="editApiKey"
-            :base-url="editBaseUrl"
-            :provider-id="provider.id"
-            :saved-mode="provider.credentials?.provider_mode === 'go' ? 'go' : 'payg'"
-            :saved-base-url="String(provider.credentials?.base_url ?? '')"
-            @synced="setAllowedModels([...new Set([...allowedModels, ...$event])])"
-          />
+          <!-- Saved-provider sync reads stored credentials, so unsaved connection edits withhold it. -->
+          <SettingsNotice
+            v-if="showModelRestriction && connectionChanged"
+            data-testid="model-sync-save-first"
+          >
+            {{ t('admin.providers.saveBeforeSync') }}
+          </SettingsNotice>
 
           <ModelRestrictionFields
             v-if="showModelRestriction"
@@ -416,9 +417,7 @@
             v-model:mappings="modelMappings"
             :platform="provider.type === 'bedrock' ? 'anthropic' : provider.platform"
             :provider-id="
-              provider.type === 'bedrock' || provider.platform === 'opencode'
-                ? undefined
-                : provider.id
+              provider.type === 'bedrock' || connectionChanged ? undefined : provider.id
             "
             :source-placeholder="
               provider.type === 'bedrock' ? t('admin.providers.fromModel') : undefined
@@ -427,8 +426,16 @@
               provider.type === 'bedrock' ? t('admin.providers.toModel') : undefined
             "
             @update:allowed-models="setAllowedModels"
+            @synced="storeModelProtocolSuggestions"
             @add="touchQoderModelRestriction"
             @remove="touchQoderModelRestriction"
+          />
+
+          <OpenCodeFields
+            v-if="provider.platform === 'opencode'"
+            v-model="openCodeProtocols"
+            :mode="editProviderMode"
+            :protocols="upstreamProtocols"
           />
 
           <!-- Antigravity uses the whitelist for final model eligibility and mappings for request rewriting. -->
@@ -669,17 +676,12 @@
           />
 
           <UpstreamUsageConfigEditor
-            v-if="
-              provider.type === 'apikey' &&
-              (provider.platform !== 'opencode' || openCodeConfig.mode === 'go')
-            "
+            v-if="resolvedUpstreamUsageAdapter"
             :enabled="upstreamUsageEnabled"
-            :adapter="provider.platform === 'opencode' ? 'opencode_go' : upstreamUsageAdapter"
+            :adapter="resolvedUpstreamUsageAdapter"
             :base-url="upstreamUsageBaseUrl"
-            :base-url-editable="!isCNApiKeyProvider"
             :wallet-access-token="upstreamUsageWalletAccessToken"
             :wallet-user-id="upstreamUsageWalletUserId"
-            :automatic-adapter="isCNApiKeyProvider || provider.platform === 'opencode'"
             @update:enabled="upstreamUsageEnabled = $event"
             @update:adapter="upstreamUsageAdapter = $event"
             @update:base-url="upstreamUsageBaseUrl = $event"
@@ -1000,7 +1002,11 @@ import Collapse from '@/components/common/Collapse.vue'
 import OpenCodeFields from '@/components/provider/form/OpenCodeFields.vue'
 import { openCodeDraft, openCodeCredentials } from '@/components/provider/form/openCodeDraft'
 import ProviderProtocolSelector from '../../../../components/provider/ProviderProtocolSelector.vue'
-import { loadProtocolCatalog, nativeProtocolOptions } from '@/api/admin/protocolCapabilities'
+import {
+  loadProtocolCatalog,
+  nativeProtocolOptions,
+  protocolName,
+} from '@/api/admin/protocolCapabilities'
 import OpenAICompactionToggle from '../../../../components/provider/OpenAICompactionToggle.vue'
 import { ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -1058,9 +1064,14 @@ import {
 } from '@/components/provider/form/headerOverrides'
 import { buildPlanTypeOptions } from '@/components/provider/form/planType'
 import {
+  apiKeyPreset,
   cnSupportsNativeResponses,
   defaultCNAdaptiveBaseUrls,
   defaultCNBaseUrl,
+  derivedEndpointOverrides,
+  derivedEndpointSlots,
+  ENDPOINT_SLOT_PROTOCOLS,
+  providerModeChoices,
   type CnProviderMode,
   type CnApiProtocol,
   type CnNativeApiProtocol,
@@ -1068,6 +1079,8 @@ import {
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { VERTEX_LOCATION_OPTIONS, groupedProviderSelectOptions } from '@/constants/provider'
 import { supportsUpstreamBalanceAlert } from '@/utils/upstreamBalanceAlert'
+import { resolveUpstreamUsageConfig } from '@/utils/upstreamUsage'
+import type { SyncUpstreamModelsResult } from '@/api/admin/providers'
 import { buildModelMappingObject, type QoderSite } from '@/composables/useModelWhitelist'
 
 // EditProviderModal.vue presents provider settings, validates draft fields, and submits
@@ -1201,10 +1214,9 @@ interface ProviderEditChoice {
   name: string // Administrator-visible option display name.
 }
 
-// CNProtocolOption binds a native endpoint key to its translation suffix.
+// CNProtocolOption names one native CN endpoint slot edited in adaptive mode.
 interface CNProtocolOption {
   value: CnNativeApiProtocol // Native protocol endpoint key.
-  labelKey: string // Protocol label translation suffix.
 }
 
 // Props supplies the visible provider and selectable administration records.
@@ -1249,15 +1261,11 @@ const handleOllamaCloudUsageUpdated = (state: OllamaCloudUsageState) => {
 // baseUrlHint selects the translated forwarding-address hint for the current platform and
 // Gemini endpoint source in this dialog.
 const baseUrlHint = computed(() => {
-  if (props.provider?.platform === 'opencode') return t('admin.providers.opencode.baseUrlHint')
-  if (!props.provider) return t('admin.providers.baseUrlHint')
-  if (props.provider.platform === 'openai') return t('admin.providers.openai.baseUrlHint')
-  if (props.provider.platform === 'gemini' && geminiProviderType.value === 'third_party') {
+  if (props.provider?.platform === 'gemini' && geminiProviderType.value === 'third_party') {
     return t('admin.providers.gemini.connectionSource.thirdPartyBaseUrlHint')
   }
-  if (props.provider.platform === 'gemini') return t('admin.providers.gemini.baseUrlHint')
-  if (props.provider.platform === 'grok') return ''
-  return t('admin.providers.baseUrlHint')
+  const hintKey = platformApiKeyPreset.value.baseUrlHintKey
+  return hintKey ? t(hintKey) : ''
 })
 
 // submitting tracks the update request lifetime so the submit button remains disabled
@@ -1320,27 +1328,42 @@ const balanceAlertSupported = computed(() =>
 // subsequent Vue watcher flush, preserving stored relay addresses.
 const syncingForm = ref(false)
 
-// cnProviderModeSegmentOptions builds translated CN billing choices, restricting DeepSeek
-// to pay-as-you-go mode in the visible segmented control.
-const cnProviderModeSegmentOptions = computed(() => {
-  const modes: CnProviderMode[] =
-    props.provider?.platform === 'deepseek' ? ['payg'] : ['payg', 'coding']
-  return modes.map((value) => ({
-    value,
-    label: t(`admin.providers.cnProviders.providerMode.${value}`),
-  }))
-})
+// modeChoices lists the API-key provider modes of the edited platform; empty hides the
+// selector. providerModeSegmentOptions and selectedModeChoice present them as a segmented
+// control with the current mode's description.
+const modeChoices = computed(() =>
+  props.provider?.type === 'apikey' ? providerModeChoices(props.provider.platform) : [],
+)
+const providerModeSegmentOptions = computed(() =>
+  modeChoices.value.map((choice) => ({ value: choice.value, label: t(choice.titleKey) })),
+)
+const selectedModeChoice = computed(() =>
+  modeChoices.value.find((choice) => choice.value === editProviderMode.value),
+)
 
 // editAdaptiveProtocolOptions builds the CN endpoint fields supported by the platform,
 // adding Responses only where its native endpoint exists.
 const editAdaptiveProtocolOptions = computed<CNProtocolOption[]>(() => {
-  const opts: CNProtocolOption[] = [
-    { value: 'chat_completions', labelKey: 'chatCompletions' },
-    { value: 'anthropic', labelKey: 'anthropic' },
-  ]
-  if (cnSupportsNativeResponses(props.provider?.platform ?? ''))
-    opts.push({ value: 'responses', labelKey: 'responses' })
+  const opts: CNProtocolOption[] = [{ value: 'chat_completions' }, { value: 'anthropic' }]
+  if (cnSupportsNativeResponses(props.provider?.platform ?? '')) opts.push({ value: 'responses' })
   return opts
+})
+// endpointSlots lists the per-protocol address inputs with catalog protocol names. CN
+// adaptive mode edits every native slot prefilled from presets; root-derived platforms
+// edit optional overrides whose placeholders follow the entered or official root.
+const endpointSlots = computed(() => {
+  const slots =
+    isCNApiKeyProvider.value && editApiProtocol.value === 'adaptive'
+      ? editAdaptiveProtocolOptions.value.map(({ value }) => ({ slot: value, placeholder: '' }))
+      : derivedEndpointSlots(
+          props.provider?.type === 'apikey' ? props.provider.platform : '',
+          editBaseUrl.value,
+          editProviderMode.value,
+        )
+  return slots.map((item) => ({
+    ...item,
+    label: protocolName(ENDPOINT_SLOT_PROTOCOLS[item.slot]),
+  }))
 })
 // Protocol changes translate the current endpoint into the adaptive map so changing editor
 // mode does not discard an administrator-entered relay address.
@@ -1593,47 +1616,21 @@ const showGeminiTier = computed(
   () => props.provider?.platform === 'gemini' && geminiProviderType.value === 'official',
 )
 
-// apiKeyBaseUrlPlaceholder selects a platform-specific example forwarding endpoint for the
-// API-key input without changing its draft value.
-const apiKeyBaseUrlPlaceholder = computed(() => {
-  switch (props.provider?.platform) {
-    case 'opencode':
-      return `https://opencode.ai/inference${openCodeConfig.value.mode === 'go' ? '/go' : ''}`
-    case 'jev':
-      return 'https://api.typesafe.ai'
-    case 'openai':
-      return 'https://api.openai.com'
-    case 'gemini':
-      return 'https://generativelanguage.googleapis.com'
-    case 'antigravity':
-      return 'https://cloudcode-pa.googleapis.com'
-    case 'grok':
-      return 'https://api.x.ai/v1'
-    default:
-      return 'https://api.anthropic.com'
-  }
-})
+// platformApiKeyPreset resolves the edited platform's API-key defaults for the current
+// provider mode. The placeholders derived from it leave the draft values unchanged.
+const platformApiKeyPreset = computed(() =>
+  apiKeyPreset(props.provider?.platform ?? '', editProviderMode.value),
+)
+// apiKeyBaseUrlPlaceholder shows the preset forwarding address, which can depend on the mode.
+const apiKeyBaseUrlPlaceholder = computed(() => platformApiKeyPreset.value.baseUrlPlaceholder)
 
 // apiKeyPlaceholder selects an example key prefix for the current platform and Gemini
 // source without exposing stored credentials.
-const apiKeyPlaceholder = computed(() => {
-  switch (props.provider?.platform) {
-    case 'opencode':
-      return 'oc_sk_...'
-    case 'jev':
-      return 'api-key-...'
-    case 'openai':
-      return 'sk-proj-...'
-    case 'gemini':
-      return geminiProviderType.value === 'third_party' ? 'api-key-...' : 'AIza...'
-    case 'antigravity':
-      return 'sk-...'
-    case 'grok':
-      return 'xai-...'
-    default:
-      return 'sk-ant-...'
-  }
-})
+const apiKeyPlaceholder = computed(() =>
+  props.provider?.platform === 'gemini' && geminiProviderType.value === 'third_party'
+    ? 'api-key-...'
+    : platformApiKeyPreset.value.apiKeyPlaceholder,
+)
 
 // qoderSiteOptions provides the global and China site labels and test identifiers used by
 // the Qoder selector.
@@ -1728,13 +1725,8 @@ const openAIOAuthClientPolicyOptions = useOpenAIOAuthClientPolicyOptions()
 
 // defaultBaseUrl selects the forwarding fallback used when an API-key address is blank. CN
 // providers use their edited billing mode and protocol, preventing their empty address
-// from selecting the Anthropic fallback.
+// from selecting the Anthropic fallback; other platforms use their preset.
 const defaultBaseUrl = computed(() => {
-  if (props.provider?.platform === 'opencode') return ''
-  if (props.provider?.platform === 'jev') return 'https://api.typesafe.ai'
-  if (props.provider?.platform === 'openai') return 'https://api.openai.com'
-  if (props.provider?.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
-  if (props.provider?.platform === 'grok') return 'https://api.x.ai/v1'
   if (
     props.provider?.platform === 'kimi' ||
     props.provider?.platform === 'zhipu' ||
@@ -1742,7 +1734,7 @@ const defaultBaseUrl = computed(() => {
   ) {
     return defaultCNBaseUrl(props.provider.platform, editProviderMode.value, editApiProtocol.value)
   }
-  return 'https://api.anthropic.com'
+  return platformApiKeyPreset.value.defaultBaseUrl
 })
 
 // A third-party source needs a relay address; clear the official Google host when
@@ -1784,21 +1776,64 @@ const expiresAtInput = computed({
   },
 })
 
+// OpenCode model protocol tables belong to this dialog and are saved with its credential payload.
+const openCodeProtocols = ref(openCodeDraft())
+
+// connectionFingerprint serializes the drafted settings that decide which upstream a
+// saved-provider model sync reaches. savedConnectionFingerprint records the value right
+// after hydration; a difference, or any replacement API key, means sync would mix the
+// stored credentials with an unsaved destination, so the form withholds it until saving.
+const connectionFingerprint = computed(() =>
+  JSON.stringify([
+    editBaseUrl.value.trim(),
+    editProviderMode.value,
+    editApiProtocol.value,
+    editAdaptiveBaseUrls.value,
+    geminiProviderType.value,
+  ]),
+)
+const savedConnectionFingerprint = ref('')
+const connectionChanged = computed(
+  () =>
+    props.provider?.type === 'apikey' &&
+    (editApiKey.value.trim() !== '' ||
+      connectionFingerprint.value !== savedConnectionFingerprint.value),
+)
+
+// storeModelProtocolSuggestions keeps per-model protocol suggestions returned by a model
+// sync as the current mode's accepted catalog table. Responses without suggestions leave
+// the table unchanged; manual overrides stay separate in either case.
+function storeModelProtocolSuggestions(result: SyncUpstreamModelsResult) {
+  if (result.model_protocols)
+    openCodeProtocols.value.suggestions[editProviderMode.value] = { ...result.model_protocols }
+}
+
+// resolvedUpstreamUsageAdapter resolves the usage adapter for the edited provider draft,
+// or null when its type and mode support no usage query and the editor stays hidden.
+const resolvedUpstreamUsageAdapter = computed(() =>
+  props.provider
+    ? resolveUpstreamUsageConfig({
+        type: props.provider.type,
+        platform: props.provider.platform,
+        credentials: { provider_mode: editProviderMode.value },
+        extra: { upstream_usage_query: { adapter: upstreamUsageAdapter.value } },
+      }).adapter
+    : null,
+)
+
 // syncFormFromProvider restores editable settings from a provider response. Null input
 // clears native protocols and leaves other refs unchanged. For a provider response, the
 // component marks hydration active before delegating synchronous draft writes. The guard
 // remains set through the next Vue tick because CN mode and protocol watchers run after
 // those writes and would otherwise replace custom addresses with presets. Later
-// administrator changes use their normal watcher behavior.
-// OpenCode configuration belongs to this dialog and is saved with its credential payload.
-const openCodeConfig = ref(openCodeDraft())
-
+// administrator changes use their normal watcher behavior. The connection snapshot is
+// taken after hydration so the restored values count as saved.
 const syncFormFromProvider = (newProvider: Provider | null) => {
   if (!newProvider) {
     upstreamProtocols.value = undefined
     return
   }
-  openCodeConfig.value = openCodeDraft(newProvider.credentials as Record<string, unknown>)
+  openCodeProtocols.value = openCodeDraft(newProvider.credentials as Record<string, unknown>)
   syncingForm.value = true
   // Keep the hydration guard through Vue pre-flush watchers; releasing it synchronously
   // would let mode restoration overwrite saved custom forwarding addresses.
@@ -1809,6 +1844,7 @@ const syncFormFromProvider = (newProvider: Provider | null) => {
     loadFromExtra: loadQuotaNotifyFromExtra,
     reset: resetQuotaNotify,
   })
+  savedConnectionFingerprint.value = connectionFingerprint.value
 }
 
 // loadTLSProfiles loads profile labels for the TLS selector in this dialog. Request
@@ -2136,12 +2172,20 @@ const handleSubmit = async () => {
         ...currentCredentials,
         base_url: newBaseUrl,
       }
-      if (props.provider.platform === 'opencode')
-        Object.assign(newCredentials, openCodeCredentials(openCodeConfig.value))
+      if (modeChoices.value.length > 0) newCredentials.provider_mode = editProviderMode.value
+      // Root-derived address slots store only administrator overrides, and OpenCode keeps
+      // its per-mode model protocol tables beside them.
+      const endpointOverrides = derivedEndpointOverrides(
+        props.provider.platform,
+        editAdaptiveBaseUrls.value,
+      )
+      if (endpointOverrides) newCredentials.api_base_urls = endpointOverrides
+      if (props.provider.platform === 'opencode') {
+        Object.assign(newCredentials, openCodeCredentials(openCodeProtocols.value))
+      }
       // The endpoint map and shared URL represent the same CN forwarding settings;
       // update both from the edited native slots before serializing credentials.
       if (isCNApiKeyProvider.value) {
-        newCredentials.provider_mode = editProviderMode.value
         newCredentials.api_protocol = editApiProtocol.value
         if (editApiProtocol.value === 'adaptive') {
           const defaults = defaultCNAdaptiveBaseUrls(cnPresetPlatform.value, editProviderMode.value)
