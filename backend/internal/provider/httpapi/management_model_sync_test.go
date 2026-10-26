@@ -292,3 +292,57 @@ func TestProviderHandlerOpenCodePreviewUsesCallerCredentials(t *testing.T) {
 		})
 	}
 }
+
+// TestProviderHandlerSyncSerializesEmptyProtocolSuggestions queries an unknown
+// model through saved-provider and preview endpoints. OpenCode returns an empty
+// object so forms can clear stale routes; other platforms omit protocol suggestions.
+func TestProviderHandlerSyncSerializesEmptyProtocolSuggestions(t *testing.T) {
+	for _, platform := range []string{capability.PlatformOpenCode, capability.PlatformOpenAI} {
+		for _, preview := range []bool{false, true} {
+			t.Run(platform+"/preview="+strconv.FormatBool(preview), func(t *testing.T) {
+				svc := &availableModelsAdminService{
+					managementMutationFixture: newManagementMutationFixture(),
+					provider: providercore.Record{
+						ID: 44, Platform: platform, Type: capability.ProviderTypeAPIKey,
+						Credentials: map[string]any{
+							"api_key": "saved-secret", "base_url": "https://saved.example",
+							providercore.OpenCodeCatalogProtocolsKey: map[string]any{
+								"payg": map[string]any{"custom-model": "openai_responses"},
+							},
+						},
+					},
+				}
+				upstream := &syncUpstreamHTTPUpstream{resp: &http.Response{
+					StatusCode: http.StatusOK, Header: make(http.Header),
+					Body: io.NopCloser(strings.NewReader(`{"data":[{"id":"custom-model"}]}`)),
+				}}
+				router := setupSyncUpstreamModelsRouter(svc, upstream)
+				path := "/api/v1/admin/providers/44/models/sync-upstream"
+				body := "{}"
+				if preview {
+					path = "/api/v1/admin/providers/models/sync-upstream-preview"
+					encoded, err := json.Marshal(map[string]string{
+						"platform": platform, "type": "apikey", "api_key": "preview-key",
+						"base_url": "https://preview.example",
+					})
+					require.NoError(t, err)
+					body = string(encoded)
+				}
+				rec := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+				router.ServeHTTP(rec, req)
+				require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+				var response struct {
+					Data map[string]json.RawMessage `json:"data"` // serialized synchronization payload
+				}
+				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+				require.JSONEq(t, `["custom-model"]`, string(response.Data["models"]))
+				if platform == capability.PlatformOpenCode {
+					require.JSONEq(t, `{}`, string(response.Data["model_protocols"]))
+				} else {
+					require.NotContains(t, response.Data, "model_protocols")
+				}
+			})
+		}
+	}
+}

@@ -33,6 +33,7 @@ import (
 // TestOpenCodePublicTextHTTP exercises authenticated public text requests through
 // production selection and completion recording. Missing authentication, disabled
 // groups, and disabled protocols must reject before transport or settlement.
+// Native Responses requests retain their client output cap and storage choice.
 func TestOpenCodePublicTextHTTP(t *testing.T) {
 	for _, endpoint := range []struct {
 		path     string              // public client entry path
@@ -139,7 +140,7 @@ func TestOpenCodePublicTextHTTP(t *testing.T) {
 				router.POST(endpoint.path, gin.HandlerFunc(auth), guards.RequireGroupClientProtocol(endpoint.protocol, format), handler)
 				body := `{"model":"gpt-5.4","max_tokens":20,"messages":[{"role":"user","content":"hello"}],"stream":false}`
 				if endpoint.protocol == protocol.ProtocolOpenAIResponses {
-					body = `{"model":"gpt-5.4","input":"hello","store":true,"stream":false}`
+					body = `{"model":"gpt-5.4","input":"hello","max_output_tokens":20,"store":true,"stream":false}`
 				}
 				request := httptest.NewRequest(http.MethodPost, endpoint.path, strings.NewReader(body))
 				request.Header.Set("Content-Type", "application/json")
@@ -180,6 +181,7 @@ func TestOpenCodePublicTextHTTP(t *testing.T) {
 				require.Equal(t, "acceptance-session", exchange.headers.Get("X-OpenCode-Session"))
 				if endpoint.protocol == protocol.ProtocolOpenAIResponses {
 					require.True(t, gjson.GetBytes(exchange.body, "store").Bool())
+					require.Equal(t, int64(20), gjson.GetBytes(exchange.body, "max_output_tokens").Int(), string(exchange.body))
 				}
 				require.Equal(t, 1, funds.Calls)
 				require.Equal(t, 1, logs.Calls)

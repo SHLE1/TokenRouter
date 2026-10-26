@@ -11,7 +11,8 @@ import (
 // whose credentials can be mutated by the adapter. The service copies that
 // input before fetching and copies the returned model slice before handing it
 // back to its caller, together with protocol suggestions from an optional
-// platform hook.
+// platform hook. A nil suggestion map omits the JSON field; an empty map sends
+// an empty object so forms can clear previously accepted catalog suggestions.
 //
 // The shared operationActivity implementation tracks these request-triggered
 // queries, combines request and shutdown cancellation, and fixes the first stop
@@ -29,7 +30,8 @@ type ModelSyncService struct {
 	activity operationActivity
 	// Suggest maps queried model IDs to catalogue protocol suggestions for the
 	// service's record copy. Its newly allocated map becomes the result's
-	// ModelProtocols; a nil hook or an empty result leaves model_protocols absent.
+	// ModelProtocols; a nil hook or nil map leaves model_protocols absent, while
+	// an empty map replaces the form's accepted suggestions with an empty table.
 	Suggest func(*Record, []string) map[string]string
 }
 
@@ -38,7 +40,9 @@ type ModelSyncResult struct {
 	Models []string `json:"models"` // live upstream model identifiers
 	// ModelProtocols contains catalogue suggestions for the returned models. Saved
 	// administrator overrides remain owned by the provider configuration and form.
-	ModelProtocols map[string]string `json:"model_protocols,omitempty"`
+	// Nil omits the field; an empty map serializes as an object that clears the
+	// form's accepted suggestions for the selected provider mode.
+	ModelProtocols map[string]string `json:"model_protocols,omitzero"`
 }
 
 // NewModelSyncService constructs a request-triggered catalogue service around

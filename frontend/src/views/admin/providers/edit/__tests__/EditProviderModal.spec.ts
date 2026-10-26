@@ -2264,6 +2264,50 @@ describe('EditProviderModal', () => {
     wrapper.unmount()
   })
 
+  // A sync response either clears the current mode's accepted suggestions with an empty
+  // table or omits suggestions entirely. Saving preserves manual overrides and the other
+  // mode's accepted table, and omission keeps the current mode's table as well.
+  it.each([
+    { result: 'empty', suggestions: {} },
+    { result: 'omitted', suggestions: undefined },
+  ])('saves $result OpenCode protocol suggestions with mode isolation', async ({ suggestions }) => {
+    const provider = {
+      ...buildProvider(),
+      platform: 'opencode',
+      credentials: {
+        api_key: 'saved',
+        provider_mode: 'go',
+        opencode_model_protocols: { go: { manual: 'systemone' } },
+        opencode_catalog_protocols: {
+          payg: { other: 'openai_chat_completions' },
+          go: { 'retired-model': 'openai_responses' },
+        },
+      },
+    }
+    const wrapper = mountModal(provider)
+    await flushPromises()
+    const selector = wrapper.getComponent(ModelWhitelistSelectorStub)
+    selector.vm.$emit('synced', {
+      models: ['retired-model'],
+      ...(suggestions === undefined ? {} : { model_protocols: suggestions }),
+    })
+    await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(updateProviderMock.mock.calls[0]?.[1]?.credentials).toEqual(
+      expect.objectContaining({
+        opencode_model_protocols: { payg: {}, go: { manual: 'systemone' } },
+        opencode_catalog_protocols: {
+          payg: { other: 'openai_chat_completions' },
+          go: suggestions ?? provider.credentials.opencode_catalog_protocols.go,
+        },
+      }),
+    )
+    expect(provider.credentials.opencode_catalog_protocols.go).toEqual({
+      'retired-model': 'openai_responses',
+    })
+    wrapper.unmount()
+  })
+
   // A saved OpenCode provider with a blank root and one protocol override is opened. The
   // root stays blank with the Go placeholder, the override is restored into its slot, and
   // saving keeps both without filling in another platform's default address.

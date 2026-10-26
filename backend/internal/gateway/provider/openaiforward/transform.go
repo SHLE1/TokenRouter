@@ -421,12 +421,12 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 
 	if !isCodexCLI {
 		maxOutputTokens := gjson.GetBytes(body, "max_output_tokens")
-		// Translate the Responses output cap for Anthropic, retain it for OpenAI and
-		// DeepSeek, and remove it on other platform routes before final
+		// Translate the Responses output cap for Anthropic, retain it for OpenAI,
+		// DeepSeek, and OpenCode, and remove it on other platform routes before final
 		// serialization.
 		if maxOutputTokens.Exists() {
 			switch profile.Platform {
-			case "openai", "deepseek":
+			case "openai", "deepseek", "opencode":
 				// Send the Responses output limit first; bounded HTTP retries remove it if the upstream rejects it.
 			case "anthropic":
 				decoded, decodeErr := ensureReqBody()

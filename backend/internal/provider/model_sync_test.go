@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -67,4 +68,64 @@ func TestModelSyncQueryPairsSuggestions(t *testing.T) {
 	require.Equal(t, map[string]string{"first": "openai_responses"}, result.ModelProtocols)
 	result.Models[0] = "changed"
 	require.Equal(t, "first", models[0])
+}
+
+// TestModelSyncQuerySerializesSuggestions distinguishes unavailable suggestions
+// from an authoritative empty table after querying a model. JSON consumers must
+// receive an empty object to clear stale accepted routes, while absent hooks or
+// unsupported platforms leave the field absent.
+func TestModelSyncQuerySerializesSuggestions(t *testing.T) {
+	for _, tc := range []struct {
+		name        string                                    // query result scenario
+		platform    string                                    // queried provider platform
+		suggest     func(*Record, []string) map[string]string // optional catalogue lookup
+		wantPresent bool                                      // JSON suggestion field presence
+		want        map[string]string                         // serialized protocol suggestions
+	}{
+		{name: "no hook", platform: PlatformOpenCode},
+		{
+			name: "unsupported platform", platform: PlatformOpenAI,
+			suggest: OpenCodeProtocolSuggestions(nil),
+		},
+		{
+			name: "empty publication", platform: PlatformOpenCode, wantPresent: true,
+			suggest: OpenCodeProtocolSuggestions(func(string) map[string]string { return map[string]string{} }),
+			want:    map[string]string{},
+		},
+		{
+			name: "recognized model", platform: PlatformOpenCode, wantPresent: true,
+			suggest: OpenCodeProtocolSuggestions(func(string) map[string]string {
+				return map[string]string{"custom-model": "anthropic_messages"}
+			}),
+			want: map[string]string{"custom-model": "anthropic_messages"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := NewModelSyncService(func(context.Context, *Record) ([]string, error) {
+				return []string{"custom-model"}, nil
+			})
+			svc.Suggest = tc.suggest
+			result, err := svc.Query(t.Context(), &Record{
+				Platform: tc.platform,
+				Credentials: map[string]any{
+					OpenCodeCatalogProtocolsKey: map[string]any{
+						"payg": map[string]any{"custom-model": "openai_responses"},
+					},
+				},
+			})
+			require.NoError(t, err)
+			body, err := json.Marshal(result)
+			require.NoError(t, err)
+			var fields map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(body, &fields))
+			encoded, present := fields["model_protocols"]
+			require.Equal(t, tc.wantPresent, present, string(body))
+			if !present {
+				return
+			}
+			var protocols map[string]string
+			require.NoError(t, json.Unmarshal(encoded, &protocols))
+			require.Equal(t, tc.want, protocols)
+		})
+	}
 }
