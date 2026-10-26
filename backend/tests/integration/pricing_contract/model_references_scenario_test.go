@@ -9,11 +9,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 )
 
 // model_references_scenario_test.go exercises routing reference selection through
-// billing quotes, calculation, media reservations, and gateway completion.
+// billing quotes, admission, calculation, media reservations, and gateway completion.
 // Source catalog amounts deliberately differ from target amounts so accidental
 // source fallback is visible in both displayed prices and final charges.
 
@@ -89,4 +91,99 @@ func TestModelReferencesInheritTargetCardsAndKeepMissingUnpriced(t *testing.T) {
 	_, err := missing.ResolveImageUnitPrice(t.Context(), input, "1K")
 	require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
 	require.Equal(t, "unpriced", missing.PublicQuote(t.Context(), billing.PublicQuoteInput{PricingInput: input, RateMultiplier: 1}).PriceStatus)
+}
+
+// TestCNReferencePricingAdmissionAndCompletion compares reference preflight and settlement prices.
+// Catalog targets, free targets, and target modifiers survive CN alias filtering;
+// missing targets and ordinary Claude catalog candidates retain rejection behavior.
+func TestCNReferencePricingAdmissionAndCompletion(t *testing.T) {
+	const alias = "claude-sonnet-4-5"
+	target, free, missing := "kimi-k2.5", "free-target", "missing-target"
+	factor := 2.0
+	calculator := newCalculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
+		alias:  {InputCostPerToken: 9},
+		target: {InputCostPerToken: 0.001, OutputCostPerToken: 0.002},
+		free:   {Source: "models.dev", InputPricePresent: true},
+	}}))
+	cases := []struct {
+		name      string                      // reference pricing scenario
+		cards     []pricing.ModelPricingEntry // configured source and target cards
+		admission bool                        // expected preflight price availability
+		kept      bool                        // expected CN candidate retention
+		cost      float64                     // expected user charge in USD
+	}{
+		{"catalog target", []pricing.ModelPricingEntry{{Models: []string{alias}, ReferenceModel: target}}, true, true, 0.1},
+		{"free target", []pricing.ModelPricingEntry{{Models: []string{alias}, ReferenceModel: free}}, true, true, 0},
+		{"target modifier", []pricing.ModelPricingEntry{{Models: []string{alias}, ReferenceModel: target}, {Models: []string{target}, MaxReasoningEffortMultiplier: &factor}}, true, true, 0.2},
+		{"missing target", []pricing.ModelPricingEntry{{Models: []string{alias}, ReferenceModel: missing}}, false, false, 0},
+		{"corrupt chain", []pricing.ModelPricingEntry{{Models: []string{alias}, ReferenceModel: target}, {Models: []string{target}, ReferenceModel: free}}, false, false, 0},
+		{"source modifier", []pricing.ModelPricingEntry{{Models: []string{alias}, MaxReasoningEffortMultiplier: &factor}}, true, false, 0},
+		{"ordinary catalog", nil, true, false, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolver := testkit.ResolverWithCards(t, calculator, tc.cards)
+			gid := int64(100)
+			preflight := &admission.ModelPricing{Resolver: resolver}
+			if tc.admission {
+				require.NoError(t, preflight.Check(t.Context(), &gid, alias))
+			} else {
+				require.ErrorIs(t, preflight.Check(t.Context(), &gid, alias), admission.ErrModelPricingRejected)
+			}
+			recorder := completion.NewRecorder(completion.Dependencies{Calculator: calculator, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
+			key := &completion.KeySnapshot{GroupID: &gid, Group: &completion.GroupSnapshot{ID: gid}}
+			candidates := modelidentity.UsageCandidates(alias, target)
+			filtered := recorder.FilterCNProviderBillingModelCandidates(t.Context(), &completion.ProviderSnapshot{CNProvider: true}, key, candidates)
+			effort := "max"
+			result := &completion.Result{Model: alias, UpstreamModel: target, ReasoningEffort: &effort}
+			if !tc.kept {
+				require.Empty(t, filtered)
+				_, err := recorder.CalculateOpenAIRecordUsageCostAt(t.Context(), result, key, filtered, 1, 1, 1, 1, pricing.UsageTokens{InputTokens: 100}, "", time.Time{})
+				require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
+				return
+			}
+			require.Equal(t, []string{alias}, filtered)
+			quote := resolver.PublicQuote(t.Context(), billing.PublicQuoteInput{PricingInput: billing.PricingInput{Model: alias, GroupID: &gid}, RateMultiplier: 1})
+			require.Equal(t, "priced", quote.PriceStatus)
+			cost, err := recorder.CalculateOpenAIRecordUsageCostAt(t.Context(), result, key, filtered, 1, 1, 1, 1, pricing.UsageTokens{InputTokens: 100}, "", time.Time{})
+			require.NoError(t, err)
+			require.InDelta(t, tc.cost, cost.ActualCost, 1e-12)
+			require.Equal(t, alias, result.Model)
+		})
+	}
+}
+
+// TestCNReferencesKeepCatalogMediaPrices exercises unit prices without token rates.
+// Reference selection preserves the Claude alias through filtering, then image
+// and video completion charge the target units instead of rejecting the candidate.
+func TestCNReferencesKeepCatalogMediaPrices(t *testing.T) {
+	const alias = "claude-media-alias"
+	calculator := newCalculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
+		"image-target": {OutputCostPerImage: 0.2, TokenPricingAbsent: true},
+		"video-target": {CatalogRules: pricing.CatalogRules{VideoPrices: pricing.MediaPrices{"720p": 0.12}}, TokenPricingAbsent: true},
+	}}))
+	for _, tc := range []struct {
+		target string            // referenced catalog model ID
+		result completion.Result // completed media operation quantities
+		want   float64           // expected user charge in USD
+	}{
+		{"image-target", completion.Result{Model: alias, ImageCount: 3, ImageSize: "1K"}, 0.6},
+		{"video-target", completion.Result{Model: alias, VideoCount: 2, VideoDurationSeconds: 10, VideoResolution: "720p"}, 2.4},
+	} {
+		t.Run(tc.target, func(t *testing.T) {
+			resolver := testkit.ResolverWithCards(t, calculator, []pricing.ModelPricingEntry{{Models: []string{alias}, ReferenceModel: tc.target}})
+			gid := int64(100)
+			key := &completion.KeySnapshot{GroupID: &gid, Group: &completion.GroupSnapshot{ID: gid}}
+			recorder := completion.NewRecorder(completion.Dependencies{Calculator: calculator, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
+			resolved := resolver.Resolve(t.Context(), billing.PricingInput{Model: alias, GroupID: &gid})
+			require.False(t, resolved.HasConfiguredPricing())
+			require.True(t, resolved.IsUnpriced())
+			filtered := recorder.FilterCNProviderBillingModelCandidates(t.Context(), &completion.ProviderSnapshot{CNProvider: true}, key, []string{alias})
+			require.Equal(t, []string{alias}, filtered)
+			cost, err := recorder.CalculateOpenAIRecordUsageCostAt(t.Context(), &tc.result, key, filtered, 1, 1, 1, 1, pricing.UsageTokens{}, "", time.Time{})
+			require.NoError(t, err)
+			require.InDelta(t, tc.want, cost.ActualCost, 1e-12)
+			require.Equal(t, alias, tc.result.Model)
+		})
+	}
 }

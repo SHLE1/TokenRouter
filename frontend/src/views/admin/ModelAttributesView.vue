@@ -563,9 +563,11 @@ const form = ref<AttributeConfig>(blank())
 // referenceModes retains each rule's mode separately from its editable target and fields.
 const referenceModes = reactive(new WeakMap<AttributeRule, boolean>())
 
-// isReferenceRule reads the edited mode or the persisted target's presence.
+// isReferenceRule reads the selected draft mode for attribute rendering and serialization.
+// New rules default to custom until setReferenceMode is called; edit initializes saved
+// rules before their fields are rendered.
 function isReferenceRule(rule: AttributeRule): boolean {
-  return referenceModes.get(rule) ?? Boolean(rule.reference_model)
+  return referenceModes.get(rule) ?? false
 }
 
 // setReferenceMode switches serialization while retaining both sets of draft values.
@@ -725,9 +727,13 @@ async function load() {
     if (current === sequence) loading.value = false
   }
 }
-// edit opens a copied configuration draft or a blank new configuration. It selects initial
-// preview values, requests reference attributes for existing rules, and loads group options;
-// group-loading failures remain visible in the editor.
+// edit opens a copied configuration draft or a blank new configuration. Saved reference
+// modes are captured for the copied rules before starting their catalog requests. Target
+// text can then be cleared for editing while preview and save still validate a reference.
+//
+// The dialog opens with initial preview selections and independently loaded catalog
+// comparisons. Group options load while the draft is editable, and group-loading failures
+// remain visible in the editor. Mutations apply to the copied draft until save succeeds.
 async function edit(config?: AttributeConfig) {
   form.value = config ? JSON.parse(JSON.stringify(config)) : blank()
   previewGroup.value = config?.group_ids[0] ? String(config.group_ids[0]) : ''
@@ -736,7 +742,12 @@ async function edit(config?: AttributeConfig) {
   formError.value = ''
   showEditor.value = true
   void tabsRef.value?.selectTab('basic')
-  for (const rule of form.value.rules) void loadRuleDefaults(rule)
+  for (const rule of form.value.rules) {
+    // Capture the stored mode before typing changes the target, keeping an empty
+    // reference in reference mode until validation or an explicit mode selection.
+    referenceModes.set(rule, Boolean(rule.reference_model))
+    void loadRuleDefaults(rule)
+  }
   groupsLoading.value = true
   try {
     groups.value = await adminAPI.groups.getAll()

@@ -575,10 +575,16 @@ func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel st
 	return cost, nil
 }
 
-// FilterCNProviderBillingModelCandidates filters compatible CN pricing candidates
-// that resemble Claude identities unless effective configured overrides exist.
-// Other providers retain the supplied slice; CN processing trims nonblank entries
-// into new slice storage and can return an empty candidate list.
+// FilterCNProviderBillingModelCandidates selects explicitly priced Claude aliases
+// for compatible CN providers. A configured amount or an available profile
+// reference establishes the administrator's price choice. Ordinary catalog
+// prices and source-only modifiers leave these aliases excluded.
+//
+// Reference selection retains catalog provenance, so its target can have usable
+// token or media prices without a custom card. Media availability uses the same
+// resolved lookup identity as public quotes and completion charges. Other
+// providers retain the supplied slice; CN results contain trimmed nonblank
+// identities and can be empty when every candidate is excluded.
 func (s *Recorder) FilterCNProviderBillingModelCandidates(
 	ctx context.Context,
 	provider *ProviderSnapshot,
@@ -595,10 +601,18 @@ func (s *Recorder) FilterCNProviderBillingModelCandidates(
 			continue
 		}
 		if IsCNProviderClaudeFallbackCandidate(candidate) {
-			// A compatible CN route must not inherit a Claude-family catalogue price solely
-			// from the caller alias; keep it only when an effective override supplies pricing.
-			resolved := s.ResolveConfigPricing(ctx, candidate, apiKey)
-			if !resolved.HasEffectiveOverridePricing() {
+			if s.resolver == nil || apiKey == nil || apiKey.Group == nil {
+				continue
+			}
+			groupID := apiKey.Group.ID
+			resolved := s.resolver.Resolve(ctx, PricingInput{Model: candidate, GroupID: &groupID})
+			referencePriced := resolved.ConfiguredReference && !resolved.IsUnpriced()
+			if resolved.ConfiguredReference && !referencePriced && s.billingService != nil {
+				// A token-normalized result can lack token rates while its referenced target
+				// has image or video unit prices. Quote that same target before excluding it.
+				referencePriced = s.billingService.DisplayPricingWithResolvedMultipliers(candidate, 1, resolved).PriceStatus == "priced"
+			}
+			if !resolved.HasEffectiveOverridePricing() && !referencePriced {
 				continue
 			}
 		}

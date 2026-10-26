@@ -637,3 +637,53 @@ it('requires a reference target and retains custom attributes through mode chang
   })
   wrapper.unmount()
 })
+
+// A persisted reference keeps its selected mode when its target is cleared for editing.
+// Empty targets block preview and save; entering a replacement persists the reference again.
+it.each(['', '  '])('keeps saved reference mode when the target becomes %j', async (empty) => {
+  vi.mocked(modelAttributesAPI.list).mockResolvedValue({
+    items: [
+      {
+        id: 1,
+        name: 'Profile',
+        description: '',
+        status: 'active',
+        group_ids: [7],
+        rules: [{ id: 'alias', models: ['source'], reference_model: 'target', attributes: {} }],
+      },
+    ],
+    total: 1,
+  })
+  vi.mocked(modelAttributesAPI.save).mockResolvedValue({} as never)
+  const wrapper = mount(ModelAttributesView, { global: { stubs } })
+  await flushPromises()
+  await wrapper.get('button[aria-label="common.edit"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('input[aria-label="admin.pricing.referenceTarget"]').setValue(empty)
+  await flushPromises()
+  const mode = wrapper
+    .findAllComponents({ name: 'Select' })
+    .find((item) => item.attributes('aria-label') === 'admin.pricing.ruleMode')!
+  expect(mode.props('modelValue')).toBe('reference')
+  expect(wrapper.find('input[aria-label="admin.pricing.referenceTarget"]').exists()).toBe(true)
+  await wrapper.get('#attribute-form').trigger('submit')
+  await flushPromises()
+  expect(modelAttributesAPI.save).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('admin.pricing.referenceInvalid')
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'admin.modelAttributes.preview')!
+    .trigger('click')
+  await flushPromises()
+  expect(modelAttributesAPI.preview).not.toHaveBeenCalled()
+  await wrapper.get('input[aria-label="admin.pricing.referenceTarget"]').setValue('replacement')
+  await flushPromises()
+  await wrapper.get('#attribute-form').trigger('submit')
+  await flushPromises()
+  expect(modelAttributesAPI.save).toHaveBeenCalledWith(
+    expect.objectContaining({
+      rules: [{ id: 'alias', models: ['source'], reference_model: 'replacement', attributes: {} }],
+    }),
+  )
+  wrapper.unmount()
+})

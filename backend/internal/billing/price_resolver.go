@@ -116,7 +116,9 @@ func (r *PriceResolver) Resolve(ctx context.Context, input PricingInput) *Resolv
 	lookupModel := input.Model
 	if input.GroupID != nil && r.pricingConfigs != nil {
 		if source, ok := r.pricingConfigs.(interface {
-			// ResolveModelPricing selects a target and card from one retained profile.
+			// ResolveModelPricing selects a reference target and card from one profile.
+			// It retains the input model when no reference applies and returns an
+			// empty model for an invalid reference chain.
 			ResolveModelPricing(context.Context, int64, string) (string, *ModelPricingEntry)
 		}); ok {
 			lookupModel, configPricing = source.ResolveModelPricing(ctx, *input.GroupID, input.Model)
@@ -132,6 +134,9 @@ func (r *PriceResolver) Resolve(ctx context.Context, input PricingInput) *Resolv
 	settings := r.BillingSettings(ctx, input.GroupID)
 	resolved := purepricing.ResolvePriceCards(configPricing, base, source, settings.LongContextPricingEnabled)
 	resolved.LookupModel = &lookupModel
+	// The profile reader retains the supplied identity unless it selects a reference.
+	// Empty identities denote invalid chains and cannot establish an explicit price choice.
+	resolved.ConfiguredReference = lookupModel != "" && lookupModel != input.Model
 	return resolved
 }
 
