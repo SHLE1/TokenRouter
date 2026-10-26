@@ -120,7 +120,7 @@ func PrepareNativeInputTokens(body []byte, provider *ExecutionProvider) (*InputT
 // with blank or official api.openai.com hosts use the upstream path; malformed
 // custom URLs choose local counting.
 func EstimateInputTokensLocally(provider *ExecutionProvider) bool {
-	if provider == nil || provider.View().IsGrok() || provider.View().IsCNProvider() || provider.Record.Type == capability.ProviderTypeUpstream {
+	if provider == nil || provider.View().IsGrok() || (provider.View().IsCNProvider() || provider.View().IsOpenCode()) || provider.Record.Type == capability.ProviderTypeUpstream {
 		return true
 	}
 	if provider.Record.Type != capability.ProviderTypeAPIKey {

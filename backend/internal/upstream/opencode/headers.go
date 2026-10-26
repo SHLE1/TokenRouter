@@ -1,0 +1,62 @@
+package opencode
+
+import (
+	"net/http"
+	"strings"
+)
+
+// headers.go installs OpenCode authentication and conversation identity on
+// prepared inference requests. All five protocol families use the same bearer
+// key, while the caller supplies its own agent identity and stable session
+// header. Provider overrides are applied before this final authentication pass.
+//
+// Conversation values are selected from recognized client headers and copied
+// without generating per-request identifiers. Missing session evidence leaves
+// the header absent. Callers restrict this operation to selected OpenCode
+// providers, after validating their configured destination, so another provider
+// cannot receive these headers just because it accepts a compatible protocol.
+
+// ApplyHeaders replaces authentication and copies available client identity.
+// The header map must be writable; read may be nil for administrator probes.
+// Missing client User-Agent retains a configured value or uses TokenRouter.
+//
+// The selected provider owns authentication, so legacy protocol keys are removed
+// before its bearer token is installed. A supplied conversation ID replaces all
+// casing variants of the session header, including a provider-wide override.
+// Missing session evidence retains an existing configured header and never
+// creates a random request-scoped identity that would break conversation reuse.
+func ApplyHeaders(headers http.Header, key string, read func(string) string) {
+	for name := range headers {
+		if strings.EqualFold(name, "authorization") || strings.EqualFold(name, "x-api-key") || strings.EqualFold(name, "x-goog-api-key") {
+			delete(headers, name)
+		}
+	}
+	headers.Set("Authorization", "Bearer "+strings.TrimSpace(key))
+	agent := ""
+	session := ""
+	if read != nil {
+		agent = strings.TrimSpace(read("User-Agent"))
+		for _, name := range []string{"x-opencode-session", "session-id", "session_id", "conversation_id", "x-session-affinity", "x-session-id"} {
+			if session = strings.TrimSpace(read(name)); session != "" {
+				break
+			}
+		}
+	}
+	if agent == "" {
+		agent = headers.Get("User-Agent")
+	}
+	if agent == "" {
+		agent = "TokenRouter"
+	}
+	headers.Set("User-Agent", agent)
+	if session != "" {
+		// Header overrides may use noncanonical casing. Replace every spelling so
+		// a fixed provider-wide value cannot override this conversation's identity.
+		for name := range headers {
+			if strings.EqualFold(name, "x-opencode-session") {
+				delete(headers, name)
+			}
+		}
+		headers.Set("X-OpenCode-Session", session)
+	}
+}

@@ -2185,6 +2185,38 @@ describe('EditProviderModal', () => {
     ).toBe('basic')
     wrapper.unmount()
   })
+
+  // An OpenCode Go provider stores independent route overrides for both modes.
+  // Saving a cleared custom root retains its Go identity and both protocol maps.
+  it('preserves OpenCode mode and protocol overrides when editing credentials', async () => {
+    const provider = {
+      ...buildProvider(),
+      platform: 'opencode' as const,
+      credentials: {
+        api_key: 'oc_sk_test',
+        provider_mode: 'go',
+        base_url: 'https://relay.example/inference/go',
+        upstream_protocols: ['anthropic_messages', 'openai_chat_completions'],
+        opencode_model_protocols: {
+          payg: { 'minimax-m3': 'openai_chat_completions' },
+          go: { 'minimax-m3': 'anthropic_messages' },
+        },
+      },
+    }
+    const wrapper = mountModal(provider)
+    await flushPromises()
+    await wrapper.get('#edit-provider-base-url').setValue('')
+    await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(updateProviderMock.mock.calls[0]?.[1]?.credentials).toEqual(
+      expect.objectContaining({
+        base_url: '',
+        provider_mode: 'go',
+        opencode_model_protocols: provider.credentials.opencode_model_protocols,
+      }),
+    )
+    wrapper.unmount()
+  })
 })
 
 useProtocolCatalogFixture()

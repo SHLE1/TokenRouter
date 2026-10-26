@@ -918,15 +918,20 @@ export async function getAvailableModels(id: number): Promise<ClaudeModel[]> {
  */
 export interface SyncUpstreamModelsResult {
   models: string[] // Model identifier list.
+  model_protocols?: Record<string, import('@/api/protocols.types').ProtocolID> // Exact model wire encodings.
 }
 
 /**
  * syncUpstreamModels requests a fresh supported-model list from the selected
  * provider's upstream endpoint.
  */
-export async function syncUpstreamModels(id: number): Promise<SyncUpstreamModelsResult> {
+export async function syncUpstreamModels(
+  id: number,
+  options?: { provider_mode: 'payg' | 'go'; base_url?: string },
+): Promise<SyncUpstreamModelsResult> {
   const { data } = await apiClient.post<SyncUpstreamModelsResult>(
     `/admin/providers/${id}/models/sync-upstream`,
+    options,
   )
   return data
 }
@@ -936,6 +941,7 @@ export async function syncUpstreamModels(id: number): Promise<SyncUpstreamModels
  * credentials for an upstream model preview.
  */
 export interface SyncUpstreamPreviewParams {
+  provider_mode?: 'payg' | 'go' // OpenCode inference service mode.
   platform: string // Provider platform identifier.
   type: string // Represented record category.
   base_url?: string // Requested base url.

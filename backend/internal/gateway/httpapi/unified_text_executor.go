@@ -70,7 +70,7 @@ type UnifiedTextExecutor struct {
 // before eligible execution begins.
 func (e *UnifiedTextExecutor) EnforceClient(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, match egress.TLSFingerprintRouterMatchResult) error {
 	c.Request = c.Request.WithContext(ctx)
-	if target.View().IsOpenAICompatible() {
+	if target.View().IsOpenAICompatible() && (!target.View().IsOpenCode() || target.Route.Protocol() != protocol.ProtocolGeminiGenerateContent) {
 		return e.OpenAI.Requests.EnforceClient(ctx, c, target, body, match)
 	}
 	return nil
@@ -89,7 +89,13 @@ func (e *UnifiedTextExecutor) Responses(ctx context.Context, c *gin.Context, tar
 		return nil, err
 	}
 	ctx = c.Request.Context()
-	if target.View().IsOpenAICompatible() {
+	if target.View().IsOpenCode() {
+		target, err = gatewayadapter.ProviderForProtocolAttempt(ctx, target)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if target.View().IsOpenAICompatible() && (!target.View().IsOpenCode() || target.Route.Protocol() != protocol.ProtocolGeminiGenerateContent) {
 		return e.OpenAI.Forward(ctx, c, target, body)
 	}
 	return e.native(ctx, c, target, body, protocol.ProtocolOpenAIResponses)
@@ -109,7 +115,13 @@ func (e *UnifiedTextExecutor) Messages(ctx context.Context, c *gin.Context, targ
 		return nil, err
 	}
 	ctx = c.Request.Context()
-	if target.View().IsOpenAICompatible() {
+	if target.View().IsOpenCode() {
+		target, err = gatewayadapter.ProviderForProtocolAttempt(ctx, target)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if target.View().IsOpenAICompatible() && (!target.View().IsOpenCode() || target.Route.Protocol() != protocol.ProtocolGeminiGenerateContent) {
 		return e.OpenAI.Text.Messages(ctx, c, target, body, cacheKey, model, tls...)
 	}
 	return e.native(ctx, c, target, body, protocol.ProtocolAnthropicMessages)
@@ -128,7 +140,13 @@ func (e *UnifiedTextExecutor) Chat(ctx context.Context, c *gin.Context, target *
 		return nil, err
 	}
 	ctx = c.Request.Context()
-	if target.View().IsOpenAICompatible() {
+	if target.View().IsOpenCode() {
+		target, err = gatewayadapter.ProviderForProtocolAttempt(ctx, target)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if target.View().IsOpenAICompatible() && (!target.View().IsOpenCode() || target.Route.Protocol() != protocol.ProtocolGeminiGenerateContent) {
 		return e.OpenAI.Text.Chat(ctx, c, target, body, cacheKey, model, tls...)
 	}
 	return e.native(ctx, c, target, body, protocol.ProtocolOpenAIChatCompletions)
@@ -139,6 +157,13 @@ func (e *UnifiedTextExecutor) Chat(ctx context.Context, c *gin.Context, target *
 // local permission output in the inbound format; other platforms retain the
 // supplied bytes after pricing, and caller context changes remain in Gin.
 func (e *UnifiedTextExecutor) prepare(c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, source protocol.ProtocolID) ([]byte, error) {
+	if target.View().IsOpenCode() {
+		// OpenCode can switch between OpenAI and Gemini encodings across attempts.
+		// Clear both observation slots before pricing so a failed attempt cannot
+		// attribute its predecessor's endpoint to the next provider.
+		ClearActualOpenAIUpstreamEndpoint(c)
+		SetActualUpstreamEndpoint(c, "")
+	}
 	SetOpsSelectedProvider(c, target.Record.RoutingSnapshot())
 	if err := e.checkPricing(c, target, body, source); err != nil {
 		return nil, err
@@ -207,7 +232,7 @@ func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target
 		default:
 			result, err = e.Anthropic.ForwardAsChatCompletions(ctx, c, target, body, nil)
 		}
-	case provider.PlatformGemini:
+	case provider.PlatformGemini, provider.PlatformOpenCode:
 		SetActualUpstreamEndpoint(c, EndpointGeminiModels)
 		switch source {
 		case protocol.ProtocolAnthropicMessages:

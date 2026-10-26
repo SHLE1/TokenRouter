@@ -180,6 +180,12 @@ func SupportsRequestCapability(ctx context.Context, provider *ExecutionProvider,
 	if provider == nil {
 		return false
 	}
+	if provider.View().IsOpenCode() {
+		if capability == "" || capability == providercore.OpenAIEndpointCapabilityTextGeneration || capability == providercore.OpenAIEndpointCapabilityResponses {
+			return ExecutionModelPolicy(provider).AllowsProtocol(ctx)
+		}
+		return false
+	}
 	source, _ := requeststate.ClientProtocolFromContext(ctx)
 	// Noncompatible platforms can serve text through an allowed conversion route;
 	// endpoint checks must follow the admitted protocol rather than require OpenAI HTTP support.

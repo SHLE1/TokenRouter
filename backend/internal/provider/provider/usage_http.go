@@ -136,6 +136,8 @@ func UpstreamUsageBaseURL(value *provider.Record) string {
 		return ""
 	}
 	switch value.Platform {
+	case capability.PlatformOpenCode:
+		return "https://opencode.ai"
 	case capability.PlatformOpenAI, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek:
 		return (provider.ProtocolTarget{Record: value}).GetOpenAIBaseURL()
 	case capability.PlatformAnthropic:

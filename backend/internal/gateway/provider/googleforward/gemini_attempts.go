@@ -176,7 +176,7 @@ func (s *Gemini) Forward(ctx context.Context, output Output, provider *gatewaypr
 	if provider.Record.Type == capability.ProviderTypeOAuth && !req.Stream && strings.TrimSpace(provider.View().GetCredential("project_id")) != "" {
 		useUpstreamStream = true
 	}
-	plan := s.geminiRequestPlan(provider, mappedModel, "", false, req.Stream, useUpstreamStream, false)
+	plan := s.geminiRequestPlan(provider, mappedModel, "", false, req.Stream, useUpstreamStream, false, c.GetHeader)
 	buildReq := func(ctx context.Context) (*http.Request, string, error) {
 		return gemininative.BuildRequest(ctx, geminiReq, plan)
 	}
@@ -414,7 +414,7 @@ func (s *Gemini) ForwardNative(ctx context.Context, output Output, provider *gat
 	default:
 		return nil, c.GoogleError(http.StatusBadGateway, "Unsupported provider type: "+provider.Record.Type)
 	}
-	plan := s.geminiRequestPlan(provider, mappedModel, upstreamAction, true, stream, useUpstreamStream, forceAIStudio)
+	plan := s.geminiRequestPlan(provider, mappedModel, upstreamAction, true, stream, useUpstreamStream, forceAIStudio, c.GetHeader)
 	buildReq := func(ctx context.Context) (*http.Request, string, error) {
 		return gemininative.BuildRequest(ctx, body, plan)
 	}

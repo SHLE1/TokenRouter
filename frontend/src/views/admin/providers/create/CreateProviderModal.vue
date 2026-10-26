@@ -993,13 +993,25 @@
         </template>
 
         <template #models>
+          <OpenCodeFields
+            v-if="form.platform === 'opencode'"
+            v-model="openCodeConfig"
+            :api-key="apiKeyValue"
+            :base-url="apiKeyBaseUrl"
+            @synced="setAllowedModels([...new Set([...allowedModels, ...$event])])"
+          />
+
           <ModelRestrictionFields
             v-if="showModelRestriction"
             v-model:mode="modelRestrictionMode"
             :allowed-models="allowedModels"
             v-model:mappings="modelMappings"
             :platform="isBedrockCategory ? 'anthropic' : form.platform"
-            :sync-credentials="form.platform === 'qoder' ? undefined : syncPreviewCredentials"
+            :sync-credentials="
+              form.platform === 'qoder' || form.platform === 'opencode'
+                ? undefined
+                : syncPreviewCredentials
+            "
             :source-placeholder="isBedrockCategory ? t('admin.providers.fromModel') : undefined"
             :target-placeholder="isBedrockCategory ? t('admin.providers.toModel') : undefined"
             @update:allowed-models="setAllowedModels"
@@ -1201,13 +1213,16 @@
           />
 
           <UpstreamUsageConfigEditor
-            v-if="form.type === 'apikey'"
+            v-if="
+              form.type === 'apikey' &&
+              (form.platform !== 'opencode' || openCodeConfig.mode === 'go')
+            "
             :enabled="upstreamUsageEnabled"
-            :adapter="upstreamUsageAdapter"
+            :adapter="form.platform === 'opencode' ? 'opencode_go' : upstreamUsageAdapter"
             :base-url="upstreamUsageBaseUrl"
             :wallet-access-token="upstreamUsageWalletAccessToken"
             :wallet-user-id="upstreamUsageWalletUserId"
-            :automatic-adapter="isCNPlatform"
+            :automatic-adapter="isCNPlatform || form.platform === 'opencode'"
             @update:enabled="upstreamUsageEnabled = $event"
             @update:adapter="upstreamUsageAdapter = $event"
             @update:base-url="upstreamUsageBaseUrl = $event"
@@ -1782,6 +1797,8 @@ import {
   buildQoderCreateExtra,
   buildAnthropicCreateExtra,
 } from './providerCreatePayload'
+import OpenCodeFields from '@/components/provider/form/OpenCodeFields.vue'
+import { openCodeDraft, openCodeCredentials } from '@/components/provider/form/openCodeDraft'
 import ProviderProtocolSelector from '../../../../components/provider/ProviderProtocolSelector.vue'
 import { readImageStreamModes } from '@/components/provider/form/imageStreamModes'
 import { loadProtocolCatalog, nativeProtocolOptions } from '@/api/admin/protocolCapabilities'
@@ -1969,6 +1986,7 @@ const withUpstreamRequestIdHeader = <T extends Record<string, unknown> | undefin
 // baseUrlHint and apiKeyHint describe the selected platform and Gemini source
 // beside credential inputs; Grok uses empty hints for both displayed fields.
 const baseUrlHint = computed(() => {
+  if (form.platform === 'opencode') return t('admin.providers.opencode.baseUrlHint')
   if (form.platform === 'openai') return t('admin.providers.openai.baseUrlHint')
   if (form.platform === 'gemini' && geminiProviderType.value === 'third_party') {
     return t('admin.providers.gemini.connectionSource.thirdPartyBaseUrlHint')
@@ -2128,6 +2146,9 @@ const upstreamUsageWalletAccessToken = ref('')
 const upstreamUsageWalletUserId = ref('')
 
 // CN billing mode and API protocol select the default endpoints written into the credential draft.
+// OpenCode configuration belongs to this dialog and is saved with its credential payload.
+const openCodeConfig = ref(openCodeDraft())
+
 const providerMode = ref<CnProviderMode>('payg')
 // Zhipu organization and project drafts are submitted for Coding Plan providers when their trimmed values are nonempty.
 const zhipuOrganization = ref('')
@@ -2712,6 +2733,7 @@ const platformRows: Array<
     { value: 'qoder', label: 'Qoder', testid: 'create-provider-platform-qoder' },
     { value: 'grok', label: 'Grok' },
     { value: 'jev', label: 'Jev', testid: 'create-provider-platform-jev' },
+    { value: 'opencode', label: 'OpenCode', testid: 'create-provider-platform-opencode' },
   ],
   [
     { value: 'kimi', label: 'Kimi' },
@@ -2806,6 +2828,8 @@ const tlsFingerprintTestIdPrefix = computed<string | null>(() => {
 })
 const apiKeyBaseUrlPlaceholder = computed(() => {
   switch (form.platform) {
+    case 'opencode':
+      return `https://opencode.ai/inference${openCodeConfig.value.mode === 'go' ? '/go' : ''}`
     case 'jev':
       return 'https://api.typesafe.ai'
     case 'openai':
@@ -2822,6 +2846,8 @@ const apiKeyBaseUrlPlaceholder = computed(() => {
 })
 const apiKeyPlaceholder = computed(() => {
   switch (form.platform) {
+    case 'opencode':
+      return 'oc_sk_...'
     case 'jev':
       return 'api-key-...'
     case 'openai':
@@ -2955,7 +2981,7 @@ watch(
 watch(
   [providerCategory, addMethod, qoderProviderType, () => form.platform],
   ([category, method]) => {
-    if (form.platform === 'jev') {
+    if (form.platform === 'jev' || form.platform === 'opencode') {
       form.type = 'apikey'
       return
     }
@@ -3056,6 +3082,11 @@ watch(
     if (newPlatform === 'jev') {
       providerCategory.value = 'apikey'
       apiKeyBaseUrl.value = 'https://api.typesafe.ai'
+    }
+    if (newPlatform === 'opencode') {
+      providerCategory.value = 'apikey'
+      apiKeyBaseUrl.value = ''
+      openCodeConfig.value = openCodeDraft()
     }
     upstreamUsageEnabled.value = newPlatform !== 'jev'
     // Reset Bedrock fields when switching platforms
@@ -3316,6 +3347,10 @@ async function createProtocolProvider(payload: CreateProviderRequest) {
     }
   } else if (payload.platform === 'gemini') {
     applyPersistedModelRestriction(payload.credentials)
+  }
+  if (payload.platform === 'opencode') {
+    Object.assign(payload.credentials, openCodeCredentials(openCodeConfig.value))
+    payload.credentials.base_url = apiKeyBaseUrl.value.trim()
   }
   await loadProtocolCatalog()
   const options = nativeProtocolOptions(

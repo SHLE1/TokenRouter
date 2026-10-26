@@ -636,7 +636,7 @@ func TestOpenAITokensNativeHTTPContracts(t *testing.T) {
 // shape must match the chosen target, while the selected provider Route stays
 // unset after forwarding.
 func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
-	for _, platform := range []string{capability.PlatformDeepseek, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformGrok} {
+	for _, platform := range []string{capability.PlatformDeepseek, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformGrok, capability.PlatformOpenCode} {
 		for _, ingress := range cnProtocolIngressCases() {
 			if platform == capability.PlatformGrok {
 				ingress.body = bytes.ReplaceAll(ingress.body, []byte("deepseek-chat"), []byte("grok-4.5"))
@@ -659,10 +659,18 @@ func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 					// its base URL map, so fallback selection and body conversion are observed
 					// for that specific choice.
 					provider.Record.Credentials = map[string]any{"api_key": "test", "base_url": "http://grok.example/v1", providercore.UpstreamProtocolsKey: []protocol.ProtocolID{target}, "api_base_urls": a.Record.Credentials["api_base_urls"]}
+					if platform == capability.PlatformOpenCode {
+						provider.Record.Credentials[providercore.OpenCodeModelProtocolsKey] = map[string]any{"payg": map[string]any{"deepseek-chat": string(target)}}
+					}
 					group := &routing.Group{ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{source: {target}}}
 					ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), source)
+					if platform == capability.PlatformOpenCode {
+						ctx = requeststate.WithRoutePlan(ctx, routing.Plan(routing.PlanInput{Group: group, ClientProtocol: source, RequestedModel: "deepseek-chat"}))
+					}
 					c := adaptiveProtocolTestContext(ingress.path, ingress.body)
 					c.Request = c.Request.WithContext(ctx)
+					c.Request.Header.Set("User-Agent", "test-agent/1")
+					c.Request.Header.Set("X-OpenCode-Session", "conversation")
 					upstream := &auxiliaryHTTPRecorder{err: errors.New("stop after capture")}
 					svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 					var err error
@@ -676,6 +684,12 @@ func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 					}
 					require.Error(t, err)
 					require.NotNil(t, upstream.lastReq, err)
+					if platform == capability.PlatformOpenCode {
+						require.Equal(t, "Bearer test", upstream.lastReq.Header.Get("Authorization"))
+						require.Empty(t, upstream.lastReq.Header.Get("x-api-key"))
+						require.Equal(t, "test-agent/1", upstream.lastReq.Header.Get("User-Agent"))
+						require.Equal(t, "conversation", upstream.lastReq.Header.Get("X-OpenCode-Session"))
+					}
 					switch target {
 					case protocol.ProtocolAnthropicMessages:
 						require.Equal(t, "http://anthropic.example/v1/messages", upstream.lastReq.URL.String())
@@ -713,49 +727,55 @@ func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 // counts and stream intent. Each case checks converted text, function_call and
 // lookup substrings, or terminal/DONE framing as applicable.
 func TestProtocolForwardConvertedResponsesRetainsWireContract(t *testing.T) {
-	for _, tc := range []struct {
-		// name, body and response pair one input representation with its expected
-		// upstream output, while stream selects response framing. Each scenario
-		// checks returned input/output counts and the converted downstream shape.
-		// name labels the case; body contains inbound JSON; response supplies
-		// configured upstream output.
-		name, body, response string
-		stream               bool // requested client stream intent
-	}{
-		{"json", `{"model":"gpt-test","input":"hello","stream":false}`, `{"id":"chat-1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"prompt_tokens_details":{"cached_tokens":1}}}`, false},
-		{"sse", `{"model":"gpt-test","input":"hello","stream":true}`, "data: {\"id\":\"chat-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chat-1\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n", true},
-		{"tool", `{"model":"gpt-test","input":"hello","stream":false,"tools":[{"type":"function","name":"lookup","parameters":{"type":"object"}}]}`, `{"id":"chat-1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":3,"completion_tokens":2}}`, false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test", "base_url": "http://upstream.example", providercore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}}}
-			group := &routing.Group{ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolOpenAIResponses: {protocol.ProtocolOpenAIChatCompletions}}}
-			// Attach Responses client identity and an explicit Chat fallback before
-			// forwarding, allowing the test to inspect conversion of configured upstream
-			// output back into client framing.
-			ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolOpenAIResponses)
-			recorder := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(recorder)
-			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", strings.NewReader(tc.body)).WithContext(ctx)
-			contentType := "application/json"
-			if tc.stream {
-				contentType = "text/event-stream"
-			}
-			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{contentType}}, Body: io.NopCloser(strings.NewReader(tc.response))}}
-			svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
-			result, err := svc.Forward(ctx, c, provider, []byte(tc.body))
-			require.NoError(t, err)
-			require.Equal(t, 3, result.Usage.InputTokens)
-			require.Equal(t, 2, result.Usage.OutputTokens)
-			require.Equal(t, tc.stream, result.Stream)
-			if tc.stream {
-				require.Contains(t, recorder.Body.String(), "response.completed")
-				require.Contains(t, recorder.Body.String(), "data: [DONE]")
-			} else if tc.name == "tool" {
-				require.Contains(t, recorder.Body.String(), "function_call")
-				require.Contains(t, recorder.Body.String(), "lookup")
-			} else {
-				require.Equal(t, "ok", gjson.Get(recorder.Body.String(), "output.0.content.0.text").String())
-			}
-		})
+	for _, platform := range []string{capability.PlatformOpenAI, capability.PlatformOpenCode} {
+		for _, tc := range []struct {
+			// name, body and response pair one input representation with its expected
+			// upstream output, while stream selects response framing. Each scenario
+			// checks returned input/output counts and the converted downstream shape.
+			// name labels the case; body contains inbound JSON; response supplies
+			// configured upstream output.
+			name, body, response string
+			stream               bool // requested client stream intent
+		}{
+			{"json", `{"model":"gpt-test","input":"hello","stream":false}`, `{"id":"chat-1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"prompt_tokens_details":{"cached_tokens":1}}}`, false},
+			{"sse", `{"model":"gpt-test","input":"hello","stream":true}`, "data: {\"id\":\"chat-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chat-1\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n", true},
+			{"tool", `{"model":"gpt-test","input":"hello","stream":false,"tools":[{"type":"function","name":"lookup","parameters":{"type":"object"}}]}`, `{"id":"chat-1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":3,"completion_tokens":2}}`, false},
+		} {
+			t.Run(platform+"/"+tc.name, func(t *testing.T) {
+				provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: platform, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test", "base_url": "http://upstream.example", providercore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}}}
+				group := &routing.Group{ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolOpenAIResponses: {protocol.ProtocolOpenAIChatCompletions}}}
+				// Attach Responses client identity and an explicit Chat fallback before
+				// forwarding, allowing the test to inspect conversion of configured upstream
+				// output back into client framing.
+				ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolOpenAIResponses)
+				if platform == capability.PlatformOpenCode {
+					provider.Record.Credentials[providercore.OpenCodeModelProtocolsKey] = map[string]any{"payg": map[string]any{"gpt-test": "openai_chat_completions"}}
+					ctx = requeststate.WithRoutePlan(ctx, routing.Plan(routing.PlanInput{Group: group, ClientProtocol: protocol.ProtocolOpenAIResponses, RequestedModel: "gpt-test"}))
+				}
+				recorder := httptest.NewRecorder()
+				c, _ := gin.CreateTestContext(recorder)
+				c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", strings.NewReader(tc.body)).WithContext(ctx)
+				contentType := "application/json"
+				if tc.stream {
+					contentType = "text/event-stream"
+				}
+				upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{contentType}}, Body: io.NopCloser(strings.NewReader(tc.response))}}
+				svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
+				result, err := svc.Forward(ctx, c, provider, []byte(tc.body))
+				require.NoError(t, err)
+				require.Equal(t, 3, result.Usage.InputTokens)
+				require.Equal(t, 2, result.Usage.OutputTokens)
+				require.Equal(t, tc.stream, result.Stream)
+				if tc.stream {
+					require.Contains(t, recorder.Body.String(), "response.completed")
+					require.Contains(t, recorder.Body.String(), "data: [DONE]")
+				} else if tc.name == "tool" {
+					require.Contains(t, recorder.Body.String(), "function_call")
+					require.Contains(t, recorder.Body.String(), "lookup")
+				} else {
+					require.Equal(t, "ok", gjson.Get(recorder.Body.String(), "output.0.content.0.text").String())
+				}
+			})
+		}
 	}
 }

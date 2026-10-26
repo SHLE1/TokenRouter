@@ -168,7 +168,10 @@ func (s *OpenAIRequests) BuildAnthropic(ctx context.Context, c *gin.Context, pro
 		WireCasing: anthropic.ResolveWireCasing, AddHeader: anthropic.AddHeaderRaw, SetHeader: anthropic.SetHeaderRaw,
 		AuthHeader: func(h http.Header, key string) {
 			anthropic.SetAPIKeyAuthHeader(h, gatewayprovider.ExecutionProtocolRecord(provider).GetAnthropicAPIKeyAuthScheme() == providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer, key)
-		}, ApplyOverrides: gatewayprovider.BindExecutionHeaders(provider),
+		}, ApplyOverrides: func(h http.Header) {
+			gatewayprovider.BindExecutionHeaders(provider)(h)
+			ApplyOpenCodeSessionHeader(c, provider, targetURL, h)
+		},
 	})
 }
 

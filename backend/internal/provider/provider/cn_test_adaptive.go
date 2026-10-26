@@ -116,7 +116,7 @@ func (s *CNProviderTest) executeAdaptiveAnthropic(c *TestRun, value *providercor
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Invalid adaptive Anthropic base URL: %s", err.Error()))
 	}
-	apiURL := strings.TrimRight(baseURL, "/") + "/v1/messages"
+	apiURL := httpclient.BuildOpenAIEndpointURL(baseURL, "/v1/messages")
 
 	payload, err := claude.TestPayloadWithPrompt(testModelID, prompt)
 	if err != nil {
@@ -143,8 +143,10 @@ func (s *CNProviderTest) executeAdaptiveAnthropic(c *TestRun, value *providercor
 	}
 	req.Header.Set("anthropic-beta", claude.APIKeyBetaHeader)
 	claude.SetAPIKeyAuthHeader(req.Header, value.GetAnthropicAPIKeyAuthScheme() == providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer, authToken)
+	if value.IsOpenCode() {
+		req.Header.Set("User-Agent", c.Headers.Get("User-Agent"))
+	}
 	applyGrokQuotaHeaders(value, req.Header)
-
 	resp, err := s.doAdaptiveRequest(req, value)
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Adaptive Anthropic endpoint request failed: %s", err.Error()))
@@ -213,8 +215,10 @@ func (s *CNProviderTest) executeAdaptiveResponses(c *TestRun, value *providercor
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	openai.ApplyOpenAICodexProbeHeaders(req.Header)
+	if value.IsOpenCode() {
+		req.Header.Set("User-Agent", c.Headers.Get("User-Agent"))
+	}
 	applyGrokQuotaHeaders(value, req.Header)
-
 	resp, err := s.doAdaptiveRequest(req, value)
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Adaptive Responses endpoint request failed: %s", err.Error()))

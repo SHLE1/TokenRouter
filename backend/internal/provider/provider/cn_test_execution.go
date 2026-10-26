@@ -117,7 +117,7 @@ func (s *CNProviderTest) Execute(
 		if hint := cnAnthropicBaseURLMisconfigHint(baseURL); hint != "" {
 			return (TestStreamOutput{}).Error(c, hint)
 		}
-		apiURL = strings.TrimRight(baseURL, "/") + "/v1/messages"
+		apiURL = httpclient.BuildOpenAIEndpointURL(baseURL, "/v1/messages")
 		payload, err = claude.TestPayloadWithPrompt(testModelID, prompt)
 		if err != nil {
 			return (TestStreamOutput{}).Error(c, "Failed to create test payload")
@@ -167,6 +167,9 @@ func (s *CNProviderTest) Execute(
 		claude.SetAPIKeyAuthHeader(req.Header, value.GetAnthropicAPIKeyAuthScheme() == providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer, apiKey)
 	} else {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	if value.IsOpenCode() {
+		req.Header.Set("User-Agent", c.Headers.Get("User-Agent"))
 	}
 	applyGrokQuotaHeaders(value, req.Header)
 

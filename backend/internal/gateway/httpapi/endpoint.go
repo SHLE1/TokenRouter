@@ -303,7 +303,7 @@ func GetUpstreamEndpoint(c *gin.Context, platform string) string {
 	// Runtime endpoint state takes precedence over inbound-path inference.
 	// A force_chat_completions failure may have no ForwardResult, so this state is
 	// needed to avoid reporting the inbound Responses path as the upstream endpoint.
-	if platform == capability.PlatformOpenAI || platform == capability.PlatformGrok || providererrors.IsCNProvider(platform) {
+	if platform == capability.PlatformOpenAI || platform == capability.PlatformGrok || platform == capability.PlatformOpenCode || providererrors.IsCNProvider(platform) {
 		if endpoint := GetActualOpenAIUpstreamEndpoint(c); endpoint != "" {
 			return endpoint
 		}
@@ -330,4 +330,14 @@ func SetActualUpstreamEndpoint(c *gin.Context, endpoint string) {
 	if c != nil {
 		c.Set(ctxKeyActualUpstreamEndpoint, strings.TrimSpace(endpoint))
 	}
+}
+
+// selectedErrorRulePlatform uses recorded provider identity for final error rules.
+// Direct executor callers without selection telemetry retain their supplied
+// platform default, keeping error representation independent of observation setup.
+func selectedErrorRulePlatform(c *gin.Context, fallback string) string {
+	if platform := selectedOpsPlatform(c); platform != "unknown" {
+		return platform
+	}
+	return fallback
 }

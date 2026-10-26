@@ -6,6 +6,20 @@
 export default {
   // Providers
   providers: {
+    opencode: {
+      baseUrlHint:
+        'Leave blank for the selected service mode. A custom root should end at /inference or /inference/go; protocol addresses can be set under Models.',
+      rateLimited: 'Usage limit reached',
+      mode: 'Service mode',
+      payg: 'Console / Zen (pay as you go)',
+      description:
+        'Use one API key for OpenCode models. Go usage can be refreshed from the provider list.',
+      modelProtocols: 'Model protocols',
+      modelProtocolsHint:
+        'Sync model protocols or add an exact model override. Each service mode keeps its own overrides.',
+      selectProtocol: 'Select a protocol',
+      endpointOverrides: 'Custom protocol addresses',
+    },
     jev: { description: 'Call TypeSafe SystemOne decision models with an API key.' },
     title: 'Provider Management',
     description: 'Manage upstream AI connections and credentials',

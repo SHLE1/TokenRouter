@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // jev.go validates Jev API Key credentials and resolves the configured or
@@ -33,6 +34,9 @@ func ValidateJevCredentials(value *Record) error {
 // otherwise DefaultJevBaseURL. The caller supplies a nonnil record and performs
 // URL trust validation before using the result for a request.
 func (r *Record) GetJevBaseURL() string {
+	if r.IsOpenCode() {
+		return r.OpenCodeBaseURL(capability.ProtocolSystemOne)
+	}
 	if base := strings.TrimSpace(r.GetCredential("base_url")); base != "" {
 		return base
 	}

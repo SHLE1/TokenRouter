@@ -166,7 +166,7 @@ func (s *GeminiOutput) GeminiMappedError(provider *gatewayprovider.ExecutionProv
 
 	if status, errType, errMsg, matched := ApplyErrorPassthroughRule(
 		c,
-		capability.PlatformGemini,
+		selectedErrorRulePlatform(c, capability.PlatformGemini),
 		upstreamStatus,
 		body,
 		http.StatusBadGateway,
@@ -378,7 +378,7 @@ func (s *GeminiOutput) GeminiOpenAICompatMappedError(
 
 	if status, errType, errMsg, matched := ApplyErrorPassthroughRule(
 		c,
-		capability.PlatformGemini,
+		selectedErrorRulePlatform(c, capability.PlatformGemini),
 		upstreamStatus,
 		body,
 		http.StatusBadGateway,

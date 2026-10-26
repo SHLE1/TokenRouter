@@ -17,13 +17,14 @@ type UpstreamUsageProvider = Pick<Provider, 'type' | 'platform' | 'credentials' 
 // @project-doc docs/interfaces/upstream_usage.md#frontend_lifecycle
 /**
  * supportsUpstreamUsageQuery checks API-key eligibility and the Zhipu
- * provider-mode exception. It does not inspect the query enabled setting, so
+ * provider-mode exception, with OpenCode restricted to Go. It does not inspect the query enabled setting, so
  * callers use isUpstreamUsageQueryEnabled when deciding whether to expose a
  * query action.
  */
 export function supportsUpstreamUsageQuery(provider: UpstreamUsageProvider): boolean {
   return (
     provider.type === 'apikey' &&
+    !(provider.platform === 'opencode' && provider.credentials?.provider_mode !== 'go') &&
     !(provider.platform === 'zhipu' && provider.credentials?.provider_mode !== 'coding')
   )
 }

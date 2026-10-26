@@ -353,7 +353,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	claudeTokenSource := provideClaudeTokens(providerStore, accessTokenCache, claudeAuthorization, oAuthRefreshAPI)
 	antigravityTokenSource := provideAntigravityTokens(providerStore, accessTokenCache, antigravityAuthorization, oAuthRefreshAPI, tempUnschedCache)
 	probeTasks := provideProviderProbeTasks(providerStore, openAIWSConnections, openAITaskCoordinator)
-	modelSyncService := provideProviderModelSync(providerStore, transportClient, claudeTokenSource, geminiTokenSource, grokTokenSource, antigravityTokenSource, tlsProfiles, probeTasks, gatewayRuntimeSettings, cfg, manager)
+	modelSyncService := provideProviderModelSync(providerService, providerStore, transportClient, claudeTokenSource, geminiTokenSource, grokTokenSource, antigravityTokenSource, tlsProfiles, probeTasks, gatewayRuntimeSettings, cfg, manager)
 	managementHandler := provideProviderManagement(admin, runtimePresenter, ollamaCloudUsageService, privacyService, grokImportProbeScheduler, grokQuotaService, managedRefreshService, tasks, recoveryService, managementList, adminCatalog, tierManagement, modelSyncService, postgresStore, calendar)
 	contentModerationHandler := provideModerationHTTP(contentModerationService)
 	antigravityOAuthHandler := httpapi6.NewAntigravityOAuthHandler(antigravityAuthorization)

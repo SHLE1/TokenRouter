@@ -443,7 +443,8 @@ func (q *requestableQuery) resolve(ctx context.Context, requestedModel string) (
 				continue
 			}
 			for _, source := range policy.AllowedProtocols {
-				target, ok := capability.ResolveRoute(q.protocols[i], source, policy.ProtocolFallbacks)
+				finalModel, _ := provider.ModelPolicy.Resolve(groupMappedModel)
+				target, ok := capability.ResolveRoute(q.protocols[i], source, policy.ProtocolFallbacks, finalModel)
 				if !ok {
 					continue
 				}

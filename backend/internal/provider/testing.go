@@ -341,7 +341,7 @@ func (s *TestService) Test(ctx context.Context, request TestRequest, sink TestEv
 // original request before preparation replaces its copied Mode.
 //
 // Kind presence and platform metadata decide eligibility: structured decision
-// input requires Jev; explicit images require OpenAI, Gemini, or Grok and select
+// input requires Jev or OpenCode; explicit images require OpenAI, Gemini, or Grok and select
 // default mode. A known explicit image protocol bypasses the separate provider
 // protocol check. Other selected protocols use testProtocolAllowed. CN routing
 // uses APIProtocol: adaptive, Responses, and Chat select their dedicated
@@ -391,8 +391,8 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 			}
 		}
 	}
-	if (kind == ProviderTestTypeDecision || len(request.SystemOne) > 0) && info.Platform != PlatformJev {
-		return s.fail(ctx, sink, "Decision tests require a Jev provider")
+	if (kind == ProviderTestTypeDecision || len(request.SystemOne) > 0) && info.Platform != PlatformJev && info.Platform != PlatformOpenCode {
+		return s.fail(ctx, sink, "Decision tests require a provider with SystemOne support")
 	}
 	if explicit && kind == ProviderTestTypeImage && info.Platform != PlatformOpenAI && info.Platform != PlatformGemini && info.Platform != PlatformGrok {
 		return s.fail(ctx, sink, fmt.Sprintf("Image tests are not supported for platform %s", info.Platform))
@@ -441,6 +441,8 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 // provider loading.
 func TestProtocolID(protocol string) capability.ProtocolID {
 	switch protocol {
+	case "gemini":
+		return capability.ProtocolGeminiGenerateContent
 	case APIProtocolSystemOne:
 		return capability.ProtocolSystemOne
 	case APIProtocolAnthropic:
@@ -466,6 +468,8 @@ func TestProtocolID(protocol string) capability.ProtocolID {
 // protocol spelling is known.
 func testProtocolAllowed(info TestTargetInfo, protocol string) bool {
 	switch info.Platform {
+	case PlatformOpenCode:
+		return slices.Contains(info.EnabledProtocols, TestProtocolID(protocol))
 	case PlatformJev:
 		return protocol == APIProtocolSystemOne && slices.Contains(info.EnabledProtocols, capability.ProtocolSystemOne)
 	case PlatformOpenAI:

@@ -228,6 +228,7 @@ func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 		geminiReq,
 		clientStream,
 		useUpstreamStream,
+		c.GetHeader,
 	)
 
 	options := s.geminiExchangeOptions(c, ctx, provider, mappedModel, geminiExchangeOpenAI, protocol)
@@ -370,8 +371,9 @@ func (s *Gemini) buildGeminiChatCompletionsUpstreamRequestFunc(
 	geminiReq []byte,
 	clientStream bool,
 	useUpstreamStream bool,
+	read func(string) string,
 ) (func(context.Context) (*http.Request, string, error), string) {
-	plan := s.geminiRequestPlan(provider, mappedModel, "", false, clientStream, useUpstreamStream, false)
+	plan := s.geminiRequestPlan(provider, mappedModel, "", false, clientStream, useUpstreamStream, false, read)
 	return func(ctx context.Context) (*http.Request, string, error) {
 		return gemininative.BuildRequest(ctx, geminiReq, plan)
 	}, "x-request-id"

@@ -71,6 +71,8 @@ TypeSafe 品牌键为 `typesafe`，`jev`、`jev-latest` 和 `typesafe/jev-latest
 
 生产环境只使用 models.dev 的加载流程，远程入口是 `https://models.dev/catalog.json?type=all`，按 `pricing.check_interval_minutes` 检查（默认每 10 分钟），使用 ETag 条件请求和本地的内容摘要；管理员可以强制更新。程序内嵌了一份经过解析验证的压缩离线快照和官方价格补充，并附上 models.dev 的 MIT 许可。官方补充随二进制一起升级和回退，不依赖外部的资源目录。首次启动和网络故障时，可以使用磁盘上或内嵌的离线目录；缓存文件是 `models_dev_catalog.json`，完整解析成功后，通过临时文件替换。管理员接口返回版本、最近一次成功更新的时间和最近一次更新的错误。本地文件在合并之前，把旧的 `litellm_provider` 归一化为 `provider`，同时有新字段时（包括空值和 `null`）以新字段为准；内部的来源分类是 `catalog`，不会覆盖实际的数据出处。远程返回 304 时，本地层照常校验。
 
+OpenCode 的服务协议另建独立索引，保留 `opencode` 和 `opencode-go` 的模型编码声明，供模型同步和提供商路由使用；该索引不改变下面的价格及属性筛选，详见 [OpenCode 上游](opencode_upstream.md#opencode_routing)。
+
 目录解析保留全部 `models` 公共资料，并逐条筛选 `providers` 中的服务记录。原厂识别独立于网关平台、协议和已配置的提供商，未接入的视频、语音、图片等模型也可进入目录。`modelcatalog/origins.go` 维护[厂商归属](#model_catalog_origins)，明确的 `canonical_model_id` 优先于公共资料匹配、端点和型号家族规则。
 
 运行时另外保留 `amazon-bedrock`、`google-vertex`、`google-vertex-anthropic`、`ollama-cloud`、`kimi-code-plan-cn`、`kimi-code-plan-global`、`zhipuai-coding-plan` 和 `zai-coding-plan` 的完整属性与价格。这些服务继续出现在默认目录中，其原厂身份仍由同一套归属规则判断。其他未识别为原厂的记录从默认属性、价格、模型搜索和自动补全中排除。例如 Azure 上的 Microsoft Phi 和 Copilot 上的 MAI 属于原厂记录，其托管的 OpenAI、Anthropic 型号按其他作者识别。

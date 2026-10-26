@@ -236,7 +236,7 @@ func (s *UpstreamHealth) HandleDefault(ctx context.Context, provider *providerco
 	// A Jev retry deadline provides the concrete cooldown for its decision
 	// endpoint. Prefer it before general overload or temporary rules can choose
 	// another window.
-	if provider.Platform == capability.PlatformJev && (statusCode == http.StatusTooManyRequests || statusCode == 529) {
+	if (provider.Platform == capability.PlatformJev || provider.IsOpenCode()) && (statusCode == http.StatusTooManyRequests || statusCode == 529) {
 		if reset := jev.RetryAfterResetTime(headers, time.Now()); reset != nil {
 			s.Core.ApplyObservedRateLimit(ctx, provider, *reset)
 			return false

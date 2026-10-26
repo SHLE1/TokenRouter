@@ -36,11 +36,16 @@ const (
 // address is empty.
 //
 // Present fields require their expected types, and unknown fields are rejected.
-// CN providers keep the adapter selected by platform and mode even when a
+// CN and OpenCode providers keep their platform-selected adapter even when a
 // generic adapter name is supplied. Unsupported adapters and invalid query-root
 // formats return structured errors instead of replacing configured choices.
+// OpenCode payg remains disabled even when a query-enabled flag is supplied.
 func EffectiveUpstreamUsageConfig(provider *Record) (UpstreamUsageQueryConfig, error) {
 	config := UpstreamUsageQueryConfig{Enabled: provider == nil || provider.Platform != PlatformJev, Adapter: UpstreamUsageDefaultAdapter}
+	if provider.IsOpenCode() {
+		config.Adapter = UpstreamUsageAdapterOpenCodeGo
+		config.Enabled = provider.OpenCodeMode() == ProviderModeGo
+	}
 	if adapter := CNUpstreamUsageAdapterName(provider); adapter != "" {
 		config.Adapter = adapter
 	}
@@ -67,9 +72,9 @@ func EffectiveUpstreamUsageConfig(provider *Record) (UpstreamUsageQueryConfig, e
 		if !ok || strings.TrimSpace(parsed) == "" {
 			return UpstreamUsageQueryConfig{}, ErrUpstreamUsageConfigInvalid
 		}
-		// CN platform and mode own adapter selection; a supplied generic name cannot
+		// CN and OpenCode platform modes own adapter selection; a supplied generic name cannot
 		// change their fixed query format, though its input type is still checked.
-		if !provider.IsCNProvider() {
+		if !provider.IsCNProvider() && !provider.IsOpenCode() {
 			config.Adapter = strings.TrimSpace(parsed)
 		}
 	}
@@ -84,6 +89,9 @@ func EffectiveUpstreamUsageConfig(provider *Record) (UpstreamUsageQueryConfig, e
 		if key != "enabled" && key != "adapter" && key != "base_url" {
 			return UpstreamUsageQueryConfig{}, ErrUpstreamUsageConfigInvalid
 		}
+	}
+	if provider.IsOpenCode() && provider.OpenCodeMode() != ProviderModeGo {
+		config.Enabled = false
 	}
 	if !IsKnownUpstreamUsageAdapter(config.Adapter) {
 		return UpstreamUsageQueryConfig{}, ErrUpstreamUsageUnsupported

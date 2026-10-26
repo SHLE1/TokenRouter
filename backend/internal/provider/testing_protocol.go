@@ -55,6 +55,12 @@ func (r TestProtocolRoute) SupportsProvider(value ProviderSnapshot) bool {
 	if !slices.Contains(GroupProbeProtocols(), r.ClientProtocol) || r.UpstreamProtocol == "" {
 		return false
 	}
+	if value.Platform == PlatformOpenCode {
+		if value.Type != ProviderTypeAPIKey || !slices.Contains(value.EnabledProtocols, r.UpstreamProtocol) {
+			return false
+		}
+		return r.ClientProtocol == r.UpstreamProtocol || capability.SupportsProtocolConversion(value.Platform, value.Type, value.AuthMode, r.ClientProtocol, r.UpstreamProtocol)
+	}
 	resolved, ok := capability.ResolveRoute(value.Protocols(), r.ClientProtocol,
 		map[capability.ProtocolID][]capability.ProtocolID{r.ClientProtocol: {r.UpstreamProtocol}})
 	if !ok || resolved != r.UpstreamProtocol {

@@ -7,6 +7,7 @@ import (
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/opencode"
 )
 
 // request_headers.go applies filtered provider header overrides and reads
@@ -19,13 +20,17 @@ import (
 // ApplyProviderHeaderOverrides applies the record's filtered header policy with
 // Anthropic wire casing. Nil destination headers are skipped; allowed keys can
 // replace existing values, while protected keys are excluded by provider and
-// egress filtering.
+// egress filtering. OpenCode installs its bearer credential after overrides so
+// protocol-specific API-key headers cannot conflict with that authentication.
 func ApplyProviderHeaderOverrides(value *provider.Record, headers http.Header) {
 	if headers == nil {
 		return
 	}
 	policy := egress.RequestPolicy(egress.RequestPolicyInput{Headers: value.HeaderOverrides()})
 	egressprovider.ApplyRequestHeaders(headers, policy, anthropic.ResolveWireCasing)
+	if value.IsOpenCode() {
+		opencode.ApplyHeaders(headers, value.GetCredential("api_key"), nil)
+	}
 }
 
 // HeaderOverrideValue returns one enabled override under its normalized

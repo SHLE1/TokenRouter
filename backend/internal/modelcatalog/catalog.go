@@ -97,7 +97,8 @@ type Entry struct {
 // Catalog holds a parsed catalog version. Apply supplements before publishing
 // it to readers.
 type Catalog struct {
-	Version string // published content version fingerprint
+	Version        string                       // published content version fingerprint
+	OpenCodeRoutes map[string]map[string]string // mode-scoped exact model encodings
 	// Entries, Providers, Ambiguous, attributeFallbacks, and publicEntries are
 	// prepared before publication. Existing views retain these maps, so callers
 	// finish supplement mutations before sharing a catalog with readers.
@@ -204,7 +205,7 @@ func Parse(body []byte) (*Catalog, error) {
 		return nil, fmt.Errorf("expected models.dev catalog with providers; legacy pricing JSON is only supported as a local supplement or override")
 	}
 	hash := sha256.Sum256(body)
-	catalog := &Catalog{Version: hex.EncodeToString(hash[:]), Entries: map[string]Entry{}, Providers: map[string]bool{}, Ambiguous: map[string]bool{}}
+	catalog := &Catalog{OpenCodeRoutes: ParseOpenCodeProtocols(body), Version: hex.EncodeToString(hash[:]), Entries: map[string]Entry{}, Providers: map[string]bool{}, Ambiguous: map[string]bool{}}
 	bare := map[string][]Entry{}
 	publicIdentities := make(map[string]bool, len(source.Models))
 	for id := range source.Models {

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"maps"
 	"slices"
 )
 
@@ -26,6 +27,9 @@ type ModelSyncService struct {
 	// activity owns admission, cancellation, and the retained shutdown result.
 	// Each successful registration remains active until Fetch's deferred finish.
 	activity operationActivity
+	// CatalogProtocols reads mode-specific encodings from the shared catalog.
+	// A missing callback uses the bundled publication for local adapters and tests.
+	CatalogProtocols func(string) map[string]string
 }
 
 // NewModelSyncService constructs a request-triggered catalogue service around
@@ -62,4 +66,43 @@ func (s *ModelSyncService) Fetch(ctx context.Context, v *Record) ([]string, erro
 // outcome, including a timeout while an adapter remains unfinished.
 func (s *ModelSyncService) StopContext(ctx context.Context) error {
 	return s.activity.stop(ctx, "provider model list requests")
+}
+
+// Protocols returns exact-model encodings for an OpenCode synchronization result.
+// A published mode table replaces bundled defaults, then saved overrides
+// take precedence. An unavailable publication retains bundled defaults. Unknown entries remain absent so the form can request an
+// administrator choice instead of selecting a guessed endpoint.
+//
+// A successful current publication is authoritative for its complete mode
+// table, including entries it omits. Saved exact-model overrides are applied
+// afterward because they may describe a custom compatible deployment. The
+// returned table contains only models reported by this synchronization; other
+// saved models remain in the provider configuration until separately edited.
+func (s *ModelSyncService) Protocols(value *Record, models []string) map[string]string {
+	if !value.IsOpenCode() {
+		return nil
+	}
+	routes := make(map[string]string)
+	for model, target := range value.OpenCodeModelProtocols() {
+		routes[model] = string(target)
+	}
+	if s.CatalogProtocols != nil {
+		if current := s.CatalogProtocols(value.OpenCodeMode()); current != nil {
+			routes = maps.Clone(current)
+		}
+	}
+	modes, _ := value.Credentials[OpenCodeModelProtocolsKey].(map[string]any)
+	overrides, _ := modes[value.OpenCodeMode()].(map[string]any)
+	for model, target := range overrides {
+		if text, ok := target.(string); ok {
+			routes[model] = text
+		}
+	}
+	result := make(map[string]string)
+	for _, model := range models {
+		if target := routes[model]; target != "" {
+			result[model] = target
+		}
+	}
+	return result
 }

@@ -43,3 +43,16 @@ func TestModelSyncOwnsInflightQueryAndInput(t *testing.T) {
 	require.ErrorIs(t, <-completed, context.Canceled)
 	require.Equal(t, stopErr, core.StopContext(context.Background()))
 }
+
+// TestOpenCodeModelSyncProtocolsPreferSavedModeOverrides combines current
+// catalog suggestions with saved exact-model choices. Unknown upstream models
+// remain without a protocol, and the other mode cannot override Go results.
+func TestOpenCodeModelSyncProtocolsPreferSavedModeOverrides(t *testing.T) {
+	svc := &ModelSyncService{CatalogProtocols: func(mode string) map[string]string {
+		require.Equal(t, "go", mode)
+		return map[string]string{"new": "openai_responses", "custom": "openai_chat_completions"}
+	}}
+	value := &Record{Platform: PlatformOpenCode, Type: ProviderTypeAPIKey, Credentials: map[string]any{"provider_mode": "go", OpenCodeModelProtocolsKey: map[string]any{"go": map[string]any{"custom": "anthropic_messages"}, "payg": map[string]any{"new": "systemone"}}}}
+	result := svc.Protocols(value, []string{"new", "custom", "unknown", "minimax-m3"})
+	require.Equal(t, map[string]string{"new": "openai_responses", "custom": "anthropic_messages"}, result)
+}

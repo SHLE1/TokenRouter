@@ -69,11 +69,18 @@ func (r *Record) ConfiguredAPIProtocol() string {
 	return APIProtocolChatCompletions
 }
 
-// GetOpenAIBaseURL returns the OpenAI-format base selected by Record.OpenAIBaseURL
-// with this operation's adaptive flag. Record must be nonnil. Address precedence
-// and platform defaults belong to that helper; execution callers validate the
-// returned URL before connecting.
+// GetOpenAIBaseURL returns the operation's protocol base for OpenCode, or the
+// base selected by Record.OpenAIBaseURL for other providers. Record must be
+// nonnil. An unselected OpenCode operation defaults to the Chat base; execution
+// callers validate the returned address before connecting.
 func (a ProtocolTarget) GetOpenAIBaseURL() string {
+	if a.IsOpenCode() {
+		target := a.Protocol
+		if target == "" {
+			target = protocolcore.ProtocolOpenAIChatCompletions
+		}
+		return a.OpenCodeBaseURL(target)
+	}
 	return a.OpenAIBaseURL(a.IsAdaptiveAPIProtocol())
 }
 
@@ -105,7 +112,13 @@ func (a ProtocolTarget) GetAPIProtocol() string {
 // Responses or adaptive lookup. Nil and unsupported records return false. This
 // predicate checks platform and variant, so an empty unified selection can still
 // return true; protocol admission checks its enabled identifiers separately.
+// OpenCode qualifies when the operation has selected its Responses encoding.
 func (a ProtocolTarget) UsesNativeCNResponses() bool {
+	if a.IsOpenCode() {
+		// The shared stateless preparation belongs to Responses. Other OpenCode
+		// encodings must not trigger its storage and continuation body rewrites.
+		return a.Protocol == protocolcore.ProtocolOpenAIResponses
+	}
 	if a.Record == nil || !a.SupportsNativeCNResponses() {
 		return false
 	}
@@ -125,8 +138,8 @@ func (a ProtocolTarget) IsAdaptiveAPIProtocol() bool {
 	return a.GetAPIProtocol() == APIProtocolAdaptive
 }
 
-// GetCNProtocolBaseURL returns a configured or default CN address for protocol.
-// Nil and non-CN records return empty. A unified key or adaptive operation first
+// GetCNProtocolBaseURL returns a configured or default CN or OpenCode address
+// for a supported text protocol. Other platforms and nil records return empty. A unified key or adaptive operation first
 // checks that exact protocol slot for a nonblank string, then Chat alone accepts
 // a nonblank legacy base_url. Chosen custom strings are trimmed.
 //
@@ -136,6 +149,16 @@ func (a ProtocolTarget) IsAdaptiveAPIProtocol() bool {
 // handles its stored Messages base separately. This helper selects an address
 // and leaves URL and protocol admission validation to execution callers.
 func (a ProtocolTarget) GetCNProtocolBaseURL(protocol string) string {
+	if a.IsOpenCode() {
+		switch protocol {
+		case APIProtocolResponses:
+			return a.OpenCodeBaseURL(protocolcore.ProtocolOpenAIResponses)
+		case APIProtocolAnthropic:
+			return a.OpenCodeBaseURL(protocolcore.ProtocolAnthropicMessages)
+		case APIProtocolChatCompletions:
+			return a.OpenCodeBaseURL(protocolcore.ProtocolOpenAIChatCompletions)
+		}
+	}
 	if a.Record == nil || !a.IsCNProvider() {
 		return ""
 	}
@@ -165,7 +188,8 @@ func (a ProtocolTarget) IsAnthropicProtocol() bool {
 }
 
 // GetAnthropicProtocolBaseURL returns the Messages address for fixed Messages
-// or adaptive lookup. Nil records and other resolved variants return empty.
+// or adaptive lookup. OpenCode resolves its Messages address directly. Nil
+// records and other resolved variants on remaining platforms return empty.
 // A present unified key or adaptive variant delegates to CN slot lookup, which
 // also returns empty for a non-CN record.
 //
@@ -176,6 +200,9 @@ func (a ProtocolTarget) IsAnthropicProtocol() bool {
 // The helper performs no URL validation or enabled-selection check; execution
 // callers establish those requirements before sending requests.
 func (a ProtocolTarget) GetAnthropicProtocolBaseURL() string {
+	if a.IsOpenCode() {
+		return a.OpenCodeBaseURL(protocolcore.ProtocolAnthropicMessages)
+	}
 	if a.Record == nil || (!a.IsAnthropicProtocol() && !a.IsAdaptiveAPIProtocol()) {
 		return ""
 	}

@@ -945,3 +945,42 @@ describe('Jev 提供商', () => {
     wrapper.unmount()
   })
 })
+
+describe('OpenCode provider creation', () => {
+  beforeEach(() => {
+    createProviderMock.mockReset()
+    createProviderMock.mockResolvedValue({ id: 102 })
+  })
+
+  // Selecting OpenCode forces API-key credentials and a payg draft. Submission
+  // retains an empty custom root and all five protocol options for model-aware routing.
+  it('creates an independent OpenCode API-key provider', async () => {
+    const wrapper = mountModal()
+    await wrapper.get('[data-testid="create-provider-platform-opencode"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('form#create-provider-form input[type="text"]').setValue('OpenCode test')
+    await wrapper.get('form#create-provider-form input[type="password"]').setValue('oc_sk_test')
+    await wrapper.get('form#create-provider-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(createProviderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platform: 'opencode',
+        type: 'apikey',
+        credentials: expect.objectContaining({
+          api_key: 'oc_sk_test',
+          base_url: '',
+          provider_mode: 'payg',
+          opencode_model_protocols: { payg: {}, go: {} },
+          upstream_protocols: [
+            'anthropic_messages',
+            'openai_responses',
+            'openai_chat_completions',
+            'gemini_generate_content',
+            'systemone',
+          ],
+        }),
+      }),
+    )
+    wrapper.unmount()
+  })
+})

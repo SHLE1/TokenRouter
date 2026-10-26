@@ -18,6 +18,7 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/opencode"
 )
 
 // openai_request_session_headers.go forwards trusted conversation headers and
@@ -45,10 +46,11 @@ const (
 	OpenAICodexRoutingHintHeader = "x-codex-routing-hint"
 )
 
-// ApplyOpenCodeSessionHeader forwards a trimmed client conversation ID to HTTPS
-// opencode.ai. Callers invoke it after provider overrides with the final target
-// URL and header map. Only API-key providers qualify; missing caller values
-// leave existing overrides intact.
+// ApplyOpenCodeSessionHeader installs client identity and bearer authentication
+// for an OpenCode provider after provider overrides. Callers validate configured
+// destinations before constructing this header map. Other API-key providers
+// forward the conversation header only to the exact HTTPS opencode.ai host;
+// missing caller session values leave existing overrides intact.
 //
 // A nonempty caller ID replaces every casing variant in the outgoing map before
 // setting the canonical header. This keeps that conversation's identity
@@ -59,6 +61,10 @@ func ApplyOpenCodeSessionHeader(c *gin.Context, provider *gatewayprovider.Execut
 		return
 	}
 
+	if provider.View().IsOpenCode() {
+		opencode.ApplyHeaders(headers, provider.View().GetCredential("api_key"), c.GetHeader)
+		return
+	}
 	parsed, err := url.Parse(targetURL)
 	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || !strings.EqualFold(parsed.Hostname(), "opencode.ai") {
 		return

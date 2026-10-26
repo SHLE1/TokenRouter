@@ -101,6 +101,7 @@ const (
 	PlatformKimi        = capability.PlatformKimi
 	PlatformZhipu       = capability.PlatformZhipu
 	PlatformDeepseek    = capability.PlatformDeepseek
+	PlatformOpenCode    = capability.PlatformOpenCode
 	PlatformJev         = capability.PlatformJev
 
 	// CN access modes select the provider's endpoint defaults and usage policy.
@@ -507,12 +508,12 @@ func (r *Record) IsCNProvider() bool {
 	return r != nil && IsCNProvider(r.Platform)
 }
 
-// IsOpenAICompatible identifies OpenAI, Grok, Kimi, Zhipu, and DeepSeek gateway
+// IsOpenAICompatible identifies OpenAI, Grok, CN, and OpenCode gateway
 // families. Nil records return false; the platform classification leaves
 // provider-type and endpoint eligibility to the route-specific checks.
 func (r *Record) IsOpenAICompatible() bool {
 	return r != nil && (r.Platform == PlatformOpenAI || r.Platform == PlatformGrok ||
-		r.Platform == PlatformKimi || r.Platform == PlatformZhipu || r.Platform == PlatformDeepseek)
+		r.Platform == PlatformKimi || r.Platform == PlatformZhipu || r.Platform == PlatformDeepseek || r.Platform == PlatformOpenCode)
 }
 
 // GeminiOAuthType returns the trimmed channel label for Gemini OAuth records.
@@ -1027,9 +1028,15 @@ func (r *Record) GetBaseURL() string {
 }
 
 // GetGeminiBaseURL returns the trimmed saved endpoint or the supplied default
-// URL. Missing and whitespace-only credentials use that default regardless of
-// platform or type, allowing each caller to choose its platform endpoint.
+// URL. OpenCode selects its mode-specific Google base and removes the version
+// segment that the shared Gemini request builder appends. Other platforms use
+// the supplied default when their stored base is missing or whitespace only.
 func (r *Record) GetGeminiBaseURL(defaultBaseURL string) string {
+	if r.IsOpenCode() {
+		// The Gemini URL builder appends its version segment. Remove the saved
+		// protocol base's suffix here so custom prefixes do not duplicate v1beta.
+		return strings.TrimSuffix(r.OpenCodeBaseURL(capability.ProtocolGeminiGenerateContent), "/v1beta")
+	}
 	baseURL := strings.TrimSpace(r.GetCredential("base_url"))
 	if baseURL == "" {
 		return defaultBaseURL
@@ -1615,14 +1622,14 @@ func (r *Record) GetOpenAIApiKey() string {
 	return r.GetCredential("api_key")
 }
 
-// GetOpenAIProtocolAPIKey returns an API Key for OpenAI or a supported CN
-// platform. Nil records and CN records using another authentication type return
-// empty; OpenAI delegates to its platform-specific API Key accessor.
+// GetOpenAIProtocolAPIKey returns an API Key for OpenAI, CN, or OpenCode
+// forwarding. Nil records and compatible records using another authentication
+// type return empty; OpenAI delegates to its platform-specific API Key accessor.
 func (r *Record) GetOpenAIProtocolAPIKey() string {
 	if r == nil {
 		return ""
 	}
-	if r.IsCNProvider() {
+	if r.IsCNProvider() || r.IsOpenCode() {
 		if r.Type != ProviderTypeAPIKey {
 			return ""
 		}

@@ -218,6 +218,22 @@ func (s *ModelCatalogue) FetchUpstreamSupportedModels(ctx context.Context, value
 // execution.
 func (s *ModelCatalogue) buildUpstreamModelsRequest(ctx context.Context, value *providercore.Record) (*http.Request, error) {
 	switch {
+	case value.IsOpenCode():
+		if err := providercore.ValidateOpenCodeCredentials(value); err != nil {
+			return nil, newUpstreamModelSyncConfigError("Invalid OpenCode configuration", err)
+		}
+		base, err := s.Options.ValidateURL(value.OpenCodeRoot())
+		if err != nil {
+			return nil, newUpstreamModelSyncConfigError("Invalid OpenCode base URL", err)
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(base, "/")+"/v1/models", nil)
+		if err != nil {
+			return nil, err
+		}
+		ApplyProviderHeaderOverrides(value, req.Header)
+		req.Header.Set("Authorization", "Bearer "+value.GetCredential("api_key"))
+		req.Header.Set("Accept", "application/json")
+		return req, nil
 	case value.Platform == capability.PlatformJev:
 		return s.buildJevUpstreamModelsRequest(ctx, value)
 	case value.IsGrok():

@@ -15,6 +15,7 @@ import (
 // These adapter identifiers select fixed upstream query formats in provider
 // execution and identify their normalized results.
 const (
+	UpstreamUsageAdapterOpenCodeGo      = "opencode_go"      // OpenCode Go allowance query adapter
 	UpstreamUsageAdapterSub2API         = "sub2api"          // Sub2API usage query adapter
 	UpstreamUsageAdapterNewAPI          = "new_api"          // New API usage query adapter
 	UpstreamUsageAdapterDerouter        = "derouter"         // derouter.ai account balance adapter
@@ -50,7 +51,8 @@ type UpstreamUsageBalanceEntry struct {
 type UpstreamUsageLimit struct {
 	// Name identifies the upstream window. ValidateUsageLimits requires nonblank
 	// names and compares their trimmed spellings case-sensitively for duplicate windows.
-	Name string `json:"name"` // upstream quota window name
+	Name   string `json:"name"`             // upstream quota window name
+	Status string `json:"status,omitempty"` // optional upstream window status
 	// Used, Limit, and Remaining use the result's shared unit and can be absent
 	// independently. ValidateUsageLimits requires at least one observed value
 	// and finite nonnegative Used and Limit when those values are supplied.

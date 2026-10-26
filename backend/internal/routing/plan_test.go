@@ -78,3 +78,28 @@ func TestRoutePlanModelChainAndAttemptSnapshots(t *testing.T) {
 	require.True(t, matched)
 	require.Equal(t, "upstream-two", second.Models.ProviderMappedModel)
 }
+
+// TestOpenCodeCandidateResolvesMappedModelProtocol supplies aliases and distinct
+// native encodings for one model across service modes. Unknown models, disabled
+// targets, and prohibited conversions cannot enter the candidate pool.
+func TestOpenCodeCandidateResolvesMappedModelProtocol(t *testing.T) {
+	record := &provider.Record{ID: 7, Platform: capability.PlatformOpenCode, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test", "model_mapping": map[string]any{"alias": "minimax-m3"}}}
+	plan := Plan(PlanInput{RequestedModel: "alias", ClientProtocol: capability.ProtocolOpenAIChatCompletions})
+	candidate, ok := plan.ResolveCandidate(record.RoutingSnapshot())
+	require.True(t, ok)
+	require.Equal(t, capability.ProtocolOpenAIChatCompletions, candidate.UpstreamProtocol)
+	record.Credentials["provider_mode"] = provider.ProviderModeGo
+	candidate, ok = plan.ResolveCandidate(record.RoutingSnapshot())
+	require.True(t, ok)
+	require.Equal(t, capability.ProtocolAnthropicMessages, candidate.UpstreamProtocol)
+	blocked := Plan(PlanInput{RequestedModel: "alias", ClientProtocol: capability.ProtocolOpenAIChatCompletions, Group: &Group{ProtocolFallbacks: map[capability.ProtocolID][]capability.ProtocolID{capability.ProtocolOpenAIChatCompletions: {}}}})
+	_, ok = blocked.ResolveCandidate(record.RoutingSnapshot())
+	require.False(t, ok)
+	record.Credentials[provider.UpstreamProtocolsKey] = []string{}
+	_, ok = plan.ResolveCandidate(record.RoutingSnapshot())
+	require.False(t, ok)
+	record.Credentials[provider.UpstreamProtocolsKey] = []string{string(capability.ProtocolAnthropicMessages)}
+	unknown := Plan(PlanInput{RequestedModel: "unknown", ClientProtocol: capability.ProtocolAnthropicMessages})
+	_, ok = unknown.ResolveCandidate(record.RoutingSnapshot())
+	require.False(t, ok)
+}

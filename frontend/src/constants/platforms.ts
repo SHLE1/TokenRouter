@@ -25,4 +25,5 @@ export const CONCRETE_PLATFORM_OPTIONS = [
   { value: 'zhipu', label: 'Zhipu' },
   { value: 'deepseek', label: 'DeepSeek' },
   { value: 'jev', label: 'Jev' },
+  { value: 'opencode', label: 'OpenCode' },
 ] as const satisfies readonly PlatformOption<ProviderPlatform>[]

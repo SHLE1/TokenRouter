@@ -108,7 +108,7 @@ func TestDecisionTestingRequiresJev(t *testing.T) {
 				require.NoError(t, err)
 				require.True(t, called)
 			} else {
-				require.EqualError(t, err, "Decision tests require a Jev provider")
+				require.EqualError(t, err, "Decision tests require a provider with SystemOne support")
 				require.False(t, called)
 			}
 		})

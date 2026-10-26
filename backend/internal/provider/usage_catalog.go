@@ -4,14 +4,15 @@ import "github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 
 // usage_catalog.go lists supported upstream usage adapters and filters
 // administrator-selectable formats.
-// Usage queries expose four administrator-selectable relay formats and four
-// platform-selected CN formats. The catalog keeps those categories together so
+// Usage queries expose administrator-selectable relay formats alongside
+// platform-selected CN and OpenCode Go formats. The catalog keeps those categories together so
 // diagnostics can name every adapter while administrator choices remain limited
 // to the manual formats.
 
 // Adapter identifiers select fixed registered usage formats and identify
 // normalized results returned by manual queries or CN monitoring.
 const (
+	UpstreamUsageAdapterOpenCodeGo      = usageview.UpstreamUsageAdapterOpenCodeGo      // OpenCode Go allowance format
 	UpstreamUsageAdapterSub2API         = usageview.UpstreamUsageAdapterSub2API         // Sub2API relay usage format
 	UpstreamUsageAdapterNewAPI          = usageview.UpstreamUsageAdapterNewAPI          // New API usage format
 	UpstreamUsageAdapterDerouter        = usageview.UpstreamUsageAdapterDerouter        // derouter.ai account balance format
@@ -34,6 +35,7 @@ const (
 // usageAdapterCatalog associates each supported format with its display name and
 // automatic selection rule for catalog and administrator-option consumers.
 var usageAdapterCatalog = []UsageAdapterSpec{
+	{Name: UpstreamUsageAdapterOpenCodeGo, Label: "OpenCode Go", Automatic: true},
 	{Name: UpstreamUsageAdapterSub2API, Label: "Sub2API / TokenRouter", Automatic: false},
 	{Name: UpstreamUsageAdapterNewAPI, Label: "New API", Automatic: false},
 	{Name: UpstreamUsageAdapterZivv, Label: "Zivv", Automatic: false},

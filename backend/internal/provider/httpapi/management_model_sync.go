@@ -20,7 +20,9 @@ import (
 // record so query results can be inspected before provider creation.
 
 // SyncUpstreamModels loads provider credentials and requests a live
-// supported-model list. Lookup failures map to 404, configuration or
+// supported-model list. OpenCode accepts temporary mode and root settings on
+// a copied record, and returns model protocol suggestions alongside IDs.
+// Lookup failures map to 404, configuration or
 // unsupported errors to 400, and other query failures to sanitized 502
 // responses.
 // POST /api/v1/admin/providers/:id/models/sync-upstream
@@ -42,6 +44,21 @@ func (h *ManagementHandler) SyncUpstreamModels(c *gin.Context) {
 		return
 	}
 
+	if provider.IsOpenCode() && c.Request.ContentLength != 0 {
+		var override ProviderModelsSyncRequest
+		if err := response.BindJSONStrict(c, &override); err != nil {
+			response.BadRequest(c, "Invalid model synchronization settings")
+			return
+		}
+		provider = providercore.CloneRecord(provider)
+		if override.ProviderMode != "" {
+			provider.Credentials["provider_mode"] = override.ProviderMode
+		}
+		if override.BaseURL != nil {
+			provider.Credentials["base_url"] = *override.BaseURL
+		}
+	}
+
 	models, err := h.models.Fetch(c.Request.Context(), provider)
 	if err != nil {
 		if syncErr, ok := errors.AsType[*providercore.UpstreamModelSyncError](err); ok {
@@ -60,7 +77,11 @@ func (h *ManagementHandler) SyncUpstreamModels(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"models": models})
+	result := gin.H{"models": models}
+	if protocols := h.models.Protocols(provider, models); protocols != nil {
+		result["model_protocols"] = protocols
+	}
+	response.Success(c, result)
 }
 
 // SyncUpstreamModelsPreview strictly binds temporary API-key credentials and
@@ -82,6 +103,10 @@ func (h *ManagementHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 			"api_key":  req.APIKey,
 			"base_url": req.BaseURL,
 		},
+	}
+
+	if req.ProviderMode != "" {
+		tempProvider.Credentials["provider_mode"] = req.ProviderMode
 	}
 
 	if h.models == nil {
@@ -107,5 +132,9 @@ func (h *ManagementHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"models": models})
+	result := gin.H{"models": models}
+	if protocols := h.models.Protocols(tempProvider, models); protocols != nil {
+		result["model_protocols"] = protocols
+	}
+	response.Success(c, result)
 }

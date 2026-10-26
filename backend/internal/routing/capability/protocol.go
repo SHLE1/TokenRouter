@@ -98,7 +98,7 @@ type ProtocolID = protocol.ProtocolID
 // adapter ranges. Dedicated Qoder and batch entries are marked upstream-only so
 // they remain outside group client admission choices.
 func buildProtocolCatalog() []Protocol {
-	all := []string{PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformGrok, PlatformQoder, PlatformKimi, PlatformZhipu, PlatformDeepseek}
+	all := []string{PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformGrok, PlatformQoder, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformOpenCode}
 	openai := []string{PlatformOpenAI}
 	grok := []string{PlatformGrok}
 	both := []string{PlatformOpenAI, PlatformGrok}
@@ -106,8 +106,8 @@ func buildProtocolCatalog() []Protocol {
 		{ID: ProtocolAnthropicMessages, Name: "Anthropic Messages", Platforms: all},
 		{ID: ProtocolOpenAIResponses, Name: "OpenAI Responses", Platforms: all},
 		{ID: ProtocolOpenAIChatCompletions, Name: "Chat Completions", Platforms: all},
-		{ID: ProtocolGeminiGenerateContent, Name: "Gemini GenerateContent", Platforms: []string{PlatformGemini, PlatformAntigravity}},
-		{ID: ProtocolSystemOne, Name: "SystemOne", Platforms: []string{PlatformJev}},
+		{ID: ProtocolGeminiGenerateContent, Name: "Gemini GenerateContent", Platforms: []string{PlatformGemini, PlatformAntigravity, PlatformOpenCode}},
+		{ID: ProtocolSystemOne, Name: "SystemOne", Platforms: []string{PlatformJev, PlatformOpenCode}},
 		{ID: ProtocolEmbeddings, Name: "Embeddings", Platforms: openai},
 		{ID: ProtocolImagesGenerations, Name: "Images Generations", Platforms: both},
 		{ID: ProtocolImagesEdits, Name: "Images Edits", Platforms: both},
@@ -138,6 +138,10 @@ func buildProtocolCatalog() []Protocol {
 func NativeProtocolOptions(platform, providerType, authMode string) []ProtocolID {
 	var selected []ProtocolID
 	switch platform {
+	case PlatformOpenCode:
+		if providerType == ProviderTypeAPIKey {
+			selected = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolGeminiGenerateContent, ProtocolSystemOne}
+		}
 	case PlatformJev:
 		if providerType == ProviderTypeAPIKey {
 			selected = []ProtocolID{ProtocolSystemOne}
@@ -212,6 +216,8 @@ func ProtocolFallbackTargets(platform string, source ProtocolID) []ProtocolID {
 			targets = []ProtocolID{ProtocolAnthropicMessages, ProtocolGeminiGenerateContent}
 		case PlatformOpenAI, PlatformGrok:
 			targets = []ProtocolID{ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}
+		case PlatformOpenCode:
+			targets = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolGeminiGenerateContent}
 		case PlatformKimi, PlatformDeepseek:
 			targets = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}
 		case PlatformZhipu:
@@ -292,7 +298,7 @@ func platformSupportsClientProtocol(platform string, source ProtocolID) bool {
 // catalogue queries.
 func AutomaticProtocolFallbackTargets(source ProtocolID) []ProtocolID {
 	targets := []ProtocolID{}
-	for _, platform := range []string{PlatformOpenAI, PlatformAnthropic, PlatformGemini, PlatformAntigravity, PlatformGrok, PlatformQoder, PlatformKimi, PlatformZhipu, PlatformDeepseek} {
+	for _, platform := range []string{PlatformOpenAI, PlatformAnthropic, PlatformGemini, PlatformAntigravity, PlatformGrok, PlatformQoder, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformOpenCode} {
 		for _, target := range ProtocolFallbackTargets(platform, source) {
 			if !slices.Contains(targets, target) {
 				targets = append(targets, target)

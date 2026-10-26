@@ -54,6 +54,10 @@ Zivv 的公开开发者文档说明余额在控制台的钱包页面，适配器
 
 响应中的 `balance`、`locked_balance`、`available` 接受十进制字符串或 JSON 数字，三个字段都必须存在且为有限数值，锁定金额要求非负，`available` 必须在金额比较容差内等于 `balance - locked_balance`。归一化结果为 `mode=balance`、`unit=USD`，`balance.remaining` 使用 `available`，供列表展示和余额提醒比较。零余额与负余额按实际值返回；缺失、null 或不一致的金额会导致查询失败。锁定金额不代表历史消费，因此结果省略 `used` 和 `total`。协议来源：[derouter.ai 管理 API](https://derouter.ai/docs/api)。
 
+### OpenCode Go
+
+OpenCode 的 `go` 模式自动选择 `opencode_go`，读取固定的 `/zen/go/v1/usage`，展示三个百分比窗口及重置时间。`payg` 模式关闭查询。认证、窗口校验和配置规则见 [OpenCode 上游](opencode_upstream.md)。
+
 ### 国产供应商
 
 国产供应商的适配器由提供商身份自动选择，管理表单里无法改成其他协议：
@@ -72,7 +76,7 @@ Zhipu payg 没有公开的余额协议，DeepSeek coding 也不是合法的提�
 <a id="native_usage_adapters"></a>
 ## 原生查询与提供商编排
 
-Sub2API、New API、Zivv、derouter.ai 的固定查询和归一化在 `upstream/usageprovider`，Kimi、Zhipu、DeepSeek 分别在对应的 `upstream` 包里。`provider/provider.UpstreamUsageExecution` 持有唯一的适配器注册表，`NewUpstreamUsageHTTPExecution` 根据提供商记录构造凭据、代理、TLS 和 Header 的技术快照。app 只整理出站配置和共享的传输接口，直接绑定一个 `provider.UpstreamUsageService`。
+Sub2API、New API、Zivv、derouter.ai 的固定查询和归一化在 `upstream/usageprovider`，OpenCode、Kimi、Zhipu、DeepSeek 分别在对应的 `upstream` 包里。`provider/provider.UpstreamUsageExecution` 持有唯一的适配器注册表，`NewUpstreamUsageHTTPExecution` 根据提供商记录构造凭据、代理、TLS 和 Header 的技术快照。app 只整理出站配置和共享的传输接口，直接绑定一个 `provider.UpstreamUsageService`。
 
 `upstream/usageview` 保存归一化后的值、错误和验证规则，provider 通过类型别名复用它们。`upstream/usagecontract.Request` 是一次查询的技术快照，其中的敏感字段不会出现在 JSON 或普通的字符串格式化结果里。共享的 `upstream/internal/usageclient` 负责固定的读取上限、请求头覆盖顺序、状态映射和关闭响应体。这些原生包不读取提供商仓储，也不写健康、调度或资金数据。
 

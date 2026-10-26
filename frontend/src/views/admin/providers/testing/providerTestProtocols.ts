@@ -17,7 +17,8 @@ import type { ProtocolID } from '@/api/protocols.types'
 /**
  * ProviderTestProtocol names explicit endpoint selectors accepted by the provider-test request.
  */
-export type ProviderTestProtocol = 'responses' | 'chat_completions' | 'anthropic' | 'systemone'
+export type ProviderTestProtocol =
+  'responses' | 'chat_completions' | 'anthropic' | 'systemone' | 'gemini'
 
 /**
  * ProviderTestProtocolOption pairs a request selector with its human-readable endpoint display.
@@ -174,6 +175,18 @@ export function providerTestProtocolPlan(provider: Provider | null): ProviderTes
   // Fixed-endpoint platforms expose a native display choice; request construction uses that
   // sentinel to omit an explicit protocol override.
   switch (platform) {
+    case 'opencode':
+      return {
+        options: [
+          option('native', 'Auto', 'OpenCode'),
+          responsesOption(platform),
+          messagesOption(),
+          chatOption(),
+          option('gemini', 'Gemini', ':generateContent'),
+          option('systemone', 'SystemOne', '/v1/systemone'),
+        ],
+        selectable: true,
+      }
     case 'jev':
       return { options: [option('native', 'SystemOne', '/v1/systemone')], selectable: false }
     case 'anthropic':

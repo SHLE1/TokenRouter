@@ -20,11 +20,11 @@ Responses WebSocket 的客户端许可在分组协议控制中设置，提供商
 
 | ID | 界面名称 | 主要入口 | 候选提供商的适配器范围 |
 | --- | --- | --- | --- |
-| `anthropic_messages` | Anthropic Messages | `POST /v1/messages` | 现有的九个平台 |
-| `openai_responses` | OpenAI Responses | `POST /v1/responses` | 现有的九个平台 |
-| `openai_chat_completions` | Chat Completions | `POST /v1/chat/completions` | 现有的九个平台 |
-| `gemini_generate_content` | Gemini GenerateContent | `POST /v1beta/models/{model}:generateContent`、`:streamGenerateContent` | Gemini、Antigravity |
-| `systemone` | SystemOne | `POST /v1/systemone` | Jev |
+| `anthropic_messages` | Anthropic Messages | `POST /v1/messages` | 现有的十个文本平台 |
+| `openai_responses` | OpenAI Responses | `POST /v1/responses` | 现有的十个文本平台 |
+| `openai_chat_completions` | Chat Completions | `POST /v1/chat/completions` | 现有的十个文本平台 |
+| `gemini_generate_content` | Gemini GenerateContent | `POST /v1beta/models/{model}:generateContent`、`:streamGenerateContent` | Gemini、Antigravity、OpenCode |
+| `systemone` | SystemOne | `POST /v1/systemone` | Jev、OpenCode |
 | `openai_embeddings` | Embeddings | `POST /v1/embeddings` | OpenAI |
 | `openai_images_generations` | Images 图片生成 | `POST /v1/images/generations` | OpenAI、Grok |
 | `openai_images_edits` | Images 图片编辑 | `POST /v1/images/edits` | OpenAI、Grok |
@@ -80,6 +80,7 @@ OpenAI API Key 提供商的 `credentials.images_generations_mode` 和 `credentia
 
 各平台的原生协议：
 
+- OpenCode API Key：按模型声明的 Messages、Responses、Chat、GenerateContent 或 SystemOne，细节见 [OpenCode 上游](opencode_upstream.md#opencode_routing)。
 - Jev API Key：SystemOne，支持同步决策请求。
 - OpenAI API Key：Responses、Chat、Embeddings、Images 生成和编辑、Responses WebSocket、Compact、Alpha Search。
 - OpenAI OAuth：Responses、WebSocket、Compact、Alpha Search、Live。PAT 没有 Alpha Search 和 Live，Agent Identity 没有 Live。OpenAI 没有 Messages 原生项。
@@ -89,7 +90,7 @@ OpenAI API Key 提供商的 `credentials.images_generations_mode` 和 `credentia
 - Qoder：专用的 Chat。
 - Gemini API Key 和 Vertex SA：各自的 Batch 协议。
 
-自定义的 `api_base_urls` 按协议分键：`chat_completions`、`anthropic`、`responses`。旧的 CN 固定协议的 `base_url` 迁到对应的地址槽里，原来的 `base_url` 继续用于模型同步和用量查询。新表单直接编辑地址和原生集合，两者互相独立。
+自定义的 `api_base_urls` 按协议分键：`chat_completions`、`anthropic`、`responses`；OpenCode 另有 `gemini`、`systemone`。旧的 CN 固定协议的 `base_url` 迁到对应的地址槽里，原来的 `base_url` 继续用于模型同步和用量查询。新表单直接编辑地址和原生集合，两者互相独立。
 
 <a id="group_protocol_routes"></a>
 ## 分组准入与转换

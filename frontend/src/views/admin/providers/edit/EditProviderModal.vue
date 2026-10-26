@@ -398,13 +398,26 @@
         </template>
 
         <template #models>
+          <OpenCodeFields
+            v-if="provider.platform === 'opencode'"
+            v-model="openCodeConfig"
+            :api-key="editApiKey"
+            :base-url="editBaseUrl"
+            :provider-id="provider.id"
+            @synced="setAllowedModels([...new Set([...allowedModels, ...$event])])"
+          />
+
           <ModelRestrictionFields
             v-if="showModelRestriction"
             v-model:mode="modelRestrictionMode"
             :allowed-models="allowedModels"
             v-model:mappings="modelMappings"
             :platform="provider.type === 'bedrock' ? 'anthropic' : provider.platform"
-            :provider-id="provider.type === 'bedrock' ? undefined : provider.id"
+            :provider-id="
+              provider.type === 'bedrock' || provider.platform === 'opencode'
+                ? undefined
+                : provider.id
+            "
             :source-placeholder="
               provider.type === 'bedrock' ? t('admin.providers.fromModel') : undefined
             "
@@ -654,13 +667,16 @@
           />
 
           <UpstreamUsageConfigEditor
-            v-if="provider.type === 'apikey'"
+            v-if="
+              provider.type === 'apikey' &&
+              (provider.platform !== 'opencode' || openCodeConfig.mode === 'go')
+            "
             :enabled="upstreamUsageEnabled"
-            :adapter="upstreamUsageAdapter"
+            :adapter="provider.platform === 'opencode' ? 'opencode_go' : upstreamUsageAdapter"
             :base-url="upstreamUsageBaseUrl"
             :wallet-access-token="upstreamUsageWalletAccessToken"
             :wallet-user-id="upstreamUsageWalletUserId"
-            :automatic-adapter="isCNApiKeyProvider"
+            :automatic-adapter="isCNApiKeyProvider || provider.platform === 'opencode'"
             @update:enabled="upstreamUsageEnabled = $event"
             @update:adapter="upstreamUsageAdapter = $event"
             @update:base-url="upstreamUsageBaseUrl = $event"
@@ -978,6 +994,8 @@ import {
 import { createProviderEditDraft } from './providerEditDraft'
 import Collapse from '@/components/common/Collapse.vue'
 
+import OpenCodeFields from '@/components/provider/form/OpenCodeFields.vue'
+import { openCodeDraft, openCodeCredentials } from '@/components/provider/form/openCodeDraft'
 import ProviderProtocolSelector from '../../../../components/provider/ProviderProtocolSelector.vue'
 import { loadProtocolCatalog, nativeProtocolOptions } from '@/api/admin/protocolCapabilities'
 import OpenAICompactionToggle from '../../../../components/provider/OpenAICompactionToggle.vue'
@@ -1228,6 +1246,7 @@ const handleOllamaCloudUsageUpdated = (state: OllamaCloudUsageState) => {
 // baseUrlHint selects the translated forwarding-address hint for the current platform and
 // Gemini endpoint source in this dialog.
 const baseUrlHint = computed(() => {
+  if (props.provider?.platform === 'opencode') return t('admin.providers.opencode.baseUrlHint')
   if (!props.provider) return t('admin.providers.baseUrlHint')
   if (props.provider.platform === 'openai') return t('admin.providers.openai.baseUrlHint')
   if (props.provider.platform === 'gemini' && geminiProviderType.value === 'third_party') {
@@ -1575,6 +1594,8 @@ const showGeminiTier = computed(
 // API-key input without changing its draft value.
 const apiKeyBaseUrlPlaceholder = computed(() => {
   switch (props.provider?.platform) {
+    case 'opencode':
+      return `https://opencode.ai/inference${openCodeConfig.value.mode === 'go' ? '/go' : ''}`
     case 'jev':
       return 'https://api.typesafe.ai'
     case 'openai':
@@ -1594,6 +1615,8 @@ const apiKeyBaseUrlPlaceholder = computed(() => {
 // source without exposing stored credentials.
 const apiKeyPlaceholder = computed(() => {
   switch (props.provider?.platform) {
+    case 'opencode':
+      return 'oc_sk_...'
     case 'jev':
       return 'api-key-...'
     case 'openai':
@@ -1704,6 +1727,7 @@ const openAIOAuthClientPolicyOptions = useOpenAIOAuthClientPolicyOptions()
 // providers use their edited billing mode and protocol, preventing their empty address
 // from selecting the Anthropic fallback.
 const defaultBaseUrl = computed(() => {
+  if (props.provider?.platform === 'opencode') return ''
   if (props.provider?.platform === 'jev') return 'https://api.typesafe.ai'
   if (props.provider?.platform === 'openai') return 'https://api.openai.com'
   if (props.provider?.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
@@ -1763,11 +1787,15 @@ const expiresAtInput = computed({
 // remains set through the next Vue tick because CN mode and protocol watchers run after
 // those writes and would otherwise replace custom addresses with presets. Later
 // administrator changes use their normal watcher behavior.
+// OpenCode configuration belongs to this dialog and is saved with its credential payload.
+const openCodeConfig = ref(openCodeDraft())
+
 const syncFormFromProvider = (newProvider: Provider | null) => {
   if (!newProvider) {
     upstreamProtocols.value = undefined
     return
   }
+  openCodeConfig.value = openCodeDraft(newProvider.credentials as Record<string, unknown>)
   syncingForm.value = true
   // Keep the hydration guard through Vue pre-flush watchers; releasing it synchronously
   // would let mode restoration overwrite saved custom forwarding addresses.
@@ -2105,6 +2133,8 @@ const handleSubmit = async () => {
         ...currentCredentials,
         base_url: newBaseUrl,
       }
+      if (props.provider.platform === 'opencode')
+        Object.assign(newCredentials, openCodeCredentials(openCodeConfig.value))
       // The endpoint map and shared URL represent the same CN forwarding settings;
       // update both from the edited native slots before serializing credentials.
       if (isCNApiKeyProvider.value) {

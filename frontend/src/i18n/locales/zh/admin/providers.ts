@@ -6,6 +6,18 @@
 export default {
   // Providers Management
   providers: {
+    opencode: {
+      baseUrlHint:
+        '留空使用当前模式的官方地址。自定义根地址填到 /inference 或 /inference/go，各协议地址可在模型设置中覆盖。',
+      rateLimited: '已达到用量限制',
+      mode: '服务模式',
+      payg: 'Console / Zen（按量）',
+      description: '使用 API Key 接入 OpenCode 模型。Go 用量可在提供商列表中手动刷新。',
+      modelProtocols: '模型协议',
+      modelProtocolsHint: '同步模型协议，或为指定模型手动设置协议。两种服务模式分别保存配置。',
+      selectProtocol: '选择协议',
+      endpointOverrides: '自定义协议地址',
+    },
     jev: { description: '使用 API Key 调用 TypeSafe 的 SystemOne 决策模型。' },
     title: '提供商管理',
     description: '管理上游 AI 服务的接入配置和凭据',

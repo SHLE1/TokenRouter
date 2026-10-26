@@ -55,6 +55,8 @@ func (t *TestTargets) LoadTestTarget(ctx context.Context, request provider.TestR
 		return nil, err
 	}
 	switch value.Platform {
+	case provider.PlatformOpenCode:
+		return openCodeTestTarget{targets: t, record: value}, nil
 	case provider.PlatformJev:
 		return t.Jev.Target(value), nil
 	case provider.PlatformQoder:

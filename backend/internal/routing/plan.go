@@ -154,7 +154,12 @@ func Plan(input PlanInput) RoutePlan {
 // unusable route; callers repeat resolution for refreshed provider snapshots
 // and enforce entry admission separately.
 func (p RoutePlan) ResolveCandidate(candidate provider.ProviderSnapshot) (CandidatePlan, bool) {
-	target, ok := capability.ResolveRoute(candidate.Protocols(), p.clientProtocol, p.fallbacks)
+	model := p.models.GroupMappedModel
+	if model == "" {
+		model = p.models.RequestedModel
+	}
+	model, _ = candidate.ModelPolicy.Resolve(model)
+	target, ok := capability.ResolveRoute(candidate.Protocols(), p.clientProtocol, p.fallbacks, model)
 	if !ok {
 		return CandidatePlan{}, false
 	}

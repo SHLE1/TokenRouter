@@ -645,3 +645,21 @@ func TestJevModelSyncUsesNames(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"jev-latest", "jev-preview"}, ids)
 }
+
+// TestOpenCodeModelSyncUsesModeServiceRoot builds API-key model queries for both
+// modes and a custom root. The selected root stays independent from inference
+// protocol overrides and never adds a protocol family to the model-list URL.
+func TestOpenCodeModelSyncUsesModeServiceRoot(t *testing.T) {
+	catalogue := &ModelCatalogue{Options: ModelCatalogueOptions{ValidateURL: func(raw string) (string, error) { return raw, nil }}}
+	for _, tc := range []struct{ mode, base, want string }{
+		{"payg", "", "https://opencode.ai/inference/v1/models"},
+		{"go", "", "https://opencode.ai/inference/go/v1/models"},
+		{"go", "https://relay.example/prefix", "https://relay.example/prefix/v1/models"},
+	} {
+		value := &providercore.Record{Platform: capability.PlatformOpenCode, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test", "provider_mode": tc.mode, "base_url": tc.base, "api_base_urls": map[string]any{"responses": "https://elsewhere.example/v1"}}}
+		req, err := catalogue.buildUpstreamModelsRequest(t.Context(), value)
+		require.NoError(t, err)
+		require.Equal(t, tc.want, req.URL.String())
+		require.Equal(t, "Bearer test", req.Header.Get("Authorization"))
+	}
+}

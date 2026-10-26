@@ -125,3 +125,16 @@ func TestProviderCodecGeminiQuotaPrecheck(t *testing.T) {
 		})
 	}
 }
+
+// TestProviderCodecOpenCodeRetainsModelRoutes captures the lightweight scheduler
+// record for a Go provider. Model aliases and protocol overrides survive so
+// pre-hydration checks resolve the same endpoint as the complete provider.
+func TestProviderCodecOpenCodeRetainsModelRoutes(t *testing.T) {
+	value := provider.Record{ID: 12, Platform: provider.PlatformOpenCode, Type: provider.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "secret", "provider_mode": "go", "model_mapping": map[string]any{"alias": "custom"}, "opencode_model_protocols": map[string]any{"go": map[string]any{"custom": "systemone"}}, provider.UpstreamProtocolsKey: []string{"systemone"}}}
+	metadata := (ProviderCodec{}).Metadata(value)
+	require.Equal(t, "go", metadata.OpenCodeMode())
+	require.Equal(t, "systemone", string(metadata.RoutingSnapshot().ModelProtocols["custom"]))
+	mapped, found := metadata.RoutingSnapshot().ModelPolicy.Resolve("alias")
+	require.True(t, found)
+	require.Equal(t, "custom", mapped)
+}

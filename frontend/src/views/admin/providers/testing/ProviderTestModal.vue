@@ -388,7 +388,11 @@ const hasProviderBrandIcon = computed(() =>
  * Decision provider state selects the SystemOne form and receives its validated payload,
  * including null while the form is invalid.
  */
-const isDecisionProvider = computed(() => props.provider?.platform === 'jev')
+const isDecisionProvider = computed(
+  () =>
+    props.provider?.platform === 'jev' ||
+    (props.provider?.platform === 'opencode' && testProtocol.value === 'systemone'),
+)
 const decisionPayload = ref<SystemOneTestPayload | null>(null)
 
 /**

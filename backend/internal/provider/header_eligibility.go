@@ -24,7 +24,7 @@ func (r *Record) IsHeaderOverrideEligible() bool {
 		return false
 	}
 	switch r.Platform {
-	case PlatformAnthropic, PlatformOpenAI, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformJev:
+	case PlatformAnthropic, PlatformOpenAI, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformJev, PlatformOpenCode:
 		return r.Type == ProviderTypeAPIKey
 	case PlatformGrok:
 		return r.Type == ProviderTypeAPIKey || r.Type == ProviderTypeOAuth
