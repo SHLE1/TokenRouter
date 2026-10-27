@@ -1,6 +1,6 @@
 ---
 name: code-quality-review
-description: Review and moderately improve code quality across a backend, subsystem, or codebase. Assign read-only parallel reviews by responsibility, consolidate findings and an implementation plan in the main agent, then implement and verify behavior-preserving changes within the authorized scope. Use for broad maintainability, coding style, and local design improvements. Use the appropriate separate workflow for single-issue fixes, individual PR reviews, or major architectural redesigns.
+description: Use only when the user explicitly asks to use the code-quality-review skill. Review and moderately improve code quality across a backend, subsystem, or codebase. Assign read-only parallel reviews by responsibility, consolidate findings and an implementation plan in the main agent, then implement and verify behavior-preserving changes within the authorized scope. Covers broad maintainability, coding style, and local design improvements. Use the appropriate separate workflow for single-issue fixes, individual PR reviews, or major architectural redesigns.
 ---
 
 # Code quality review and optimization
