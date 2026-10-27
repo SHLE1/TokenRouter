@@ -164,7 +164,7 @@ func TestBuildOpenAIImagesResponsesRequest_PassesThroughNForMultiImageModels(t *
 		N:        2,
 	}
 
-	body, err := buildOpenAIImagesResponsesRequest(parsed, "gpt-image-2")
+	body, err := buildOpenAIImagesResponsesRequest(parsed, "gpt-image-2", upstreamopenai.ImagesResponsesMainModel)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 	require.Equal(t, int64(2), gjson.GetBytes(body, "tools.0.n").Int())
@@ -183,7 +183,7 @@ func TestBuildOpenAIImagesResponsesRequest_ForcesImageToolChoice(t *testing.T) {
 		Prompt:   "draw a cat",
 	}
 
-	body, err := buildOpenAIImagesResponsesRequest(parsed, "gpt-image-2")
+	body, err := buildOpenAIImagesResponsesRequest(parsed, "gpt-image-2", upstreamopenai.ImagesResponsesMainModel)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 	require.Equal(t, "image_generation", gjson.GetBytes(body, "tool_choice.type").String())
@@ -202,7 +202,7 @@ func TestBuildOpenAIImagesResponsesRequest_DoesNotPassNForDallE3(t *testing.T) {
 		N:        2,
 	}
 
-	body, err := buildOpenAIImagesResponsesRequest(parsed, "dall-e-3")
+	body, err := buildOpenAIImagesResponsesRequest(parsed, "dall-e-3", upstreamopenai.ImagesResponsesMainModel)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 	require.False(t, gjson.GetBytes(body, "tools.0.n").Exists())
@@ -223,7 +223,7 @@ func TestBuildOpenAIImagesResponsesRequest_StripsInputFidelity(t *testing.T) {
 		},
 	}
 
-	body, err := buildOpenAIImagesResponsesRequest(parsed, "gpt-image-2")
+	body, err := buildOpenAIImagesResponsesRequest(parsed, "gpt-image-2", upstreamopenai.ImagesResponsesMainModel)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 	require.False(t, gjson.GetBytes(body, "tools.0.input_fidelity").Exists())
@@ -243,7 +243,7 @@ func TestBuildOpenAIImagesResponsesRequest_RequiresVerbatimUserPrompt(t *testing
 		N:        1,
 	}
 
-	body, err := buildOpenAIImagesResponsesRequest(parsed, "gpt-image-2")
+	body, err := buildOpenAIImagesResponsesRequest(parsed, "gpt-image-2", upstreamopenai.ImagesResponsesMainModel)
 	require.NoError(t, err)
 	require.Equal(t, upstreamopenai.ImagesVerbatimPromptInstructions, gjson.GetBytes(body, "instructions").String())
 	require.Equal(t, prompt, gjson.GetBytes(body, "input.0.content.0.text").String())

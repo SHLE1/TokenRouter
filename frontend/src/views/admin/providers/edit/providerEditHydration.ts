@@ -28,7 +28,7 @@ import {
   type EndpointSlotAddresses,
 } from '@/components/provider/form/providerEndpoints'
 import { readUpstreamBalanceAlert } from '@/utils/upstreamBalanceAlert'
-import { readCodexImageToolMode } from '@/utils/codexImageToolMode'
+import { readCodexImageToolMode, readCodexImageResponsesModel } from '@/utils/codexImageToolMode'
 import { RESPONSES_WS_POOLED, readResponsesWSConnectionMode } from '@/utils/responsesWsConnection'
 import { normalizeOpenAICompactMode } from '@/utils/openaiLegacyConfiguration'
 import {
@@ -285,6 +285,7 @@ export function hydrateProviderEditDraft(
     openAIOAuthClientPolicy,
     codexFingerprintMode,
     codexImageToolMode,
+    codexImageResponsesModel,
     anthropicPassthroughEnabled,
     anthropicAPIKeyAuthScheme,
     webSearchEmulationMode,
@@ -560,6 +561,7 @@ export function hydrateProviderEditDraft(
   openAIOAuthClientPolicy.value = 'any'
   codexFingerprintMode.value = 'off'
   codexImageToolMode.value = 'inherit'
+  codexImageResponsesModel.value = ''
   anthropicPassthroughEnabled.value = false
   anthropicAPIKeyAuthScheme.value = 'x_api_key'
   webSearchEmulationMode.value = 'default'
@@ -589,6 +591,7 @@ export function hydrateProviderEditDraft(
       openAIImagesURLToB64JSON.value = extra?.images_url_to_b64_json === true
     }
     codexImageToolMode.value = readCodexImageToolMode(extra)
+    codexImageResponsesModel.value = readCodexImageResponsesModel(extra)
     responsesWSConnectionMode.value = readResponsesWSConnectionMode(extra)
     if (newProvider.type === 'oauth') {
       openAIOAuthClientPolicy.value = normalizeOpenAIOAuthClientPolicy(

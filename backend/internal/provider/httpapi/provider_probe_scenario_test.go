@@ -1415,6 +1415,7 @@ func TestProviderTestService_OpenAIImageOAuthHandlesOutputItemDoneFallback(t *te
 	provider := &providercore.Record{
 		ID:       53,
 		Name:     "openai-oauth",
+		Extra:    map[string]any{providercore.CodexImageResponsesModelKey: "gpt-6.1-sol"},
 		Platform: capability.PlatformOpenAI,
 		Type:     capability.ProviderTypeOAuth,
 		Credentials: map[string]any{
@@ -1425,6 +1426,8 @@ func TestProviderTestService_OpenAIImageOAuthHandlesOutputItemDoneFallback(t *te
 	err := executeOpenAIImageOAuthProbe(t, svc, c, context.Background(), provider, "gpt-image-2", "draw a cat")
 	require.NoError(t, err)
 	require.NotNil(t, upstream.lastReq)
+	require.Equal(t, "gpt-6.1-sol", gjson.GetBytes(upstream.lastBody, "model").String())
+	require.Equal(t, "gpt-image-2", gjson.GetBytes(upstream.lastBody, "tools.0.model").String())
 	require.Equal(t, upstreamcore.HTTPUpstreamProfileOpenAI, upstreamcore.HTTPUpstreamProfileFromContext(upstream.lastReq.Context()))
 	require.Contains(t, rec.Body.String(), "Calling Codex /responses image tool")
 	require.Contains(t, rec.Body.String(), "data:image/png;base64,aGVsbG8=")

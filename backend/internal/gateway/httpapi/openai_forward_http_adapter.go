@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -50,6 +52,12 @@ import (
 // are delegated after the runner observes their corresponding output; body
 // closure and retry ordering stay with RunHTTP.
 func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, input forward.HTTPInput, exchange openai.HTTPExchangeOptions, retryEncrypted func([]byte) ([]byte, bool, error), markLineage func([]byte)) forward.HTTPOptions {
+	imageDriverError := func(status int, body []byte) *openai.OpenAIImagesUpstreamError {
+		if !input.OAuth || !input.ImageMainModelAdapted {
+			return nil
+		}
+		return openai.OpenAIImagesMainModelError(status, body, input.UpstreamModel, input.ImageBillingModel)
+	}
 	return forward.HTTPOptions{
 		Exchange: exchange, Sink: NewResponseSink(c),
 		StreamOptions: func() openai.StreamOptions {
@@ -85,7 +93,11 @@ func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, 
 		CompactErrorResponse: func(resp *http.Response, signal forward.CompactFailure) (*http.Response, []byte) {
 			return CompactFallbackErrorResponse(resp, &compact.Failure{Message: signal.Message, Payload: signal.Payload})
 		},
-		ShouldFailover: gatewayprovider.ShouldFailoverOpenAIResponse,
+		ShouldFailover: func(status int, message string, body []byte) bool {
+			// Driver rejection requires a configuration change. Stop recovery before health
+			// policy can classify it as an unavailable image tool or retry another account.
+			return imageDriverError(status, body) == nil && gatewayprovider.ShouldFailoverOpenAIResponse(status, message, body)
+		},
 		HTTPFailover: func(resp *http.Response, payload []byte, message, model string) error {
 			detail := ""
 			if s.Output.Options.LogUpstreamErrorBody {
@@ -110,6 +122,27 @@ func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, 
 			return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewProviderFailure(provider, resp.StatusCode, resp.Header, payload, message, disabled, !disabled && provider.View().IsPoolMode() && (provider.View().IsPoolModeRetryableStatus(resp.StatusCode) || openai.IsOpenAITransientProcessingError(resp.StatusCode, message, payload)))
 		},
 		ErrorResponse: func(resp *http.Response, body []byte, model string) error {
+			if input.OAuth && input.ImageMainModelAdapted {
+				// The runner supplies request bytes here and leaves rejected upstream bytes
+				// in a replay reader. Restore that reader for ordinary error presentation.
+				payload := s.Output.ReadErrorBody(resp)
+				resp.Body = io.NopCloser(bytes.NewReader(payload))
+				if driverErr := imageDriverError(resp.StatusCode, payload); driverErr != nil {
+					SetOpsUpstreamError(c, resp.StatusCode, driverErr.Message, "")
+					status, kind, message, _ := ApplyErrorPassthroughRule(
+						c, provider.Record.Platform, resp.StatusCode, payload,
+						driverErr.StatusCode, driverErr.ErrorType, driverErr.Message,
+					)
+					// Rules control final presentation while the returned failure keeps its
+					// classification. Actual commitment, including heartbeats, determines framing.
+					message = logredact.SanitizeUpstreamQueries(message)
+					MarkResponseCommitted(c)
+					DefaultOpenAIErrorOutput().WriteStreamingErrorWithCode(
+						c, status, kind, driverErr.Code, message, c.Writer.Written(), false,
+					)
+					return driverErr
+				}
+			}
 			_, err := s.Output.ResponseError(ctx, resp, c, provider, body, model)
 			return err
 		},

@@ -993,6 +993,10 @@ export default {
       codexFingerprintFull: '完全收敛',
       codexImageToolDesc:
         '控制对话请求中的生图工具。分组设置优先于提供商设置，不影响独立的图片生成、编辑接口。',
+      imageResponsesModel: '生图主控模型',
+      imageResponsesModelDesc:
+        'OAuth 图片生成和编辑时调用图片工具的文本模型。留空使用默认值，图片型号仍由模型配置决定。',
+      imageResponsesModelDefault: '默认（gpt-6-luna）',
       codexImageToolInherit: '跟随分组和全局设置',
       codexImageToolInheritDesc:
         '本提供商不单独指定；分组设置了策略时按分组执行，否则使用全局设置。',

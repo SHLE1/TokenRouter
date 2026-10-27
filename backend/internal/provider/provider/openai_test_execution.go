@@ -968,7 +968,7 @@ func (s *OpenAIProviderTest) ExecuteImageAPIKey(c *TestRun, ctx context.Context,
 // concurrency, and TLS choices while account headers follow the credential
 // owner.
 //
-// The image builder supplies platform defaults and the outbound agent is paired
+// The selected provider supplies the image driver and the outbound agent is paired
 // with Codex identity before sending. Failed statuses return a redacted
 // diagnostic from a capped body; successful replies are collected into image
 // results before previews are emitted. No result is a probe failure, and this
@@ -991,9 +991,13 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 	}
 
 	c.Begin(true)
+	mainModel := value.CodexImageResponsesModel()
 
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_start", Model: modelID})
-	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "content", Text: "Calling Codex /responses image tool...\n"})
+	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{
+		Type: "content",
+		Text: fmt.Sprintf("Calling Codex /responses image tool (main model: %s, image model: %s)...\n", mainModel, modelID),
+	})
 
 	parsed := &upstream.ImageRequest{
 		Endpoint: upstream.OpenAIImagesGenerationsEndpoint,
@@ -1002,7 +1006,7 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 	}
 	upstream.ApplyOpenAIImagesDefaults(parsed)
 
-	responsesBody, err := openai.BuildOpenAIImagesResponsesRequest(parsed, parsed.Model)
+	responsesBody, err := openai.BuildOpenAIImagesResponsesRequest(parsed, parsed.Model, mainModel)
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Failed to build image request: %s", err.Error()))
 	}
@@ -1061,6 +1065,9 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 		// the message.
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 		body = RedactAgentIdentityBody(ctx, s.read, credentialProvider, body)
+		if driverErr := openai.OpenAIImagesMainModelError(resp.StatusCode, body, mainModel, parsed.Model); driverErr != nil {
+			return (TestStreamOutput{}).Error(c, driverErr.Message)
+		}
 		message := strings.TrimSpace(upstream.ExtractErrorMessage(body))
 		if message == "" {
 			message = fmt.Sprintf("Responses API returned %d", resp.StatusCode)

@@ -861,6 +861,24 @@
             </SettingsSection>
 
             <CodexImageToolModeSelector v-model="codexImageToolMode" />
+            <SettingsSection v-if="provider?.type === 'oauth'">
+              <SettingRow
+                id="edit-image-responses-model"
+                label-for="edit-image-responses-model-input"
+                :label="t('admin.providers.openai.imageResponsesModel')"
+                :hint="t('admin.providers.openai.imageResponsesModelDesc')"
+                field
+              >
+                <input
+                  id="edit-image-responses-model-input"
+                  v-model="codexImageResponsesModel"
+                  data-testid="edit-image-responses-model-input"
+                  type="text"
+                  class="input"
+                  :placeholder="t('admin.providers.openai.imageResponsesModelDefault')"
+                />
+              </SettingRow>
+            </SettingsSection>
 
             <ResponsesWSConnectionModeSelector
               v-if="upstreamProtocols?.includes('openai_responses_websocket')"
@@ -1190,6 +1208,7 @@ const {
   openAIOAuthClientPolicy,
   codexFingerprintMode,
   codexImageToolMode,
+  codexImageResponsesModel,
   anthropicPassthroughEnabled,
   anthropicAPIKeyAuthScheme,
   webSearchEmulationMode,

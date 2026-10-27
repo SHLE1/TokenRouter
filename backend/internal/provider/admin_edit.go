@@ -458,6 +458,9 @@ func (s *Admin) UpdateProviderExtra(ctx context.Context, id int64, updates map[s
 		return err
 	}
 	updates = SanitizedCodexFingerprintExtraUpdates(updates)
+	if err := NormalizeCodexImageResponsesModel(updates); err != nil {
+		return err
+	}
 	DiscardDeprecatedProviderExtra(updates)
 	if err := NormalizeUpstreamUsageExtra(updates); err != nil {
 		return err
@@ -530,6 +533,9 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 	// keys and obsolete configuration before resolving targets or preparing a
 	// shared JSON patch.
 	input.Extra = SanitizedCodexFingerprintExtraUpdates(input.Extra)
+	if err := NormalizeCodexImageResponsesModel(input.Extra); err != nil {
+		return nil, err
+	}
 	DiscardDeprecatedProviderExtra(input.Extra)
 	if err := NormalizeUpstreamUsageExtra(input.Extra); err != nil {
 		return nil, err

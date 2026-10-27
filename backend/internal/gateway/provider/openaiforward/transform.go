@@ -46,6 +46,9 @@ type TransformResult struct {
 	Model, RequestedModel, BillingModel, UpstreamModel, PromptCacheKey, ClientPromptCacheKey string
 	// resolved broad image intent
 	ImageIntent bool
+	// ImageMainModelAdapted distinguishes a gateway-selected image driver from an
+	// explicit client text model, allowing rejection policy to preserve client routing.
+	ImageMainModelAdapted bool
 	// Fingerprint carries this attempt's derived IDs for header construction; the
 	// caller stages them with the same selected provider.
 	Fingerprint *openai.FingerprintIDs
@@ -83,6 +86,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 	isCodexCLI, compactPath, compatMessagesBridge, statelessResponses := prepared.CodexCLI, prepared.Compact, prepared.MessagesBridge, profile.StatelessResponses
 	wsDecision := prepared.Transport
 	bodyModified := false
+	imageMainModelAdapted := false
 	clientPromptCacheKey := promptCacheKey
 	var reqBody map[string]any
 	// Apply and adopt queued byte edits before exposing a decoded map; otherwise
@@ -276,7 +280,8 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 			markDecodedModified()
 			p.Log("[OpenAI] Normalized /responses image_generation tool payload")
 		}
-		if openai.NormalizeOpenAIResponsesImageOnlyModel(decoded, attributes.Attributes.OutputOnly("image")) {
+		if openai.NormalizeOpenAIResponsesImageOnlyModel(decoded, attributes.Attributes.OutputOnly("image"), profile.ImageResponsesModel) {
+			imageMainModelAdapted = true
 			markDecodedModified()
 			if model, ok := decoded["model"].(string); ok {
 				upstreamModel = strings.TrimSpace(model)
@@ -563,5 +568,12 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		reqBody = nil
 	}
 
-	return &TransformResult{Body: body, View: requestView, Decoded: reqBody, Model: reqModel, RequestedModel: requestedModel, BillingModel: billingModel, UpstreamModel: upstreamModel, PromptCacheKey: promptCacheKey, ClientPromptCacheKey: clientPromptCacheKey, ImageIntent: imageIntent, Fingerprint: fingerprintIDs}, nil
+	return &TransformResult{
+		Body: body, View: requestView, Decoded: reqBody,
+		Model: reqModel, RequestedModel: requestedModel,
+		BillingModel: billingModel, UpstreamModel: upstreamModel,
+		PromptCacheKey: promptCacheKey, ClientPromptCacheKey: clientPromptCacheKey,
+		ImageIntent: imageIntent, ImageMainModelAdapted: imageMainModelAdapted,
+		Fingerprint: fingerprintIDs,
+	}, nil
 }

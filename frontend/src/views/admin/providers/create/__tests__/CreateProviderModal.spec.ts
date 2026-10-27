@@ -744,6 +744,22 @@ describe('CreateProviderModal OpenAI provider options', () => {
     ).toBeUndefined()
   })
 
+  // Codex session creation carries the image driver selected in the shared form.
+  // The import payload must preserve this override alongside credential metadata.
+  it('includes the selected image Responses driver when importing a Codex session', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await wrapper.get('form#create-provider-form input[type="text"]').setValue('Image provider')
+    await wrapper.get('[data-testid="create-image-responses-model-input"]').setValue('gpt-6.1-sol')
+    await wrapper.get('form#create-provider-form').trigger('submit.prevent')
+    await wrapper.get('[data-testid="import-codex-session"]').trigger('click')
+    await flushPromises()
+    expect(importCodexSessionMock.mock.calls[0]?.[0]?.extra?.codex_image_responses_model).toBe(
+      'gpt-6.1-sol',
+    )
+    wrapper.unmount()
+  })
+
   // A personal access token import uses the dedicated creation endpoint. The
   // submitted request must omit the obsolete provider billing override just
   // like session import.

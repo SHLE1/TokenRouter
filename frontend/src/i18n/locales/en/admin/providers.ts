@@ -939,6 +939,10 @@ export default {
       codexFingerprintFull: 'Full convergence',
       codexImageToolDesc:
         'Controls image-generation tools in conversations. Group settings take precedence over provider settings. Separate image generation and editing endpoints are unaffected.',
+      imageResponsesModel: 'Image Responses model',
+      imageResponsesModelDesc:
+        'Text model used to invoke the image tool for OAuth generation and editing. Leave blank to use the default. The image model is configured separately.',
+      imageResponsesModelDefault: 'Default (gpt-6-luna)',
       codexImageToolInherit: 'Follow group and global settings',
       codexImageToolInheritDesc:
         'This provider does not set its own policy. The group policy applies when set; otherwise the global setting is used.',

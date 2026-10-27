@@ -52,6 +52,9 @@ type HTTPInput struct {
 	// ImageBillingModel is the image charge model; ImageSizeTier is the output
 	// tier; ImageInputSize is the input-image tier.
 	ImageBillingModel, ImageSizeTier, ImageInputSize string
+	// ImageMainModelAdapted permits terminal configuration errors for an automatically
+	// selected image driver; explicit client text models retain ordinary failover.
+	ImageMainModelAdapted bool
 	// Stream chooses streaming output; OAuth enables usage snapshots; Shadow
 	// suppresses OAuth snapshots; Grok identifies the platform branch.
 	Stream, OAuth, Shadow, Grok bool

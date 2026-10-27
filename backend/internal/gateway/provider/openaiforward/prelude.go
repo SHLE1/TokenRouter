@@ -51,7 +51,10 @@ type Profile struct {
 	// Platform is the upstream platform; Name is the configured provider name;
 	// Type is the credential type.
 	Platform, Name, Type string
-	UsesCodex            bool // Codex protocol selection flag
+	// ImageResponsesModel supplies the text driver only when adapting an image-only
+	// top-level model. Explicit text models keep their separately resolved identity.
+	ImageResponsesModel string
+	UsesCodex           bool // Codex protocol selection flag
 	// HTTPContinuation retains upstream response references on admitted native
 	// HTTP Responses routes after the caller has validated ownership and affinity.
 	HTTPContinuation bool

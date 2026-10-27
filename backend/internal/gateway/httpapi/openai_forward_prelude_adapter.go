@@ -42,9 +42,14 @@ type openAIForwardPreludeAdapter struct {
 // openAIForwardProfile describes the selected provider's credential, platform
 // and resolved protocol flags for forwarding. Callers supply a nonnil
 // execution provider whose route is resolved; the result captures the policy
-// values used by prelude dispatch.
+// values used by prelude dispatch and the provider-specific image text driver.
 func openAIForwardProfile(provider *gatewayprovider.ExecutionProvider) forward.Profile {
+	imageModel := openai.ImagesResponsesMainModel
+	if provider.View().IsOpenAIOAuthLike() {
+		imageModel = gatewayprovider.ExecutionProtocolRecord(provider).CodexImageResponsesModel()
+	}
 	return forward.Profile{
+		ImageResponsesModel:        imageModel,
 		Platform:                   provider.Record.Platform,
 		Name:                       provider.Record.Name,
 		Type:                       provider.Record.Type,

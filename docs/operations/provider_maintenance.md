@@ -130,7 +130,7 @@ Qoder、Gemini、Grok、Anthropic、Bedrock、OpenAI 和国产平台的测试目
 - Gemini 有 API Key、AI Studio OAuth、Code Assist 和 Vertex 四条请求路径。
 - Anthropic、Vertex 和 Bedrock 按最终服务型号读取所选分组的采样属性，再构造测试报文。认证与签名区域由各平台处理。
 - Grok 区分文字和图片端点，并使用同一套健康写入规则。
-- OpenAI 有 Responses、Chat、两种 Compact 和图片分支。
+- OpenAI 有 Responses、Chat、两种 Compact 和图片分支。OAuth 图片测试使用提供商的生图主控模型设置，并在开始事件中显示主控与图片型号，具体规则见 [OpenAI 上游](../interfaces/openai_upstream.md#responses-请求细节)。
 - 国产平台按固定协议和自适应的探测顺序测试。
 
 HTTP 使用 EventSink 输出事件，后台消费同一组事件。`TestRun` 处理输出错误、取消、TLS 自动路由、task 恢复和终态抑制。每次自动探测请求携带自己的 UA。Antigravity 指定提供商的探测，由 AntigravityProbe 取得 OAuth 凭据、构造请求，并复用 AntigravityRetry。转发入口另外处理 Ops、粘性和请求状态。模型同步由 ModelCatalogue 使用 OAuth 查询可用模型，API Key 和历史 `upstream` 的测试及模型查询实现已移除。

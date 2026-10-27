@@ -163,6 +163,7 @@ export function createProviderEditDraft() {
     openAIOAuthClientPolicy: ref<OpenAIOAuthClientPolicy>('any'), // Allowed OAuth client policy.
     codexFingerprintMode: ref<CodexFingerprintMode>('off'), // Codex client fingerprint mode.
     codexImageToolMode: ref<CodexImageToolMode>('inherit'), // Codex image tool policy.
+    codexImageResponsesModel: ref(''), // Blank selects the backend image driver default.
     anthropicPassthroughEnabled: ref(false), // Anthropic direct forwarding switch.
     anthropicAPIKeyAuthScheme: ref<AnthropicAPIKeyAuthScheme>('x_api_key'), // Anthropic API authentication scheme.
     webSearchEmulationMode: ref('default'), // Provider web search override.

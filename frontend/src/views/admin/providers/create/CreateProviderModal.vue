@@ -1354,6 +1354,25 @@
               </SettingRow>
             </SettingsSection>
 
+            <SettingsSection v-if="isOpenAIOAuthCategory">
+              <SettingRow
+                id="create-image-responses-model"
+                label-for="create-image-responses-model-input"
+                :label="t('admin.providers.openai.imageResponsesModel')"
+                :hint="t('admin.providers.openai.imageResponsesModelDesc')"
+                field
+              >
+                <input
+                  id="create-image-responses-model-input"
+                  v-model="codexImageResponsesModel"
+                  data-testid="create-image-responses-model-input"
+                  type="text"
+                  class="input"
+                  :placeholder="t('admin.providers.openai.imageResponsesModelDefault')"
+                />
+              </SettingRow>
+            </SettingsSection>
+
             <ResponsesWSConnectionModeSelector
               v-if="upstreamProtocols?.includes('openai_responses_websocket')"
               v-model="responsesWSConnectionMode"
@@ -1967,6 +1986,8 @@ const oauthStepTitle = computed(() => {
 // upstreamRequestIdHeader selects the upstream response header captured in request
 // diagnostics and usage records; a blank field uses the backend X-Request-ID default.
 const upstreamRequestIdHeader = ref('')
+// codexImageResponsesModel selects an OAuth image driver; blank uses the backend default.
+const codexImageResponsesModel = ref('')
 // withUpstreamRequestIdHeader applies the trimmed diagnostic header override to
 // optional metadata. Blank input preserves the supplied base unchanged,
 // allowing the backend default header to remain effective for the created
@@ -3442,6 +3463,7 @@ const resetForm = () => {
   upstreamUsageWalletAccessToken.value = ''
   upstreamUsageWalletUserId.value = ''
   upstreamRequestIdHeader.value = ''
+  codexImageResponsesModel.value = ''
   editQuotaLimit.value = null
   editQuotaDailyLimit.value = null
   editQuotaWeeklyLimit.value = null
@@ -3589,6 +3611,7 @@ const buildOpenAIExtra = (base?: Record<string, unknown>) =>
       tlsFingerprintProfileId: tlsFingerprintProfileId.value,
       tlsFingerprintRouterId: tlsFingerprintRouterId.value,
       codexFingerprintMode: codexFingerprintMode.value,
+      codexImageResponsesModel: codexImageResponsesModel.value,
       openAICompactMode: openAICompactMode.value,
       openAINativeCompactionV2Mode: openAINativeCompactionV2Mode.value,
       openAIImagesURLToB64JSON: openAIImagesURLToB64JSON.value,
