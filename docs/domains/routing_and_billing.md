@@ -23,7 +23,7 @@
 | Usage billing record | 一次只能应用一次的资金或额度变更 | 用 `request_id + api_key_id` 认领，关联付款用户、行为用户、团队、Key、分组和提供商 |
 | Usage Log | 已完成请求的可查询记录 | 保存端点、模型链、token 和媒体用量、金额和归属；用于统计和审计，扣费以资金账本为准 |
 
-分组配置、回退目标、管理和复制用例在 `internal/routing`，SQL 和 Ent 实现在 `routing/postgres`。价格配置管理、价卡读取和价格缓存也在 routing；模型映射、白名单和功能设置由单独的分组策略管理。app 把同一个存储和缓存实例交给 Key、身份管理和 billing。分组值直接使用 `routing.Group`，管理操作进入对应的用例。分组管理直接读取 ProviderStore 和 KeyStore；容量查询使用提供商存储的批量或逐组只读数据，预取失败时回退逐组查询，空结果和每行阈值的读取时机各自保持。
+分组配置、回退目标、管理和复制用例在 `internal/routing`，SQL 和 Ent 实现在 `routing/postgres`。价格配置管理、价卡读取和价格缓存也在 routing；模型映射、白名单和功能设置由单独的分组策略管理。app 把同一个存储和缓存实例交给 Key、身份管理和 billing。分组值直接使用 `routing.Group`，管理操作进入对应的用例。分组管理直接读取 ProviderStore 和 KeyStore；容量查询优先使用提供商存储支持的批量读取，批量失败直接返回错误；仅在存储不支持批量读取时逐组查询，并保留读取成功的分组。批量结果包含没有提供商的空分组，逐组读取失败的分组会被省略。
 
 分组和价格配置的增删改查、分组复制和排序的 HTTP 在 `routing/httpapi`，普通用户和管理员的 DTO 在它的 `dto` 子包。分组用量、容量、关联 Key、倍率和 RPM 端点由 HTTP 处理器组合几个小接口完成：倍率配置由 billing 执行，Key 列表由 apikey 提供，用量和 Live 平台检查通过 app 绑定的只读接口读取。
 
