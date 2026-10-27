@@ -26,7 +26,7 @@ If the user asks only for a brief arrangement first, deliver the scope and decis
 ## Repository rules and evaluation criteria
 
 - Read the target repository's `AGENTS.md` first. If it has a `project-doc` gate, load the skill and documentation index as required, then read necessary sections by responsibility and code anchor. Reuse content that remains in context.
-- Load `code-complete` and `a-philosophy-of-software-design` from the repository or current session, starting with their mini specifications. Follow repository writing skills for reports, comments, documentation, and commit messages.
+- Load and read the `code-complete` and `a-philosophy-of-software-design` skills in full from the repository or current session, then apply their rules. Follow repository writing skills for reports, comments, documentation, and commit messages.
 - Follow the gate when a required skill is missing. If the repository does not configure the two design skills above, state the conventions used and apply the criteria below. Install dependency skills only when requested.
 - Assess whether a change reduces duplicated knowledge, hidden dependencies, locations that must change together, and state maintainers must remember at once. New functions, types, and files need a clear responsibility and maintenance benefit.
 - Check caller-visible behavior: errors and first-error order, nil and empty values, defaults, serialization, field order, time sampling, lock and transaction scope, resource cleanup, retries, and ownership of copies.
