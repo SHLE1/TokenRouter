@@ -3532,6 +3532,76 @@ func (c *Config) Validate() error {
 	if c.Idempotency.CleanupBatchSize <= 0 {
 		return fmt.Errorf("idempotency.cleanup_batch_size must be positive")
 	}
+	if err := c.validateGateway(); err != nil {
+		return err
+	}
+	if c.Ops.MetricsCollectorCache.TTL < 0 {
+		return fmt.Errorf("ops.metrics_collector_cache.ttl must be non-negative")
+	}
+	if c.Ops.Cleanup.ErrorLogRetentionDays < 0 {
+		return fmt.Errorf("ops.cleanup.error_log_retention_days must be non-negative")
+	}
+	if c.Ops.Cleanup.SystemLogRetentionDays < 0 {
+		return fmt.Errorf("ops.cleanup.system_log_retention_days must be non-negative")
+	}
+	if c.Ops.Cleanup.MinuteMetricsRetentionDays < 0 {
+		return fmt.Errorf("ops.cleanup.minute_metrics_retention_days must be non-negative")
+	}
+	if c.Ops.Cleanup.HourlyMetricsRetentionDays < 0 {
+		return fmt.Errorf("ops.cleanup.hourly_metrics_retention_days must be non-negative")
+	}
+	if c.Ops.Cleanup.Enabled && strings.TrimSpace(c.Ops.Cleanup.Schedule) == "" {
+		return fmt.Errorf("ops.cleanup.schedule is required when ops.cleanup.enabled=true")
+	}
+	// Ops cleanup deletes bounded row batches when a dataset has a positive
+	// retention window.
+	if c.Ops.Cleanup.BatchSize < 100 || c.Ops.Cleanup.BatchSize > 5000 {
+		return fmt.Errorf("ops.cleanup.batch_size must be between 100 and 5000")
+	}
+	// The pause paces successive deletion batches in milliseconds during
+	// retained-data cleanup.
+	if c.Ops.Cleanup.BatchPauseMS < 1 || c.Ops.Cleanup.BatchPauseMS > 2000 {
+		return fmt.Errorf("ops.cleanup.batch_pause_ms must be between 1 and 2000")
+	}
+	// Concurrency waiting sends SSE keepalives at this cadence before a request
+	// obtains its slot.
+	if c.Concurrency.PingInterval < 5 || c.Concurrency.PingInterval > 30 {
+		return fmt.Errorf("concurrency.ping_interval must be between 5-30 seconds")
+	}
+	if c.Gateway.Grok.FreeQuotaSoftGateEnabled {
+		if c.Gateway.Grok.FreeQuotaTokenLimit <= 0 {
+			return fmt.Errorf("gateway.grok.free_quota_token_limit must be positive")
+		}
+		// The soft gate compares rolling free-tier token usage with this fraction of
+		// the configured token limit.
+		if c.Gateway.Grok.FreeQuotaSoftGatePercent < 1 || c.Gateway.Grok.FreeQuotaSoftGatePercent > 100 {
+			return fmt.Errorf("gateway.grok.free_quota_soft_gate_percent must be between 1 and 100")
+		}
+		if c.Gateway.Grok.FreeQuotaWindowHours <= 0 {
+			return fmt.Errorf("gateway.grok.free_quota_window_hours must be positive")
+		}
+	}
+	if c.Gateway.Grok.FreeQuotaStatsCacheSeconds < 0 {
+		return fmt.Errorf("gateway.grok.free_quota_stats_cache_seconds must be non-negative")
+	}
+	if err := ValidateDingTalkConfig(c.DingTalk); err != nil {
+		return fmt.Errorf("dingtalk_connect: %w", err)
+	}
+	return nil
+}
+
+// validateGateway checks gateway transport, scheduler, and completion limits,
+// returning the first invalid setting. Validate calls it after idempotency and
+// before Ops; the later Grok quota checks remain after concurrency validation.
+// Callers serialize access because Live duration defaulting and retired
+// response-affinity TTL fallback mutate the receiver as their checks are reached.
+//
+// A later error retains those mutations and any earlier idle-lifetime warning.
+// Coupled pool bounds, finite scoring sums, and enabled autoscaling constraints
+// are checked together so their consumers receive consistent limits. Disabled
+// autoscaling skips only its scaling controls; ordinary completion limits still
+// apply.
+func (c *Config) validateGateway() error {
 	if c.Gateway.MaxBodySize <= 0 {
 		return fmt.Errorf("gateway.max_body_size must be positive")
 	}
@@ -3946,58 +4016,6 @@ func (c *Config) Validate() error {
 		c.Gateway.Scheduling.OutboxLagRebuildSeconds > 0 &&
 		c.Gateway.Scheduling.OutboxLagRebuildSeconds < c.Gateway.Scheduling.OutboxLagWarnSeconds {
 		return fmt.Errorf("gateway.scheduling.outbox_lag_rebuild_seconds must be >= outbox_lag_warn_seconds")
-	}
-	if c.Ops.MetricsCollectorCache.TTL < 0 {
-		return fmt.Errorf("ops.metrics_collector_cache.ttl must be non-negative")
-	}
-	if c.Ops.Cleanup.ErrorLogRetentionDays < 0 {
-		return fmt.Errorf("ops.cleanup.error_log_retention_days must be non-negative")
-	}
-	if c.Ops.Cleanup.SystemLogRetentionDays < 0 {
-		return fmt.Errorf("ops.cleanup.system_log_retention_days must be non-negative")
-	}
-	if c.Ops.Cleanup.MinuteMetricsRetentionDays < 0 {
-		return fmt.Errorf("ops.cleanup.minute_metrics_retention_days must be non-negative")
-	}
-	if c.Ops.Cleanup.HourlyMetricsRetentionDays < 0 {
-		return fmt.Errorf("ops.cleanup.hourly_metrics_retention_days must be non-negative")
-	}
-	if c.Ops.Cleanup.Enabled && strings.TrimSpace(c.Ops.Cleanup.Schedule) == "" {
-		return fmt.Errorf("ops.cleanup.schedule is required when ops.cleanup.enabled=true")
-	}
-	// Ops cleanup deletes bounded row batches when a dataset has a positive
-	// retention window.
-	if c.Ops.Cleanup.BatchSize < 100 || c.Ops.Cleanup.BatchSize > 5000 {
-		return fmt.Errorf("ops.cleanup.batch_size must be between 100 and 5000")
-	}
-	// The pause paces successive deletion batches in milliseconds during
-	// retained-data cleanup.
-	if c.Ops.Cleanup.BatchPauseMS < 1 || c.Ops.Cleanup.BatchPauseMS > 2000 {
-		return fmt.Errorf("ops.cleanup.batch_pause_ms must be between 1 and 2000")
-	}
-	// Concurrency waiting sends SSE keepalives at this cadence before a request
-	// obtains its slot.
-	if c.Concurrency.PingInterval < 5 || c.Concurrency.PingInterval > 30 {
-		return fmt.Errorf("concurrency.ping_interval must be between 5-30 seconds")
-	}
-	if c.Gateway.Grok.FreeQuotaSoftGateEnabled {
-		if c.Gateway.Grok.FreeQuotaTokenLimit <= 0 {
-			return fmt.Errorf("gateway.grok.free_quota_token_limit must be positive")
-		}
-		// The soft gate compares rolling free-tier token usage with this fraction of
-		// the configured token limit.
-		if c.Gateway.Grok.FreeQuotaSoftGatePercent < 1 || c.Gateway.Grok.FreeQuotaSoftGatePercent > 100 {
-			return fmt.Errorf("gateway.grok.free_quota_soft_gate_percent must be between 1 and 100")
-		}
-		if c.Gateway.Grok.FreeQuotaWindowHours <= 0 {
-			return fmt.Errorf("gateway.grok.free_quota_window_hours must be positive")
-		}
-	}
-	if c.Gateway.Grok.FreeQuotaStatsCacheSeconds < 0 {
-		return fmt.Errorf("gateway.grok.free_quota_stats_cache_seconds must be non-negative")
-	}
-	if err := ValidateDingTalkConfig(c.DingTalk); err != nil {
-		return fmt.Errorf("dingtalk_connect: %w", err)
 	}
 	return nil
 }

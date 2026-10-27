@@ -2666,6 +2666,284 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 	})
 }
 
+// TestValidateGatewayFirstErrorAndMutationOrder combines errors before, within,
+// and after gateway validation. Each repair must expose the next error while
+// preserving the warning sequence and only mutations reached before that error.
+func TestValidateGatewayFirstErrorAndMutationOrder(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	cfg, err := Load()
+	require.NoError(t, err)
+	maxBodySize := cfg.Gateway.MaxBodySize
+	maxConnsPerProvider := cfg.Gateway.OpenAIWS.MaxConnsPerProvider
+	cfg.JWT.ExpireHour = 25
+	cfg.Idempotency.CleanupBatchSize = 0
+	cfg.Gateway.MaxBodySize = 0
+	cfg.Gateway.Live.MaxSessionDurationSeconds = -1
+	cfg.Gateway.ConnectionPoolIsolation = "invalid"
+	cfg.Gateway.IdleConnTimeoutSeconds = 181
+	cfg.Gateway.MaxUpstreamClients = 0
+	cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds = 0
+	cfg.Gateway.OpenAIWS.StickyPreviousResponseTTLSeconds = 1234
+	cfg.Gateway.OpenAIWS.MaxConnsPerProvider = 0
+	cfg.Gateway.Scheduling.OutboxLagWarnSeconds = 2
+	cfg.Gateway.Scheduling.OutboxLagRebuildSeconds = 1
+	cfg.Ops.MetricsCollectorCache.TTL = -1
+	cfg.Concurrency.PingInterval = 0
+	cfg.Gateway.Grok.FreeQuotaSoftGateEnabled = true
+	cfg.Gateway.Grok.FreeQuotaTokenLimit = 0
+
+	var logs bytes.Buffer
+	// Capture only validation warnings, then restore the shared logger so later
+	// serial fixtures cannot accidentally keep writing into this test's buffer.
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	steps := []struct {
+		wantError   string        // expected first validation error
+		wantLive    int           // retained Live duration seconds
+		wantTTL     int           // retained response-affinity lifetime seconds
+		wantWarning bool          // gateway idle warning emitted
+		repair      func(*Config) // correction exposing subsequent validation failure
+	}{
+		{
+			wantError: "idempotency.cleanup_batch_size must be positive",
+			wantLive:  -1,
+			repair:    func(c *Config) { c.Idempotency.CleanupBatchSize = 1 },
+		},
+		{
+			wantError: "gateway.max_body_size must be positive",
+			wantLive:  -1,
+			repair:    func(c *Config) { c.Gateway.MaxBodySize = maxBodySize },
+		},
+		{
+			wantError: "gateway.connection_pool_isolation must be one of: proxy/provider/provider_proxy",
+			wantLive:  3600,
+			repair:    func(c *Config) { c.Gateway.ConnectionPoolIsolation = ConnectionPoolIsolationProvider },
+		},
+		{
+			wantError:   "gateway.max_upstream_clients must be positive",
+			wantLive:    3600,
+			wantWarning: true,
+			repair:      func(c *Config) { c.Gateway.MaxUpstreamClients = 1 },
+		},
+		{
+			wantError:   "gateway.openai_ws.max_conns_per_provider must be positive",
+			wantLive:    3600,
+			wantTTL:     1234,
+			wantWarning: true,
+			repair:      func(c *Config) { c.Gateway.OpenAIWS.MaxConnsPerProvider = maxConnsPerProvider },
+		},
+		{
+			wantError:   "gateway.scheduling.outbox_lag_rebuild_seconds must be >= outbox_lag_warn_seconds",
+			wantLive:    3600,
+			wantTTL:     1234,
+			wantWarning: true,
+			repair:      func(c *Config) { c.Gateway.Scheduling.OutboxLagRebuildSeconds = 2 },
+		},
+		{
+			wantError:   "ops.metrics_collector_cache.ttl must be non-negative",
+			wantLive:    3600,
+			wantTTL:     1234,
+			wantWarning: true,
+			repair:      func(c *Config) { c.Ops.MetricsCollectorCache.TTL = 0 },
+		},
+		{
+			wantError:   "concurrency.ping_interval must be between 5-30 seconds",
+			wantLive:    3600,
+			wantTTL:     1234,
+			wantWarning: true,
+			repair:      func(c *Config) { c.Concurrency.PingInterval = 5 },
+		},
+		{
+			wantError:   "gateway.grok.free_quota_token_limit must be positive",
+			wantLive:    3600,
+			wantTTL:     1234,
+			wantWarning: true,
+			repair:      func(c *Config) { c.Gateway.Grok.FreeQuotaTokenLimit = 1 },
+		},
+		{
+			wantLive:    3600,
+			wantTTL:     1234,
+			wantWarning: true,
+		},
+	}
+	for _, step := range steps {
+		logs.Reset()
+		err := cfg.Validate()
+		if step.wantError == "" {
+			require.NoError(t, err)
+		} else {
+			require.EqualError(t, err, step.wantError)
+		}
+		require.Equal(t, step.wantLive, cfg.Gateway.Live.MaxSessionDurationSeconds)
+		require.Equal(t, step.wantTTL, cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds)
+		require.Equal(t, 181, cfg.Gateway.IdleConnTimeoutSeconds)
+		wantMessages := []string{"jwt.expire_hour is high; consider shorter expiration for security"}
+		if step.wantWarning {
+			wantMessages = append(wantMessages, "gateway.idle_conn_timeout_seconds is high; consider 60-120 seconds for better connection reuse")
+		}
+		var messages []string
+		decoder := json.NewDecoder(&logs)
+		for decoder.More() {
+			var record map[string]any
+			require.NoError(t, decoder.Decode(&record))
+			require.Equal(t, "WARN", record["level"])
+			message, ok := record["msg"].(string)
+			require.True(t, ok)
+			messages = append(messages, message)
+		}
+		require.Equal(t, wantMessages, messages)
+		if step.repair != nil {
+			step.repair(cfg)
+		}
+	}
+}
+
+// TestValidateGatewayNonfiniteValues supplies NaN and both infinities to
+// gateway floating-point controls. Validation must retain each field's existing
+// comparison-only or explicitly finite rule, including accepted nonfinite values.
+func TestValidateGatewayNonfiniteValues(t *testing.T) {
+	fields := []struct {
+		name      string                 // gateway configuration field path
+		set       func(*Config, float64) // field-specific value assignment callback
+		acceptNaN bool                   // existing NaN acceptance behavior
+		acceptInf bool                   // existing positive-infinity acceptance behavior
+	}{
+		{
+			name:      "gateway.openai_ws.oauth_max_conns_factor",
+			set:       func(c *Config, value float64) { c.Gateway.OpenAIWS.OAuthMaxConnsFactor = value },
+			acceptNaN: true,
+			acceptInf: true,
+		},
+		{
+			name:      "gateway.openai_ws.apikey_max_conns_factor",
+			set:       func(c *Config, value float64) { c.Gateway.OpenAIWS.APIKeyMaxConnsFactor = value },
+			acceptNaN: true,
+			acceptInf: true,
+		},
+		{
+			name:      "gateway.openai_ws.pool_target_utilization",
+			set:       func(c *Config, value float64) { c.Gateway.OpenAIWS.PoolTargetUtilization = value },
+			acceptNaN: true,
+		},
+		{
+			name: "gateway.advanced_scheduler.ewma_error_rate_alpha",
+			set:  func(c *Config, value float64) { c.Gateway.AdvancedScheduler.EWMAErrorRateAlpha = value },
+		},
+		{
+			name: "gateway.advanced_scheduler.ewma_ttft_alpha",
+			set:  func(c *Config, value float64) { c.Gateway.AdvancedScheduler.EWMATTFTAlpha = value },
+		},
+		{
+			name: "gateway.advanced_scheduler.score_weights.*",
+			set:  func(c *Config, value float64) { c.Gateway.AdvancedScheduler.ScoreWeights.Priority = value },
+		},
+		{
+			name:      "gateway.advanced_scheduler.sticky_escape_error_rate",
+			set:       func(c *Config, value float64) { c.Gateway.AdvancedScheduler.StickyEscapeErrorRate = value },
+			acceptNaN: true,
+		},
+	}
+	for _, field := range fields {
+		for _, sample := range []struct {
+			name   string  // floating-point input classification
+			value  float64 // supplied nonfinite floating-point value
+			accept bool    // expected successful validation result
+		}{
+			{"NaN", math.NaN(), field.acceptNaN},
+			{"positive infinity", math.Inf(1), field.acceptInf},
+			{"negative infinity", math.Inf(-1), false},
+		} {
+			t.Run(field.name+"/"+sample.name, func(t *testing.T) {
+				resetViperWithJWTSecret(t)
+				cfg, err := Load()
+				require.NoError(t, err)
+				field.set(cfg, sample.value)
+				err = cfg.Validate()
+				if sample.accept {
+					require.NoError(t, err)
+				} else {
+					require.ErrorContains(t, err, field.name)
+				}
+			})
+		}
+	}
+}
+
+// TestValidateGatewayPoolBoundaries checks inclusive idle capacity and worker
+// ranges alongside disabled autoscaling. Invalid ordinary pool settings must
+// still fail while inactive scaling settings retain their current acceptance.
+func TestValidateGatewayPoolBoundaries(t *testing.T) {
+	cases := []struct {
+		name      string        // boundary scenario display name
+		configure func(*Config) // supplied pool and worker settings
+		wantError string        // expected first validation error
+	}{
+		{
+			name: "idle counts equal total capacity",
+			configure: func(c *Config) {
+				c.Gateway.OpenAIWS.MaxConnsPerProvider = 1
+				c.Gateway.OpenAIWS.MinIdlePerProvider = 1
+				c.Gateway.OpenAIWS.MaxIdlePerProvider = 1
+				c.Gateway.OpenAIWS.PoolTargetUtilization = 1
+			},
+		},
+		{
+			name: "zero idle counts and unlimited HTTP connections",
+			configure: func(c *Config) {
+				c.Gateway.OpenAIWS.MinIdlePerProvider = 0
+				c.Gateway.OpenAIWS.MaxIdlePerProvider = 0
+				c.Gateway.MaxConnsPerHost = 0
+			},
+		},
+		{
+			name: "idle minimum fails before idle capacity",
+			configure: func(c *Config) {
+				c.Gateway.OpenAIWS.MaxConnsPerProvider = 1
+				c.Gateway.OpenAIWS.MinIdlePerProvider = 3
+				c.Gateway.OpenAIWS.MaxIdlePerProvider = 2
+			},
+			wantError: "gateway.openai_ws.min_idle_per_provider must be <= max_idle_per_provider",
+		},
+		{
+			name: "workers equal both scaling limits",
+			configure: func(c *Config) {
+				c.Gateway.UsageRecord.AutoScaleEnabled = true
+				c.Gateway.UsageRecord.WorkerCount = 1
+				c.Gateway.UsageRecord.AutoScaleMinWorkers = 1
+				c.Gateway.UsageRecord.AutoScaleMaxWorkers = 1
+				c.Gateway.UsageRecord.AutoScaleUpQueuePercent = 1
+				c.Gateway.UsageRecord.AutoScaleDownQueuePercent = 0
+				c.Gateway.UsageRecord.AutoScaleCooldownSeconds = 0
+			},
+		},
+		{
+			name: "disabled scaling retains ordinary worker validation",
+			configure: func(c *Config) {
+				c.Gateway.UsageRecord.AutoScaleEnabled = false
+				c.Gateway.UsageRecord.WorkerCount = 0
+				c.Gateway.UsageRecord.AutoScaleMinWorkers = -1
+			},
+			wantError: "gateway.usage_record.worker_count must be positive",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resetViperWithJWTSecret(t)
+			cfg, err := Load()
+			require.NoError(t, err)
+			tc.configure(cfg)
+			err = cfg.Validate()
+			if tc.wantError == "" {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tc.wantError)
+			}
+		})
+	}
+}
+
 // TestValidateConfig_AutoScaleDisabledIgnoreAutoScaleFields disables
 // autoscaling and supplies otherwise invalid autoscaling-only settings with a
 // positive worker count. Validation must accept those inactive controls while
