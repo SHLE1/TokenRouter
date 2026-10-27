@@ -3830,3 +3830,111 @@ func TestPricingCatalogIncludesDecisionModels(t *testing.T) {
 		require.Equal(t, expected, cfg.Pricing.RemoteURL)
 	}
 }
+
+// TestNormalizeWeChatConnectConfig_CapabilitiesAndScopes supplies every capability set
+// with recognized, unknown, and mixed-case modes and supported or invalid scopes.
+// Startup normalization must select the expected stored mode and scope while
+// retaining the caller's explicit capability observations.
+func TestNormalizeWeChatConnectConfig_CapabilitiesAndScopes(t *testing.T) {
+	capabilities := []struct {
+		name   string    // capability combination name
+		open   bool      // supplied open capability
+		mp     bool      // supplied official-account capability
+		mobile bool      // supplied mobile capability
+		modes  [3]string // expected open/mp/mobile selections
+	}{
+		{"none", false, false, false, [3]string{"open", "mp", "mobile"}},
+		{"open", true, false, false, [3]string{"open", "open", "open"}},
+		{"mp", false, true, false, [3]string{"mp", "mp", "mp"}},
+		{"mobile", false, false, true, [3]string{"mobile", "mobile", "mobile"}},
+		{"open_mp", true, true, false, [3]string{"open", "mp", "open"}},
+		{"open_mobile", true, false, true, [3]string{"open", "open", "mobile"}},
+		{"mp_mobile", false, true, true, [3]string{"mp", "mp", "mobile"}},
+		{"all", true, true, true, [3]string{"open", "mp", "mobile"}},
+	}
+	modes := []struct {
+		raw   string // supplied mode text
+		index int    // canonical mode table index
+	}{
+		{"open", 0},
+		{"mp", 1},
+		{"mobile", 2},
+		{" OPEN ", 0},
+		{"\tMp\n", 1},
+		{" MoBiLe ", 2},
+		{"", 0},
+		{" \t ", 0},
+		{"unknown", 0},
+	}
+	scopes := []struct {
+		raw string // supplied scope text
+		mp  string // expected official-account scope
+	}{
+		{"", "snsapi_userinfo"},
+		{" \t ", "snsapi_userinfo"},
+		{"snsapi_base", "snsapi_base"},
+		{" snsapi_base ", "snsapi_base"},
+		{"snsapi_userinfo", "snsapi_userinfo"},
+		{" SNSAPI_BASE ", "snsapi_userinfo"},
+		{"snsapi_login", "snsapi_userinfo"},
+		{"snsapi_base snsapi_userinfo", "snsapi_userinfo"},
+		{"invalid", "snsapi_userinfo"},
+	}
+	for _, capability := range capabilities {
+		for _, mode := range modes {
+			for _, scope := range scopes {
+				t.Run(fmt.Sprintf("%s/mode=%q/scope=%q", capability.name, mode.raw, scope.raw), func(t *testing.T) {
+					cfg := WeChatConnectConfig{
+						OpenEnabled:   capability.open,
+						MPEnabled:     capability.mp,
+						MobileEnabled: capability.mobile,
+						Mode:          mode.raw,
+						Scopes:        scope.raw,
+					}
+					normalizeWeChatConnectConfig(&cfg)
+					wantMode := capability.modes[mode.index]
+					wantScope := map[string]string{"open": "snsapi_login", "mp": scope.mp, "mobile": ""}[wantMode]
+					require.Equal(t, wantMode, cfg.Mode)
+					require.Equal(t, wantScope, cfg.Scopes)
+					require.Equal(t, [3]bool{capability.open, capability.mp, capability.mobile}, [3]bool{cfg.OpenEnabled, cfg.MPEnabled, cfg.MobileEnabled})
+					require.False(t, cfg.Enabled)
+				})
+			}
+		}
+	}
+}
+
+// TestNormalizeWeChatConnectConfig_LegacyNormalization supplies globally enabled
+// legacy configurations without explicit channel switches. Startup normalization
+// must promote the normalized mode and fill missing credential members independently.
+func TestNormalizeWeChatConnectConfig_LegacyNormalization(t *testing.T) {
+	for _, tc := range []struct {
+		raw          string  // supplied legacy mode
+		mode         string  // expected selected mode
+		capabilities [3]bool // expected open/mp/mobile switches
+	}{
+		{"OPEN", "open", [3]bool{true, false, false}},
+		{" Mp ", "mp", [3]bool{false, true, false}},
+		{"MoBiLe", "mobile", [3]bool{false, false, true}},
+		{"invalid", "open", [3]bool{true, false, false}},
+	} {
+		t.Run(tc.raw, func(t *testing.T) {
+			base := WeChatConnectConfig{
+				Enabled:         true,
+				Mode:            tc.raw,
+				OpenAppID:       " open-id ",
+				MPAppSecret:     " mp-secret ",
+				MobileAppID:     " mobile-id ",
+				MobileAppSecret: " mobile-secret ",
+			}
+			cfg := base
+			normalizeWeChatConnectConfig(&cfg)
+			require.Equal(t, tc.mode, cfg.Mode)
+			require.Equal(t, tc.capabilities, [3]bool{cfg.OpenEnabled, cfg.MPEnabled, cfg.MobileEnabled})
+			require.Equal(t, "open-id", cfg.AppID)
+			require.Equal(t, "mp-secret", cfg.AppSecret)
+			require.Equal(t, [6]string{"open-id", "mp-secret", "open-id", "mp-secret", "mobile-id", "mobile-secret"},
+				[6]string{cfg.OpenAppID, cfg.OpenAppSecret, cfg.MPAppID, cfg.MPAppSecret, cfg.MobileAppID, cfg.MobileAppSecret})
+		})
+	}
+}

@@ -75,8 +75,8 @@ const (
 	// These values supply WeChat Open-mode and frontend callback defaults while
 	// normalization resolves omitted deployment text and maps supported legacy
 	// credentials.
-	defaultWeChatConnectMode             = "open"
-	defaultWeChatConnectScopes           = "snsapi_login"
+	defaultWeChatConnectMode             = authconfig.DefaultWeChatConnectMode
+	defaultWeChatConnectScopes           = authconfig.DefaultWeChatConnectScopes
 	defaultWeChatConnectFrontendRedirect = "/auth/wechat/callback"
 
 	// MaxForwardedClientIPHeaders shares the discovery-source limit with the policy
@@ -1657,97 +1657,6 @@ func firstNonEmptyString(values ...string) string {
 	return ""
 }
 
-// normalizeWeChatConnectMode returns mp or mobile for trimmed case-insensitive
-// matches, otherwise the default open mode. Unknown and empty input share that
-// default before stored-mode availability is considered.
-func normalizeWeChatConnectMode(raw string) string {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "mp":
-		return "mp"
-	case "mobile":
-		return "mobile"
-	default:
-		return defaultWeChatConnectMode
-	}
-}
-
-// normalizeWeChatConnectStoredMode selects a display mode consistent with the
-// available WeChat mode flags. The normalized requested mode wins when its
-// corresponding flag is enabled.
-//
-// If that mode is disabled, available modes are tried in Open, MP, then Mobile
-// order. With no enabled mode the normalized request is returned, allowing
-// later validation and feature availability to handle the inactive
-// configuration. This keeps mode selection separate from the overall Enabled
-// value used by its caller.
-func normalizeWeChatConnectStoredMode(openEnabled, mpEnabled, mobileEnabled bool, mode string) string {
-	mode = normalizeWeChatConnectMode(mode)
-	switch mode {
-	case "open":
-		if openEnabled {
-			return "open"
-		}
-	case "mp":
-		if mpEnabled {
-			return "mp"
-		}
-	case "mobile":
-		if mobileEnabled {
-			return "mobile"
-		}
-	}
-	// The requested mode has no enabled path. Select an available login path in
-	// priority order so the stored display mode follows usable mode flags.
-	switch {
-	case openEnabled:
-		return "open"
-	case mpEnabled:
-		return "mp"
-	case mobileEnabled:
-		return "mobile"
-	default:
-		return mode
-	}
-}
-
-// defaultWeChatConnectScopesForMode returns the built-in scope text for the
-// normalized login mode. MP uses snsapi_userinfo, Mobile uses empty text, and
-// Open or unknown input uses snsapi_login.
-func defaultWeChatConnectScopesForMode(mode string) string {
-	switch normalizeWeChatConnectMode(mode) {
-	case "mp":
-		return "snsapi_userinfo"
-	case "mobile":
-		return ""
-	default:
-		return defaultWeChatConnectScopes
-	}
-}
-
-// normalizeWeChatConnectScopes selects scope text accepted for the normalized
-// mode. MP retains snsapi_base or snsapi_userinfo exactly after trimming and
-// otherwise uses its default; Mobile clears scopes and Open uses the fixed
-// login scope.
-func normalizeWeChatConnectScopes(raw, mode string) string {
-	switch normalizeWeChatConnectMode(mode) {
-	case "mp":
-		switch strings.TrimSpace(raw) {
-		case "snsapi_base":
-			return "snsapi_base"
-		case "snsapi_userinfo":
-			return "snsapi_userinfo"
-		default:
-			// MP accepts the two recognized consent scopes exactly. Replace unsupported
-			// scope text with the mode default before this value reaches login settings.
-			return defaultWeChatConnectScopesForMode(mode)
-		}
-	case "mobile":
-		return ""
-	default:
-		return defaultWeChatConnectScopes
-	}
-}
-
 // shouldApplyLegacyWeChatEnv reports whether a retired variable may supply this
 // current field. YAML presence blocks compatibility, and any current
 // environment presence also blocks it, including an explicitly empty variable.
@@ -1856,9 +1765,9 @@ func applyLegacyWeChatConnectEnvCompatibility(cfg *WeChatConnectConfig) {
 	if shouldApplyLegacyWeChatEnv("wechat_connect.scopes", "WECHAT_CONNECT_SCOPES") {
 		switch {
 		case hasLegacyMP && !hasLegacyOpen:
-			cfg.Scopes = defaultWeChatConnectScopesForMode("mp")
+			cfg.Scopes = authconfig.DefaultWeChatConnectScopesForMode("mp")
 		case hasLegacyOpen:
-			cfg.Scopes = defaultWeChatConnectScopesForMode("open")
+			cfg.Scopes = authconfig.DefaultWeChatConnectScopesForMode("open")
 		}
 	}
 }
@@ -1888,7 +1797,7 @@ func normalizeWeChatConnectConfig(cfg *WeChatConnectConfig) {
 	cfg.MPAppSecret = strings.TrimSpace(cfg.MPAppSecret)
 	cfg.MobileAppID = strings.TrimSpace(cfg.MobileAppID)
 	cfg.MobileAppSecret = strings.TrimSpace(cfg.MobileAppSecret)
-	cfg.Mode = normalizeWeChatConnectMode(cfg.Mode)
+	cfg.Mode = authconfig.NormalizeWeChatConnectMode(cfg.Mode)
 	cfg.RedirectURL = strings.TrimSpace(cfg.RedirectURL)
 	cfg.FrontendRedirectURL = strings.TrimSpace(cfg.FrontendRedirectURL)
 
@@ -1917,8 +1826,8 @@ func normalizeWeChatConnectConfig(cfg *WeChatConnectConfig) {
 			cfg.OpenEnabled = true
 		}
 	}
-	cfg.Mode = normalizeWeChatConnectStoredMode(cfg.OpenEnabled, cfg.MPEnabled, cfg.MobileEnabled, cfg.Mode)
-	cfg.Scopes = normalizeWeChatConnectScopes(cfg.Scopes, cfg.Mode)
+	cfg.Mode = authconfig.NormalizeWeChatConnectStoredMode(cfg.OpenEnabled, cfg.MPEnabled, cfg.MobileEnabled, cfg.Mode)
+	cfg.Scopes = authconfig.NormalizeWeChatConnectScopes(cfg.Scopes, cfg.Mode)
 	if cfg.FrontendRedirectURL == "" {
 		cfg.FrontendRedirectURL = defaultWeChatConnectFrontendRedirect
 	}

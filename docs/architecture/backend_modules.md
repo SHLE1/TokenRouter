@@ -129,7 +129,7 @@ backend/
 │   │   ├── httpapi/                                     MCP 传输、管理页面 API 和既有管理路由分发
 │   │   └── rediscache/                                  原子确认状态与加密临时文件
 │   ├── identity/                                        用户、登录身份、会话、强认证和绑定
-│   │   ├── authconfig/                                  登录配置值、地址与钉钉配置解析
+│   │   ├── authconfig/                                  登录配置值、地址、钉钉配置与微信模式/Scope 规则
 │   │   ├── contact/                                     邮箱规范化等联系方式纯规则
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
 │   │   │   ├── authctx/                                 已认证用户、会话和角色的 HTTP 上下文
