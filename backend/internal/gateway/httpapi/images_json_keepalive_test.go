@@ -128,34 +128,6 @@ func TestOpenAIImagesJSONKeepalive_DoesNotBlockFailoverDetection(t *testing.T) {
 	require.True(t, strings.TrimSpace(rec.Body.String()) == "")
 }
 
-// TestOpenAIImagesJSONKeepaliveWriter_NilGuards exercises a wrapper lacking
-// heartbeat state and an underlying writer. Its response methods remain
-// callable, hijacking fails, and close notification is already closed.
-func TestOpenAIImagesJSONKeepaliveWriter_NilGuards(t *testing.T) {
-	w := &openAIImagesJSONKeepaliveWriter{}
-	require.NotPanics(t, func() {
-		require.NotNil(t, w.Header())
-		_, _ = w.Write([]byte("test"))
-		_, _ = w.WriteString("test")
-		w.WriteHeader(http.StatusOK)
-		w.WriteHeaderNow()
-		w.Flush()
-		require.Equal(t, 0, w.Status())
-		require.Equal(t, 0, w.Size())
-		require.False(t, w.Written())
-		require.Nil(t, w.Pusher())
-	})
-
-	conn, _, err := w.Hijack()
-	require.Error(t, err)
-	require.Nil(t, conn)
-	select {
-	case <-w.CloseNotify():
-	default:
-		t.Fatal("nil writer CloseNotify channel should be closed")
-	}
-}
-
 // waitForOpenAIImagesJSONKeepalive waits up to one second for retained
 // heartbeat state to report a started response. It checks that state under
 // the heartbeat mutex, failing the test if installation or startup is

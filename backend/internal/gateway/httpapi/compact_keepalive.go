@@ -1,9 +1,6 @@
 package httpapi
 
 import (
-	"bufio"
-	"errors"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -68,12 +65,12 @@ type openAICompactSSEKeepalive struct {
 	stop chan struct{} // worker stop notification
 }
 
-// compactKeepaliveWriter stops heartbeats under the mutex before writes and locks state reads.
-// Size reads leave heartbeats running; the heartbeat goroutine writes directly to k.writer.
+// compactKeepaliveWriter identifies one installed SSE heartbeat wrapper and
+// delegates response access to its associated controller's shared writer adapter.
 type compactKeepaliveWriter struct {
-	gin.ResponseWriter // captured downstream response writer
-	// k coordinates heartbeat writes with request output. A nil controller permits
-	// output delegation but makes Status, Size, and Written return their fallback values.
+	keepaliveResponseWriter // shared heartbeat takeover operations
+	// k identifies the controller whose captured writer a later SSE wait may
+	// recover. Wrappers belonging to another controller retain their existing ownership.
 	k *openAICompactSSEKeepalive
 }
 
@@ -136,7 +133,14 @@ func StartOpenAISSEKeepalive(c *gin.Context, interval time.Duration) func() {
 		}
 	}
 	c.Set(openAICompactSSEKeepaliveKey, k)
-	wrappedWriter := &compactKeepaliveWriter{ResponseWriter: originalWriter, k: k}
+	wrappedWriter := &compactKeepaliveWriter{
+		keepaliveResponseWriter: keepaliveResponseWriter{
+			ResponseWriter: originalWriter,
+			stop:           k.Stop,
+			mu:             &k.mu,
+		},
+		k: k,
+	}
 	c.Writer = wrappedWriter
 
 	var reqDone <-chan struct{}
@@ -332,154 +336,6 @@ func OpenAICompactKeepaliveAdjustedWrittenSize(c *gin.Context) int {
 	// Returning zero would mark output as started in OpenAIStreamClientOutputStarted.
 	// Restore Gin's negative sentinel when heartbeat subtraction leaves no positive response bytes.
 	return -1
-}
-
-// suspend idempotently stops heartbeats before response construction, including Header access.
-// A nil controller is ignored. Stop waits for any current heartbeat to finish,
-// allowing subsequent delegated output to proceed after the controller loses
-// permission to write more comments.
-func (w *compactKeepaliveWriter) suspend() {
-	if w.k == nil {
-		return
-	}
-	w.k.Stop()
-}
-
-// Header stops heartbeats before exposing headers for request response construction.
-// A missing inner writer returns a fresh empty map. Otherwise callers receive
-// the inner header map and continue to own its response-building mutations.
-func (w *compactKeepaliveWriter) Header() http.Header {
-	w.suspend()
-	if w.ResponseWriter == nil {
-		return http.Header{}
-	}
-	return w.ResponseWriter.Header()
-}
-
-// Write stops heartbeats before delegating request bytes to the captured writer.
-// A missing inner writer returns zero without error. Otherwise the downstream
-// byte count and error pass back to the response producer unchanged.
-func (w *compactKeepaliveWriter) Write(data []byte) (int, error) {
-	w.suspend()
-	if w.ResponseWriter == nil {
-		return 0, nil
-	}
-	return w.ResponseWriter.Write(data)
-}
-
-// WriteString stops heartbeats before delegating string output to the captured writer.
-// A missing inner writer returns zero without error. The downstream string
-// write otherwise supplies the byte count and error returned to the caller.
-func (w *compactKeepaliveWriter) WriteString(s string) (int, error) {
-	w.suspend()
-	if w.ResponseWriter == nil {
-		return 0, nil
-	}
-	return w.ResponseWriter.WriteString(s)
-}
-
-// WriteHeader stops heartbeats before selecting the request's response status.
-// It delegates the status to the captured writer when present. A missing
-// inner writer leaves status selection without an output target.
-func (w *compactKeepaliveWriter) WriteHeader(code int) {
-	w.suspend()
-	if w.ResponseWriter == nil {
-		return
-	}
-	w.ResponseWriter.WriteHeader(code)
-}
-
-// WriteHeaderNow stops heartbeats before committing the captured writer's pending headers.
-// Missing output is ignored. This takeover follows Stop's wait for any beat,
-// so later controller comments cannot interleave with the caller's response construction.
-func (w *compactKeepaliveWriter) WriteHeaderNow() {
-	w.suspend()
-	if w.ResponseWriter == nil {
-		return
-	}
-	w.ResponseWriter.WriteHeaderNow()
-}
-
-// Flush stops heartbeats before flushing the request's captured response writer.
-// A missing inner writer is ignored. Callers that need recurring heartbeat
-// flushes leave them to beat, which operates directly on its writer.
-func (w *compactKeepaliveWriter) Flush() {
-	w.suspend()
-	if w.ResponseWriter == nil {
-		return
-	}
-	w.ResponseWriter.Flush()
-}
-
-// Hijack returns an error when the inner response writer is missing.
-// Otherwise it delegates connection takeover to that writer. Callers stop the
-// heartbeat controller before taking over the connection because this method
-// leaves controller state unchanged.
-func (w *compactKeepaliveWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if w.ResponseWriter == nil {
-		return nil, nil, errors.New("response writer released")
-	}
-	return w.ResponseWriter.Hijack()
-}
-
-// CloseNotify exposes the captured writer's connection-close notification channel.
-// A missing inner writer yields a newly closed channel so receivers can proceed.
-// This lookup leaves heartbeat generation and controller state unchanged.
-func (w *compactKeepaliveWriter) CloseNotify() <-chan bool {
-	if w.ResponseWriter == nil {
-		ch := make(chan bool)
-		// Receiving from this closed channel yields false but wakes selectors,
-		// allowing notification consumers to proceed when no inner connection channel is available.
-		close(ch)
-		return ch
-	}
-	return w.ResponseWriter.CloseNotify()
-}
-
-// Pusher returns the captured writer's optional HTTP push interface.
-// A missing writer yields nil; supported writers decide whether push is
-// available. Looking up this interface leaves heartbeat generation and controller state unchanged.
-func (w *compactKeepaliveWriter) Pusher() http.Pusher {
-	if w.ResponseWriter == nil {
-		return nil
-	}
-	return w.ResponseWriter.Pusher()
-}
-
-// Status reads the inner writer under the heartbeat mutex, or returns zero if either is absent.
-// Reading status keeps heartbeats enabled. The lock prevents observing the writer
-// while beat changes its headers, status, or byte count under the same mutex.
-func (w *compactKeepaliveWriter) Status() int {
-	if w.k == nil || w.ResponseWriter == nil {
-		return 0
-	}
-	w.k.mu.Lock()
-	defer w.k.mu.Unlock()
-	return w.ResponseWriter.Status()
-}
-
-// Size reads the captured writer's byte count under the heartbeat mutex.
-// Missing output or controller returns zero. The read keeps heartbeats enabled;
-// callers use adjusted-size accounting when heartbeat bytes should be excluded.
-func (w *compactKeepaliveWriter) Size() int {
-	if w.k == nil || w.ResponseWriter == nil {
-		return 0
-	}
-	w.k.mu.Lock()
-	defer w.k.mu.Unlock()
-	return w.ResponseWriter.Size()
-}
-
-// Written reports the captured writer's committed-output state under the heartbeat mutex.
-// Missing output or controller returns false. Heartbeat commitment counts as
-// written here, so model-output checks use OpenAIStreamClientOutputStarted instead.
-func (w *compactKeepaliveWriter) Written() bool {
-	if w.k == nil || w.ResponseWriter == nil {
-		return false
-	}
-	w.k.mu.Lock()
-	defer w.k.mu.Unlock()
-	return w.ResponseWriter.Written()
 }
 
 // RecordOpenAIStreamKeepaliveBytes accumulates bytes written by stream heartbeats.
