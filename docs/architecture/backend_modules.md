@@ -302,6 +302,7 @@ backend/
 │       ├── identity/                                    用户、登录身份、会话、强认证和绑定集成测试
 │       ├── identityhttp/                                身份 HTTP 集成测试
 │       ├── maintenance/                                 备份与系统维护集成测试
+│       ├── mcp/                                         MCP 管理输出与业务 DTO 的跨模块测试
 │       ├── migrations/                                  数据库迁移集成测试
 │       ├── payment/                                     外部支付订单、渠道、履约与退款集成测试
 │       ├── pricing_contract/                            跨模块定价集成测试
