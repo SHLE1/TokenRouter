@@ -128,7 +128,7 @@ func (s *NativeProtocolTest) Execute(
 	} else {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
-	applyGrokQuotaHeaders(value, req.Header)
+	ApplyProviderHeaderOverrides(value, req.Header)
 
 	resp, err := s.send(req, value)
 	if err != nil {

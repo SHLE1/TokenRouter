@@ -352,7 +352,7 @@ func (s *ModelCatalogue) buildGrokUpstreamModelsRequest(ctx context.Context, val
 			}
 		}
 	}
-	applyGrokQuotaHeaders(value, req.Header)
+	ApplyProviderHeaderOverrides(value, req.Header)
 	return req, nil
 }
 
@@ -427,7 +427,7 @@ func (s *ModelCatalogue) buildAnthropicUpstreamModelsRequest(ctx context.Context
 	// Apply allowed overrides after platform defaults and authentication. The
 	// shared filter permits intentional client-header replacement while protected
 	// credential headers retain their selected values.
-	applyGrokQuotaHeaders(value, req.Header)
+	ApplyProviderHeaderOverrides(value, req.Header)
 	return req, nil
 }
 
@@ -469,7 +469,7 @@ func (s *ModelCatalogue) buildOpenAIUpstreamModelsRequest(ctx context.Context, v
 	// Apply allowed overrides after platform defaults and authentication. The
 	// shared filter permits intentional client-header replacement while protected
 	// credential headers retain their selected values.
-	applyGrokQuotaHeaders(value, req.Header)
+	ApplyProviderHeaderOverrides(value, req.Header)
 	return req, nil
 }
 
@@ -533,8 +533,8 @@ func (s *ModelCatalogue) buildOpenAIOAuthUpstreamModelsRequest(ctx context.Conte
 	req.Header.Set("Originator", identity.Originator)
 	req.Header.Set("User-Agent", identity.UserAgent)
 	req.Header.Set("Version", identity.Version)
-	setTestChatGPTHeaders(req.Header, credentialProvider)
-	applyGrokQuotaHeaders(credentialProvider, req.Header)
+	SetChatGPTAccountHeaders(req.Header, credentialProvider)
+	ApplyProviderHeaderOverrides(credentialProvider, req.Header)
 	openai.EnforceCodexIdentityHeadersWithUA(req.Header, credentialProvider.GetOpenAIUserAgent())
 	return req, nil
 }

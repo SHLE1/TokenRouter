@@ -133,7 +133,7 @@ func (s *NativeProtocolTest) executeAdaptiveEndpoint(c *TestRun, value *provider
 		label:   "Adaptive " + name + " endpoint",
 		applyHeaders: func(headers http.Header) {
 			authenticate(headers)
-			applyGrokQuotaHeaders(value, headers)
+			ApplyProviderHeaderOverrides(value, headers)
 		},
 	}
 	body, err := s.probePayload(c, value, probe.route, prompt, providercore.ProviderTestTypeText)
