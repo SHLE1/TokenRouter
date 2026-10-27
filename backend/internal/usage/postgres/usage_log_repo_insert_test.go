@@ -181,14 +181,14 @@ func TestPrepareUsageLogInsert_UpstreamRequestIDArgWiring(t *testing.T) {
 		UpstreamRequestID: &upstreamRequestID,
 		CreatedAt:         time.Now().UTC(),
 	})
-	require.Len(t, prepared.args, len(usageLogInsertArgTypes))
+	require.Len(t, prepared.args, len(usageLogInsert.argTypes))
 
 	idx := len(prepared.args) - 9
 	arg, ok := prepared.args[idx].(sql.NullString)
 	require.True(t, ok, "upstream_request_id arg should be sql.NullString, got %T", prepared.args[idx])
 	require.True(t, arg.Valid)
 	require.Equal(t, upstreamRequestID, arg.String)
-	require.Equal(t, "text", usageLogInsertArgTypes[idx])
+	require.Equal(t, "text", usageLogInsert.argTypes[idx])
 
 	absent := prepareUsageLogInsert(&usage.UsageLog{UserID: 1, APIKeyID: 2, RequestID: "client:absent", Model: "gpt-5", CreatedAt: time.Now().UTC()})
 	nullArg, ok := absent.args[idx].(sql.NullString)
@@ -457,7 +457,7 @@ func TestUsageLogBatchInsertShape_ColumnsAndArguments(t *testing.T) {
 	normalizeColumns := func(columns string) string {
 		return strings.Join(strings.Fields(columns), "")
 	}
-	wantColumns := normalizeColumns(usageLogInsertColumns)
+	wantColumns := normalizeColumns(usageLogInsert.columns)
 
 	for _, tt := range []struct {
 		name       string // insert shape case description
@@ -489,7 +489,7 @@ func TestUsageLogBatchInsertShape_ColumnsAndArguments(t *testing.T) {
 					wantTypes = append(wantTypes, "")
 				}
 				wantArgs = append(wantArgs, row.args...)
-				wantTypes = append(wantTypes, usageLogInsertArgTypes[:]...)
+				wantTypes = append(wantTypes, usageLogInsert.argTypes...)
 			}
 			require.Equal(t, wantArgs, tt.args)
 			placeholders := placeholderShape.FindAllStringSubmatch(input[2], -1)
@@ -540,7 +540,7 @@ func TestPrepareUsageLogInsert_ArgCountMatchesTypes(t *testing.T) {
 		CreatedAt:      time.Date(2025, 1, 5, 12, 0, 0, 0, time.UTC),
 	})
 
-	require.Len(t, prepared.args, len(usageLogInsertArgTypes))
+	require.Len(t, prepared.args, len(usageLogInsert.argTypes))
 }
 
 // TestPrepareUsageLogInsert_PersistsImageSizeMetadata supplies image class,
@@ -606,12 +606,12 @@ func TestBuildUsageLogBatchInsertQuery_UsesConflictDoNothing(t *testing.T) {
 // correlation ID. It checks the nullable session argument and the following
 // timestamp, reasoning, and compaction type positions.
 func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
-	require.Len(t, usageLogInsertArgTypes, 69, "arg-type table must include billing key")
+	require.Len(t, usageLogInsert.argTypes, 69, "arg-type table must include billing key")
 
 	sessionID := "sess-persisted-123"
 	prepared := prepareUsageLogInsert(newSessionIDUsageLog(&sessionID))
 
-	require.Len(t, prepared.args, len(usageLogInsertArgTypes),
+	require.Len(t, prepared.args, len(usageLogInsert.argTypes),
 		"prepared args must match the arg-type table length")
 
 	// Assert the trailing diagnostic positions from the schema table's end, so
@@ -622,13 +622,13 @@ func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
 	require.True(t, ns.Valid)
 	require.Equal(t, sessionID, ns.String)
 
-	require.Equal(t, "text", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-8],
+	require.Equal(t, "text", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-8],
 		"session_id arg type must be text")
-	require.Equal(t, "timestamptz", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-7],
+	require.Equal(t, "timestamptz", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-7],
 		"created_at arg type must remain timestamptz")
-	require.Equal(t, "text", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-6],
+	require.Equal(t, "text", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-6],
 		"requested reasoning effort arg type must be text")
-	require.Equal(t, "boolean", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-5],
+	require.Equal(t, "boolean", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-5],
 		"native compaction arg type must be boolean")
 }
 
@@ -746,14 +746,14 @@ func requireStaticInsertMatchesArgTypes(t *testing.T, query string) {
 	m := usageLogStaticInsertShapeRe.FindStringSubmatch(query)
 	require.Len(t, m, 3, "unrecognised INSERT shape:\n%s", query)
 
-	want := len(usageLogInsertArgTypes)
+	want := len(usageLogInsert.argTypes)
 	columns := 0
 	for col := range strings.SplitSeq(m[1], ",") {
 		if strings.TrimSpace(col) != "" {
 			columns++
 		}
 	}
-	require.Equal(t, want, columns, "INSERT column list must match usageLogInsertArgTypes")
+	require.Equal(t, want, columns, "INSERT column list must match usageLogInsert.argTypes")
 
 	seen := make(map[int]struct{}, want)
 	for _, ph := range usageLogPlaceholderRe.FindAllStringSubmatch(m[2], -1) {
@@ -763,7 +763,7 @@ func requireStaticInsertMatchesArgTypes(t *testing.T, query string) {
 		require.False(t, dup, "duplicate placeholder $%d", n)
 		seen[n] = struct{}{}
 	}
-	require.Len(t, seen, want, "VALUES placeholder count must match usageLogInsertArgTypes")
+	require.Len(t, seen, want, "VALUES placeholder count must match usageLogInsert.argTypes")
 	for i := 1; i <= want; i++ {
 		_, ok := seen[i]
 		require.True(t, ok, "missing placeholder $%d", i)
