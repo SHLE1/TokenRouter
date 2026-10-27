@@ -13,7 +13,8 @@ math net/textproto net/url reflect regexp slices sort strconv strings sync testi
 unsafe`
 
 var (
-	// 依赖表仅保存业务协作和技术库选择；目录角色与通用约束由 policy.go 统一解释。
+	// The dependency tables list supported module collaboration and library choices.
+	// Directory roles and common restrictions remain defined by policy.go.
 
 	roleLibraries = map[string]dependencySet{
 		"assembly": {Production: `entgo.io/ent/dialect entgo.io/ent/dialect/sql github.com/gin-gonic/gin github.com/google/uuid
@@ -402,7 +403,6 @@ internal/upstream/zhipu/...`, Tests: ""},
 		"internal/backup/backup_external_test.go":            "database/sql",
 		"internal/gateway/httpapi/live_test.go":              "database/sql",
 		"internal/moderation/helpers_test.go":                "database/sql",
-		"internal/moderation/service_test.go":                "database/sql",
 		"internal/usage/httpapi/admin/usage_handler_test.go": "database/sql",
 	}
 
@@ -461,7 +461,7 @@ internal/upstream/zhipu/...`, Tests: ""},
 		{Scope: "internal/identity", Imports: "internal/identity/provider", Files: "helpers_external_test.go dingtalk_oauth_external_test.go dingtalk_profile_sync_external_test.go dingtalk_sync_runtime_external_test.go"},
 		{Scope: "internal/identity/postgres", Imports: "internal/billing/postgres", Files: "auth_state.go user_repo.go"},
 		{Scope: "internal/identity/postgres", Imports: "internal/usage/postgres/query", Files: "user_repo.go"},
-		{Scope: "internal/moderation", Imports: "internal/moderation/provider", Files: "service_test.go helpers_test.go"},
+		{Scope: "internal/moderation", Imports: "internal/moderation/provider", Files: "helpers_test.go"},
 		{Scope: "internal/moderation/postgres", Imports: "internal/identity/postgres", Files: "repository_test.go"},
 		{Scope: "internal/payment/postgres", Imports: "internal/billing/postgres", Files: "checkout_scenario_test.go"},
 		{Scope: "internal/routing", Imports: "internal/modelcatalog/provider", Files: "marketplace_external_test.go"},
