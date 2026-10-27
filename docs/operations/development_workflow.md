@@ -10,7 +10,7 @@
 - [后端文件组织](#backend_file_layout)：新增、拆分、合并或改名后端 Go 文件和测试文件，或编写文件总览时读取，文件内的声明顺序也在这一节。
 - [生成代码与迁移](#生成代码与迁移)：修改 Ent schema、Wire 或数据库时读取。
 - [验证策略](#验证策略)：实现完成、提交之前读取。
-- [提交与文档](#提交与文档)：形成提交或维护 Project Doc 时读取。
+- [提交与文档](#提交与文档)：形成提交、创建 Issue 或 PR、维护 Project Doc 时读取。
 - [同步上游](#同步上游)：引入 upstream 的 PR 或 commit 时读取。
 - [发布](#发布)：创建版本 tag 之前读取。
 
@@ -369,6 +369,14 @@ DOMPurify 用于 Markdown 页面、公告、支付说明和 SVG 图标的内容�
 ## 提交与文档
 
 提交信息遵循 Conventional Commits，例如 `feat(gateway): ...`、`fix(billing): ...`、`docs(project): ...`。一次提交围绕一个可以验证的目的，生成文件、迁移和接口测试，和它们的源码变更一起提交。
+
+### GitHub Issue 与 PR
+
+人工提交 Issue 使用 [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) 中的英文 Bug 或功能请求表单，空白 Issue 入口关闭。普通 PR 使用[英文模板](../../.github/PULL_REQUEST_TEMPLATE.md)。Issue 与 PR 的撰写内容统一使用英文，不使用 emoji；用户原话引用保留原文。新功能先关联 Issue，较大或方向性变更先与维护者达成一致；验证记录需要实际命令或操作与观察结果，UI 变更附截图或录屏，Bug 修复说明复现过程和修复后的表现。
+
+普通模板里的隐藏说明将 Agent 引导到 [Issue 专用模板](../../.agents/github/ISSUE.md)和 [PR 专用模板](../../.agents/github/PR.md)，入口规则同时写在 [AGENTS.md](../../AGENTS.md)。Agent 模板保留工具信息、用户原始请求及后续纠正、调查证据、验证结果和未验证范围；缺少必需事实时，Agent 应先追问，不能猜测后提交。为项目所有者创建 PR 时，默认使用普通英文模板，只有所有者明确要求时才用 Agent 模板。外部贡献者由 Agent 创建 PR 时，需要声明 AI 参与。
+
+受理范围依据[提供商能力矩阵](../interfaces/upstream_provider_matrix.md)和各平台文档。受支持的 Codex、OAuth 或 coding 模式，以及 TokenRouter 自身的转发和错误处理问题，仍按模板受理；仅原样转发的上游报错和第三方服务独有的问题，应先交由对应提供方处理。验证命令按本文的[验证策略](#验证策略)选择，记录实际执行范围。模板的来源、适配记录和许可见[模板说明](../../.github/NOTICE.templates.md)。
 
 ### 前端格式化与静态检查
 

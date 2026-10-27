@@ -32,6 +32,16 @@ Use the repository's [project-doc](.agents/skills/project-doc/SKILL.md) skill fi
 - Add aliases to backend Go imports only when needed, such as to resolve package-name conflicts. Start Go files with the `package` declaration or a `//go:build` constraint.
 - Before adding, splitting, merging, or renaming backend Go files, or changing declaration order, read or reuse [Backend file organization](docs/operations/development_workflow.md#backend_file_layout) under the Project Doc rules. Follow its naming, test ownership, package documentation, and declaration-order requirements. When renaming or merging files, update documentation, architecture allowances, and comments that reference those filenames.
 
+## GitHub issues and pull requests
+
+- Write authored issue and PR text in English without emoji. Preserve verbatim user quotations in their original language and form.
+- Before an agent opens an issue, read and fill [.agents/github/ISSUE.md](.agents/github/ISSUE.md) as the entire issue body. Human contributors use the GitHub issue forms. Check the template's support boundaries, search the linked guides and engineering documentation, README, and relevant code, and answer usage, configuration, or integration questions without opening an issue.
+- Quote the user's request and later corrections faithfully in the agent template, preserving the original language and line breaks. Do not rewrite or summarize those quotations. Keep the other answers short and factual, and do not paste unfiltered AI-generated text in the body or later comments.
+- If required issue facts are missing, ask for the facts and wait. Do not invent actual behavior, impact, frequency, evidence attributing the problem to TokenRouter, or applicable relay, billing, frontend, and deployment details. Do not ask the user merely to confirm a template. Do not open an issue or PR while its required conditions are unmet.
+- Before an agent opens a PR, compare `git config user.name` and `git config user.email` with the repository's historical core developers in `git log`. Do not change Git configuration. For contributors outside that group, explicitly state in the PR body that the code was AI-generated or AI-assisted.
+- For a PR created for the project owner, use [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Do not use the agent PR template for the project owner unless the owner explicitly requests it.
+- For other agent-created PRs, read and fill [.agents/github/PR.md](.agents/github/PR.md) as the entire body, unless the project owner explicitly requests the human template. Record commands or steps actually performed and the observed results; a claim that `go build` or tests passed is insufficient. Follow the template's issue-linking, scope, research, and verification requirements before opening the PR.
+
 ## Verification and delivery
 
 - During development, run local tests for the changed package or component. Select scope and commands under the [Verification strategy](docs/operations/development_workflow.md#验证策略).
