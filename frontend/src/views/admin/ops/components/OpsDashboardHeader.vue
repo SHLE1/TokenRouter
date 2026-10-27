@@ -1386,12 +1386,7 @@ function handleToolbarRefresh() {
           <div class="flex h-full flex-col justify-center py-2">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <div class="relative flex h-3 w-3 shrink-0">
-                  <span
-                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"
-                  ></span>
-                  <span class="relative inline-flex h-3 w-3 rounded-full bg-blue-500"></span>
-                </div>
+                <span class="h-3 w-3 shrink-0 rounded-full bg-blue-500" aria-hidden="true"></span>
                 <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">
                   {{ t('admin.ops.realtime.title') }}
                 </h3>

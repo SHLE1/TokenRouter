@@ -63,9 +63,9 @@ export default {
       unifiedGateway: 'One-Click Access',
       unifiedGatewayDesc:
         'Get a single API key to call all connected AI models. No separate applications needed.',
-      multiProvider: 'Always Reliable',
+      multiProvider: 'Multi-provider routing',
       multiProviderDesc:
-        'Smart routing across multiple upstream providers with automatic failover. Say goodbye to errors.',
+        'Route requests across upstream providers with load balancing and automatic failover.',
       balanceQuota: 'Pay What You Use',
       balanceQuotaDesc:
         'Usage-based billing with quota limits. Full visibility into team consumption.',
@@ -159,9 +159,9 @@ export default {
     },
     // CTA section
     cta: {
-      title: 'Ready to Get Started?',
-      description: 'Sign up now and get free trial credits to experience seamless AI access',
-      button: 'Sign Up Free',
+      title: 'Connect your application',
+      description: 'Create an account to manage API keys and track model usage.',
+      button: 'Create an account',
     },
     footer: {
       allRightsReserved: 'All rights reserved.',
