@@ -34,9 +34,9 @@ import (
 // Chat carries its include_usage stream choice into the response target.
 // Project-bearing OAuth can read an upstream stream into a buffered client
 // response. HTTP failure policy runs before response adaptation, using the
-// selected client envelope. Successful compatibility image metadata currently
-// uses the original client model-name estimate, while native and Messages
-// execution consult their own attempt image counter.
+// selected client envelope. Successful completion combines response-observed
+// image counts with image-size hints from the prepared Gemini request, keeping
+// those observations separate from logical and upstream model names.
 
 // ForwardAsResponses converts one OpenAI Responses body through Anthropic into
 // a selected Gemini attempt. It validates input and retains client tool
@@ -166,8 +166,8 @@ func (s *Gemini) ForwardAsChatCompletions(
 // Provider policy classifies HTTP failures before output adaptation, and a
 // successful result retains separate client and upstream models. Upstream
 // streaming can differ from client mode for project-bearing OAuth. Image
-// metadata uses the original client model-name estimate on this path,
-// independently of the per-attempt counter used by other Gemini entries.
+// metadata combines response-observed counts with size hints from the prepared
+// Gemini request, without deriving image presence from either model name.
 func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 	ctx context.Context,
 	c *attempt,
@@ -280,28 +280,18 @@ func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 
 			if resp.StatusCode >= 400 {
 				respBody := s.readUpstreamErrorBody(resp)
-				decision := s.applyGeminiUpstreamErrorPolicy(ctx, provider, resp.StatusCode, resp.Header, respBody, mappedModel)
+				outcome := s.buildGeminiFailureOutcome(ctx, provider, resp, respBody, mappedModel)
 				evBody := gemininative.UnwrapIfNeeded(provider.Record.Type == capability.ProviderTypeOAuth, respBody)
-				if decision.Policy == providercore.ErrorPolicyCustomSkipped || decision.Policy == providercore.ErrorPolicyPoolBypassed {
-					if failoverErr := s.skippedErrorPolicyFailoverError(c, provider, resp.StatusCode, resp.Header, respBody, requestID); failoverErr != nil {
-						return nil, failoverErr
+				if outcome.failover != nil {
+					// OpenAI ordinary failures use the OAuth response object without body
+					// detail; skipped policy retains raw bytes and configured diagnostics.
+					upstreamDetail := ""
+					if outcome.policy == providercore.ErrorPolicyCustomSkipped || outcome.policy == providercore.ErrorPolicyPoolBypassed {
+						upstreamDetail = s.upstreamErrorDetail(respBody)
+					} else {
+						outcome.failover.ResponseBody = evBody
 					}
-					if decision.Policy == providercore.ErrorPolicyCustomSkipped {
-						return nil, c.GeminiCustomCodeSkippedError(provider, resp.StatusCode, requestID, respBody, func() {
-							_ = c.ChatError(http.StatusInternalServerError, "api_error", geminiCustomCodeSkippedClientMessage)
-						})
-					}
-					return nil, c.GeminiOpenAICompatMappedError(provider, resp.StatusCode, requestID, evBody, protocol)
-				}
-				if decision.ShouldReturnGenericError() {
-					genericBody := []byte(`{"error":{"message":"Upstream gateway error"}}`)
-					return nil, c.GeminiOpenAICompatMappedError(provider, http.StatusInternalServerError, requestID, genericBody, protocol)
-				}
-
-				msg400 := strings.ToLower(strings.TrimSpace(upstream.ExtractErrorMessage(respBody)))
-				googleConfigError := isGoogleAccount(provider) && resp.StatusCode == http.StatusBadRequest && upstream.IsGoogleProjectConfigError(msg400)
-				if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode, googleConfigError || s.shouldFailoverGeminiUpstreamError(resp.StatusCode)) {
-					upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(evBody)))
+					upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(outcome.failover.ResponseBody)))
 					c.Observe(ops.OpsUpstreamErrorEvent{
 						Platform:           provider.Record.Platform,
 						ProviderID:         provider.Record.ID,
@@ -310,18 +300,15 @@ func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 						UpstreamRequestID:  requestID,
 						Kind:               "failover",
 						Message:            upstreamMsg,
+						Detail:             upstreamDetail,
 					})
-					return nil, &protocolforward.UpstreamFailoverError{
-						Platform:               provider.Record.Platform,
-						StatusCode:             resp.StatusCode,
-						ResponseHeaders:        resp.Header.Clone(),
-						SameProviderRetryDelay: relayRetryDelay(provider, resp.Header),
-						ResponseBody:           evBody,
-
-						RetryableOnSameProvider: decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode),
-					}
+					return nil, outcome.failover
 				}
-
+				if outcome.policy == providercore.ErrorPolicyCustomSkipped {
+					return nil, c.GeminiCustomCodeSkippedError(provider, resp.StatusCode, requestID, respBody, func() {
+						_ = c.ChatError(http.StatusInternalServerError, "api_error", geminiCustomCodeSkippedClientMessage)
+					})
+				}
 				return nil, c.GeminiOpenAICompatMappedError(provider, resp.StatusCode, requestID, evBody, protocol)
 			}
 
