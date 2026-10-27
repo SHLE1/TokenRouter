@@ -494,18 +494,12 @@ func (s *Fulfillment) ExecuteFulfillment(ctx context.Context, oid int64) error {
 // returned unchanged. This executor does not itself require PaidAt, unlike
 // administrator RetryFulfillment.
 func (s *Fulfillment) ExecuteBalanceFulfillment(ctx context.Context, oid int64) error {
-	o, err := s.store.Order(ctx, oid)
+	o, err := s.loadFulfillableOrder(ctx, oid)
 	if err != nil {
-		return infraerrors.NotFound("NOT_FOUND", "order not found")
+		return err
 	}
-	if o.Status == OrderStatusCompleted {
+	if o == nil {
 		return nil
-	}
-	if IsRefundStatus(o.Status) {
-		return infraerrors.BadRequest("INVALID_STATUS", "refund-related order cannot fulfill")
-	}
-	if o.Status != OrderStatusPaid && o.Status != OrderStatusFailed && o.Status != OrderStatusRecharging {
-		return infraerrors.BadRequest("INVALID_STATUS", "order cannot fulfill in status "+o.Status)
 	}
 	lease, err := s.AcquirePaymentFulfillmentLease(ctx, o)
 	if err != nil {
@@ -812,18 +806,12 @@ func (s *Fulfillment) SendSubscriptionPurchaseSuccessNotification(ctx context.Co
 // retains the original error. This executor does not independently require
 // PaidAt, while administrator retry has that additional eligibility predicate.
 func (s *Fulfillment) ExecuteSubscriptionFulfillment(ctx context.Context, oid int64) error {
-	o, err := s.store.Order(ctx, oid)
+	o, err := s.loadFulfillableOrder(ctx, oid)
 	if err != nil {
-		return infraerrors.NotFound("NOT_FOUND", "order not found")
+		return err
 	}
-	if o.Status == OrderStatusCompleted {
+	if o == nil {
 		return nil
-	}
-	if IsRefundStatus(o.Status) {
-		return infraerrors.BadRequest("INVALID_STATUS", "refund-related order cannot fulfill")
-	}
-	if o.Status != OrderStatusPaid && o.Status != OrderStatusFailed && o.Status != OrderStatusRecharging {
-		return infraerrors.BadRequest("INVALID_STATUS", "order cannot fulfill in status "+o.Status)
 	}
 	if o.PlanID == nil || *o.PlanID <= 0 {
 		return infraerrors.BadRequest("INVALID_STATUS", "missing subscription info")
@@ -840,6 +828,31 @@ func (s *Fulfillment) ExecuteSubscriptionFulfillment(ctx context.Context, oid in
 		return err
 	}
 	return nil
+}
+
+// loadFulfillableOrder reads the order and admits paid, failed, or recharging
+// state for either fulfillment entry. A nil order with no error means completed
+// work; callers return without claiming a lease. Any read error becomes NOT_FOUND,
+// and refund or other unaccepted states return INVALID_STATUS. Subscription
+// fulfillment validates its plan after this shared status check.
+func (s *Fulfillment) loadFulfillableOrder(ctx context.Context, oid int64) (*Order, error) {
+	o, err := s.store.Order(ctx, oid)
+	if err != nil {
+		// Preserve the fulfillment entries' missing-order response for every read
+		// failure, including storage outages; callers do not expose the underlying
+		// lookup error.
+		return nil, infraerrors.NotFound("NOT_FOUND", "order not found")
+	}
+	if o.Status == OrderStatusCompleted {
+		return nil, nil
+	}
+	if IsRefundStatus(o.Status) {
+		return nil, infraerrors.BadRequest("INVALID_STATUS", "refund-related order cannot fulfill")
+	}
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusFailed && o.Status != OrderStatusRecharging {
+		return nil, infraerrors.BadRequest("INVALID_STATUS", "order cannot fulfill in status "+o.Status)
+	}
+	return o, nil
 }
 
 // DoSub resumes the nonnil order's positive-plan subscription, then order
