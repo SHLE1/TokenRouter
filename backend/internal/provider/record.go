@@ -2549,14 +2549,7 @@ func (r *Record) IsQuotaExceeded() bool {
 	// A later billing increment owns resetting the counter and start together,
 	// so this reader leaves the persisted amount available for that writer.
 	if limit := r.GetQuotaDailyLimit(); limit > 0 {
-		start := r.GetExtraTime("quota_daily_start")
-		var expired bool
-		if r.GetQuotaDailyResetMode() == "fixed" {
-			expired = r.IsFixedDailyPeriodExpired(start)
-		} else {
-			expired = IsPeriodExpired(start, 24*time.Hour)
-		}
-		if !expired && r.GetQuotaDailyUsed() >= limit {
+		if !r.IsDailyQuotaPeriodExpired() && r.GetQuotaDailyUsed() >= limit {
 			return true
 		}
 	}
@@ -2564,14 +2557,7 @@ func (r *Record) IsQuotaExceeded() bool {
 	// separately so expiration of the daily window cannot release a still
 	// exhausted weekly allowance.
 	if limit := r.GetQuotaWeeklyLimit(); limit > 0 {
-		start := r.GetExtraTime("quota_weekly_start")
-		var expired bool
-		if r.GetQuotaWeeklyResetMode() == "fixed" {
-			expired = r.IsFixedWeeklyPeriodExpired(start)
-		} else {
-			expired = IsPeriodExpired(start, 7*24*time.Hour)
-		}
-		if !expired && r.GetQuotaWeeklyUsed() >= limit {
+		if !r.IsWeeklyQuotaPeriodExpired() && r.GetQuotaWeeklyUsed() >= limit {
 			return true
 		}
 	}
