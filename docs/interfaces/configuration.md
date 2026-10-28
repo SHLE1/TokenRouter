@@ -116,6 +116,17 @@
 
 迁移 283 只在站点名称、站点标题、发件人名称和支付商品前缀去掉首尾空白后恰好等于旧产品名时，把它们改成 TokenRouter。自定义的值、历史订单、邮件记录和已经绑定的 TOTP 密钥都保持不变。新绑定的 TOTP 显示 TokenRouter，旧的绑定继续用原来的密钥验证。
 
+<a id="site_link_addresses"></a>
+### 站点链接与客户端 API 地址
+
+`frontend_url` 是邮件链接的公开站点地址；后端优先读取数据库中的非空值，未填写或读取失败时使用部署配置 `server.frontend_url`。退订链接每次生成时读取当前设置，保留地址中的路径前缀，再追加 `/api/v1/settings/email-unsubscribe`。公开入口需要把该请求转发到后端；两处前端地址都为空时保留相对链接。
+
+OAuth 服务端回调必须接收发起阶段写入的状态 Cookie。微信登录和支付 OAuth 的自动回调使用当前请求的公开 origin 和固定的 `/api/v1/auth/oauth/...` 路径，不读取站点前端地址或模型 API 地址；反向代理继续负责提供可信的 Host 和协议转发头。微信登录的显式回调配置保持优先。这样前端站点与面板 API 分域，或前端站点自身带路径前缀时，不会把状态 Cookie 留在另一个域名或路径上。
+
+管理页面为 LinuxDo、GitHub、Google、微信和 OIDC 提供的回调建议使用浏览器实际的面板 API 入口，与 OAuth 发起请求采用同一 `VITE_API_BASE_URL`，默认 `/api/v1`；相对入口按当前浏览器 origin 解析。建议不会自动覆盖已填写的回调字段。自定义反向代理 API 路径时，代理还需保持对外回调路径和 Cookie Path 一致。
+
+`api_base_url` 用于客户端接入展示和配置导出，可以包含模型 API 的 `/v1` 前缀，不参与上述站点链接和 OAuth 回调生成。修改这些地址来源不会重写已发送的邮件或已保存的回调地址。MCP OAuth 的站点地址校验和读取失败处理另有下述约束。
+
 ### MCP OAuth
 
 MCP OAuth 的公开地址使用现有 `frontend_url`，后台保存的非空值优先，部署 `server.frontend_url` 其次。仅接受不含路径、查询、片段或用户信息的 HTTPS origin，回环 HTTP 可用于本地开发。地址缺失或不适用时 OAuth 不可用，管理员可以在 MCP 接入配置中查看原因并前往原前端地址设置。`api_base_url` 继续用于客户端接入展示。
