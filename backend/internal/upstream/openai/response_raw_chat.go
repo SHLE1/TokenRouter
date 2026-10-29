@@ -168,33 +168,48 @@ func ReadRawChatStreaming(c *upstream.OutputContext, resp *http.Response, option
 		}
 	}
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		refusalDetector.ObserveSSELine(line)
-		if payload, ok := wire.ExtractSSEDataLine(line); ok {
-			trimmedPayload := strings.TrimSpace(payload)
-			terminal.ObserveDataLine(trimmedPayload)
-			if trimmedPayload != "[DONE]" {
-				options.Observe([]byte(trimmedPayload), wire.OpenAIChatCompletionServiceTierEventType([]byte(trimmedPayload)))
-				if u := wire.ExtractCCStreamUsage(payload); u != nil {
-					usage = *u
+	var heartbeatFilter upstream.SSEHeartbeatLineFilter
+	// Preserve incomplete candidates at EOF, while complete heartbeat frames never
+	// enter protocol output or establish the reader's client-content commitment.
+	for {
+		more := scanner.Scan()
+		var lines [][]byte
+		if more {
+			lines = heartbeatFilter.Push([]byte(scanner.Text() + "\n"))
+		} else {
+			lines = heartbeatFilter.Flush()
+		}
+		for _, rawLine := range lines {
+			line := strings.TrimSuffix(string(rawLine), "\n")
+			refusalDetector.ObserveSSELine(line)
+			if payload, ok := wire.ExtractSSEDataLine(line); ok {
+				trimmedPayload := strings.TrimSpace(payload)
+				terminal.ObserveDataLine(trimmedPayload)
+				if trimmedPayload != "[DONE]" {
+					options.Observe([]byte(trimmedPayload), wire.OpenAIChatCompletionServiceTierEventType([]byte(trimmedPayload)))
+					if u := wire.ExtractCCStreamUsage(payload); u != nil {
+						usage = *u
+					}
 				}
 			}
-		}
-		// Observe upstream evidence first, then repair the client copy and remove
-		// empty tool identity fields that would interfere with delta accumulation downstream.
-		line = options.TransformLine(line)
-		line = wire.StripEmptyChatToolCallIdentityFromSSELine(line)
+			// Observe upstream evidence first, then repair the client copy and remove
+			// empty tool identity fields that would interfere with delta accumulation downstream.
+			line = options.TransformLine(line)
+			line = wire.StripEmptyChatToolCallIdentityFromSSELine(line)
 
-		writeLine(line)
-		if line == "" {
+			writeLine(line)
+			if line == "" {
+				if !clientDisconnected && clientOutputStarted {
+					c.Writer.Flush()
+				}
+				continue
+			}
 			if !clientDisconnected && clientOutputStarted {
 				c.Writer.Flush()
 			}
-			continue
 		}
-		if !clientDisconnected && clientOutputStarted {
-			c.Writer.Flush()
+		if !more {
+			break
 		}
 	}
 
@@ -555,7 +570,7 @@ func ReadCCAsMessagesBuffered(c *upstream.OutputContext, resp *http.Response, op
 // suppressed.
 //
 // Tool argument deltas can yield no content events while the bridge accumulates
-// them; an Anthropic ping keeps that interval active downstream. Scanner
+// them; HTTP middleware keeps the downstream connection active while waiting. Scanner
 // failure returns observed usage and skips synthetic message closure. Clean
 // scanning finalizes content blocks and message terminal events even when
 // upstream DONE was missing, which is logged afterward. ClientDisconnect

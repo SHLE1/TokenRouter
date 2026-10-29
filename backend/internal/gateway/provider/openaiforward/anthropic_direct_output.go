@@ -228,10 +228,30 @@ func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstr
 		intervalCh = intervalTicker.C
 	}
 
+	var heartbeatFilter upstream.SSEHeartbeatLineFilter
+	// Filtered lines retain their delimiters; only complete forwarded frames flush.
+	// A write failure stops delivery while the scanner continues collecting usage.
+	writeFilteredLines := func(lines [][]byte) {
+		for _, raw := range lines {
+			if clientDisconnected {
+				return
+			}
+			if _, err := w.Write(o.ReverseTools(raw)); err != nil {
+				clientDisconnected = true
+				o.Log("[Messages passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", o.ProviderID)
+				return
+			}
+			if string(raw) == "\n" {
+				flusher.Flush()
+			}
+		}
+	}
+
 	for {
 		select {
 		case ev, ok := <-events:
 			if !ok {
+				writeFilteredLines(heartbeatFilter.Flush())
 				if !clientDisconnected {
 					flusher.Flush()
 				}
@@ -242,6 +262,7 @@ func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstr
 				return NativeAnthropicStreamResult(resp, usage, clientDisconnected, originalModel, billingModel, upstreamModel, reasoningEffort, startTime), nil
 			}
 			if ev.err != nil {
+				writeFilteredLines(heartbeatFilter.Flush())
 				// Terminal evidence makes a later scanner failure a completed stream;
 				// return the collected observation before incomplete-usage handling can
 				// replace that conclusion.
@@ -283,20 +304,7 @@ func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstr
 			// Output failure changes the client-disconnect flag while the scanner
 			// continues publishing; later data still updates usage and terminal evidence
 			// for completion handling.
-			if !clientDisconnected {
-				restored := string(o.ReverseTools([]byte(line)))
-				if _, err := io.WriteString(w, restored); err != nil {
-					clientDisconnected = true
-					o.Log("[Messages passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", o.ProviderID)
-				} else if _, err := io.WriteString(w, "\n"); err != nil {
-					clientDisconnected = true
-					o.Log("[Messages passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", o.ProviderID)
-				} else if line == "" {
-					// A blank line completes the SSE frame, so flush only after the
-					// client has received its delimiter and complete event payload.
-					flusher.Flush()
-				}
-			}
+			writeFilteredLines(heartbeatFilter.Push([]byte(line + "\n")))
 
 		// Check elapsed upstream silence from the atomically published scanner
 		// timestamp; queued consumer work alone does not reset the vendor read

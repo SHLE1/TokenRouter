@@ -300,14 +300,10 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 		if eventName == "error" {
 			return nil, dataLine, nil, &StreamErrorEventError{RawData: dataLine}
 		}
-
-		// Frames with no selected nonempty payload retain their received
-		// lines, allowing comments and event-only activity to reach the client
-		// before any map-based presentation editing is possible. An event-only
-		// message_stop follows this path too and leaves terminal state
-		// unchanged.
-		if dataLine == "" {
-			return []string{strings.Join(lines, "\n") + "\n\n"}, "", nil, nil
+		// Named errors retain their existing terminal handling even without data.
+		// Other empty or heartbeat frames belong only to the upstream connection.
+		if upstream.IsSSEHeartbeatEvent(eventName, dataLine) {
+			return nil, "", nil, nil
 		}
 
 		// The DONE sentinel establishes completion before JSON decoding.

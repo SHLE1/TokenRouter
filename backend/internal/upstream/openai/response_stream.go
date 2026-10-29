@@ -562,7 +562,11 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		failureDelivered = true
 		return true
 	}
+	var flushHeartbeatFrames func()
 	finalizeStream := func() (*StreamingResult, error) {
+		if flushHeartbeatFrames != nil {
+			flushHeartbeatFrames()
+		}
 		if stageFirstOutput && eventInProgress {
 			// EOF can finish data without a separator; complete its staged state
 			// before terminal selection so available event evidence is not left waiting
@@ -594,6 +598,9 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		return resultWithUsage(), nil
 	}
 	handleScanErr := func(scanErr error) (*StreamingResult, error, bool) {
+		if scanErr != nil && flushHeartbeatFrames != nil {
+			flushHeartbeatFrames()
+		}
 		if scanErr == nil {
 			return nil, nil, false
 		}
@@ -652,7 +659,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 	}
 	var lifecycleNormalizer wire.ResponseLifecycleNormalizer
 	pendingLifecycleHeader := ""
-	processSSELine := func(line string, queueDrained bool) {
+	processOutputLine := func(line string, queueDrained bool) {
 		if streamEarlyErr != nil {
 			return
 		}
@@ -998,6 +1005,20 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				terminalFailurePending = false
 				failureDelivered = true
 			}
+		}
+	}
+
+	var heartbeatFilter upstream.SSEHeartbeatLineFilter
+	// Parse only retained lines so upstream heartbeats cannot close the first-output
+	// retry window. Scanner arrival timestamps still include all upstream reads.
+	processSSELine := func(line string, queueDrained bool) {
+		for _, filtered := range heartbeatFilter.Push([]byte(line + "\n")) {
+			processOutputLine(strings.TrimSuffix(string(filtered), "\n"), queueDrained)
+		}
+	}
+	flushHeartbeatFrames = func() {
+		for _, filtered := range heartbeatFilter.Flush() {
+			processOutputLine(strings.TrimSuffix(string(filtered), "\n"), true)
 		}
 	}
 

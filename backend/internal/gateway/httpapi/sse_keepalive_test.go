@@ -400,3 +400,37 @@ func TestDownstreamSSEKeepaliveHTTPFailover(t *testing.T) {
 		})
 	}
 }
+
+// TestDownstreamSSEKeepaliveIgnoresUpstreamHeartbeatCadence sends upstream comments
+// more frequently than downstream beats. Those reads renew the stall clock,
+// while clients still receive local heartbeats before the first business event.
+func TestDownstreamSSEKeepaliveIgnoresUpstreamHeartbeatCadence(t *testing.T) {
+	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 12*time.Millisecond, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
+		reader, writer := io.Pipe()
+		defer reader.Close()
+		go func() {
+			defer writer.Close()
+			for range 8 {
+				time.Sleep(5 * time.Millisecond)
+				_, _ = io.WriteString(writer, ": upstream-only-marker\n\n")
+			}
+			_, _ = io.WriteString(writer, "data: {\"type\":\"response.output_text.delta\",\"delta\":\"content\"}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_active\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n")
+		}()
+		client := &http.Client{Transport: keepaliveTestTransport(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: reader}, nil
+		})}
+		req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, "https://upstream.test", nil)
+		require.NoError(t, err)
+		resp, err := timing.Do(client, req)
+		require.NoError(t, err)
+		timing.ObserveResponse(req.Context(), resp)
+		fixture := newResponsesFixture(responsesFixtureInputs{})
+		_, err = fixture.Output.ReadStreamObservation(req.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+		require.NoError(t, err)
+		synctest.Wait()
+		body := readKeepaliveBody(c, rec)
+		require.NotContains(t, body, "upstream-only-marker")
+		require.GreaterOrEqual(t, strings.Count(body, ": keepalive\n\n"), 2)
+		require.Less(t, strings.Index(body, ": keepalive"), strings.Index(body, "response.output_text.delta"))
+	})
+}

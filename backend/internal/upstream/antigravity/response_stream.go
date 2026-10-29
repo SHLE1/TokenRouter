@@ -308,13 +308,21 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 		flusher.Flush()
 	}
 
+	var heartbeatFilter upstream.SSEHeartbeatLineFilter
+
 	for {
 		select {
 		case ev, ok := <-events:
 			if !ok {
+				for _, line := range heartbeatFilter.Flush() {
+					cw.Write(line)
+				}
 				return &StreamResult{Usage: usage, ClientDisconnect: cw.Disconnected()}, nil
 			}
 			if ev.err != nil {
+				for _, line := range heartbeatFilter.Flush() {
+					cw.Write(line)
+				}
 				if disconnect, handled := HandleStreamReadError(ev.err, cw.Disconnected(), "antigravity gemini"); handled {
 					return &StreamResult{Usage: usage, ClientDisconnect: disconnect}, nil
 				}
@@ -327,51 +335,54 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 				return nil, ev.err
 			}
 
-			line := ev.line
-			s.observeRaw([]byte(line))
-			trimmed := strings.TrimRight(line, "\r\n")
-			if after, ok0 := strings.CutPrefix(trimmed, "data:"); ok0 {
-				payload := strings.TrimSpace(after)
-				if payload == "" || payload == "[DONE]" {
-					cw.Fprintf("%s\n", line)
-					continue
-				}
+			for _, filtered := range heartbeatFilter.Push([]byte(ev.line + "\n")) {
+				line := strings.TrimSuffix(string(filtered), "\n")
+				s.observeRaw([]byte(line))
+				trimmed := strings.TrimRight(line, "\r\n")
+				if after, ok0 := strings.CutPrefix(trimmed, "data:"); ok0 {
+					payload := strings.TrimSpace(after)
+					if payload == "[DONE]" {
+						cw.Fprintf("%s\n", line)
+						continue
+					}
 
-				inner, parseErr := s.UnwrapV1InternalResponse([]byte(payload))
-				if parseErr == nil && inner != nil {
-					payload = string(inner)
-				}
+					inner, parseErr := s.UnwrapV1InternalResponse([]byte(payload))
+					if parseErr == nil && inner != nil {
+						payload = string(inner)
+					}
 
-				// Replace adapter usage from the latest projected payload, while the
-				// executor raw observer independently accumulates sparse fields from
-				// earlier and later lines.
-				if u := bridge.NativeUsageProjection(bridge.NativeExtractGeminiUsage(inner)); u != nil {
-					usage = u
-				}
-				// Tool diagnostics require complete JSON decoding; decode failure
-				// leaves the forwarding payload and already projected usage available.
-				var parsed map[string]any
-				if json.Unmarshal(inner, &parsed) == nil {
-					// Log malformed tool output reported by the upstream.
-					if candidates, ok := parsed["candidates"].([]any); ok && len(candidates) > 0 {
-						if cand, ok := candidates[0].(map[string]any); ok {
-							if fr, ok := cand["finishReason"].(string); ok && fr == "MALFORMED_FUNCTION_CALL" {
-								logger.LegacyPrintf("service.antigravity_gateway", "[Antigravity] MALFORMED_FUNCTION_CALL detected in forward stream")
-								if content, ok := cand["content"]; ok {
-									if b, err := json.Marshal(content); err == nil {
-										logger.LegacyPrintf("service.antigravity_gateway", "[Antigravity] Malformed content: %s", string(b))
+					// Replace adapter usage from the latest projected payload, while the
+					// executor raw observer independently accumulates sparse fields from
+					// earlier and later lines.
+					if u := bridge.NativeUsageProjection(bridge.NativeExtractGeminiUsage(inner)); u != nil {
+						usage = u
+					}
+					// Tool diagnostics require complete JSON decoding; decode failure
+					// leaves the forwarding payload and already projected usage available.
+					var parsed map[string]any
+					if json.Unmarshal(inner, &parsed) == nil {
+						// Log malformed tool output reported by the upstream.
+						if candidates, ok := parsed["candidates"].([]any); ok && len(candidates) > 0 {
+							if cand, ok := candidates[0].(map[string]any); ok {
+								if fr, ok := cand["finishReason"].(string); ok && fr == "MALFORMED_FUNCTION_CALL" {
+									logger.LegacyPrintf("service.antigravity_gateway", "[Antigravity] MALFORMED_FUNCTION_CALL detected in forward stream")
+									if content, ok := cand["content"]; ok {
+										if b, err := json.Marshal(content); err == nil {
+											logger.LegacyPrintf("service.antigravity_gateway", "[Antigravity] Malformed content: %s", string(b))
+										}
 									}
 								}
 							}
 						}
 					}
+
+					cw.Fprintf("data: %s\n\n", payload)
+					continue
 				}
 
-				cw.Fprintf("data: %s\n\n", payload)
-				continue
-			}
+				cw.Fprintf("%s\n", line)
 
-			cw.Fprintf("%s\n", line)
+			}
 
 		case <-intervalCh:
 			lastRead := time.Unix(0, atomic.LoadInt64(&lastReadAt))

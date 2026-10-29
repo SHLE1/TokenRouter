@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -38,7 +37,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	responseupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
@@ -61,13 +59,6 @@ import (
 // MultiReader payload ends.
 type grokObservationErrorReader struct {
 	err error // configured fixture read failure
-}
-
-// grokPingFilterTestReadCloser counts every source-close invocation while
-// delegating reading.
-type grokPingFilterTestReadCloser struct {
-	reader     io.ReadCloser // delegated upstream source body
-	closeCount atomic.Int32  // observed source-close invocation count
 }
 
 // firstOutputCloseTrackingBody signals body closure while delegating the
@@ -159,325 +150,6 @@ func TestGrokNativeObservationRetainsPartialUsageAfterReadError(t *testing.T) {
 	require.False(t, result.ObservedOnly)
 	require.Equal(t, 9, result.Usage.InputTokens)
 	require.Equal(t, 2, result.Usage.OutputTokens)
-}
-
-// filterGrokPingTestInput reads the supplied SSE text through the billing-ping
-// filter and closes it. It asserts successful read/close and returns the
-// collected bytes for exact framing comparisons in these fixtures.
-func filterGrokPingTestInput(t *testing.T, input string) string {
-	t.Helper()
-	body := grok.NewGrokResponsesBillingPingFilterBody(
-		io.NopCloser(strings.NewReader(input)),
-		OpenAIResponseDefaultMaxLineSize,
-	)
-	output, err := io.ReadAll(body)
-	require.NoError(t, err)
-	require.NoError(t, body.Close())
-	return string(output)
-}
-
-// TestGrokResponsesBillingPingFilter mixes billing pings with comments, text,
-// unknown and terminal events. It checks two ping comments plus retained
-// nonping bytes and terminal usage in the filtered stream.
-func TestGrokResponsesBillingPingFilter(t *testing.T) {
-	input := strings.Join([]string{
-		": upstream keepalive",
-		"",
-		"event: response.output_text.delta",
-		`data: {"type":"response.output_text.delta","delta":"hello"}`,
-		"",
-		"event: future.vendor_event",
-		`data: {"type":"future.vendor_event","value":1}`,
-		"",
-		"event: ping",
-		`data: {"type":"ping","x-opencode-type":"inference-cost","cost":2.75,"input-tokens":42}`,
-		"",
-		"event: ping",
-		`data: {"type":"ping","cost":"0"}`,
-		"",
-		"event: response.completed",
-		`data: {"type":"response.completed","response":{"id":"resp_1","usage":{"input_tokens":3,"output_tokens":5}}}`,
-		"",
-	}, "\n")
-
-	result := filterGrokPingTestInput(t, input)
-	require.NotContains(t, result, "event: ping")
-	require.NotContains(t, result, `"x-opencode-type":"inference-cost"`)
-	require.NotContains(t, result, `{"type":"ping","cost":"0"}`)
-	require.Equal(t, 2, strings.Count(result, ": ping\n\n"))
-	require.Contains(t, result, ": upstream keepalive\n\n")
-	require.Contains(t, result, "event: response.output_text.delta")
-	require.Contains(t, result, `{"type":"response.output_text.delta","delta":"hello"}`)
-	require.Contains(t, result, "event: future.vendor_event")
-	require.Contains(t, result, `{"type":"future.vendor_event","value":1}`)
-	require.Contains(t, result, "event: response.completed")
-	require.Contains(t, result, `"usage":{"input_tokens":3,"output_tokens":5}`)
-}
-
-// TestGrokResponsesBillingPingFilterComposesWithClientToolStream wraps ping
-// filtering in client-tool response adaptation. It checks successful
-// collection/closure and retained ping-comment and completed-response fields
-// through both wrappers.
-func TestGrokResponsesBillingPingFilterComposesWithClientToolStream(t *testing.T) {
-	input := "event: ping\ndata: {\"type\":\"ping\",\"cost\":\"0\"}\n\n" +
-		"event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\"}}\n\n"
-	filtered := grok.NewGrokResponsesBillingPingFilterBody(
-		io.NopCloser(strings.NewReader(input)),
-		OpenAIResponseDefaultMaxLineSize,
-	)
-	body := upstreamcore.NewResponsesClientToolStreamBody(filtered, bridge.ResponsesClientToolMapping{
-		CustomTools: map[string]bool{"apply_patch": true},
-	}, OpenAIResponseDefaultMaxLineSize)
-
-	output, err := io.ReadAll(body)
-	require.NoError(t, err)
-	require.NoError(t, body.Close())
-	require.Contains(t, string(output), ": ping\n\n")
-	require.NotContains(t, string(output), "event: ping")
-	require.Contains(t, string(output), "event: response.completed")
-	require.Contains(t, string(output), `"id":"resp_1"`)
-}
-
-// TestGrokResponsesBillingPingFilterConvertsPingVariants enumerates
-// compatible, missing and malformed ping payloads. It checks exactly one
-// normalized SSE comment for each listed frame instead of asserting client
-// behavior beyond the fixture.
-func TestGrokResponsesBillingPingFilterConvertsPingVariants(t *testing.T) {
-	frames := []string{
-		"event: ping\ndata: {\"type\":\"ping\",\"x-opencode-type\":\"inference-cost\",\"cost\":\"0.06029240\"}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\",\"cost\":\"0\"}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\",\"cost\":\"0.06029240\"}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\",\"kind\":\"keepalive\"}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\"}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\",\"cost\":2}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\",\"cost\":0.0001}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\",\"cost\":\" 0 \"}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\",\"x-opencode-type\":\"keepalive\",\"cost\":0}\n\n",
-		"event: ping\ndata: {\"type\":\"ping\",\"x-opencode-type\":null,\"cost\":0}\n\n",
-		"event: ping\ndata: {\"cost\":\"0\"}\n\n",
-		"event: ping\ndata: {not-json}\n\n",
-		"event: ping\n\n",
-		"event: ping\n: vendor note\ndata: {\"type\":\"ping\"}\n\n",
-	}
-	result := filterGrokPingTestInput(t, strings.Join(frames, ""))
-	require.Equal(t, strings.Repeat(": ping\n\n", len(frames)), result)
-}
-
-// TestGrokResponsesBillingPingFilterPreservesNonPingFrames supplies mismatched
-// types, unnamed data, comments and retry lines. It checks exact byte
-// retention for those inputs through the filter helper.
-func TestGrokResponsesBillingPingFilterPreservesNonPingFrames(t *testing.T) {
-	input := strings.Join([]string{
-		"event: ping",
-		`data: {"type":" ping ","cost":0}`,
-		"",
-		"event: ping",
-		`data: {"type":"response.completed"}`,
-		"",
-		"event: custom",
-		`data: {"type":"ping","x-opencode-type":"inference-cost"}`,
-		"",
-		`data: {"type":"ping","cost":"0"}`,
-		"",
-		": keepalive comment",
-		"",
-		"retry: 1000",
-		"",
-	}, "\n")
-
-	require.Equal(t, input, filterGrokPingTestInput(t, input))
-}
-
-// TestGrokResponsesBillingPingFilterPassesThroughPingFrameWithUnknownField
-// adds an id field to the fixture ping frame. It checks exact retained bytes
-// for this unrecognized SSE-field combination.
-func TestGrokResponsesBillingPingFilterPassesThroughPingFrameWithUnknownField(t *testing.T) {
-	input := "event: ping\nid: 7\ndata: {\"type\":\"ping\",\"cost\":\"0\"}\n\n"
-	require.Equal(t, input, filterGrokPingTestInput(t, input))
-}
-
-// TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame exceeds
-// the filter's line-count and frame-byte bounds in separate inputs. It checks
-// exact byte retention for both large ping frames.
-func TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame(t *testing.T) {
-	// The event header and payload push these repeated comments beyond the
-	// frame line allowance, so exact retention can expose premature filtering.
-	lines := []string{"event: ping"}
-	for range grok.ResponsesPingFrameMaxLines {
-		lines = append(lines, ": filler comment")
-	}
-	lines = append(lines, `data: {"type":"ping","cost":"0"}`, "")
-	byLines := strings.Join(lines, "\n")
-	require.Equal(t, byLines, filterGrokPingTestInput(t, byLines))
-
-	// Padding alone reaches the frame-byte allowance before framing is added.
-	// This case also contains an unknown pad field, so it checks retention rather
-	// than isolating which pass-through condition was selected.
-	byBytes := "event: ping\ndata: {\"type\":\"ping\",\"pad\":\"" +
-		strings.Repeat("x", grok.ResponsesPingFrameMaxBytes) + "\"}\n\n"
-	require.Equal(t, byBytes, filterGrokPingTestInput(t, byBytes))
-}
-
-// TestGrokResponsesBillingPingFilterConvertsMalformedPingFrames supplies
-// invalid/trailing JSON pings and a partial future event with CRLF. It checks
-// normalized ping comments and exact retention of the unknown event bytes.
-func TestGrokResponsesBillingPingFilterConvertsMalformedPingFrames(t *testing.T) {
-	input := "event: ping\r\ndata: {not-json}\r\n\r\n" +
-		"event: ping\r\ndata: {\"type\":\"ping\",\"cost\":\"0\"} trailing\r\n\r\n" +
-		"event: future.response.event\r\ndata: {\"type\":\"future.response.event\"}"
-	want := ": ping\n\n" + ": ping\n\n" +
-		"event: future.response.event\r\ndata: {\"type\":\"future.response.event\"}"
-	require.Equal(t, want, filterGrokPingTestInput(t, input))
-}
-
-// TestGrokResponsesBillingPingFilterHandlesBareCRFrames uses bare carriage
-// returns for ping and future-event framing. It checks ping conversion and
-// preservation of the future event's supplied line separators.
-func TestGrokResponsesBillingPingFilterHandlesBareCRFrames(t *testing.T) {
-	input := "event: ping\rdata: {\"type\":\"ping\",\"cost\":\"0\"}\r\r" +
-		"event: future.event\rdata: {\"type\":\"future.event\"}\r\r"
-	want := ": ping\n\n" + "event: future.event\rdata: {\"type\":\"future.event\"}\r\r"
-	require.Equal(t, want, filterGrokPingTestInput(t, input))
-}
-
-// TestGrokResponsesBillingPingFilterConvertsPartialPingFrameAtEOF omits the
-// final blank line from a compatible ping. It checks that EOF still yields one
-// complete normalized SSE comment frame.
-func TestGrokResponsesBillingPingFilterConvertsPartialPingFrameAtEOF(t *testing.T) {
-	input := "event: ping\ndata: {\"type\":\"ping\",\"cost\":\"0\"}"
-	require.Equal(t, ": ping\n\n", filterGrokPingTestInput(t, input))
-}
-
-// TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokProviders reads ping
-// and terminal frames under an OpenAI target. It checks successful
-// reading/closure and exact downstream retention of the supplied stream.
-func TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokProviders(t *testing.T) {
-	input := "event: ping\ndata: {\"type\":\"ping\",\"cost\":\"0\"}\n\n" +
-		"event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"non-grok\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1},\"output\":[]}}\n\n"
-	body := io.NopCloser(strings.NewReader(input))
-	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: body}
-	recorder := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	output := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
-	_, err := output.ReadStreamObservation(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
-	require.NoError(t, err)
-	require.NoError(t, body.Close())
-	require.Equal(t, input, recorder.Body.String())
-}
-
-// TestGrokResponsesBillingPingFilterPreservesUsageAndTerminalEvent reads a
-// filtered Grok ping before a usage terminal. It checks response ID,
-// input/output usage and visible terminal with no billing-ping data.
-func TestGrokResponsesBillingPingFilterPreservesUsageAndTerminalEvent(t *testing.T) {
-	input := strings.Join([]string{
-		"event: ping",
-		`data: {"type":"ping","x-opencode-type":"inference-cost","cost":"0"}`,
-		"",
-		"event: response.completed",
-		`data: {"type":"response.completed","response":{"id":"resp_1","usage":{"input_tokens":3,"output_tokens":5}}}`,
-		"",
-	}, "\n")
-	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGrok}}
-	resp := &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     http.Header{},
-		Body: grok.NewGrokResponsesBillingPingFilterBody(
-			io.NopCloser(strings.NewReader(input)), OpenAIResponseDefaultMaxLineSize,
-		),
-	}
-	recorder := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	svc := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}, Corrector: responseupstream.NewCodexToolCorrector()}
-
-	result, err := svc.ReadStreamObservation(context.Background(), resp, c, provider, time.Now(), "grok-4.5", "grok-4.5", "")
-	require.NoError(t, err)
-	require.Equal(t, 3, result.Usage.InputTokens)
-	require.Equal(t, 5, result.Usage.OutputTokens)
-	require.Equal(t, "resp_1", result.ResponseID)
-	require.Contains(t, recorder.Body.String(), "response.completed")
-	require.NotContains(t, recorder.Body.String(), "inference-cost")
-	require.NotContains(t, recorder.Body.String(), "event: ping")
-}
-
-// Read delegates byte reading to the fixture's supplied source body.
-func (r *grokPingFilterTestReadCloser) Read(p []byte) (int, error) { return r.reader.Read(p) }
-
-// Close atomically counts every invocation before closing the supplied source.
-// It does not make that source closure idempotent; the filter lifecycle under
-// test determines how many calls reach this recorder.
-func (r *grokPingFilterTestReadCloser) Close() error {
-	// Count the attempt before delegating cleanup so a returned source error
-	// still accompanies the close observation used by cancellation assertions.
-	r.closeCount.Add(1)
-	return r.reader.Close()
-}
-
-// TestGrokResponsesBillingPingFilterCloseCancelsSourceOnce closes the filter
-// before any pipe data arrives. It checks one observed source close, a failed
-// subsequent write and cleanup of the pipe writer.
-func TestGrokResponsesBillingPingFilterCloseCancelsSourceOnce(t *testing.T) {
-	upstreamReader, upstreamWriter := io.Pipe()
-	source := &grokPingFilterTestReadCloser{reader: upstreamReader}
-	body := grok.NewGrokResponsesBillingPingFilterBody(source, OpenAIResponseDefaultMaxLineSize)
-
-	require.NoError(t, body.Close())
-	require.Eventually(t, func() bool { return source.closeCount.Load() == 1 }, time.Second, time.Millisecond)
-	_, err := upstreamWriter.Write([]byte("blocked"))
-	require.Error(t, err)
-	require.NoError(t, upstreamWriter.Close())
-}
-
-// TestGrokResponsesBillingPingFilterFlushesCompletedFrames writes one complete
-// future event while keeping the source pipe open. It checks that a reader
-// receives the event within the bounded fixture wait.
-func TestGrokResponsesBillingPingFilterFlushesCompletedFrames(t *testing.T) {
-	upstreamReader, upstreamWriter := io.Pipe()
-	body := grok.NewGrokResponsesBillingPingFilterBody(upstreamReader, OpenAIResponseDefaultMaxLineSize)
-	// Close the filter on every test exit to release its pipe read and any
-	// blocked producer, including when the completion wait fails.
-	t.Cleanup(func() { require.NoError(t, body.Close()) })
-
-	// Write one complete frame in a separate pipe producer while leaving EOF
-	// unavailable. Discard its write error because the bounded reader result
-	// below determines whether the filter releases that frame.
-	go func() {
-		_, _ = io.WriteString(upstreamWriter, "event: future.event\ndata: {\"type\":\"future.event\"}\n\n")
-	}()
-
-	result := make(chan error, 1)
-	// Run the read separately so its wait can fail while the pipe stays open;
-	// the buffered result permits error publication after cleanup closes the filter.
-	go func() {
-		buffer := make([]byte, 64)
-		n, err := body.Read(buffer)
-		if err == nil && !strings.Contains(string(buffer[:n]), "future.event") {
-			err = errors.New("completed frame was not forwarded")
-		}
-		result <- err
-	}()
-	// A one-second guard distinguishes complete-frame delivery from waiting for
-	// EOF; filter cleanup releases outstanding pipe work if it expires.
-	select {
-	case err := <-result:
-		require.NoError(t, err)
-	case <-time.After(time.Second):
-		t.Fatal("completed frame was buffered until upstream EOF")
-	}
-}
-
-// TestGrokResponsesBillingPingFilterReportsOversizedLine configures an
-// eight-byte scanner ceiling for a longer data line. It checks the
-// filter-specific read diagnostic and successful body cleanup afterward.
-func TestGrokResponsesBillingPingFilterReportsOversizedLine(t *testing.T) {
-	body := grok.NewGrokResponsesBillingPingFilterBody(
-		io.NopCloser(strings.NewReader("data: 123456789\n\n")),
-		8,
-	)
-	_, err := io.ReadAll(body)
-	require.ErrorContains(t, err, "filter Grok Responses billing ping")
-	require.NoError(t, body.Close())
 }
 
 // TestOpenAIStreamPairedFailureAppliesProviderSideEffectsOnce follows content
@@ -1783,8 +1455,8 @@ func TestOpenAIResponseFlush_BurstDoesNotIncreaseFlushes(t *testing.T) {
 }
 
 // TestOpenAIResponseFlush_CommentAndEOFOnlyFlushCompleteResidual mixes a text
-// frame, comment and unterminated DONE line. It checks three snapshots with
-// the final flush containing only the remaining EOF bytes.
+// frame, comment and unterminated DONE line. It checks that the comment is
+// removed and only content boundaries and final EOF bytes produce flushes.
 func TestOpenAIResponseFlush_CommentAndEOFOnlyFlushCompleteResidual(t *testing.T) {
 	body := "data: {\"type\":\"response.output_text.delta\",\"delta\":\"a\"}\n\n" +
 		": upstream-comment\n\n" +
@@ -1796,11 +1468,10 @@ func TestOpenAIResponseFlush_CommentAndEOFOnlyFlushCompleteResidual(t *testing.T
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	gotBody, flushes := recorder.snapshot()
-	require.Equal(t, body, gotBody)
-	require.Len(t, flushes, 3)
+	require.Equal(t, strings.ReplaceAll(body, ": upstream-comment\n\n", ""), gotBody)
+	require.Len(t, flushes, 2)
 	require.True(t, strings.HasSuffix(flushes[0], "\n\n"))
-	require.True(t, strings.HasSuffix(flushes[1], "\n\n"))
-	require.True(t, strings.HasSuffix(flushes[2], "data: [DONE]\n"), "EOF must flush only the remaining bytes")
+	require.True(t, strings.HasSuffix(flushes[1], "data: [DONE]\n"), "EOF must flush only the remaining bytes")
 }
 
 // TestOpenAIResponseFlush_TerminalReadErrorFlushesResidual returns an error

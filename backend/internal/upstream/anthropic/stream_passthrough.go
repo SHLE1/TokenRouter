@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -19,7 +18,8 @@ import (
 
 // stream_passthrough.go forwards API-key SSE lines and collects usage through
 // downstream write failures.
-// API-key SSE passthrough sends upstream lines while parsing their usage for
+// API-key SSE passthrough consumes upstream heartbeats and sends business
+// lines while parsing their usage for
 // local accounting. The first nonempty data payload supplies legacy arrival
 // timing, so an initial message_start can establish that timestamp before any
 // semantic content appears.
@@ -167,10 +167,30 @@ func StreamResponsePassthrough(
 		intervalTimer.Reset(streamInterval)
 	}
 
+	var heartbeatFilter upstream.SSEHeartbeatLineFilter
+	// Filtered lines retain their delimiters; only complete forwarded frames flush.
+	// A write failure stops delivery while the scanner continues collecting usage.
+	writeFilteredLines := func(lines [][]byte) {
+		for _, raw := range lines {
+			if clientDisconnected {
+				return
+			}
+			if _, err := w.Write(RestoreToolNamesInBytes(raw, options.ToolNames)); err != nil {
+				clientDisconnected = true
+				logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", options.ProviderID)
+				return
+			}
+			if string(raw) == "\n" {
+				flusher.Flush()
+			}
+		}
+	}
+
 	for {
 		select {
 		case ev, ok := <-events:
 			if !ok {
+				writeFilteredLines(heartbeatFilter.Flush())
 				if !clientDisconnected {
 					flusher.Flush()
 				}
@@ -190,6 +210,7 @@ func StreamResponsePassthrough(
 				return &StreamResult{Usage: usage, ClientDisconnect: clientDisconnected}, nil
 			}
 			if ev.err != nil {
+				writeFilteredLines(heartbeatFilter.Flush())
 				// A terminal marker was observed before this read error. Retain
 				// the collected completed result, because that later scanner
 				// failure does not remove the earlier completion evidence.
@@ -256,18 +277,7 @@ func StreamResponsePassthrough(
 			// A failed line or newline write ends further client delivery,
 			// while the loop continues reading usage. Flush at blank lines so
 			// successful output reaches complete frame boundaries during ordinary delivery.
-			if !clientDisconnected {
-				restored := string(RestoreToolNamesInBytes([]byte(line), options.ToolNames))
-				if _, err := io.WriteString(w, restored); err != nil {
-					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", options.ProviderID)
-				} else if _, err := io.WriteString(w, "\n"); err != nil {
-					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", options.ProviderID)
-				} else if line == "" {
-					flusher.Flush()
-				}
-			}
+			writeFilteredLines(heartbeatFilter.Push([]byte(line + "\n")))
 
 		case <-intervalCh:
 			lastRead := time.Unix(0, atomic.LoadInt64(&lastReadAt))

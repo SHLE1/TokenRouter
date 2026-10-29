@@ -508,19 +508,25 @@ func (s *ResponseAdapter) HandleNativeStreamingResponse(c *upstream.OutputContex
 	reader := bufio.NewReader(resp.Body)
 	usage := &upstream.TokenUsage{}
 
+	var heartbeatFilter upstream.SSEHeartbeatLineFilter
 	for {
 		line, err := reader.ReadString('\n')
+		var lines [][]byte
 		if line != "" {
+			lines = heartbeatFilter.Push([]byte(line))
+		}
+		if err != nil {
+			lines = append(lines, heartbeatFilter.Flush()...)
+		}
+		for _, filtered := range lines {
+			line := string(filtered)
 			trimmed := strings.TrimRight(line, "\r\n")
 			if after, ok0 := strings.CutPrefix(trimmed, "data:"); ok0 {
 				payload := strings.TrimSpace(after)
-				// Keep empty data and DONE lines as received because they describe stream
-				// framing and completion independently of JSON payload conversion and
-				// usage extraction.
+				// Heartbeat filtering consumed empty data frames. Preserve DONE as terminal
+				// evidence independently of JSON payload conversion and usage extraction.
 				if payload == "[DONE]" {
 					c.NextEvent(false, true)
-				}
-				if payload == "" || payload == "[DONE]" {
 					_, _ = io.WriteString(c.Writer, line)
 					flusher.Flush()
 				} else {
