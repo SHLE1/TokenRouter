@@ -55,7 +55,7 @@
 
 时区的优先级：标准的 `TZ`、兼容的 `TIMEZONE`、配置文件、默认值 `Asia/Shanghai`。`TZ` 非空时覆盖 `TIMEZONE`，容器运行时、应用的本地日统计和 PostgreSQL 连接的时区因此保持一致；无效的 IANA 名称在启动校验时失败。
 
-文本 SSE 的下游空闲心跳使用 `gateway.stream_keepalive_interval`，默认 10 秒，允许 5 至 30 秒，0 关闭统一文本保活。`gateway.stream_data_interval_timeout` 默认 180 秒，允许 30 至 300 秒，0 关闭上游静默上限；超过上限后统一组件停止发心跳，读取器仍执行自己的超时处理。排队心跳和图片专用配置分别保留，Compact 的专用 SSE 控制器继续复用文本间隔。提前提交 200 的条件、错误格式和心跳计数见[SSE 保活](../architecture/gateway_request_lifecycle.md#sse_keepalive)。
+文本 SSE 的下游空闲心跳使用 `gateway.stream_keepalive_interval`，默认 10 秒，允许 5 至 30 秒，0 关闭统一文本保活。`gateway.stream_data_interval_timeout` 默认 180 秒，允许 30 至 300 秒，0 关闭正文停滞上限；收到上游响应头后，统一组件按上游活动与 handler 字节写入中较晚的时间判断停滞，超过上限后停止发心跳。等待上游响应头期间由传输层响应头超时和首输出保护限制，心跳不会因正文停滞上限而中断，读取器仍执行自己的超时处理。排队心跳和图片专用配置分别保留，Compact 的专用 SSE 控制器继续复用文本间隔。提前提交 200 的条件、错误格式和心跳计数见[SSE 保活](../architecture/gateway_request_lifecycle.md#sse_keepalive)。
 
 ### 请求记录
 

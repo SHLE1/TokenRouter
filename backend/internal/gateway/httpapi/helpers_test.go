@@ -20,6 +20,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -3559,23 +3560,21 @@ func (p *diagnosticHTTPTransport) DoWithTLS(req *http.Request, proxy string, id 
 	return p.Do(req, proxy, id, n)
 }
 
-// installDownstreamKeepaliveTest binds the text controller to a direct reader fixture.
-// Call the returned stop function before inspecting its recorder; cleanup also
-// stops the worker if an assertion ends the test before normal reader return.
-func installDownstreamKeepaliveTest(t *testing.T, c *gin.Context, interval time.Duration) func() {
+// runSSEKeepaliveTest installs the real timing and heartbeat middleware for one request.
+// The callback executes inside a virtual-time bubble; it must synchronize worker
+// quiescence before inspecting the recorder while the handler is still active.
+func runSSEKeepaliveTest(t *testing.T, p protocol.ProtocolID, ua string, stream bool, stall time.Duration, handle func(*testing.T, *gin.Context, *httptest.ResponseRecorder)) {
 	t.Helper()
-	ctx := requeststate.WithClientProtocol(c.Request.Context(), protocol.ProtocolOpenAIResponses)
-	ctx, stages := timing.WithStages(ctx, time.Now(), nil)
-	stages.SetStream(true)
-	c.Request = c.Request.WithContext(ctx)
-	w := &sseKeepaliveWriter{
-		ResponseWriter: c.Writer, c: c, stages: stages, interval: interval,
-		lastWrite: time.Now(), atBoundary: true, anthropicBlockIndex: -1,
-		wake: make(chan struct{}, 1), done: make(chan struct{}),
-	}
-	c.Writer = w
-	c.Set(sseKeepaliveWriterKey, w)
-	w.openHeaderWait(ctx)
-	t.Cleanup(w.close)
-	return w.close
+	synctest.Test(t, func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		engine := gin.New()
+		engine.POST("/v1/messages", TextRequestTiming(), DownstreamSSEKeepalive(10*time.Millisecond, stall), func(c *gin.Context) {
+			c.Request = c.Request.WithContext(requeststate.WithClientProtocol(c.Request.Context(), p))
+			timing.StagesFromContext(c.Request.Context()).SetStream(stream)
+			handle(t, c, rec)
+		})
+		req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+		req.Header.Set("User-Agent", ua)
+		engine.ServeHTTP(rec, req)
+	})
 }

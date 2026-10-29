@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
@@ -26,9 +27,12 @@ import (
 	httptestkit "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/testkit"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	selectionadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -3842,4 +3846,76 @@ func selectionDiagnosticForStreamTest(t *testing.T, source *OpenAIResponsesExecu
 	require.NoError(t, err)
 	require.NotNil(t, result.Detail)
 	return result.Detail.Eligible, strings.Join(result.Detail.HardFilterReasons, ",")
+}
+
+// TestStreamSinkDoesNotClaimOwnershipAfterRacingHeartbeat reproduces commitment
+// between the reader's Written check and actual header application. Provider
+// turn-state ownership must remain unknown when heartbeat headers won that race.
+func TestStreamSinkDoesNotClaimOwnershipAfterRacingHeartbeat(t *testing.T) {
+	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 0, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
+		c.Request.Header.Set("session-id", "staged-race")
+		c.Set("api_key", &apikey.APIKey{ID: 7})
+		origins := session.NewCodexTurnOrigins(time.Now)
+		fixture := newResponsesFixture(responsesFixtureInputs{})
+		fixture.Output.Turns = &CodexTurnStateHeaders{Origins: origins}
+		target := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 42, Platform: capability.PlatformOpenAI}}
+		writer, ok := c.Writer.(*sseKeepaliveWriter)
+		require.True(t, ok)
+		writer.openHeaderWait(c.Request.Context())
+		output := upstreamcore.NewOutputContext(fixture.Output.streamSink(c, target))
+		output.Writer.Header().Set(CodexTurnStateHeader, "undelivered-state")
+		require.False(t, output.Writer.Written())
+		// The reader can be preempted after checking Written and before applying headers.
+		// Advance the heartbeat now to exercise that otherwise tiny scheduling window.
+		time.Sleep(15 * time.Millisecond)
+		synctest.Wait()
+		_, err := output.Writer.Write([]byte("data: {}\n\n"))
+		require.NoError(t, err)
+		_, known := origins.Owner("7\x00staged-race")
+		require.False(t, known, "undelivered header must not claim provider ownership")
+		require.Empty(t, rec.Header().Get(CodexTurnStateHeader))
+	})
+}
+
+// TestStreamSinkRecordsAppliedHeaderOwnership delivers provider headers before
+// any waiting heartbeat commits HTTP. The actual header and remembered owner
+// must agree, so provider switching can later reject foreign echoed turn state.
+func TestStreamSinkRecordsAppliedHeaderOwnership(t *testing.T) {
+	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 0, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
+		c.Request.Header.Set("session-id", "applied-header")
+		c.Set("api_key", &apikey.APIKey{ID: 7})
+		origins := session.NewCodexTurnOrigins(time.Now)
+		fixture := newResponsesFixture(responsesFixtureInputs{})
+		fixture.Output.Turns = &CodexTurnStateHeaders{Origins: origins}
+		target := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 42, Platform: capability.PlatformOpenAI}}
+		output := upstreamcore.NewOutputContext(fixture.Output.streamSink(c, target))
+		output.Writer.Header().Set(CodexTurnStateHeader, "delivered-state")
+		_, err := output.Writer.Write([]byte("data: {}\n\n"))
+		require.NoError(t, err)
+		owner, known := origins.Owner("7\x00applied-header")
+		require.True(t, known)
+		require.Equal(t, int64(42), owner)
+		require.Equal(t, "delivered-state", rec.Result().Header.Get(CodexTurnStateHeader))
+	})
+}
+
+// installDownstreamKeepaliveTest binds the text controller to a direct reader fixture.
+// Call the returned stop function before inspecting its recorder; cleanup also
+// stops the worker if an assertion ends the test before normal reader return.
+func installDownstreamKeepaliveTest(t *testing.T, c *gin.Context, interval time.Duration) func() {
+	t.Helper()
+	ctx := requeststate.WithClientProtocol(c.Request.Context(), protocol.ProtocolOpenAIResponses)
+	ctx, stages := timing.WithStages(ctx, time.Now(), nil)
+	stages.SetStream(true)
+	c.Request = c.Request.WithContext(ctx)
+	w := &sseKeepaliveWriter{
+		ResponseWriter: c.Writer, c: c, stages: stages, interval: interval,
+		lastWrite: time.Now(), atBoundary: true, anthropicBlockIndex: -1,
+		wake: make(chan struct{}, 1), done: make(chan struct{}),
+	}
+	c.Writer = w
+	c.Set(sseKeepaliveWriterKey, w)
+	w.openHeaderWait(ctx)
+	t.Cleanup(w.close)
+	return w.close
 }

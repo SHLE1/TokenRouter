@@ -60,8 +60,12 @@ type sseKeepaliveWriter struct {
 	streaming      bool                // cached client streaming intent
 	headerWaitOpen bool                // early HTTP commitment eligibility
 	explicitStatus int                 // handler-selected pending HTTP status
-	lastWrite      time.Time           // most recent accepted output
-	atBoundary     bool                // complete SSE frame boundary
+	// lastWrite includes local heartbeats for idle scheduling. lastHandlerWrite
+	// changes only on accepted handler bytes, so timer heartbeats cannot renew
+	// the committed response's inactivity allowance by observing their own output.
+	lastWrite        time.Time // most recent accepted output
+	lastHandlerWrite time.Time // last accepted handler write time
+	atBoundary       bool      // complete SSE frame boundary
 	// tail and frame track input across Write calls. tail preserves separators
 	// after frame reaches its bounded prefix limit; frame stores inspection bytes.
 	tail                [3]byte // previous three output bytes
@@ -81,8 +85,8 @@ type sseKeepaliveWriter struct {
 }
 
 // DownstreamSSEKeepalive installs idle heartbeats for timed HTTP text requests.
-// A nonpositive interval disables it; a nonpositive stall permits unlimited
-// upstream waiting. The middleware must immediately follow TextRequestTiming.
+// A nonpositive interval disables it; a nonpositive stall disables the
+// committed body inactivity cutoff. Pending upstream headers use transport budgets. The middleware must immediately follow TextRequestTiming.
 //
 // Header-wait callbacks open early commitment only for client-streamed text.
 // Once committed, complete SSE boundaries determine safe heartbeat insertion,
@@ -97,7 +101,7 @@ func DownstreamSSEKeepalive(interval, stall time.Duration) gin.HandlerFunc {
 		// Compact owns a separate background writer and never participates in text
 		// heartbeats. Leave its writer untouched so its worker cannot enter handler-only
 		// refresh methods while a Compact attempt replaces the request context.
-		compact := strings.HasSuffix(strings.TrimSuffix(c.Request.URL.Path, "/"), "/responses/compact")
+		compact := RouteProtocol(c.Request.Method, strings.TrimSuffix(c.Request.URL.Path, "/")) == protocol.ProtocolResponsesCompact
 		if interval <= 0 || stages == nil || compact {
 			c.Next()
 			return
@@ -207,6 +211,7 @@ func (w *sseKeepaliveWriter) wroteLocked(p []byte, err error, complete bool) {
 	}
 	if len(p) > 0 {
 		w.lastWrite = time.Now()
+		w.lastHandlerWrite = w.lastWrite
 		w.observeLocked(p)
 	}
 	if w.committedSSELocked() {
@@ -371,9 +376,11 @@ func (w *sseKeepaliveWriter) committedSSELocked() bool {
 // Uncommitted streaming dispatches may select HTTP 200 SSE after an idle
 // interval, provided handler metadata has not selected another response. Already
 // committed responses require a complete frame boundary and successful SSE
-// status. Upstream inactivity overrides both cases, preventing downstream
-// keepalives from hiding a stalled provider indefinitely. Accepted heartbeat
-// bytes join the same response-size snapshot used by provider retry checks.
+// status. Pending upstream response headers remain governed by transport and
+// first-output budgets even if a heartbeat already committed downstream HTTP.
+// Once headers arrive, upstream activity or accepted handler bytes renew the
+// inactivity allowance; local timer writes never renew that allowance.
+// Accepted heartbeat bytes join the same response-size snapshot used by provider retry checks.
 func (w *sseKeepaliveWriter) beatLocked(now time.Time) {
 	if w.disabled || w.terminal {
 		return
@@ -383,10 +390,18 @@ func (w *sseKeepaliveWriter) beatLocked(now time.Time) {
 	default:
 		return
 	}
-	if w.stall > 0 && now.Sub(w.stages.LastUpstreamActivity()) >= w.stall {
-		return
-	}
 	if w.ResponseWriter.Written() {
+		// A heartbeat may have committed HTTP while the transport still awaits
+		// headers. Only body-phase inactivity may stop an otherwise eligible beat.
+		if w.stall > 0 && !w.stages.UpstreamHeadersPending() {
+			activity := w.stages.LastUpstreamActivity()
+			if w.lastHandlerWrite.After(activity) {
+				activity = w.lastHandlerWrite
+			}
+			if now.Sub(activity) >= w.stall {
+				return
+			}
+		}
 		if !w.committedSSELocked() || !w.atBoundary {
 			return
 		}
@@ -451,7 +466,7 @@ func (w *sseKeepaliveWriter) observeLocked(p []byte) {
 		if len(w.frame) < sseKeepaliveFrameLimit {
 			w.frame = append(w.frame, b)
 		}
-		boundary := b == '\n' && ((w.tailLen > 0 && w.tail[w.tailLen-1] == '\n') || (w.tailLen == 3 && w.tail == [3]byte{'\r', '\n', '\r'}))
+		boundary := b == '\n' && ((w.tailLen > 0 && w.tail[w.tailLen-1] == '\n') || (w.tailLen >= 2 && w.tail[w.tailLen-2] == '\n' && w.tail[w.tailLen-1] == '\r'))
 		w.atBoundary = boundary
 		if boundary {
 			w.observeFrameLocked()

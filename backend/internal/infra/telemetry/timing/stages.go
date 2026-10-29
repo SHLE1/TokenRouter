@@ -54,6 +54,9 @@ type Stages struct {
 	// outside it so downstream writers can query streaming state without deadlock.
 	upstreamRequestListener func(context.Context)
 	lastUpstreamActivity    atomic.Int64 // latest upstream activity UnixNano
+	// upstreamHeaderWaits counts HTTP dispatches that have not returned headers
+	// or an error. Do owns increments and deferred decrements across all outcomes.
+	upstreamHeaderWaits atomic.Int64
 }
 
 // stageBody measures original reads without buffering or retaining request bytes.
@@ -453,3 +456,8 @@ func (s *Stages) ObserveUpstreamActivity(at time.Time) { s.lastUpstreamActivity.
 
 // LastUpstreamActivity returns the latest transport activity for downstream stall checks.
 func (s *Stages) LastUpstreamActivity() time.Time { return time.Unix(0, s.lastUpstreamActivity.Load()) }
+
+// UpstreamHeadersPending reports whether an HTTP dispatch still awaits response headers.
+// It remains true across downstream heartbeat commitment; body inactivity starts
+// governing keepalives only after those transport waits have finished.
+func (s *Stages) UpstreamHeadersPending() bool { return s.upstreamHeaderWaits.Load() > 0 }

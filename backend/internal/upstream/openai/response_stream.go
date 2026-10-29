@@ -86,10 +86,6 @@ type StreamOptions struct {
 	// client headers; its returned attempt header map stays available until a
 	// progress-event commit opportunity.
 	PrepareHeaders func(http.Header, bool, http.Header) http.Header
-	// StagedHeadersCommitted observes header application during progress completion
-	// when the staged map is nonempty and the writer is still uncommitted; it has
-	// no independent once guard.
-	StagedHeadersCommitted func(http.Header)
 	// Observe sees raw upstream data and effective event type before lifecycle
 	// normalization, model rewriting, client-tool restoration, or delivery trimming
 	// occurs.
@@ -264,7 +260,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 
-	// Unstaged attempts can expose request ID immediately; staged headers wait
+	// Unstaged attempts prepare request ID immediately; staged headers wait
 	// for progress and cannot be applied after the client writer has committed.
 	if !stageFirstOutput && resp.Header.Get("x-request-id") != "" {
 		v := resp.Header.Get("x-request-id")
@@ -279,7 +275,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				c.Writer.Header().Add(key, value)
 			}
 		}
-		options.StagedHeadersCommitted(attemptResponseHeaders)
 		// Reapply framing headers after approved provider values, preventing
 		// an upstream content type or cache setting from replacing the gateway's SSE format.
 		c.Header("Content-Type", "text/event-stream")

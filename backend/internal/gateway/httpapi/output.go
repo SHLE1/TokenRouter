@@ -23,8 +23,10 @@ import (
 // before that handoff completed. Later OutputState calls inspect status and
 // commitment through the writer's optional interfaces without accessing
 // headers, so those observations do not repeat the heartbeat handoff.
-// Upstream sinks bind the request's timing writer before emission. Local HTTP
-// errors use the ordinary writer directly and cannot establish upstream delivery.
+// Header observers run only after Begin takes over preparation and confirms
+// that metadata is still applicable. Upstream sinks bind the request's timing
+// writer before emission. Local HTTP errors use the ordinary writer directly
+// and cannot establish upstream delivery.
 
 // MessagesOutput supplies synchronous HTTP output and request observations.
 // Executors read identity, routing, body, and funding state through execution.Request.
@@ -48,6 +50,9 @@ type ResponseSink struct {
 	// timing identifies the final writer beneath optional HTTP wrappers. Nil
 	// disables source observation for requests outside HTTP text timing scope.
 	timing *timingWriter
+	// headersApplied observes provider metadata only when Begin can still set
+	// response headers. It runs synchronously after copying, before payload emission.
+	headersApplied func(http.Header)
 }
 
 // NewResponseSink binds upstream delivery to the current HTTP writer and timing.
@@ -63,11 +68,26 @@ func NewResponseSink(c *gin.Context) ResponseSink {
 // synchronously. The bound writer is required; its own commitment rules decide
 // whether a status write takes effect, while input header slices remain
 // separate from the output map.
+//
+// Header access closes the downstream early-commit window before checking
+// whether metadata remains writable. The optional observer runs only when
+// those headers were eligible for application, preventing a heartbeat that
+// already committed HTTP from publishing an undelivered provider identity.
 func (s ResponseSink) Begin(head upstream.OutputHead) error {
+	// Header access takes ownership from the heartbeat writer before commitment
+	// is sampled, so a timer cannot win between eligibility and metadata copying.
+	headers := s.Writer.Header()
+	observe := s.headersApplied
+	if s.ctx == nil || s.ctx.Writer.Written() {
+		observe = nil
+	}
 	for key, values := range head.Header {
-		s.Writer.Header()[key] = append([]string(nil), values...)
+		headers[key] = append([]string(nil), values...)
 	}
 	s.Writer.WriteHeader(head.Status)
+	if observe != nil {
+		observe(head.Header)
+	}
 	return nil
 }
 

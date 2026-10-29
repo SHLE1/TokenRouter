@@ -50,7 +50,8 @@ import (
 // ErrorResponse. Client-tool stream wrapping uses any positive configured line
 // limit, independently of Configured. Response ownership and usage snapshots
 // are delegated after the runner observes their corresponding output; body
-// closure and retry ordering stay with RunHTTP.
+// closure and retry ordering stay with RunHTTP. Streaming sinks record provider
+// header ownership at application, independently of earlier codec preparation.
 func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, input forward.HTTPInput, exchange openai.HTTPExchangeOptions, retryEncrypted func([]byte) ([]byte, bool, error), markLineage func([]byte)) forward.HTTPOptions {
 	imageDriverError := func(status int, body []byte) *openai.OpenAIImagesUpstreamError {
 		if !input.OAuth || !input.ImageMainModelAdapted {
@@ -58,8 +59,12 @@ func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, 
 		}
 		return openai.OpenAIImagesMainModelError(status, body, input.UpstreamModel, input.ImageBillingModel)
 	}
+	sink := NewResponseSink(c)
+	if input.Stream {
+		sink = s.Output.streamSink(c, provider)
+	}
 	return forward.HTTPOptions{
-		Exchange: exchange, Sink: NewResponseSink(c),
+		Exchange: exchange, Sink: sink,
 		StreamOptions: func() openai.StreamOptions {
 			return s.Output.StreamOptions(ctx, c, provider, input.ReasoningEffortValue)
 		},

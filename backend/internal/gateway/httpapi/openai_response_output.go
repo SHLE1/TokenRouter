@@ -129,7 +129,7 @@ func ExecutionErrorProvider(value *gatewayadapter.ExecutionProvider) *UpstreamEr
 // and the execution caller retains response-body cleanup while the reader
 // invokes synchronous request-bound output callbacks.
 func (p *OpenAIResponseOutput) ReadStreamObservation(ctx context.Context, resp *http.Response, c *gin.Context, target *gatewayadapter.ExecutionProvider, started time.Time, original, mapped, effort string) (*openai.StreamingResult, error) {
-	return openai.ReadStreamingResponse(ctx, resp, upstream.NewOutputContext(NewResponseSink(c)), p.StreamOptions(ctx, c, target, effort), started, original, mapped, effort)
+	return openai.ReadStreamingResponse(ctx, resp, upstream.NewOutputContext(p.streamSink(c, target)), p.StreamOptions(ctx, c, target, effort), started, original, mapped, effort)
 }
 
 // NonStream delegates native Responses buffered reading and HTTP output for
@@ -138,4 +138,13 @@ func (p *OpenAIResponseOutput) ReadStreamObservation(ctx context.Context, resp *
 // completion decision.
 func (p *OpenAIResponseOutput) NonStream(ctx context.Context, resp *http.Response, c *gin.Context, target *gatewayadapter.ExecutionProvider, original, mapped string) (*openai.NonStreamingResult, error) {
 	return openai.ReadNonStreamingResponse(ctx, resp, upstream.NewOutputContext(NewResponseSink(c)), p.NonStreamOptions(ctx, c, target), original, mapped)
+}
+
+// streamSink records provider header ownership at the HTTP application boundary.
+// Its observer runs only when response metadata can still reach the client,
+// so initializing or discarding a stream cannot publish an undelivered turn state.
+func (p *OpenAIResponseOutput) streamSink(c *gin.Context, target *gatewayadapter.ExecutionProvider) ResponseSink {
+	sink := NewResponseSink(c)
+	sink.headersApplied = func(headers http.Header) { p.Turns.Commit(c, target, headers) }
+	return sink
 }

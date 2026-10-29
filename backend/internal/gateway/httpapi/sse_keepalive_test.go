@@ -41,25 +41,6 @@ type keepaliveDelayedBody struct {
 // RoundTrip runs the fixture's synchronous transport without opening a network connection.
 func (f keepaliveTestTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-// runSSEKeepaliveTest installs the real timing and heartbeat middleware for one request.
-// The callback executes inside a virtual-time bubble; it must synchronize worker
-// quiescence before inspecting the recorder while the handler is still active.
-func runSSEKeepaliveTest(t *testing.T, p protocol.ProtocolID, ua string, stream bool, stall time.Duration, handle func(*testing.T, *gin.Context, *httptest.ResponseRecorder)) {
-	t.Helper()
-	synctest.Test(t, func(t *testing.T) {
-		rec := httptest.NewRecorder()
-		engine := gin.New()
-		engine.POST("/v1/messages", TextRequestTiming(), DownstreamSSEKeepalive(10*time.Millisecond, stall), func(c *gin.Context) {
-			c.Request = c.Request.WithContext(requeststate.WithClientProtocol(c.Request.Context(), p))
-			timing.StagesFromContext(c.Request.Context()).SetStream(stream)
-			handle(t, c, rec)
-		})
-		req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
-		req.Header.Set("User-Agent", ua)
-		engine.ServeHTTP(rec, req)
-	})
-}
-
 // TestDownstreamSSEKeepaliveFraming exercises complete frames, split boundaries,
 // terminal events and client protocols. Idle beats must use the selected wire
 // format and never enter an incomplete or already terminated SSE event stream.
@@ -77,6 +58,7 @@ func TestDownstreamSSEKeepaliveFraming(t *testing.T) {
 		{"messages", protocol.ProtocolAnthropicMessages, []string{"data: {}\n\n"}, "event: ping\ndata: {\"type\": \"ping\"}\n\n"},
 		{"compact excluded", protocol.ProtocolResponsesCompact, []string{"data: {}\n\n"}, ""},
 		{"partial", protocol.ProtocolOpenAIResponses, []string{"data: {"}, ""},
+		{"mixed LF and CRLF", protocol.ProtocolOpenAIResponses, []string{"data: {}\n", "\r", "\n"}, ": keepalive\n\n"},
 		{"split CRLF", protocol.ProtocolOpenAIResponses, []string{"data: {}\r", "\n\r", "\n"}, ": keepalive\n\n"},
 		{"done", protocol.ProtocolOpenAIChatCompletions, []string{"data: [DONE]\n\n"}, ""},
 		{"message stop", protocol.ProtocolAnthropicMessages, []string{"event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"}, ""},
@@ -166,17 +148,19 @@ func TestDownstreamSSEKeepaliveHeaderWait(t *testing.T) {
 	}
 }
 
-// TestDownstreamSSEKeepaliveStallLimit lets an upstream wait beyond its inactivity
+// TestDownstreamSSEKeepaliveStallLimit holds a committed body beyond its inactivity
 // budget. Only beats before the cutoff may reach the client; observing another
 // upstream byte renews activity and permits downstream heartbeats again.
 func TestDownstreamSSEKeepaliveStallLimit(t *testing.T) {
 	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 25*time.Millisecond, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
 		w, ok := c.Writer.(*sseKeepaliveWriter)
 		require.True(t, ok)
-		w.openHeaderWait(c.Request.Context())
+		c.Header("Content-Type", "text/event-stream")
+		_, err := c.Writer.Write([]byte("data: {}\n\n"))
+		require.NoError(t, err)
 		time.Sleep(80 * time.Millisecond)
 		synctest.Wait()
-		require.Equal(t, strings.Repeat(": keepalive\n\n", 2), readKeepaliveBody(t, c, rec))
+		require.Equal(t, "data: {}\n\n"+strings.Repeat(": keepalive\n\n", 2), readKeepaliveBody(t, c, rec))
 		w.stages.ObserveUpstreamActivity(time.Now())
 		time.Sleep(15 * time.Millisecond)
 		synctest.Wait()
@@ -238,7 +222,7 @@ func TestDownstreamSSEKeepaliveConcurrentHeaders(t *testing.T) {
 // acquire a writer or dispatch listener. The route remains ordinary HTTP even
 // when the caller marks a protocol on its request context.
 func TestDownstreamSSEKeepaliveSkipsUntimedRequests(t *testing.T) {
-	for _, path := range []string{"/media", "/v1/responses/compact"} {
+	for _, path := range []string{"/media", "/v1/responses/compact", "/responses/compact", "/backend-api/codex/responses/compact"} {
 		engine := gin.New()
 		engine.POST(path, TextRequestTiming(), DownstreamSSEKeepalive(time.Millisecond, 0), func(c *gin.Context) {
 			_, installed := c.Get(sseKeepaliveWriterKey)
@@ -274,14 +258,11 @@ func (r *keepaliveDelayedBody) Read(p []byte) (int, error) {
 }
 
 // TestDownstreamSSEKeepaliveThinkingWait returns headers immediately but delays
-// the first upstream event. Both staged Responses and Anthropic conversion
+// the first upstream event. Staged Responses, Grok and Anthropic conversion
 // must deliver downstream heartbeats before any provider content becomes available.
 func TestDownstreamSSEKeepaliveThinkingWait(t *testing.T) {
-	for _, conversion := range []bool{false, true} {
-		name := "responses"
-		if conversion {
-			name = "anthropic conversion"
-		}
+	for _, name := range []string{"responses", "grok", "anthropic conversion"} {
+		conversion := name == "anthropic conversion"
 		t.Run(name, func(t *testing.T) {
 			runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 0, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
 				payload := "data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello\"}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_test\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n"
@@ -292,7 +273,9 @@ func TestDownstreamSSEKeepaliveThinkingWait(t *testing.T) {
 					body := &keepaliveDelayedBody{Reader: strings.NewReader(payload), beforeRead: func() {
 						time.Sleep(25 * time.Millisecond)
 						synctest.Wait()
-						require.Contains(t, readKeepaliveBody(t, c, rec), ": keepalive\n\n")
+						if !strings.Contains(readKeepaliveBody(t, c, rec), ": keepalive\n\n") {
+							t.Error("downstream heartbeat missing before the first upstream event")
+						}
 					}}
 					return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(body)}, nil
 				})}
@@ -311,7 +294,11 @@ func TestDownstreamSSEKeepaliveThinkingWait(t *testing.T) {
 					}, output, "model", "model", nil, time.Now(), bridge.ResponsesClientToolMapping{})
 				} else {
 					fixture := newResponsesFixture(responsesFixtureInputs{})
-					_, err = fixture.Output.ReadStreamObservation(req.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+					platform := capability.PlatformOpenAI
+					if name == "grok" {
+						platform = capability.PlatformGrok
+					}
+					_, err = fixture.Output.ReadStreamObservation(req.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: platform}}, time.Now(), "model", "model", "")
 				}
 				require.NoError(t, err)
 			})
@@ -440,5 +427,57 @@ func TestDownstreamSSEKeepaliveIgnoresUpstreamHeartbeatCadence(t *testing.T) {
 		require.NotContains(t, body, "upstream-only-marker")
 		require.GreaterOrEqual(t, strings.Count(body, ": keepalive\n\n"), 2)
 		require.Less(t, strings.Index(body, ": keepalive"), strings.Index(body, "response.output_text.delta"))
+	})
+}
+
+// TestDownstreamSSEKeepaliveLongHeaderWait keeps the transport pending beyond
+// several body inactivity budgets. Heartbeats must continue after their own
+// HTTP commitment, then respect a fresh body budget when upstream headers arrive.
+func TestDownstreamSSEKeepaliveLongHeaderWait(t *testing.T) {
+	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 25*time.Millisecond, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
+		client := &http.Client{Transport: keepaliveTestTransport(func(*http.Request) (*http.Response, error) {
+			time.Sleep(85 * time.Millisecond)
+			synctest.Wait()
+			require.GreaterOrEqual(t, strings.Count(readKeepaliveBody(t, c, rec), ": keepalive"), 8)
+			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(""))}, nil
+		})}
+		req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, "https://upstream.test", nil)
+		require.NoError(t, err)
+		resp, err := timing.Do(client, req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		time.Sleep(20 * time.Millisecond)
+		synctest.Wait()
+		require.Equal(t, 10, strings.Count(readKeepaliveBody(t, c, rec), ": keepalive"))
+		before := StreamHeartbeatBytes(c)
+		time.Sleep(60 * time.Millisecond)
+		synctest.Wait()
+		require.Equal(t, before, StreamHeartbeatBytes(c), "local beats must not renew the body stall clock")
+	})
+}
+
+// TestDownstreamSSEKeepaliveHandlerActivity covers an output path without HTTP
+// transport observations. Accepted handler bytes must renew the body budget,
+// while subsequent timer heartbeats cannot keep a silent response alive forever.
+func TestDownstreamSSEKeepaliveHandlerActivity(t *testing.T) {
+	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 25*time.Millisecond, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
+		stages := timing.StagesFromContext(c.Request.Context())
+		stages.ObserveUpstreamActivity(time.Now().Add(-time.Hour))
+		c.Header("Content-Type", "text/event-stream")
+		for range 3 {
+			_, err := c.Writer.Write([]byte("data: {\"text\":\"active\"}\n\n"))
+			require.NoError(t, err)
+			before := StreamHeartbeatBytes(c)
+			time.Sleep(20 * time.Millisecond)
+			synctest.Wait()
+			require.Greater(t, StreamHeartbeatBytes(c), before)
+		}
+		time.Sleep(30 * time.Millisecond)
+		synctest.Wait()
+		before := StreamHeartbeatBytes(c)
+		time.Sleep(50 * time.Millisecond)
+		synctest.Wait()
+		require.Equal(t, before, StreamHeartbeatBytes(c))
+		require.Equal(t, 3, strings.Count(readKeepaliveBody(t, c, rec), `"active"`))
 	})
 }

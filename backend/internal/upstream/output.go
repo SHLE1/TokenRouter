@@ -267,6 +267,7 @@ func (w *sinkWriter) Header() http.Header { return w.header }
 // A successful local Begin stays authoritative even when a supporting sink
 // omits later metadata. This query never requests Header, so reading current
 // commitment cannot stop a waiting controller or take over response preparation.
+// Observed commitment is cached because HTTP cannot become uncommitted again.
 func (w *sinkWriter) Written() bool {
 	if w.written {
 		return true
@@ -275,7 +276,8 @@ func (w *sinkWriter) Written() bool {
 		// OutputState reads current HTTP commitment without accessing response headers.
 		OutputState() OutputHead
 	}); ok {
-		return state.OutputState().Committed
+		w.written = state.OutputState().Committed
+		return w.written
 	}
 	return false
 }

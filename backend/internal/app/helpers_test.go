@@ -236,6 +236,9 @@ type gatewayHTTPFixtureInput struct {
 // gatewayHTTPEndpointsFixture exposes bound HTTP entry points and retained
 // inputs for assembly tests.
 type gatewayHTTPEndpointsFixture struct {
+	// textHandler rebuilds the production receiver from retained fixture inputs.
+	// Route tests register this receiver directly to exercise the full middleware chain.
+	textHandler func() *gatewayhttp.OpenAITextHandler
 	// Input points to the constructor's retained input copy; serial tests
 	// change its options before invoking callbacks that rebuild handler
 	// bindings.
@@ -1145,6 +1148,7 @@ func newGatewayHTTPEndpoints(input gatewayHTTPFixtureInput) *gatewayHTTPEndpoint
 		bindings.EligibilityProber = nil
 		return mediaentry.New(bindings)
 	}
+	f.textHandler = text
 	f.Responses = func(c *gin.Context) { text().Responses(c) }
 	f.Messages = func(c *gin.Context) { text().Messages(c) }
 	f.ChatCompletions = func(c *gin.Context) { text().ChatCompletions(c) }

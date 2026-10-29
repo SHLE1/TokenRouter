@@ -10,15 +10,16 @@ import (
 
 // initialOutputSink supplies previously committed metadata and controlled emit failures.
 type initialOutputSink struct {
-	head    OutputHead // initial response commitment
-	emitErr error      // injected emission failure
+	head       OutputHead // initial response commitment
+	emitErr    error      // injected emission failure
+	stateReads int        // live commitment query count
 }
 
 // InitialOutput returns initial headers and both independent commitment observations.
 func (s *initialOutputSink) InitialOutput() OutputHead { return s.head }
 
 // OutputState returns commitment without accessing or initializing output headers.
-func (s *initialOutputSink) OutputState() OutputHead { return s.head }
+func (s *initialOutputSink) OutputState() OutputHead { s.stateReads++; return s.head }
 
 // Begin accepts response metadata without changing the fixture's initial observations.
 func (s *initialOutputSink) Begin(OutputHead) error { return nil }
@@ -70,4 +71,22 @@ func TestOutputContentCommitmentRequiresAcceptedRetryPayload(t *testing.T) {
 	sink.head.ContentCommitted = true
 	require.True(t, NewOutputContext(sink).Writer.ContentWritten())
 	require.True(t, NewDeferredOutputContext(sink).Writer.ContentWritten())
+}
+
+// TestOutputWriterCachesHTTPCommitment changes live sink state after codec
+// creation. Once commitment becomes true, later observations must retain it
+// without repeatedly traversing the sink's synchronized state accessors.
+func TestOutputWriterCachesHTTPCommitment(t *testing.T) {
+	sink := &initialOutputSink{}
+	output := NewOutputContext(sink)
+	require.False(t, output.Writer.Written())
+	require.Equal(t, 1, sink.stateReads)
+	sink.head.Committed = true
+	require.True(t, output.Writer.Written())
+	require.Equal(t, 2, sink.stateReads)
+	for range 3 {
+		require.True(t, output.Writer.Written())
+	}
+	require.Equal(t, 2, sink.stateReads)
+	require.False(t, output.Writer.ContentWritten())
 }
