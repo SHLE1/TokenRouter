@@ -86,7 +86,7 @@ func StartOpenAICompactSSEKeepalive(c *gin.Context, interval time.Duration) func
 }
 
 // StartOpenAISSEKeepalive starts heartbeats for callers that have already selected SSE output.
-// Callers include Responses passthrough and Images response-header waits.
+// Callers include Compact output and Images response-header waits.
 // Use HeartbeatAdjustedWrittenSize to exclude heartbeat bytes from failover checks (#3887).
 // A nil context or writer, or a nonpositive interval, returns a no-op cleanup.
 // A missing request supplies no cancellation channel, so cleanup ends its worker.

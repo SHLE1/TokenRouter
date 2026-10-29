@@ -134,7 +134,7 @@ func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context
 		FirstOutputError: func(start time.Time, model, effort string, timeout time.Duration, phase string, headers http.Header) error {
 			return p.FirstOutputFailure(ctx, c, provider, start, model, effort, timeout, phase, headers)
 		},
-		KeepaliveBytes:                      func(count int) { RecordOpenAIStreamKeepaliveBytes(c, count) },
+
 		BuildOpenAIResponseFailedSSE:        gatewayprovider.BuildOpenAIResponseFailedSSE,
 		WrapOpenAIUpstreamWarningIfCyber:    gatewayprovider.WrapOpenAIUpstreamWarningIfCyber,
 		TruncateString:                      logredact.TruncateUTF8,
@@ -153,10 +153,6 @@ func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context
 		if p.Options.StreamDataIntervalTimeout > 0 {
 			// Reader timer configuration stores whole seconds.
 			options.StreamInterval = time.Duration(p.Options.StreamDataIntervalTimeout) * time.Second
-		}
-		if p.Options.StreamKeepaliveInterval > 0 {
-			// Reader timer configuration stores whole seconds.
-			options.KeepaliveInterval = time.Duration(p.Options.StreamKeepaliveInterval) * time.Second
 		}
 	}
 	if options.GrokIdlePolicy {

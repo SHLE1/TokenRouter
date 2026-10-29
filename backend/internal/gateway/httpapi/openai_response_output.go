@@ -45,12 +45,10 @@ type OpenAIResponseOptions struct {
 	// Configured before applying a positive value; client-tool body wrappers
 	// use positive values independently of that flag.
 	MaxLineSize int
-	// StreamDataIntervalTimeout and StreamKeepaliveInterval supply text timer
-	// seconds when configured and positive. Grok's standard stream reader applies
-	// its platform idle policy after these common settings are read.
-	// StreamDataIntervalTimeout: text data idle seconds.
-	// StreamKeepaliveInterval: text heartbeat interval seconds.
-	StreamDataIntervalTimeout, StreamKeepaliveInterval int
+	// StreamDataIntervalTimeout supplies text read-idle seconds when configured
+	// and positive. Grok's standard reader applies its platform idle policy after
+	// this common setting; downstream keepalives are configured by HTTP middleware.
+	StreamDataIntervalTimeout int
 	// OpenAIFirstOutputTimeoutSeconds enables the native first-output budget.
 	// OpenAIHighEffortFirstOutputTimeoutSeconds replaces that positive base for
 	// high, xhigh or max when its own value is positive; it cannot enable a

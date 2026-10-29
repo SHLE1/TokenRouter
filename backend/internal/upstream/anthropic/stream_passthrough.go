@@ -26,8 +26,7 @@ import (
 //
 // Scanner reads and downstream writes use a bounded channel. A full channel
 // pauses further scans until the loop receives a line. Read timestamps govern
-// the idle limit, while keepalive timing follows completed client frames
-// and avoids injecting a ping into a partially written event. A failed client
+// the idle limit independently of downstream HTTP heartbeat activity. A failed client
 // write stops further delivery but leaves upstream parsing active for final
 // usage. message_stop or DONE provides completion evidence; EOF or read failure
 // before that evidence returns accumulated state with an error. The reader
@@ -42,8 +41,8 @@ import (
 //
 // Data lines are observed before delivery and feed the compatible usage parser.
 // A write failure leaves upstream reads active, while idle timeout or
-// incomplete terminal evidence returns partial usage. Keepalives wait for
-// complete forwarded frames, preserving line framing during upstream pauses.
+// incomplete terminal evidence returns partial usage. The HTTP boundary supplies
+// downstream keepalives without changing this reader's upstream activity clock.
 // A terminal observation allows later EOF or read error to complete successfully.
 // The shared body observer records upstream arrivals independently of line forwarding,
 // so converter output and downstream buffering cannot establish upstream latency.
@@ -168,35 +167,6 @@ func StreamResponsePassthrough(
 		intervalTimer.Reset(streamInterval)
 	}
 
-	keepaliveInterval := options.Keepalive
-	var keepaliveTimer *time.Timer
-	if keepaliveInterval > 0 {
-		keepaliveTimer = time.NewTimer(keepaliveInterval)
-		defer keepaliveTimer.Stop()
-	}
-	var keepaliveCh <-chan time.Time
-	if keepaliveTimer != nil {
-		keepaliveCh = keepaliveTimer.C
-	}
-	lastDataAt := time.Now()
-	// A completed client frame restarts downstream idle scheduling. Stop and
-	// drain pending timer delivery before resetting so a prior heartbeat tick
-	// cannot immediately follow that fresh frame.
-	resetKeepaliveTimer := func() {
-		if keepaliveTimer == nil {
-			return
-		}
-		if !keepaliveTimer.Stop() {
-			select {
-			case <-keepaliveTimer.C:
-			default:
-			}
-		}
-		keepaliveTimer.Reset(keepaliveInterval)
-	}
-
-	inPartialEvent := false
-
 	for {
 		select {
 		case ev, ok := <-events:
@@ -285,8 +255,7 @@ func StreamResponsePassthrough(
 
 			// A failed line or newline write ends further client delivery,
 			// while the loop continues reading usage. Flush at blank lines so
-			// successful output reaches complete frame boundaries before
-			// keepalive scheduling resets.
+			// successful output reaches complete frame boundaries during ordinary delivery.
 			if !clientDisconnected {
 				restored := string(RestoreToolNamesInBytes([]byte(line), options.ToolNames))
 				if _, err := io.WriteString(w, restored); err != nil {
@@ -297,11 +266,6 @@ func StreamResponsePassthrough(
 					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", options.ProviderID)
 				} else if line == "" {
 					flusher.Flush()
-					lastDataAt = time.Now()
-					resetKeepaliveTimer()
-					inPartialEvent = false
-				} else {
-					inPartialEvent = true
 				}
 			}
 
@@ -323,29 +287,6 @@ func StreamResponsePassthrough(
 			}
 			return &StreamResult{Usage: usage}, fmt.Errorf("stream data interval timeout")
 
-		case <-keepaliveCh:
-			if clientDisconnected {
-				continue
-			}
-			// A forwarded frame is still open, so injecting ping would mix
-			// another event's lines into it. Defer the heartbeat until
-			// blank-line output completes that frame.
-			if inPartialEvent {
-				resetKeepaliveTimer()
-				continue
-			}
-			if time.Since(lastDataAt) < keepaliveInterval {
-				resetKeepaliveTimer()
-				continue
-			}
-			if _, err := fmt.Fprint(w, "event: ping\ndata: {\"type\": \"ping\"}\n\n"); err != nil {
-				clientDisconnected = true
-				logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during keepalive ping, continue draining upstream for usage: provider=%d", options.ProviderID)
-				continue
-			}
-			flusher.Flush()
-			lastDataAt = time.Now()
-			resetKeepaliveTimer()
 		}
 	}
 }

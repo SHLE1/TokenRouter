@@ -25,20 +25,21 @@ import (
 // Passthrough Responses streams keep provider framing while normalizing
 // lifecycle payloads, tool identity, model spelling, and reconstructed terminal
 // output. Preamble lines wait until content or a selected failure starts
-// delivery. Headers are copied at entry, and the gateway heartbeat binding can
-// commit them before content; client-output policy separately excludes
-// configured heartbeat bytes from its recovery decision.
+// delivery. Headers are staged at entry, while the HTTP boundary can commit
+// downstream heartbeats before content. Client-output policy excludes recorded
+// heartbeat bytes from its recovery decision; failure callbacks receive upstream
+// headers directly so retry metadata does not depend on early client exposure.
 //
 // NativeOpenAI selects this reader's bare-error terminal mode. Error evidence
 // is observed before client trimming, and a missing response.failed can be
-// synthesized after a retained bare error. Ordinary content takeover stops
-// active heartbeat writes before the loop writes pending lines; synthetic EOF
-// and deferred flush paths still precede deferred heartbeat cleanup. Returned
+// synthesized after a retained bare error. Ordinary content delivery releases
+// pending lines through the HTTP output boundary; synthetic EOF and deferred
+// flush paths retain their own terminal and usage decisions. Returned
 // streaming results contain usage/timing/ID/image observations, while the
 // shared delivery/commit flags remain their zero values.
 
 // PassthroughOptions binds passthrough readers to model observation, output,
-// keepalive, and failure policy.
+// upstream observation and failure policy.
 type PassthroughOptions struct {
 	// ObserveModel optionally sees streaming upstream payload/model evidence before
 	// lifecycle normalization and client model replacement; buffered readers use
@@ -52,13 +53,9 @@ type PassthroughOptions struct {
 	// Compact delivery policy; the passthrough reader keeps the executor's
 	// response-body ownership.
 	NonStream NonStreamOptions
-	// Headers copies approved provider headers into output at entry; the gateway
-	// heartbeat binding copies them to its live writer before a beat can commit.
+	// Headers copies approved provider metadata into the codec's private map.
+	// The output sink applies it at delivery only if HTTP remains uncommitted.
 	Headers func(http.Header, http.Header)
-	// StartKeepalive returns a usable idempotent stop callback, including when
-	// disabled; gateway stopping waits for an active beat write before ordinary
-	// content takeover.
-	StartKeepalive func(http.Header) func()
 	// MissingUsage observes retained usage with response, terminal label, and
 	// disconnect evidence on normal return; early failed paths return before this
 	// callback.
@@ -68,9 +65,9 @@ type PassthroughOptions struct {
 	// output-specific failure policy.
 	MissingTerminal func(string)
 	// PassthroughFailoverWithModel proposes pre-output recovery using upstream
-	// request ID, failure bytes/message, and mapped model; caller policy decides
-	// the actual retry.
-	PassthroughFailoverWithModel func(string, []byte, string, string) error
+	// request ID, failure bytes/message, mapped model, and original response headers.
+	// Caller policy decides retry and retains headers for final error presentation.
+	PassthroughFailoverWithModel func(string, []byte, string, string, http.Header) error
 }
 
 // ReadPassthroughStreaming normalizes and forwards Responses SSE while
@@ -132,13 +129,6 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 	// empty terminal failure while semantic delivery remains eligible for request recovery.
 	pendingLines := make([]string, 0, 8)
 
-	// Prepared headers are already copied above. The gateway heartbeat binding
-	// can commit them during a reasoning wait and excludes its recorded comment
-	// bytes from client-output recovery policy; preamble body lines remain here.
-	stopKeepalive := options.StartKeepalive(c.Writer.Header())
-	// Deferred cleanup stops active heartbeat writes, but executes after the
-	// later-registered pending flush; ordinary content takeover calls stop sooner below.
-	defer stopKeepalive()
 	// Retain the pending flush decision across lines until an event separator
 	// or return; disconnected sinks skip that delivery while usage observations remain available.
 	flushPending := false
@@ -336,7 +326,7 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 					}
 					if shouldFailover {
 						return resultWithUsage(),
-							options.PassthroughFailoverWithModel(upstreamRequestID, dataBytes, failedMessage, mappedModel)
+							options.PassthroughFailoverWithModel(upstreamRequestID, dataBytes, failedMessage, mappedModel, resp.Header)
 					}
 					if !cyberHit && !sawBareError {
 						if status, errType, errMsg, matched := options.ErrorRule(dataBytes, failedMessage); matched {
@@ -434,12 +424,6 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 			if !clientOutputStarted && !lineStartsClientOutput {
 				pendingLines = append(pendingLines, line)
 				continue
-			}
-			// Stop the controller and wait for an active beat before ordinary
-			// content writes take over; this callback is repeatable and does not join
-			// the worker goroutine.
-			if !clientOutputStarted {
-				stopKeepalive()
 			}
 			if !clientOutputStarted && len(pendingLines) > 0 {
 				if !writePendingLines() {

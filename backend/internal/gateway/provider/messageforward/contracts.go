@@ -40,7 +40,6 @@ type Options struct {
 	GeminiDebugHeaders   bool          // Gemini exchange header diagnostics
 	MaxLineSize          int           // SSE line byte limit
 	StreamInterval       time.Duration // upstream event idle duration
-	StreamKeepalive      time.Duration // downstream heartbeat idle duration
 	ResponseReadLimit    int64         // response body byte cap
 	PreserveContentType  bool          // upstream content type retention
 	URLAllowlistEnabled  bool          // upstream host allowlist permission

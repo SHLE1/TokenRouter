@@ -14,7 +14,6 @@ import (
 	"go.uber.org/zap"
 
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-	"github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -571,16 +570,10 @@ func ReadCCAsMessagesStreaming(c *upstream.OutputContext, resp *http.Response, o
 	// Continue bridge accumulation after sink failure, so ScanCCStream can
 	// retain native usage while final protocol state sees all decoded upstream chunks.
 	emitChunk := func(chunk *wire.ChatCompletionsChunk) {
-		hasToolCallDelta := wire.ChatCompletionsChunkHasToolCallDelta(chunk)
 		// Convert each decoded chunk before testing delivery state, letting the
 		// bridge retain complete argument/content accumulation despite later
 		// downstream write suppression.
 		anthropicEvents := bridge.ChatCompletionsChunkToAnthropicEvents(options.Runtime, chunk, anthropicState)
-		if hasToolCallDelta && len(anthropicEvents) == 0 {
-			// Tool-only deltas can remain buffered in the bridge until their
-			// arguments close; send a Messages ping so that interval still produces downstream activity.
-			anthropicEvents = append(anthropicEvents, anthropic.AnthropicStreamEvent{Type: "ping"})
-		}
 		if clientDisconnected {
 			return
 		}

@@ -21,14 +21,14 @@ import (
 )
 
 // stream.go adapts Messages SSE frames and collects usage while coordinating
-// scanner delivery and keepalives.
+// scanner delivery and upstream idle deadlines.
 // Messages SSE events can report prompt usage before content and final output
 // usage after a downstream client stops accepting writes. StreamResponse keeps
 // those observations separate from delivery, continuing to parse upstream usage
 // after a write failure until completion, read failure, or idle timeout.
 //
 // A scanner goroutine sends complete lines while the main loop handles event
-// framing, timeout checks, and keepalives. Blank lines trigger processing of
+// framing and upstream timeout checks. Blank lines trigger processing of
 // the first nonempty data payload in the pending frame; cache categories,
 // matching model names, and tool aliases are adjusted for output. Raw
 // observations precede those edits. Terminal evidence controls whether EOF or a
@@ -50,7 +50,7 @@ type StreamResult struct {
 	// returned result can retain partial counts after failure.
 	Usage *upstream.TokenUsage
 
-	// ClientDisconnect records ordinary stream or keepalive write failure, or
+	// ClientDisconnect records ordinary stream write failure, or
 	// a context-cancelled read before terminal completion. Synthesized error
 	// writes do not update it, so callers also inspect the returned error and
 	// accumulated usage.
@@ -76,15 +76,10 @@ type StreamOptions struct {
 	// already 64 KiB, so smaller positive values can still accept tokens within
 	// that initial capacity.
 	MaxLineSize int
-	// Interval selects the idle duration compared against scanner reads, while
-	// Keepalive schedules downstream activity after completed writes.
-	// Nonpositive values disable their timer paths; the clocks serve separate
-	// purposes and are handled by the response loop.
-	Interval, Keepalive time.Duration // Interval: upstream idle duration; Keepalive: downstream heartbeat duration
-	// UserAgent supplies the inbound CLI version for standard no-op delta
-	// selection. Passthrough emits ordinary pings, so it does not use this
-	// version rule.
-	UserAgent    string
+	// Interval bounds upstream inactivity using scanner arrival observations.
+	// Nonpositive values disable this timeout; downstream heartbeat timing is
+	// owned by the HTTP boundary and does not renew upstream activity.
+	Interval     time.Duration                      // upstream idle timeout duration
 	ToolNames    *ToolNameRewrite                   // request-local tool restoration mapping
 	UpdateWindow func(context.Context, http.Header) // optional response-header quota observation
 	WriteHeaders func(http.Header, http.Header)     // optional client header preparation
@@ -144,7 +139,7 @@ func (e *StreamReadFailure) Error() string { return "upstream error: 502 (failov
 //
 // A scanner goroutine timestamps complete lines before bounded-channel
 // delivery; a full channel pauses further reads. Idle checks use those read
-// timestamps and keepalives follow completed downstream writes. Each
+// timestamps, independently of downstream heartbeat writes. Each
 // blank-delimited event selects its first nonempty data payload, observes raw
 // data, applies presentation changes, and merges usage after write failure. EOF
 // requires DONE or a successfully decoded data frame recognized as
@@ -248,36 +243,6 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 		intervalCh = intervalTicker.C
 	}
 
-	// Keepalive scheduling follows completed downstream output independently of
-	// upstream read timing. A positive interval permits idle client connections
-	// to receive a protocol-shaped heartbeat between processed events.
-	keepaliveInterval := options.Keepalive
-	var keepaliveTimer *time.Timer
-	if keepaliveInterval > 0 {
-		keepaliveTimer = time.NewTimer(keepaliveInterval)
-		defer keepaliveTimer.Stop()
-	}
-	var keepaliveCh <-chan time.Time
-	if keepaliveTimer != nil {
-		keepaliveCh = keepaliveTimer.C
-	}
-	lastDataAt := time.Now()
-	// Completed output restarts the downstream idle wait. Stop and drain a
-	// fired timer before reset so an older tick cannot trigger a heartbeat
-	// immediately after fresh output.
-	resetKeepaliveTimer := func() {
-		if keepaliveTimer == nil {
-			return
-		}
-		if !keepaliveTimer.Stop() {
-			select {
-			case <-keepaliveTimer.C:
-			default:
-			}
-		}
-		keepaliveTimer.Reset(keepaliveInterval)
-	}
-
 	// Attempt one Anthropic error event, even if writing it fails. The envelope
 	// lets clients and error extraction read the same type and message fields.
 	errorEventSent := false
@@ -309,10 +274,6 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 	needModelReplace := originalModel != mappedModel
 	clientDisconnected := false // downstream writes have not failed
 	sawTerminalEvent := false
-	useNoopDeltaKeepalive := ShouldUseClaudeCodeNoopDeltaKeepalive(options.UserAgent)
-	noopDeltaKeepaliveBlockIndex := -1
-	noopDeltaKeepaliveDeltaType := ""
-
 	pendingEventLines := make([]string, 0, 4)
 
 	processSSEEvent := func(lines []string) ([]string, string, *wire.SseUsagePatch, error) {
@@ -383,44 +344,6 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 			eventName = eventType
 		}
 		eventChanged := false
-
-		// Track the latest supported content block or delta for the selected
-		// CLI heartbeat shape. Matching block stop or message completion clears
-		// that choice so idle output no longer references a closed block.
-		if useNoopDeltaKeepalive {
-			switch eventType {
-			case "content_block_start":
-				if idx, ok := SseEventIndex(event); ok {
-					noopDeltaKeepaliveBlockIndex = -1
-					noopDeltaKeepaliveDeltaType = ""
-					if contentBlock, ok := event["content_block"].(map[string]any); ok {
-						blockType, _ := contentBlock["type"].(string)
-						if deltaType := ClaudeCodeKeepaliveDeltaTypeForContentBlock(blockType); deltaType != "" {
-							noopDeltaKeepaliveBlockIndex = idx
-							noopDeltaKeepaliveDeltaType = deltaType
-						}
-					}
-				}
-			case "content_block_delta":
-				if idx, ok := SseEventIndex(event); ok {
-					if delta, ok := event["delta"].(map[string]any); ok {
-						deltaType, _ := delta["type"].(string)
-						if ClaudeCodeKeepaliveFieldForDeltaType(deltaType) != "" {
-							noopDeltaKeepaliveBlockIndex = idx
-							noopDeltaKeepaliveDeltaType = deltaType
-						}
-					}
-				}
-			case "content_block_stop":
-				if idx, ok := SseEventIndex(event); ok && idx == noopDeltaKeepaliveBlockIndex {
-					noopDeltaKeepaliveBlockIndex = -1
-					noopDeltaKeepaliveDeltaType = ""
-				}
-			case "message_stop":
-				noopDeltaKeepaliveBlockIndex = -1
-				noopDeltaKeepaliveDeltaType = ""
-			}
-		}
 
 		// Compatible message_start and message_delta usage can report
 		// cached_tokens. Normalize those selected usage maps before TTL
@@ -600,8 +523,6 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 							// tokens already consumed upstream.
 						} else {
 							flusher.Flush()
-							lastDataAt = time.Now()
-							resetKeepaliveTimer()
 						}
 					}
 					if data != "" {
@@ -636,32 +557,6 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 			sendErrorEvent("stream_timeout", fmt.Sprintf("upstream stream idle for %s", streamInterval))
 			return &StreamResult{Usage: usage}, fmt.Errorf("stream data interval timeout")
 
-		case <-keepaliveCh:
-			if clientDisconnected {
-				continue
-			}
-			if time.Since(lastDataAt) < keepaliveInterval {
-				resetKeepaliveTimer()
-				continue
-			}
-			// A supported active block allows a version-selected empty delta;
-			// otherwise the heartbeat uses ping. This synthesized activity
-			// carries no parsed usage and does not start legacy data-arrival
-			// timing.
-			keepaliveBlock := "event: ping\ndata: {\"type\": \"ping\"}\n\n"
-			if useNoopDeltaKeepalive && noopDeltaKeepaliveBlockIndex >= 0 {
-				if block, ok := BuildClaudeCodeNoopDeltaKeepalive(noopDeltaKeepaliveBlockIndex, noopDeltaKeepaliveDeltaType); ok {
-					keepaliveBlock = block
-				}
-			}
-			if _, werr := fmt.Fprint(w, keepaliveBlock); werr != nil {
-				clientDisconnected = true
-				logger.LegacyPrintf("service.gateway", "Client disconnected during keepalive ping, continuing to drain upstream for billing")
-				continue
-			}
-			flusher.Flush()
-			lastDataAt = time.Now()
-			resetKeepaliveTimer()
 		}
 	}
 }

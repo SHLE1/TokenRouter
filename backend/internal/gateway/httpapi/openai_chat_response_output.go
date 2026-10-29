@@ -132,13 +132,6 @@ func (p *OpenAIResponseOutput) ChatOptions(c *gin.Context, provider *gatewayprov
 			}
 			return 0
 		},
-		KeepaliveInterval: func() time.Duration {
-			if p.Options.Configured && p.Options.StreamKeepaliveInterval > 0 {
-				// Configured heartbeat intervals are stored as whole seconds.
-				return time.Duration(p.Options.StreamKeepaliveInterval) * time.Second
-			}
-			return 0
-		},
 		RestoreToolNames: func(body []byte) []byte { return RestoreCodexToolNamesFromContext(c, body) },
 		Observe:          func(body []byte, event string) { ObserveOpenAIServiceTierInContext(c, body, event) },
 		CyberForwarded:   forwardcore.ErrCyberPolicyForwarded,

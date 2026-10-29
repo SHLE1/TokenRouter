@@ -27,9 +27,8 @@ import (
 // continues collecting usage after client writes fail.
 //
 // A scanner goroutine owns the pooled buffer until input ends, while the
-// consumer separately monitors last upstream reads and downstream keepalive
-// spacing. Heartbeats are emitted only between complete SSE events, preventing
-// a ping from splitting a vendor frame. Return signals stop channel
+// consumer monitors last upstream reads for idle expiry. Downstream heartbeats
+// belong to the HTTP boundary and do not alter that read clock. Return signals stop channel
 // publication, and the execution caller closes the body to release a scanner
 // blocked on upstream input; partial usage remains available beside incomplete-
 // stream errors.
@@ -52,13 +51,13 @@ type NativeAnthropicOptions struct {
 	CopyHeaders   func(http.Header, http.Header) // filtered response header copier
 	ReverseTools  func([]byte) []byte            // request-bound tool name restorer
 	MaxLineSize   func() int                     // configured scanner growth limit
-	// StreamInterval governs upstream idle checks from the last scanner read;
-	// KeepaliveInterval governs client pings between complete events. Nonpositive
-	// durations disable their corresponding timer paths.
-	StreamInterval, KeepaliveInterval func() time.Duration        // StreamInterval is upstream read spacing; KeepaliveInterval is downstream ping spacing
-	ExtractData                       func(string) (string, bool) // SSE data value extractor
-	IsTerminal                        func(string, string) bool   // SSE terminal evidence classifier
-	Log                               func(string, ...any)        // native output diagnostic writer
+	// StreamInterval governs upstream idle checks from the last scanner read.
+	// Nonpositive durations disable that timer; HTTP middleware independently
+	// supplies downstream heartbeats without renewing upstream activity.
+	StreamInterval func() time.Duration        // upstream idle timeout duration
+	ExtractData    func(string) (string, bool) // SSE data value extractor
+	IsTerminal     func(string, string) bool   // SSE terminal evidence classifier
+	Log            func(string, ...any)        // native output diagnostic writer
 	// provider stream-timeout policy observer
 	HandleTimeout func(context.Context, string)
 }
@@ -130,8 +129,8 @@ func NativeAnthropicBuffered(ctx context.Context, resp *http.Response, c *upstre
 // abandoned scanner can finish and release pooled storage.
 //
 // The scanner publishes lines independently and atomically records the latest
-// read time. Consumer idle checks use that read time, while keepalives use
-// completed output events and wait whenever a frame is partial. Client write
+// read time. Consumer idle checks use that read time independently of
+// downstream heartbeat activity. Client write
 // failure stops output but continues usage collection. EOF or scanner failure
 // succeeds after terminal evidence; incomplete input and idle expiry return the
 // accumulated result beside an error.
@@ -229,34 +228,6 @@ func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstr
 		intervalCh = intervalTicker.C
 	}
 
-	keepaliveInterval := o.KeepaliveInterval()
-	var keepaliveTimer *time.Timer
-	if keepaliveInterval > 0 {
-		keepaliveTimer = time.NewTimer(keepaliveInterval)
-		defer keepaliveTimer.Stop()
-	}
-	var keepaliveCh <-chan time.Time
-	if keepaliveTimer != nil {
-		keepaliveCh = keepaliveTimer.C
-	}
-	lastDataAt := time.Now()
-	resetKeepaliveTimer := func() {
-		if keepaliveTimer == nil {
-			return
-		}
-		// Drain an available expired notification before resetting keepalive spacing
-		// so an earlier idle period does not trigger a ping immediately after fresh
-		// output.
-		if !keepaliveTimer.Stop() {
-			select {
-			case <-keepaliveTimer.C:
-			default:
-			}
-		}
-		keepaliveTimer.Reset(keepaliveInterval)
-	}
-	inPartialEvent := false
-
 	for {
 		select {
 		case ev, ok := <-events:
@@ -321,14 +292,9 @@ func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstr
 					clientDisconnected = true
 					o.Log("[Messages passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", o.ProviderID)
 				} else if line == "" {
-					// A blank line completes the SSE frame; flush then refresh keepalive
-					// spacing so heartbeats are measured from completed client output.
+					// A blank line completes the SSE frame, so flush only after the
+					// client has received its delimiter and complete event payload.
 					flusher.Flush()
-					lastDataAt = time.Now()
-					resetKeepaliveTimer()
-					inPartialEvent = false
-				} else {
-					inPartialEvent = true
 				}
 			}
 
@@ -349,28 +315,6 @@ func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstr
 			return NativeAnthropicStreamResult(resp, usage, clientDisconnected, originalModel, billingModel, upstreamModel, reasoningEffort, startTime),
 				fmt.Errorf("stream data interval timeout")
 
-		case <-keepaliveCh:
-			if clientDisconnected {
-				continue
-			}
-			// Wait while a vendor frame is partial, because inserting a ping between its
-			// lines would combine two event payloads into an invalid SSE frame.
-			if inPartialEvent {
-				resetKeepaliveTimer()
-				continue
-			}
-			if time.Since(lastDataAt) < keepaliveInterval {
-				resetKeepaliveTimer()
-				continue
-			}
-			if _, err := fmt.Fprint(w, "event: ping\ndata: {\"type\": \"ping\"}\n\n"); err != nil {
-				clientDisconnected = true
-				o.Log("[Messages passthrough] Client disconnected during keepalive ping, continue draining upstream for usage: provider=%d", o.ProviderID)
-				continue
-			}
-			flusher.Flush()
-			lastDataAt = time.Now()
-			resetKeepaliveTimer()
 		}
 	}
 }

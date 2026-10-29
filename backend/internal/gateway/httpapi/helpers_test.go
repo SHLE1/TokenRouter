@@ -55,6 +55,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
 	catalogtestkit "github.com/TokenFlux/TokenRouter/internal/modelcatalog/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
@@ -3556,4 +3557,25 @@ func (p *diagnosticHTTPTransport) Do(req *http.Request, _ string, id int64, _ in
 // DoWithTLS reuses fixture dispatch while leaving fingerprint behavior outside this probe.
 func (p *diagnosticHTTPTransport) DoWithTLS(req *http.Request, proxy string, id int64, n int, _ *tlsfingerprint.Profile) (*http.Response, error) {
 	return p.Do(req, proxy, id, n)
+}
+
+// installDownstreamKeepaliveTest binds the text controller to a direct reader fixture.
+// Call the returned stop function before inspecting its recorder; cleanup also
+// stops the worker if an assertion ends the test before normal reader return.
+func installDownstreamKeepaliveTest(t *testing.T, c *gin.Context, interval time.Duration) func() {
+	t.Helper()
+	ctx := requeststate.WithClientProtocol(c.Request.Context(), protocol.ProtocolOpenAIResponses)
+	ctx, stages := timing.WithStages(ctx, time.Now(), nil)
+	stages.SetStream(true)
+	c.Request = c.Request.WithContext(ctx)
+	w := &sseKeepaliveWriter{
+		ResponseWriter: c.Writer, c: c, stages: stages, interval: interval,
+		lastWrite: time.Now(), atBoundary: true, anthropicBlockIndex: -1,
+		wake: make(chan struct{}, 1), done: make(chan struct{}),
+	}
+	c.Writer = w
+	c.Set(sseKeepaliveWriterKey, w)
+	w.openHeaderWait(ctx)
+	t.Cleanup(w.close)
+	return w.close
 }

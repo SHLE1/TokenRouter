@@ -74,11 +74,9 @@ type StreamOptions struct {
 	// FirstOutputTimeout measures an elapsed budget from startTime and needs staged
 	// progress completion to stop its deadline. StreamInterval checks inactivity
 	// from producer read arrival, independently of time spent in client conversion.
-	// KeepaliveInterval checks successful downstream write inactivity and skips
-	// heartbeat insertion while an SSE event remains open. Nonpositive values
-	// disable each respective timer; the first uses one deadline, while the other
-	// two use ticks and their independently updated activity clocks.
-	FirstOutputTimeout, StreamInterval, KeepaliveInterval time.Duration
+	// Nonpositive values disable the respective timer. The first uses one
+	// deadline; the read-idle timer uses independently updated arrival evidence.
+	FirstOutputTimeout, StreamInterval time.Duration
 	// MaxLineSize sets scanner token growth in bytes; the initial pooled
 	// sixty-four-KiB buffer can accept a token larger than a smaller configured
 	// budget.
@@ -194,10 +192,6 @@ type StreamOptions struct {
 	// and queued-event acknowledgment; it receives start, model, reasoning level,
 	// budget, label, and headers.
 	FirstOutputError func(time.Time, string, string, time.Duration, string, http.Header) error
-	// KeepaliveBytes records actual comment-write bytes outside the native attempt
-	// stage, allowing caller output policy to distinguish heartbeat commitment from
-	// content.
-	KeepaliveBytes func(int)
 	// BuildOpenAIResponseFailedSSE builds a failed terminal for a retained Codex
 	// bare error when no authoritative response.failed arrived, using its retained
 	// error evidence.
@@ -371,19 +365,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		intervalCh = intervalTicker.C
 	}
 
-	keepaliveInterval := options.KeepaliveInterval
-	// Client heartbeat ticks use successful downstream writes as their clock,
-	// allowing activity during upstream preamble staging without redefining retry commitment.
-	var keepaliveTicker *time.Ticker
-	if keepaliveInterval > 0 {
-		keepaliveTicker = time.NewTicker(keepaliveInterval)
-		defer keepaliveTicker.Stop()
-	}
-	var keepaliveCh <-chan time.Time
-	if keepaliveTicker != nil {
-		keepaliveCh = keepaliveTicker.C
-	}
-
 	var firstOutputTimer *time.Timer
 	var firstOutputCh <-chan time.Time
 	if firstOutputTimeout > 0 {
@@ -412,11 +393,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		firstOutputTimer = nil
 		firstOutputCh = nil
 	}
-	// Track downstream writes separately from upstream reads: pre-output failover
-	// can buffer response.created / response.in_progress, so keepalive must be
-	// based on downstream idle time.
-	lastDownstreamWriteAt := time.Now()
-
 	// Latch error delivery before flushing/writing a Responses-shaped event,
 	// so another read or timeout failure cannot attempt a duplicate error after partial delivery.
 	errorEventSent := false
@@ -479,7 +455,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 					options.Logf("Client disconnected during streaming flush, continuing to drain upstream for billing")
 				} else {
 					clientOutputStarted = true
-					lastDownstreamWriteAt = time.Now()
 				}
 			}
 		}
@@ -518,7 +493,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			return
 		}
 		clientOutputStarted = true
-		lastDownstreamWriteAt = time.Now()
 	}
 
 	needModelReplace := originalModel != mappedModel
@@ -567,7 +541,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			return
 		}
 		clientOutputStarted = true
-		lastDownstreamWriteAt = time.Now()
 	}
 	synthesizeBareErrorFailure := func() bool {
 		if !codexFailureTerminal || !sawBareError || sawResponseFailed || clientDisconnected {
@@ -986,8 +959,8 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			}
 			return
 		}
-		// Non-guarded streams retain upstream's event-boundary flushing: a keepalive
-		// or queue-drain flush must never split an open SSE event.
+		// Non-guarded streams retain upstream's event-boundary flushing: a
+		// queue-drain flush must never split an open SSE event.
 		shouldFlush := false
 		if line == "" {
 			pendingLifecycleHeader = ""
@@ -1018,7 +991,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 						options.Logf("Client disconnected during streaming flush, continuing to drain upstream for billing")
 					} else {
 						clientOutputStarted = true
-						lastDownstreamWriteAt = time.Now()
 					}
 				}
 			}
@@ -1031,7 +1003,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 
 	// With all timers disabled, direct scanning uses the same processing and
 	// failure machinery while returning its pooled buffer only after the synchronous reader exits.
-	if streamInterval <= 0 && keepaliveInterval <= 0 && firstOutputTimeout <= 0 {
+	if streamInterval <= 0 && firstOutputTimeout <= 0 {
 		defer httpclient.PutSSEScannerBuf64K(scanBuf)
 		for documentScanner.Scan() {
 			processSSELine(documentScanner.Text(), true)
@@ -1183,42 +1155,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				firstOutputTimeout, "semantic_output", resp.Header,
 			)
 
-		case <-keepaliveCh:
-			if clientDisconnected {
-				continue
-			}
-			if eventInProgress {
-				continue
-			}
-			if time.Since(lastDownstreamWriteAt) < keepaliveInterval {
-				continue
-			}
-			if stageFirstOutput {
-				// Send stable comments outside attempt storage and record actual bytes;
-				// caller retry policy excludes them, while physical HTTP commitment can
-				// prevent later provider-header application.
-				n, err := w.Write([]byte(":\n\n"))
-				options.KeepaliveBytes(n)
-				if err != nil {
-					clientDisconnected = true
-					options.Logf("Client disconnected during streaming, continuing to drain upstream for billing")
-					continue
-				}
-				flusher.Flush()
-				lastDownstreamWriteAt = time.Now()
-				continue
-			}
-			if _, err := writePendingString(":\n\n"); err != nil {
-				clientDisconnected = true
-				options.Logf("Client disconnected during streaming, continuing to drain upstream for billing")
-				continue
-			}
-			if err := flushBuffered(); err != nil {
-				clientDisconnected = true
-				options.Logf("Client disconnected during keepalive flush, continuing to drain upstream for billing")
-			} else {
-				lastDownstreamWriteAt = time.Now()
-			}
 		}
 	}
 }

@@ -32,8 +32,8 @@ import (
 //
 // Scanner workers own pooled buffers until reading ends; handler return
 // signals delivery stop, while the exchange owner closes the body to release
-// a blocked read. Idle timeout follows scanned-line activity, while keepalive
-// follows delivered-line quiet time. Buffered collection keeps content-bearing
+// a blocked read. Idle timeout follows scanned-line activity independently of
+// downstream heartbeats owned by HTTP middleware. Buffered collection keeps content-bearing
 // output when metadata arrives later, then merges first-candidate parts with
 // deliberately shallow map ownership. Ordinary text runs can lose per-part
 // metadata, and image/text merging has separate key-presence rules that affect
@@ -48,10 +48,9 @@ type ResponseOptions struct {
 	// mutable data before the owner continues synchronous processing.
 	ObserveRaw func([]byte)
 	// MaxLineSize is scanner-growth bytes, with nonpositive selecting the
-	// default. StreamDataIntervalTimeout and StreamKeepaliveInterval are
-	// idle-timeout seconds and keepalive seconds; nonpositive intervals disable
-	// their timers.
-	MaxLineSize, StreamDataIntervalTimeout, StreamKeepaliveInterval int
+	// default. StreamDataIntervalTimeout supplies upstream idle-timeout seconds;
+	// nonpositive values disable the timer without affecting downstream heartbeats.
+	MaxLineSize, StreamDataIntervalTimeout int
 	// ReverseTools restores provider-mapped tool names in compatible serialized
 	// output; required when a selected compatibility adapter emits or collects
 	// payloads.
@@ -208,8 +207,8 @@ func HandleStreamReadError(err error, clientDisconnected bool, prefix string) (d
 // later output but scanning continues. Read cancellation, or read failure
 // after client disconnect, returns collected usage with disconnect=true;
 // other read errors or idle timeout can fail. Scanned lines reset idle
-// activity, delivered lines reset keepalive quiet time, and keepalive bytes
-// can commit output before model content.
+// activity. The HTTP boundary owns downstream idle heartbeats, which can
+// commit output before model content without changing upstream read timing.
 func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContext, resp *http.Response, startTime time.Time) (*StreamResult, error) {
 	c.Status(resp.StatusCode)
 	c.Header("Cache-Control", "no-cache")
@@ -294,24 +293,6 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 		intervalCh = intervalTicker.C
 	}
 
-	// Send keepalive after delivered-line quiet time while the client remains
-	// connected; pings do not reset that time, so subsequent ticks can continue
-	// pinging.
-	keepaliveInterval := time.Duration(0)
-	if s.Options.StreamKeepaliveInterval > 0 {
-		keepaliveInterval = time.Duration(s.Options.StreamKeepaliveInterval) * time.Second
-	}
-	var keepaliveTicker *time.Ticker
-	if keepaliveInterval > 0 {
-		keepaliveTicker = time.NewTicker(keepaliveInterval)
-		defer keepaliveTicker.Stop()
-	}
-	var keepaliveCh <-chan time.Time
-	if keepaliveTicker != nil {
-		keepaliveCh = keepaliveTicker.C
-	}
-	lastDataAt := time.Now()
-
 	cw := NewClientWriter(c.Writer, flusher, "antigravity gemini")
 
 	// Suppress duplicate terminal error events after the first attempted emission
@@ -345,8 +326,6 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 				sendErrorEvent("stream_read_error")
 				return nil, ev.err
 			}
-
-			lastDataAt = time.Now()
 
 			line := ev.line
 			s.observeRaw([]byte(line))
@@ -407,18 +386,6 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 			sendErrorEvent("stream_timeout")
 			return &StreamResult{Usage: usage}, fmt.Errorf("stream data interval timeout")
 
-		case <-keepaliveCh:
-			if cw.Disconnected() {
-				continue
-			}
-			if time.Since(lastDataAt) < keepaliveInterval {
-				continue
-			}
-			// An SSE comment keeps the connection active without adding response content.
-			if !cw.Fprintf(":\n\n") {
-				logger.LegacyPrintf("service.antigravity_gateway", "Client disconnected during keepalive ping (antigravity gemini), continuing to drain upstream for billing")
-				continue
-			}
 		}
 	}
 }
@@ -1145,24 +1112,6 @@ func (s *ResponseAdapter) HandleClaudeStreamingResponse(c *upstream.OutputContex
 		intervalCh = intervalTicker.C
 	}
 
-	// Send keepalive after delivered-line quiet time while the client remains
-	// connected; pings do not reset that time, so subsequent ticks can continue
-	// pinging.
-	keepaliveInterval := time.Duration(0)
-	if s.Options.StreamKeepaliveInterval > 0 {
-		keepaliveInterval = time.Duration(s.Options.StreamKeepaliveInterval) * time.Second
-	}
-	var keepaliveTicker *time.Ticker
-	if keepaliveInterval > 0 {
-		keepaliveTicker = time.NewTicker(keepaliveInterval)
-		defer keepaliveTicker.Stop()
-	}
-	var keepaliveCh <-chan time.Time
-	if keepaliveTicker != nil {
-		keepaliveCh = keepaliveTicker.C
-	}
-	lastDataAt := time.Now()
-
 	cw := NewClientWriter(c.Writer, flusher, "antigravity claude")
 
 	// Suppress duplicate terminal error events after the first attempted emission
@@ -1212,8 +1161,6 @@ func (s *ResponseAdapter) HandleClaudeStreamingResponse(c *upstream.OutputContex
 				return nil, fmt.Errorf("stream read error: %w", ev.err)
 			}
 
-			lastDataAt = time.Now()
-
 			s.observeRaw([]byte(ev.line))
 			claudeEvents := processor.ProcessLine(strings.TrimRight(ev.line, "\r\n"))
 			if len(claudeEvents) > 0 {
@@ -1233,18 +1180,6 @@ func (s *ResponseAdapter) HandleClaudeStreamingResponse(c *upstream.OutputContex
 			sendErrorEvent("stream_timeout")
 			return &StreamResult{Usage: convertUsage(nil)}, fmt.Errorf("stream data interval timeout")
 
-		case <-keepaliveCh:
-			if cw.Disconnected() {
-				continue
-			}
-			if time.Since(lastDataAt) < keepaliveInterval {
-				continue
-			}
-			// Anthropic ping events keep idle connections active without adding content.
-			if !cw.Fprintf("event: ping\ndata: {\"type\": \"ping\"}\n\n") {
-				logger.LegacyPrintf("service.antigravity_gateway", "Client disconnected during keepalive ping (antigravity claude), continuing to drain upstream for billing")
-				continue
-			}
 		}
 	}
 }

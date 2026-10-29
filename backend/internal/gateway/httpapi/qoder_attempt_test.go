@@ -2494,7 +2494,7 @@ func TestQoderGatewayNonStreamingReadDoesNotCommitResponseBeforeError(t *testing
 		)),
 	}
 
-	events, err := qoder.ReadQoderSSEEventsContext(context.Background(), resp, nil)
+	events, err := qoder.ReadQoderSSEEventsContext(context.Background(), resp)
 
 	require.Error(t, err)
 	require.Empty(t, events)
@@ -3704,22 +3704,6 @@ func TestQoderGatewayWritesAnthropicToolUseStreamKeepsParallelCallIndexes(t *tes
 	require.Equal(t, `{"path":"a"}`, inputDeltas[0])
 	require.Equal(t, `{"path":"b"}`, inputDeltas[1])
 	require.Empty(t, openToolBlocks)
-}
-
-// TestQoderGatewayStreamKeepaliveDoesNotCommitBeforeStart calls keepalive
-// before and after reported stream start. The first must leave size and body
-// untouched, while the started case writes the expected SSE comment.
-func TestQoderGatewayStreamKeepaliveDoesNotCommitBeforeStart(t *testing.T) {
-	rec := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(rec)
-
-	require.NoError(t, qoder.WriteQoderStreamKeepalive(upstreamcore.NewOutputContext(NewResponseSink(c)), false))
-	require.Equal(t, -1, c.Writer.Size())
-	require.Empty(t, rec.Body.String())
-
-	c.Writer.WriteHeader(http.StatusOK)
-	require.NoError(t, qoder.WriteQoderStreamKeepalive(upstreamcore.NewOutputContext(NewResponseSink(c)), true))
-	require.Equal(t, ": keep-alive\n\n", rec.Body.String())
 }
 
 // TestQoderGatewayStreamsResponseWithoutPrebuffering passes an in-memory

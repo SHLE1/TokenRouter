@@ -37,18 +37,16 @@ import (
 // blocks, and Responses tracks ordered output items. Downstream write failure
 // stops further delivery while upstream scanning can continue collecting usage.
 // The latest usage observation replaces token counts, with cached input
-// separated from uncached input. Context cancellation, scanner sends, body
-// closure, and keepalive callbacks coordinate the lifetime of each stream.
+// separated from uncached input. Context cancellation, scanner sends, and body
+// closure coordinate the lifetime of each stream.
 
 // Execution defaults govern stream lifetime, saved conversations, and SSE line
 // limits before Qoder events reach client protocol output.
 const (
-	// QoderDefaultMaxTokens, QoderStreamTimeout, QoderKeepaliveEvery, and
-	// QoderConversationTTL govern output budget, execution lifetime, heartbeat
-	// spacing, and saved-history lifetime used by their respective owners.
+	// QoderDefaultMaxTokens, QoderStreamTimeout, and QoderConversationTTL govern
+	// output budget, execution lifetime, and saved-history lifetime used by their respective owners.
 	QoderDefaultMaxTokens = 32768
 	QoderStreamTimeout    = 15 * time.Minute
-	QoderKeepaliveEvery   = 10 * time.Second
 	QoderConversationTTL  = 2 * time.Hour
 
 	// defaultMaxLineSize supplies ScanQoderEvents with the upstream package's
@@ -313,7 +311,7 @@ func QoderToolArgumentsString(raw any) string {
 // ReadQoderSSEEventsContext collects normalized events while the shared stream
 // reader owns body closure. Absent response bodies return an error. Stream or
 // callback failure discards the collected slice and returns that error.
-func ReadQoderSSEEventsContext(ctx context.Context, resp *http.Response, keepalive func() error) ([]SSEEvent, error) {
+func ReadQoderSSEEventsContext(ctx context.Context, resp *http.Response) ([]SSEEvent, error) {
 	if resp == nil || resp.Body == nil {
 		return nil, errors.New("qoder response body is nil")
 	}
@@ -321,24 +319,10 @@ func ReadQoderSSEEventsContext(ctx context.Context, resp *http.Response, keepali
 	if err := StreamQoderEvents(ctx, resp, func(event SSEEvent) error {
 		events = append(events, event)
 		return nil
-	}, keepalive); err != nil {
+	}); err != nil {
 		return nil, err
 	}
 	return events, nil
-}
-
-// WriteQoderStreamKeepalive writes and flushes a comment frame after output has
-// started. Nil context, missing writer, or unstarted output produces no write,
-// so heartbeat callbacks cannot begin a response by themselves.
-func WriteQoderStreamKeepalive(c *upstream.OutputContext, started bool) error {
-	if c == nil || c.Writer == nil || !started {
-		return nil
-	}
-	_, err := io.WriteString(c.Writer, ": keep-alive\n\n")
-	if flusher, ok := c.Writer.(http.Flusher); ok {
-		flusher.Flush()
-	}
-	return err
 }
 
 // Write forwards bytes and suppresses downstream write failures so usage
@@ -806,7 +790,7 @@ func QoderToolArgumentStringIsEmptyPlaceholder(arguments string) bool {
 //
 // A disconnect-aware writer suppresses delivery after the first write failure
 // while scanning continues. Completion emits one finish chunk and DONE marker,
-// and keepalives run only after output starts. A stream error returns partial
+// and the HTTP boundary owns downstream heartbeat output. A stream error returns partial
 // evidence only when both output and usage have been observed, allowing Execute
 // to settle known work while rolling back history.
 func WriteQoderOpenAIStreamResponse(ctx context.Context, c *upstream.OutputContext, model string, resp *http.Response, options ...QoderOpenAIStreamResponseOption) (*QoderStreamResult, error) {
@@ -917,16 +901,6 @@ func WriteQoderOpenAIStreamResponse(ctx context.Context, c *upstream.OutputConte
 			return writeData(OpenAIChunk(completionID, model, map[string]any{"tool_calls": deltas}, nil))
 		}
 		return nil
-	}, func() error {
-		if writeTracker.disconnected {
-			return nil
-		}
-		// A heartbeat failure also identifies lost downstream delivery. Record it
-		// here and continue reading so this attempt can still capture trailing usage.
-		if err := WriteQoderStreamKeepalive(c, started); err != nil {
-			writeTracker.disconnected = true
-		}
-		return nil
 	}); err != nil {
 		return qoderPartialStreamResult(result), err
 	}
@@ -945,8 +919,7 @@ func WriteQoderOpenAIStreamResponse(ctx context.Context, c *upstream.OutputConte
 // Downstream failure suppresses delivery while usage collection can continue.
 // Finalization closes pending blocks, creates empty text content when needed,
 // and emits one message_delta/message_stop pair with mapped usage. Stream errors
-// return partial evidence only after output and usage are both observed, while
-// keepalives stay within started output.
+// return partial evidence only after output and usage are both observed.
 func WriteQoderAnthropicStreamResponse(ctx context.Context, c *upstream.OutputContext, model string, resp *http.Response, options ...QoderAnthropicStreamResponseOption) (*QoderStreamResult, error) {
 	usageMapper, toolNameMapper := QoderAnthropicStreamResponseOptions(options)
 	// This writer owns the response body through completion or failure. Every read,
@@ -1058,16 +1031,6 @@ func WriteQoderAnthropicStreamResponse(ctx context.Context, c *upstream.OutputCo
 				return err
 			}
 			return writer.writeToolCall(event)
-		}
-		return nil
-	}, func() error {
-		if writeTracker.disconnected {
-			return nil
-		}
-		// A heartbeat failure also identifies lost downstream delivery. Record it
-		// here and continue reading so this attempt can still capture trailing usage.
-		if err := WriteQoderStreamKeepalive(c, started); err != nil {
-			writeTracker.disconnected = true
 		}
 		return nil
 	}); err != nil {
@@ -1559,16 +1522,6 @@ func WriteQoderResponsesStreamResponse(ctx context.Context, c *upstream.OutputCo
 			return writeToolDelta(event)
 		}
 		return nil
-	}, func() error {
-		if clientDisconnected {
-			return nil
-		}
-		// A heartbeat failure also identifies lost downstream delivery. Record it
-		// here and continue reading so this attempt can still capture trailing usage.
-		if err := WriteQoderStreamKeepalive(c, started); err != nil {
-			clientDisconnected = true
-		}
-		return nil
 	}); err != nil {
 		return qoderPartialStreamResult(result), err
 	}
@@ -1920,18 +1873,18 @@ func ScanQoderEvents(ctx context.Context, resp *http.Response, results chan<- Qo
 }
 
 // StreamQoderEvents coordinates scanner results, transformed callbacks,
-// keepalives, and context cancellation. Nil context selects Background; callers
+// and context cancellation. Nil context selects Background; callers
 // supply a usable body and handler, and Close must release blocked reads for
 // prompt scanner cleanup. A child context lets result sends stop when
 // consumption ends. Handlers run serially and need to return; cancellation
 // cannot interrupt a callback already executing.
 //
-// The scanner runs separately so keepalive and cancellation can progress while
+// The scanner runs separately so cancellation can progress while
 // upstream reads wait. Completion, EOF, cancellation, callback error, or scan
 // error ends consumption; EOF flushes buffered text, while an error returns
-// immediately. Exit stops the ticker, cancels sends, and closes the body,
+// immediately. Exit cancels sends and closes the body,
 // without joining the scanner goroutine.
-func StreamQoderEvents(ctx context.Context, resp *http.Response, handle func(SSEEvent) error, keepalive func() error) error {
+func StreamQoderEvents(ctx context.Context, resp *http.Response, handle func(SSEEvent) error) error {
 	if resp == nil || resp.Body == nil {
 		return errors.New("qoder response body is nil")
 	}
@@ -1945,11 +1898,9 @@ func StreamQoderEvents(ctx context.Context, resp *http.Response, handle func(SSE
 	defer func() { _ = resp.Body.Close() }()
 	defer cancel()
 
-	ticker := time.NewTicker(QoderKeepaliveEvery)
-	defer ticker.Stop()
 	results := make(chan QoderEventResult, 1)
 	transformer := NewQoderTextToolCallTransformer()
-	// Upstream reads can wait while cancellation and keepalives need to progress.
+	// Upstream reads can wait while cancellation needs to progress.
 	// Run scanning separately and transfer batches through the bounded result
 	// channel to this owner.
 	go ScanQoderEvents(ctx, resp, results)
@@ -1979,12 +1930,6 @@ func StreamQoderEvents(ctx context.Context, resp *http.Response, handle func(SSE
 			}
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-ticker.C:
-			if keepalive != nil {
-				if err := keepalive(); err != nil {
-					return err
-				}
-			}
 		}
 	}
 }

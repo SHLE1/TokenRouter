@@ -41,7 +41,6 @@ func (s *Antigravity) antigravityResponseAdapter(c *attempt) *antigravity.Respon
 	if s.Options.Configured {
 		opts.MaxLineSize = s.Options.MaxLineSize
 		opts.StreamDataIntervalTimeout = s.Options.StreamInterval
-		opts.StreamKeepaliveInterval = s.Options.StreamKeepalive
 	}
 	return &antigravity.ResponseAdapter{Options: opts}
 }
