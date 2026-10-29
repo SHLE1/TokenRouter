@@ -122,6 +122,7 @@
 ## 弹窗
 
 - 默认使用 `BaseDialog`：宽度档位有 narrow、normal、wide、extra-wide、full；Escape 关闭、点击外部关闭、焦点管理和背景滚动锁定都已内置。新弹窗直接用它，手写 `fixed inset-0` 外壳会缺少这些行为。
+- 从一个弹窗里再打开弹窗时，后打开的弹窗传 `z-index` = `modal-nested`（`Z_INDEX.MODAL_NESTED`）。同一层级按组件的挂载顺序叠放，先挂载的弹窗会被后挂载的盖住，与打开顺序无关；用户管理页从余额变动记录里打开充值框属于这种情况。
 - 输入法组词期间按 Escape 取消当前输入时，`BaseDialog` 保持打开，普通 Escape 按 `closeOnEscape` 设置关闭最上层弹窗。
 - 标题需要说明或图标时，用 `subtitle` 在标题下加一行 `text-xs` 说明，用 `header-icon` 插槽在标题左侧放图标块。标题右侧的模式切换等控件放进 `header-actions` 插槽，排在关闭按钮之前。头部结构由这些插槽组成。
 - 贴边分栏的工作区弹窗：传 `flush` 去掉内容区内边距，再配合 `bodyScroll=false`，由各栏自己滚动。侧栏用浅底（浅色 `gray-50/70`，深色 `dark-950`）和单侧分隔线贴住弹窗边缘，外面不再包卡片。底部操作区放在内容里，用同样的浅底和 `rounded-b-surface sm:rounded-b-dialog`，这样不会盖住弹窗的圆角。窄屏下分栏改成上下堆叠、由外层整体滚动时，各栏按内容撑高，`min-h-0 flex-1` 只在分栏断点（`md:`）生效；否则栏会被压缩，内容溢出后底部留白消失，内容贴住底栏。提供商连接测试弹窗是这种布局的参考实现。
