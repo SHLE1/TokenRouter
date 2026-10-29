@@ -715,7 +715,6 @@ func ReadChatStreaming(resp *http.Response, c *upstream.OutputContext, options C
 				zap.Duration("interval", streamInterval),
 			)
 			return resultWithUsage(), fmt.Errorf("stream data interval timeout")
-
 		}
 	}
 }

@@ -566,7 +566,6 @@ func (s *ResponseAdapter) HandleAntigravityCompatStream(
 			logger.LegacyPrintf("service.antigravity_gateway", "Stream data interval timeout (%s)", prefix)
 			WriteAntigravityCompatStreamError(c, adapter, writer, "stream_timeout", s.Options.MarkCommitted)
 			return session.collectResult(false), fmt.Errorf("stream data interval timeout")
-
 		}
 	}
 }

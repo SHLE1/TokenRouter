@@ -16,7 +16,7 @@ import (
 func filterHeartbeatInput(input string) string {
 	var filter SSEHeartbeatLineFilter
 	var out strings.Builder
-	for len(input) > 0 {
+	for input != "" {
 		n := strings.IndexAny(input, "\r\n")
 		if n < 0 {
 			n = len(input)
@@ -27,12 +27,12 @@ func filterHeartbeatInput(input string) string {
 			}
 		}
 		for _, line := range filter.Push([]byte(input[:n])) {
-			out.Write(line)
+			_, _ = out.Write(line)
 		}
 		input = input[n:]
 	}
 	for _, line := range filter.Flush() {
-		out.Write(line)
+		_, _ = out.Write(line)
 	}
 	return out.String()
 }

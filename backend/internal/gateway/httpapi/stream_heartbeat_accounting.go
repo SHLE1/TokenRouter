@@ -17,6 +17,7 @@ import "github.com/gin-gonic/gin"
 // StreamHeartbeatBytes returns the combined bytes accepted from all heartbeat
 // sources for this request. Nil contexts return zero; callers serialize ordinary
 // request-side recording before inspecting the accumulated count.
+// @project-doc docs/architecture/gateway_request_lifecycle.md#sse_keepalive
 func StreamHeartbeatBytes(c *gin.Context) int {
 	count, _ := streamHeartbeatSnapshot(c)
 	return count

@@ -57,6 +57,8 @@ server:
     - ::1/128
 ```
 
+TokenRouter 对文本 SSE 默认在下游空闲 10 秒后发送心跳，可维持配置为 100 秒或 60 秒读空闲窗口的 Cloudflare／Nginx 连接；代理必须及时转发 SSE，心跳不会延长绝对请求时限。上游静默超过 `stream_data_interval_timeout` 后停止发送，具体条件见[SSE 保活](../architecture/gateway_request_lifecycle.md#sse_keepalive)。
+
 ## Nginx 基线
 
 在 `http` 块中定义共享区域。限速值要根据实际的合法流量调整；下面的值只是一个保守的起点。

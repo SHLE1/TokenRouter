@@ -552,7 +552,6 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 			}
 			sendErrorEvent("stream_timeout", fmt.Sprintf("upstream stream idle for %s", streamInterval))
 			return &StreamResult{Usage: usage}, fmt.Errorf("stream data interval timeout")
-
 		}
 	}
 }

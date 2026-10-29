@@ -57,7 +57,9 @@ func TestOutputContentCommitment(t *testing.T) {
 func TestOutputContentCommitmentRequiresAcceptedRetryPayload(t *testing.T) {
 	sink := &initialOutputSink{}
 	out := NewOutputContext(sink)
-	out.Writer.(*sinkWriter).next = &OutputEvent{CommitForRetry: false}
+	writer, ok := out.Writer.(*sinkWriter)
+	require.True(t, ok)
+	writer.next = &OutputEvent{CommitForRetry: false}
 	_, err := out.Writer.Write([]byte(": heartbeat\n\n"))
 	require.NoError(t, err)
 	require.False(t, out.Writer.ContentWritten())

@@ -10,6 +10,7 @@
 - [模型名称链](#模型名称链)：修改模型映射、列表或响应模型恢复时读取。
 - [提供商选择与故障转移](#提供商选择与故障转移)：修改调度、并发、粘性或重试时读取。
 - [转发与流式输出](#转发与流式输出)：修改上游调用和错误返回时读取。
+- [SSE 保活](#sse_keepalive)：修改下游空闲心跳、上游心跳消费或重试字节计数时读取。
 - [用量与结算](#用量与结算)：修改用量记录、价格或扣费时读取。
 - [审核与搜索协作](#moderation_search_boundaries)：修改审核裁决、搜索额度和工具模拟时读取。
 - [新增入口检查清单](#新增入口检查清单)：新增入口或平台时逐项核对。
@@ -65,7 +66,7 @@
       响应模型元数据恢复与 Ops 完成采集
 ```
 
-HTTP 文本请求在鉴权之前安装请求级计时，覆盖复合 Key 提前读取正文。首次提供商准入前的正文读取、前置处理和两类槽位排队分别统计；首次准入后发生的提供商排队独立记录。事件时间线保留从入口起算的时刻。各平台流式响应通过共享 HTTP 观察边界记录上游事件、成功交付的有效内容和首次响应数据 Flush，计时判断与计费、重试的语义输出标志分开。上游输出通过 `NewResponseSink` 绑定计时来源；最终 HTTP writer 在成功写入后记录，保留中间的模型恢复和响应采集。网关本地错误直接使用普通 writer，不继承上游输出来源。详见 [HTTP 接口](../interfaces/http_api.md#response_errors)。
+HTTP 文本请求在鉴权之前安装请求级计时，覆盖复合 Key 提前读取正文。计时之后紧接统一 SSE writer，位于 Ops 输出采集和响应模型改写的内侧，所有正文写入与心跳在这一层串行化，规则见 [SSE 保活](#sse_keepalive)。首次提供商准入前的正文读取、前置处理和两类槽位排队分别统计；首次准入后发生的提供商排队独立记录。事件时间线保留从入口起算的时刻。各平台流式响应通过共享 HTTP 观察边界记录上游事件、成功交付的有效内容和首次响应数据 Flush，计时判断与计费、重试的语义输出标志分开。上游输出通过 `NewResponseSink` 绑定计时来源；最终 HTTP writer 在成功写入后记录，保留中间的模型恢复和响应采集。网关本地错误直接使用普通 writer，不继承上游输出来源。详见 [HTTP 接口](../interfaces/http_api.md#response_errors)。
 
 管线里有几条顺序约束：
 
@@ -231,11 +232,33 @@ OpenAI 和 Grok 共用的响应回合状态头由 `gateway/httpapi.CodexTurnStat
 
 ### 流式输出与重试窗口
 
-流式响应有一个不可逆的时间点。调用上游前记录 `ResponseWriter` 已写出的字节数；如果本次 attempt 已经向客户端写出实际业务内容，就不能再换提供商，否则两个上游的响应会拼成一条损坏的流。以下内容不算业务输出，可以留在 attempt 缓冲里，为输出前的 failover 留出空间：旧版 Compact 桥接心跳、Responses 的 `response.created` 和 `response.in_progress` 前导事件、等待终态判定的可重试 `error` 帧。不可重试的错误按事件及时转发。实际输出开始后，错误只能按当前协议追加允许的流错误事件，或者直接结束连接。非流式请求在还没写响应时，才能进入下一次 failover。
+流式响应有一个不可逆的时间点。调用上游前通过 `HeartbeatAdjustedWrittenSize` 记录扣除全部心跳后的写出字节数；如果本次 attempt 已经向客户端写出实际业务内容，就不能再换提供商，否则两个上游的响应会拼成一条损坏的流。已记录的心跳不算业务输出。以下事件可以留在 attempt 缓冲里，为输出前的 failover 留出空间：Responses 的 `response.created` 和 `response.in_progress` 前导事件、等待终态判定的可重试 `error` 帧。不可重试的错误按事件及时转发。实际输出开始后，错误只能按当前协议追加允许的流错误事件，或者直接结束连接。非流式请求在还没写响应时，才能进入下一次 failover。
 
 错误分为五类：本地准入、业务能力不足、调度容量不足、可切换的上游错误、不可切换的转发错误。协议准入拒绝时，Anthropic 返回 `permission_error`，OpenAI 返回 `protocol_not_allowed`，Google 返回 `PERMISSION_DENIED`，此时还没有选中提供商。Ops 采集记录归属、endpoint、实际提供商平台、模型和所选提供商；没有选中提供商时平台记为 unknown。返回给客户端的错误隐去凭据、内部代理和数据库错误。
 
 Qoder 流式请求进入上游后采用完成后释放：客户端断开时停止下游输出，在预算内收集完尾部 usage 后再释放槽位。等待中的请求和非流式请求按各自的取消策略释放。WS 入站连接和 Live 租约各自续租，租约丢失时各自取消，两者与请求 Lease 互相独立。
+
+<a id="sse_keepalive"></a>
+## SSE 保活
+
+保活按连接分别处理。上游心跳只表示 TokenRouter 与提供商之间仍有数据到达；客户端经过的反向代理和 CDN，由 TokenRouter 自己维护下游活跃。文本请求在 `TextRequestTiming` 后安装 `DownstreamSSEKeepalive`，覆盖 Messages、Chat Completions、Responses、Gemini 及 Qoder 的文本输出。协议转换和同协议直通共用这一层，文本读取器只保留上游空闲超时与断开后的用量收集。
+
+统一组件按最近一次下游字节写入计时，间隔使用 `gateway.stream_keepalive_interval`，默认 10 秒，允许 5 至 30 秒，0 关闭该组件。它有两个可写入阶段：
+
+- 上游等待：流式文本请求经 `timing.Do` 发起 HTTP 交换后，响应尚未提交且空闲满一个间隔时，提交 `200` 和 `text/event-stream`，发送心跳并 Flush。handler 获取可修改 Header 或开始输出时关闭这个等待窗口。读取器初始化的只读 Header 快照不会关闭窗口，因此上游已经返回响应头、首个业务事件仍在等待或暂存时也能保活。非流式请求、明确的非 200 状态或非 SSE 内容类型不会提前提交。
+- 已提交 SSE：状态为 2xx、内容类型为 `text/event-stream`，且输出停在完整帧边界时，按下游空闲时间发送心跳。半帧期间不插入字节；LF 和 CRLF 分隔符可以跨多次 Write。普通正文和排队心跳都会重置下游时钟，上游心跳不会重置它。
+
+Messages 默认发送 `event: ping` 加 `data: {"type": "ping"}`。Claude Code UA 版本至少为 2.1.193 且存在打开的受支持内容块时，发送对应的空 delta；工具块使用空的 `input_json_delta.partial_json`，块关闭后恢复 ping。其他文本协议发送 `: keepalive` 注释。识别到 `[DONE]`、`message_stop`、`error`、`response.completed`、`response.failed` 或 `response.incomplete` 终止帧后停止心跳。事件识别只保留每帧前 4096 字节，较大的帧继续跟踪边界，并可用前缀中的 event 名识别终态。
+
+`gateway.stream_data_interval_timeout` 同时限制统一组件允许维持的上游静默时间，默认 180 秒，0 不限制。发起上游请求和实际读取到字节都会更新上游活动时间，注释和 ping 字节也算活动。超过该上限后，组件不再补发心跳，读取器自己的上游超时仍按原规则处理。下游写失败或连接 Hijack 后停止心跳；请求结束时等待心跳 goroutine 退出。
+
+HTTP 提交与业务输出分别判断。`StreamHeartbeatBytes` 汇总排队、图片流读取器、Compact／图片 SSE、图片 JSON 空白和统一文本组件的心跳字节；`HeartbeatAdjustedWrittenSize` 对尝试前后的观测使用同一口径。只有心跳时返回 Gin 的未写出哨兵 `-1`，没有任何心跳记录时保留原始 Size，包括只提交 Header 后的零。读取异步计数时同时锁定对应 writer 的大小，避免把两次观测之间写入的心跳误判成正文。`OutputWriter.Written()` 表示实际 HTTP 已提交，`ContentWritten()` 表示已有成功交付且关闭重试窗口的正文；重试使用后者，响应头能否发送仍使用前者。
+
+心跳提前提交 200 后，后续错误用客户端协议的 SSE 错误结束，不能再改 HTTP 状态。后来才到达的上游响应头也无法发送，且不能上报为已经提交。HTTP writer 在已提交后返回 Header 副本，避免迟到的 Header 修改与心跳并发读取同一个 map。只有心跳的请求仍可在既有策略与预算内重试或切换提供商。
+
+上游的注释、`ping`／`heartbeat`／`keepalive` 和空 data 帧在读取侧消费，JSON `type` 优先于 event 名，所以 `event: ping` 搭配实际业务数据时保留该数据。逐行路径使用有界候选缓冲，最多 16 行、16 KiB；遇到未知字段、超过上限或在 EOF 留下不完整候选时，保守释放保留的非注释行。明确的错误事件继续按既有错误规则处理，不因 data 为空被忽略。上游活动计时发生在过滤之前。
+
+排队心跳继续由 `WaitObserver` 在请求 goroutine 内写入；Gemini 流式排队使用 SSE 注释。Compact 和图片保留专用控制器，统一组件不接管它们。图片错误根据已提交的 Content-Type 选择 SSE 或 JSON，JSON 空白心跳之后仍返回合法 JSON。注释、ping 和空文本、thinking、工具参数 delta 不建立 TTFT 数据事件。
 
 ## 用量与结算
 

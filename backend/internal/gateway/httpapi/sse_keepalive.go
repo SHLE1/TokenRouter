@@ -90,6 +90,7 @@ type sseKeepaliveWriter struct {
 // the worker before returning and restores the original writer only when no
 // outer wrapper owns the current writer. Compact and image controllers retain
 // their own protocols and never qualify for this worker's early commitment.
+// @project-doc docs/architecture/gateway_request_lifecycle.md#sse_keepalive
 func DownstreamSSEKeepalive(interval, stall time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		stages := timing.StagesFromContext(c.Request.Context())
@@ -477,7 +478,7 @@ func (w *sseKeepaliveWriter) observeLocked(p []byte) {
 func (w *sseKeepaliveWriter) observeFrameLocked() {
 	event, data := "", ""
 	foundData := false
-	for _, line := range strings.Split(string(w.frame), "\n") {
+	for line := range strings.SplitSeq(string(w.frame), "\n") {
 		line = strings.TrimSuffix(line, "\r")
 		if value, ok := strings.CutPrefix(line, "event:"); ok {
 			event = strings.TrimSpace(value)

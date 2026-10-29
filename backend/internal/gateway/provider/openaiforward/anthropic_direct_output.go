@@ -322,7 +322,6 @@ func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstr
 			o.HandleTimeout(ctx, upstreamModel)
 			return NativeAnthropicStreamResult(resp, usage, clientDisconnected, originalModel, billingModel, upstreamModel, reasoningEffort, startTime),
 				fmt.Errorf("stream data interval timeout")
-
 		}
 	}
 }

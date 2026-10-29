@@ -1175,7 +1175,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			return resultWithUsage(), options.FirstOutputError(startTime, originalModel, reasoningEffort,
 				firstOutputTimeout, "semantic_output", resp.Header,
 			)
-
 		}
 	}
 }

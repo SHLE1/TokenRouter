@@ -381,7 +381,6 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 				}
 
 				cw.Fprintf("%s\n", line)
-
 			}
 
 		case <-intervalCh:
@@ -396,7 +395,6 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 			logger.LegacyPrintf("service.antigravity_gateway", "Stream data interval timeout (antigravity)")
 			sendErrorEvent("stream_timeout")
 			return &StreamResult{Usage: usage}, fmt.Errorf("stream data interval timeout")
-
 		}
 	}
 }
@@ -1190,7 +1188,6 @@ func (s *ResponseAdapter) HandleClaudeStreamingResponse(c *upstream.OutputContex
 			logger.LegacyPrintf("service.antigravity_gateway", "Stream data interval timeout (antigravity)")
 			sendErrorEvent("stream_timeout")
 			return &StreamResult{Usage: convertUsage(nil)}, fmt.Errorf("stream data interval timeout")
-
 		}
 	}
 }

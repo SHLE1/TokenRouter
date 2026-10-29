@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 
+	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
@@ -91,7 +92,7 @@ func TestDownstreamSSEKeepaliveFraming(t *testing.T) {
 				}
 				time.Sleep(25 * time.Millisecond)
 				synctest.Wait()
-				suffix := strings.TrimPrefix(readKeepaliveBody(c, rec), strings.Join(tc.pieces, ""))
+				suffix := strings.TrimPrefix(readKeepaliveBody(t, c, rec), strings.Join(tc.pieces, ""))
 				if tc.want == "" {
 					require.Empty(t, suffix)
 				} else {
@@ -113,14 +114,14 @@ func TestDownstreamSSEKeepaliveClaudeToolDelta(t *testing.T) {
 		require.NoError(t, err)
 		time.Sleep(15 * time.Millisecond)
 		synctest.Wait()
-		require.Contains(t, readKeepaliveBody(c, rec), `"type":"input_json_delta","partial_json":""`)
-		require.Contains(t, readKeepaliveBody(c, rec), `"index":3`)
+		require.Contains(t, readKeepaliveBody(t, c, rec), `"type":"input_json_delta","partial_json":""`)
+		require.Contains(t, readKeepaliveBody(t, c, rec), `"index":3`)
 		_, err = c.Writer.WriteString("event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":3}\n\n")
 		require.NoError(t, err)
-		before := len(readKeepaliveBody(c, rec))
+		before := len(readKeepaliveBody(t, c, rec))
 		time.Sleep(15 * time.Millisecond)
 		synctest.Wait()
-		require.Equal(t, "event: ping\ndata: {\"type\": \"ping\"}\n\n", readKeepaliveBody(c, rec)[before:])
+		require.Equal(t, "event: ping\ndata: {\"type\": \"ping\"}\n\n", readKeepaliveBody(t, c, rec)[before:])
 	})
 }
 
@@ -152,13 +153,13 @@ func TestDownstreamSSEKeepaliveHeaderWait(t *testing.T) {
 				synctest.Wait()
 				if mode != "stream" {
 					require.False(t, c.Writer.Written())
-					require.Empty(t, readKeepaliveBody(c, rec))
+					require.Empty(t, readKeepaliveBody(t, c, rec))
 					return
 				}
 				require.True(t, c.Writer.Written())
 				require.Equal(t, http.StatusOK, rec.Code)
 				require.Equal(t, "text/event-stream", rec.Header().Get("Content-Type"))
-				require.Equal(t, strings.Repeat(": keepalive\n\n", 2), readKeepaliveBody(c, rec))
+				require.Equal(t, strings.Repeat(": keepalive\n\n", 2), readKeepaliveBody(t, c, rec))
 				require.Equal(t, -1, HeartbeatAdjustedWrittenSize(c))
 			})
 		})
@@ -170,11 +171,12 @@ func TestDownstreamSSEKeepaliveHeaderWait(t *testing.T) {
 // upstream byte renews activity and permits downstream heartbeats again.
 func TestDownstreamSSEKeepaliveStallLimit(t *testing.T) {
 	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 25*time.Millisecond, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
-		w := c.Writer.(*sseKeepaliveWriter)
+		w, ok := c.Writer.(*sseKeepaliveWriter)
+		require.True(t, ok)
 		w.openHeaderWait(c.Request.Context())
 		time.Sleep(80 * time.Millisecond)
 		synctest.Wait()
-		require.Equal(t, strings.Repeat(": keepalive\n\n", 2), readKeepaliveBody(c, rec))
+		require.Equal(t, strings.Repeat(": keepalive\n\n", 2), readKeepaliveBody(t, c, rec))
 		w.stages.ObserveUpstreamActivity(time.Now())
 		time.Sleep(15 * time.Millisecond)
 		synctest.Wait()
@@ -188,17 +190,20 @@ func TestDownstreamSSEKeepaliveStallLimit(t *testing.T) {
 func TestDownstreamSSEKeepaliveInitialOutputPreservesWait(t *testing.T) {
 	for _, deferred := range []bool{false, true} {
 		runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 0, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
-			c.Writer.(*sseKeepaliveWriter).openHeaderWait(c.Request.Context())
+			w, ok := c.Writer.(*sseKeepaliveWriter)
+			require.True(t, ok)
+			w.openHeaderWait(c.Request.Context())
 			var out *upstream.OutputContext
+			sink := &gateway.OutputTracker{Sink: NewResponseSink(c)}
 			if deferred {
-				out = upstream.NewDeferredOutputContext(NewResponseSink(c))
+				out = upstream.NewDeferredOutputContext(sink)
 			} else {
-				out = upstream.NewOutputContext(NewResponseSink(c))
+				out = upstream.NewOutputContext(sink)
 			}
 			out.Writer.Header().Set("X-Upstream", "pending")
 			time.Sleep(25 * time.Millisecond)
 			synctest.Wait()
-			require.Equal(t, strings.Repeat(": keepalive\n\n", 2), readKeepaliveBody(c, rec))
+			require.Equal(t, strings.Repeat(": keepalive\n\n", 2), readKeepaliveBody(t, c, rec))
 			require.True(t, out.Writer.Written())
 			require.False(t, out.Writer.ContentWritten())
 			_, err := out.Writer.Write([]byte("data: {\"type\":\"response.completed\"}\n\n"))
@@ -213,7 +218,8 @@ func TestDownstreamSSEKeepaliveInitialOutputPreservesWait(t *testing.T) {
 // races without changing the committed wire headers or interleaving partial frames.
 func TestDownstreamSSEKeepaliveConcurrentHeaders(t *testing.T) {
 	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIChatCompletions, "", true, 0, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
-		w := c.Writer.(*sseKeepaliveWriter)
+		w, ok := c.Writer.(*sseKeepaliveWriter)
+		require.True(t, ok)
 		w.openHeaderWait(c.Request.Context())
 		time.Sleep(15 * time.Millisecond)
 		for range 100 {
@@ -248,9 +254,11 @@ func TestDownstreamSSEKeepaliveSkipsUntimedRequests(t *testing.T) {
 // readKeepaliveBody copies recorder output under the production writer mutex.
 // Tests use it while the handler is active so future timer writes have the
 // same synchronization boundary as the recorder read being asserted.
-func readKeepaliveBody(c *gin.Context, rec *httptest.ResponseRecorder) string {
+func readKeepaliveBody(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) string {
+	t.Helper()
 	value, _ := c.Get(sseKeepaliveWriterKey)
-	w := value.(*sseKeepaliveWriter)
+	w, ok := value.(*sseKeepaliveWriter)
+	require.True(t, ok)
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return rec.Body.String()
@@ -284,7 +292,7 @@ func TestDownstreamSSEKeepaliveThinkingWait(t *testing.T) {
 					body := &keepaliveDelayedBody{Reader: strings.NewReader(payload), beforeRead: func() {
 						time.Sleep(25 * time.Millisecond)
 						synctest.Wait()
-						require.Contains(t, readKeepaliveBody(c, rec), ": keepalive\n\n")
+						require.Contains(t, readKeepaliveBody(t, c, rec), ": keepalive\n\n")
 					}}
 					return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(body)}, nil
 				})}
@@ -292,7 +300,7 @@ func TestDownstreamSSEKeepaliveThinkingWait(t *testing.T) {
 				require.NoError(t, err)
 				resp, err := timing.Do(client, req)
 				require.NoError(t, err)
-				defer resp.Body.Close()
+				defer func() { require.NoError(t, resp.Body.Close()) }()
 				timing.ObserveResponse(req.Context(), resp)
 				if conversion {
 					boundary := &MessageForwardBoundary{context: c}
@@ -386,7 +394,7 @@ func TestDownstreamSSEKeepaliveHTTPFailover(t *testing.T) {
 			client.Timeout = 3 * time.Second
 			resp, err := client.Post(gateway.URL+tc.path, "application/json", strings.NewReader(`{"stream":true}`))
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { require.NoError(t, resp.Body.Close()) }()
 			first := make([]byte, len(tc.heartbeat))
 			_, err = io.ReadFull(resp.Body, first)
 			require.NoError(t, err)
@@ -407,9 +415,9 @@ func TestDownstreamSSEKeepaliveHTTPFailover(t *testing.T) {
 func TestDownstreamSSEKeepaliveIgnoresUpstreamHeartbeatCadence(t *testing.T) {
 	runSSEKeepaliveTest(t, protocol.ProtocolOpenAIResponses, "", true, 12*time.Millisecond, func(t *testing.T, c *gin.Context, rec *httptest.ResponseRecorder) {
 		reader, writer := io.Pipe()
-		defer reader.Close()
+		defer func() { require.NoError(t, reader.Close()) }()
 		go func() {
-			defer writer.Close()
+			defer func() { _ = writer.Close() }()
 			for range 8 {
 				time.Sleep(5 * time.Millisecond)
 				_, _ = io.WriteString(writer, ": upstream-only-marker\n\n")
@@ -428,7 +436,7 @@ func TestDownstreamSSEKeepaliveIgnoresUpstreamHeartbeatCadence(t *testing.T) {
 		_, err = fixture.Output.ReadStreamObservation(req.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 		require.NoError(t, err)
 		synctest.Wait()
-		body := readKeepaliveBody(c, rec)
+		body := readKeepaliveBody(t, c, rec)
 		require.NotContains(t, body, "upstream-only-marker")
 		require.GreaterOrEqual(t, strings.Count(body, ": keepalive\n\n"), 2)
 		require.Less(t, strings.Index(body, ": keepalive"), strings.Index(body, "response.output_text.delta"))

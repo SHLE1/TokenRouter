@@ -296,7 +296,6 @@ func StreamResponsePassthrough(
 				options.OnTimeout(ctx, model)
 			}
 			return &StreamResult{Usage: usage}, fmt.Errorf("stream data interval timeout")
-
 		}
 	}
 }

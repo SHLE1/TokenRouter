@@ -508,7 +508,6 @@ func ReadMessagesStreaming(resp *http.Response, c *upstream.OutputContext, optio
 				zap.Duration("interval", streamInterval),
 			)
 			return resultWithUsage(), fmt.Errorf("stream data interval timeout")
-
 		}
 	}
 }

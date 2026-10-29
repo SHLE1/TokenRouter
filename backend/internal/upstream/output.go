@@ -264,6 +264,9 @@ func (w *sinkWriter) Header() http.Header { return w.header }
 // A downstream heartbeat can commit after codec initialization, so staged-header
 // decisions must inspect current sink state before reporting provider headers
 // as delivered. Missing state support retains the locally recorded value.
+// A successful local Begin stays authoritative even when a supporting sink
+// omits later metadata. This query never requests Header, so reading current
+// commitment cannot stop a waiting controller or take over response preparation.
 func (w *sinkWriter) Written() bool {
 	if w.written {
 		return true
