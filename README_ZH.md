@@ -25,22 +25,22 @@ TokenRouter 是一个开源的大模型统一网关。它把 Anthropic、OpenAI�
 
 ### 仪表盘
 
-<img src="assets/screenshots/dashboard-light.jpg" alt="TokenRouter 仪表盘 · 浅色模式" width="1600" />
-
-### 模型广场
-
-<img src="assets/screenshots/models-light.jpg" alt="TokenRouter 模型广场 · 浅色模式" width="1600" />
-
-<details>
-<summary>深色模式截图</summary>
-
-### 仪表盘
-
 <img src="assets/screenshots/dashboard-dark.jpg" alt="TokenRouter 仪表盘 · 深色模式" width="1600" />
 
 ### 模型广场
 
 <img src="assets/screenshots/models-dark.jpg" alt="TokenRouter 模型广场 · 深色模式" width="1600" />
+
+<details>
+<summary>浅色模式截图</summary>
+
+### 仪表盘
+
+<img src="assets/screenshots/dashboard-light.jpg" alt="TokenRouter 仪表盘 · 浅色模式" width="1600" />
+
+### 模型广场
+
+<img src="assets/screenshots/models-light.jpg" alt="TokenRouter 模型广场 · 浅色模式" width="1600" />
 
 </details>
 

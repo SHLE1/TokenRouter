@@ -25,22 +25,22 @@ TokenRouter is an open source unified LLM gateway. It puts model services from A
 
 ### Dashboard
 
-<img src="assets/screenshots/dashboard-light.jpg" alt="TokenRouter Dashboard · Light mode" width="1600" />
-
-### Model Marketplace
-
-<img src="assets/screenshots/models-light.jpg" alt="TokenRouter Model Marketplace · Light mode" width="1600" />
-
-<details>
-<summary>Dark mode screenshots</summary>
-
-### Dashboard
-
 <img src="assets/screenshots/dashboard-dark.jpg" alt="TokenRouter Dashboard · Dark mode" width="1600" />
 
 ### Model Marketplace
 
 <img src="assets/screenshots/models-dark.jpg" alt="TokenRouter Model Marketplace · Dark mode" width="1600" />
+
+<details>
+<summary>Light mode screenshots</summary>
+
+### Dashboard
+
+<img src="assets/screenshots/dashboard-light.jpg" alt="TokenRouter Dashboard · Light mode" width="1600" />
+
+### Model Marketplace
+
+<img src="assets/screenshots/models-light.jpg" alt="TokenRouter Model Marketplace · Light mode" width="1600" />
 
 </details>
 
