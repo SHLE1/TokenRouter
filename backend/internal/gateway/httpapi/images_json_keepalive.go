@@ -191,38 +191,6 @@ func OpenAIImagesJSONKeepalivePresent(c *gin.Context) bool {
 	return openAIImagesJSONKeepaliveFromContext(c) != nil
 }
 
-// OpenAIImagesJSONKeepaliveAdjustedWrittenSize reports accepted response
-// bytes after subtracting heartbeat padding. Missing context or writer
-// returns -1, and a writer without heartbeat state supplies its own Size
-// value. A heartbeat response containing no positive remaining byte count
-// also returns -1.
-//
-// Retry callers compare these observations before and after an attempt. The
-// mutex gives byte count and original writer size one consistent observation,
-// so padding alone can commit HTTP status while the attempt remains eligible
-// for output-based retry checks.
-func OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c *gin.Context) int {
-	if c == nil || c.Writer == nil {
-		return -1
-	}
-	k := openAIImagesJSONKeepaliveFromContext(c)
-	if k == nil {
-		return c.Writer.Size()
-	}
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	size := k.writer.Size()
-	if size < 0 {
-		return size
-	}
-	// Treat accepted whitespace alone as absent business output so provider retry
-	// checks remain usable after the first heartbeat has committed HTTP status.
-	if real := size - k.bytes; real > 0 {
-		return real
-	}
-	return -1
-}
-
 // openAIImagesJSONKeepaliveFromContext retrieves typed heartbeat state
 // retained on the request. Missing contexts, absent keys, and values of
 // another type return nil, letting response helpers work before installation.

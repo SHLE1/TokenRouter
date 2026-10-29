@@ -20,7 +20,7 @@ import (
 // The request writer wrapper stops heartbeat generation before response-building
 // operations take over its writer. A mutex protects heartbeat writes and state
 // reads, and stopping waits for any heartbeat currently holding that mutex.
-// Adjusted byte counts subtract compact and ordinary stream comments, returning
+// Shared accounting subtracts all recorded heartbeat sources, returning
 // Gin's unwritten sentinel when recorded comments account for all written bytes.
 // The request output path still serializes response writes and cleanup.
 // Successive waits retain committed framing and cumulative comment bytes so a
@@ -87,7 +87,7 @@ func StartOpenAICompactSSEKeepalive(c *gin.Context, interval time.Duration) func
 
 // StartOpenAISSEKeepalive starts heartbeats for callers that have already selected SSE output.
 // Callers include Responses passthrough and Images response-header waits.
-// Use OpenAICompactKeepaliveAdjustedWrittenSize to exclude heartbeat bytes from failover checks (#3887).
+// Use HeartbeatAdjustedWrittenSize to exclude heartbeat bytes from failover checks (#3887).
 // A nil context or writer, or a nonpositive interval, returns a no-op cleanup.
 // A missing request supplies no cancellation channel, so cleanup ends its worker.
 // Callers start and clean up from their request output path, because both steps
@@ -290,54 +290,6 @@ func StopOpenAICompactSSEKeepaliveCommitted(c *gin.Context) bool {
 	return committed || streamCommitted
 }
 
-// OpenAICompactKeepaliveAdjustedWrittenSize discounts recorded SSE heartbeat bytes.
-// Handlers compare values around Forward to detect protocol output that prevents
-// failover. When recorded heartbeats account for all written bytes, the result is
-// Gin's unwritten value, -1, permitting pre-output failover checks (#3887).
-// Missing output returns that same sentinel. Compact writer size and its
-// heartbeat count are read together under the controller mutex; ordinary stream
-// bytes use the request-local counter maintained by its output loop.
-//
-// A heartbeat can commit headers while carrying no protocol data, so raw Gin
-// size alone would close the retry window too early. Subtracting both heartbeat
-// counts returns the remaining response bytes when positive and restores -1
-// when subtraction leaves no positive response bytes. With no positive recorded
-// heartbeat count, the raw size passes through, including zero after header
-// commitment. Callers maintain distinct compact and ordinary counters and
-// serialize ordinary stream recording.
-func OpenAICompactKeepaliveAdjustedWrittenSize(c *gin.Context) int {
-	if c == nil || c.Writer == nil {
-		return -1
-	}
-	streamKeepaliveBytes := 0
-	if value, ok := c.Get(openAIStreamKeepaliveBytesContextKey); ok {
-		streamKeepaliveBytes, _ = value.(int)
-	}
-	size := c.Writer.Size()
-	compactKeepaliveBytes := 0
-	if value, ok := c.Get(openAICompactSSEKeepaliveKey); ok {
-		if k, valid := value.(*openAICompactSSEKeepalive); valid && k != nil {
-			k.mu.Lock()
-			size = k.writer.Size()
-			compactKeepaliveBytes = k.bytes
-			k.mu.Unlock()
-		}
-	}
-	if size < 0 {
-		return size
-	}
-	keepaliveBytes := compactKeepaliveBytes + streamKeepaliveBytes
-	if keepaliveBytes <= 0 {
-		return size
-	}
-	if real := size - keepaliveBytes; real > 0 {
-		return real
-	}
-	// Returning zero would mark output as started in OpenAIStreamClientOutputStarted.
-	// Restore Gin's negative sentinel when heartbeat subtraction leaves no positive response bytes.
-	return -1
-}
-
 // RecordOpenAIStreamKeepaliveBytes accumulates bytes written by stream heartbeats.
 // Nil contexts and nonpositive writes are ignored. The caller records reported
 // comment bytes after writing them and serializes this read-add-set sequence
@@ -374,5 +326,5 @@ func OpenAIStreamClientOutputStarted(c *gin.Context, localStarted bool) bool {
 	}
 	// A compact heartbeat commits HTTP 200 but carries no model output. Excluding
 	// its bytes keeps this output check from independently rejecting a pre-output retry.
-	return OpenAICompactKeepaliveAdjustedWrittenSize(c) >= 0
+	return HeartbeatAdjustedWrittenSize(c) >= 0
 }

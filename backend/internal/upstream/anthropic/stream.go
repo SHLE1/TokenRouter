@@ -96,7 +96,7 @@ type StreamOptions struct {
 	// After a write disconnect, timeout returns partial state without invoking
 	// this provider-update callback.
 	OnTimeout func(context.Context, string)
-	// Failover converts a standard read failure before recorded writer
+	// Failover converts a standard read failure before recorded content
 	// commitment into the caller's retry error. Absence selects
 	// StreamReadFailure holding the synthesized diagnostic bytes.
 	Failover func([]byte) error
@@ -549,12 +549,11 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 					sendErrorEvent("response_too_large", fmt.Sprintf("upstream SSE line exceeded %d bytes", maxLineSize))
 					return &StreamResult{Usage: usage}, ev.err
 				}
-				// Writer commitment can originate from headers or a heartbeat
-				// before semantic content. An uncommitted writer permits
-				// Failover; after commitment, append a sanitized SSE error and
-				// return partial state. Internal logs retain transport details.
+				// HTTP headers or heartbeats can precede provider content. Permit
+				// failover until retry-marked content is delivered; afterward append
+				// a sanitized SSE error and retain the partial usage for completion.
 				disconnectMsg := "upstream stream disconnected: " + upstream.SanitizeStreamError(ev.err)
-				if !c.Writer.Written() {
+				if !c.Writer.ContentWritten() {
 					logger.LegacyPrintf("service.gateway", "Upstream stream read error before any client output (provider=%d), failing over: %v", options.ProviderID, ev.err)
 					body, _ := json.Marshal(map[string]any{
 						"type": "error",

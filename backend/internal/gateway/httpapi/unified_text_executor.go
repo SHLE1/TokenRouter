@@ -32,7 +32,7 @@ import (
 // Native Messages also needs local interception and serial message ownership
 // before platform forwarding. Qoder credential recovery stays within the same
 // target when its exchange returns nil result and leaves writer size unchanged.
-// First Gin header commitment changes that size and blocks recovery. Native result
+// Header-only commitment without recorded heartbeats blocks recovery. Native result
 // conversion copies token buckets but retains mutable metadata references, so
 // completion capture creates its own recording input before later request state
 // can change.
@@ -190,8 +190,8 @@ func usesOpenAIExecutor(target *gatewayadapter.ExecutionProvider) bool {
 // Platform adapters receive their specific protocol and session inputs; partial
 // results remain available alongside errors. Qoder can refresh credentials and
 // retry that same target once when the result is nil, writer size is unchanged
-// and the error allows refresh. First Gin header commitment changes -1 to zero
-// and prevents this retry. A successful refresh replaces the target record before
+// and the error allows refresh. Header-only commitment without recorded
+// heartbeats changes -1 to zero and prevents this retry. A successful refresh replaces the target record before
 // retry; failed refresh leaves the first execution error. No provider selection
 // is repeated by this function.
 func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, source protocol.ProtocolID) (*forward.OpenAIResult, error) {
@@ -238,12 +238,12 @@ func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target
 			result, err = e.Antigravity.ForwardAsChatCompletions(ctx, c, target, body, nil)
 		}
 	case provider.PlatformQoder:
-		before := c.Writer.Size()
+		before := HeartbeatAdjustedWrittenSize(c)
 		result, err = ForwardQoderAttempt(ctx, c, e.Qoder, &target.Record, body, source)
 		// Retry within this target when its exchange has no result or writer-size
-		// change. First Gin header commitment counts as a change, preventing recovery
-		// after that newly committed response even before body output.
-		if err != nil && result == nil && c.Writer.Size() == before && qoder.MayRefreshAttempt(err) && e.QoderRefresh != nil {
+		// change after subtracting heartbeats. Headers committed without a recorded
+		// heartbeat retain Gin's zero size and still close this recovery path.
+		if err != nil && result == nil && HeartbeatAdjustedWrittenSize(c) == before && qoder.MayRefreshAttempt(err) && e.QoderRefresh != nil {
 			fresh, refreshErr := e.QoderRefresh.RefreshProviderSession(ctx, &target.Record)
 			// A usable refreshed record replaces this attempt target before its one
 			// retry; unsuccessful refresh retains the first exchange error for outer

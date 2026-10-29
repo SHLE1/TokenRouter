@@ -654,7 +654,7 @@ func TestAntigravityClientWriter(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(rec)
 		flusher, _ := c.Writer.(http.Flusher)
-		cw := antigravity.NewClientWriter(c.Writer, flusher, "test")
+		cw := antigravity.NewClientWriter(upstream.NewOutputContext(gatewayhttp.NewResponseSink(c)).Writer, flusher, "test")
 
 		ok := cw.Write([]byte("hello"))
 		require.True(t, ok)
@@ -667,7 +667,7 @@ func TestAntigravityClientWriter(t *testing.T) {
 		c, _ := gin.CreateTestContext(rec)
 		fw := &antigravityFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
 		flusher, _ := c.Writer.(http.Flusher)
-		cw := antigravity.NewClientWriter(fw, flusher, "test")
+		cw := antigravity.NewClientWriter(upstream.NewOutputContext(gatewayhttp.ResponseSink{Writer: fw}).Writer, flusher, "test")
 
 		ok := cw.Write([]byte("hello"))
 		require.False(t, ok)
@@ -679,7 +679,7 @@ func TestAntigravityClientWriter(t *testing.T) {
 		c, _ := gin.CreateTestContext(rec)
 		fw := &antigravityFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
 		flusher, _ := c.Writer.(http.Flusher)
-		cw := antigravity.NewClientWriter(fw, flusher, "test")
+		cw := antigravity.NewClientWriter(upstream.NewOutputContext(gatewayhttp.ResponseSink{Writer: fw}).Writer, flusher, "test")
 
 		cw.Write([]byte("first"))
 		ok := cw.Fprintf("second %d", 2)

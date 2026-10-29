@@ -126,7 +126,7 @@ type responsesAttemptBridge struct {
 	// text loop chooses completion handling.
 	result *forwardcore.OpenAIResult
 	// writerSizeBeforeForward measures adjusted output before this
-	// exchange. Compact heartbeat subtraction makes RetryReady compare
+	// exchange. Heartbeat subtraction makes RetryReady compare
 	// meaningful bytes rather than committed keepalive traffic.
 	writerSizeBeforeForward int
 	// cyberPolicyHandled and wroteFallback retain different terminal
@@ -286,7 +286,7 @@ func (b *responsesAttemptBridge) Acquire() bool {
 // capture, while the bridge retains provider and result metadata for those
 // later steps.
 //
-// Adjusted pre-forward output size excludes registered Compact heartbeat bytes.
+// Adjusted pre-forward output size excludes all recorded heartbeat bytes.
 // Response timing subtracts a positive upstream phase only when total
 // forwarding duration exceeds it; otherwise it retains the full duration.
 // Result presence, images, native partial usage, HTTP commitment, and
@@ -296,10 +296,10 @@ func (b *responsesAttemptBridge) Forward() textflow.ResponseOutcome {
 	var err error
 	gatewayhttp.SetOpsLatencyMs(b.c, gatewayhttp.OpsRoutingLatencyMsKey, time.Since(b.routingStart).Milliseconds())
 	forwardStart := time.Now()
-	// Registered Compact heartbeat bytes can commit headers before usable
+	// Recorded heartbeat bytes can commit headers before usable
 	// output. Subtract those bytes here so later retry readiness compares
 	// the actual exchange output.
-	b.writerSizeBeforeForward = gatewayhttp.OpenAICompactKeepaliveAdjustedWrittenSize(b.c)
+	b.writerSizeBeforeForward = gatewayhttp.HeartbeatAdjustedWrittenSize(b.c)
 	// A managed-mode provider after passthrough needs separately derived
 	// reasoning input. Rebuild from canonical bytes so a previous
 	// provider's sanitation does not replace future input.
@@ -512,7 +512,7 @@ func (b *responsesAttemptBridge) OtherFailure(err error) {
 	// Warning handling can emit terminal JSON or response.failed. Recheck
 	// the communicated-error and adjusted-size evidence so supplying a
 	// fallback does not duplicate that output.
-	if !upstreamErrorAlreadyCommunicated && (!recordedWarning || gatewayhttp.OpenAICompactKeepaliveAdjustedWrittenSize(b.c) == b.writerSizeBeforeForward) {
+	if !upstreamErrorAlreadyCommunicated && (!recordedWarning || gatewayhttp.HeartbeatAdjustedWrittenSize(b.c) == b.writerSizeBeforeForward) {
 		b.wroteFallback = b.binding().ensureOpenAIForwardErrorResponse(b.c, *b.streamStarted, err)
 	}
 	b.fields = []zap.Field{

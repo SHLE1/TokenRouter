@@ -155,8 +155,8 @@ func (b *MessageForwardBoundary) ReadResponseBody(reader io.Reader, limit int64,
 	return ReadUpstreamResponseBody(reader, limit, b.context, tooLarge)
 }
 
-// Size returns the current HTTP writer’s reported response byte count.
-func (b *MessageForwardBoundary) Size() int { return b.context.Writer.Size() }
+// Size returns response bytes after excluding all recorded heartbeat output.
+func (b *MessageForwardBoundary) Size() int { return HeartbeatAdjustedWrittenSize(b.context) }
 
 // Written reports whether the current HTTP writer has written headers.
 func (b *MessageForwardBoundary) Written() bool { return b.context.Writer.Written() }

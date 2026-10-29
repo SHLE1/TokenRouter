@@ -26,20 +26,20 @@ func TestStartOpenAISSEKeepaliveRetainsAttemptHistory(t *testing.T) {
 		synctest.Wait()
 		firstSize := rec.Body.Len()
 		require.Positive(t, firstSize)
-		require.Equal(t, -1, OpenAICompactKeepaliveAdjustedWrittenSize(c))
+		require.Equal(t, -1, HeartbeatAdjustedWrittenSize(c))
 		stop = StartOpenAISSEKeepalive(c, time.Second)
 		time.Sleep(2 * time.Second)
 		stop()
 		synctest.Wait()
 		require.Greater(t, rec.Body.Len(), firstSize)
-		require.Equal(t, -1, OpenAICompactKeepaliveAdjustedWrittenSize(c))
+		require.Equal(t, -1, HeartbeatAdjustedWrittenSize(c))
 		stop = StartOpenAISSEKeepalive(c, time.Hour)
 		stop()
 		require.True(t, StopOpenAICompactSSEKeepaliveCommitted(c))
 		require.Same(t, original, c.Writer)
 		_, err := c.Writer.Write([]byte("data: completed\n\n"))
 		require.NoError(t, err)
-		require.Equal(t, len("data: completed\n\n"), OpenAICompactKeepaliveAdjustedWrittenSize(c))
+		require.Equal(t, len("data: completed\n\n"), HeartbeatAdjustedWrittenSize(c))
 	})
 }
 
@@ -156,12 +156,12 @@ func TestOpenAIAdjustedWrittenSizeExcludesResponsesStreamKeepalive(t *testing.T)
 	require.NoError(t, err)
 	RecordOpenAIStreamKeepaliveBytes(c, n)
 
-	require.Equal(t, -1, OpenAICompactKeepaliveAdjustedWrittenSize(c))
+	require.Equal(t, -1, HeartbeatAdjustedWrittenSize(c))
 	require.True(t, StopOpenAICompactSSEKeepaliveCommitted(c))
 
 	_, err = c.Writer.Write([]byte("data: semantic\n\n"))
 	require.NoError(t, err)
-	require.Equal(t, len("data: semantic\n\n"), OpenAICompactKeepaliveAdjustedWrittenSize(c))
+	require.Equal(t, len("data: semantic\n\n"), HeartbeatAdjustedWrittenSize(c))
 	require.Equal(t, ":\n\ndata: semantic\n\n", rec.Body.String())
 }
 
@@ -185,25 +185,25 @@ func TestOpenAICompactKeepaliveWriter_RequestSideWriteSuspendsBeats(t *testing.T
 	require.Contains(t, rec.Body.String(), `{"error":"local reject"}`)
 }
 
-// TestOpenAICompactKeepaliveAdjustedWrittenSize_ExcludesHeartbeatBytes observes
+// TestHeartbeatAdjustedWrittenSize_ExcludesHeartbeatBytes observes
 // Compact comments before direct protocol output. Adjusted size must retain
 // its pre-heartbeat value until data arrives, then report the data byte count.
-func TestOpenAICompactKeepaliveAdjustedWrittenSize_ExcludesHeartbeatBytes(t *testing.T) {
+func TestHeartbeatAdjustedWrittenSize_ExcludesHeartbeatBytes(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	// Without heartbeats, use the Gin writer size.
-	require.Equal(t, c.Writer.Size(), OpenAICompactKeepaliveAdjustedWrittenSize(c))
+	require.Equal(t, c.Writer.Size(), HeartbeatAdjustedWrittenSize(c))
 
 	stop := StartOpenAICompactSSEKeepalive(c, keepaliveTestInterval)
 	defer stop()
-	before := OpenAICompactKeepaliveAdjustedWrittenSize(c)
+	before := HeartbeatAdjustedWrittenSize(c)
 	waitForKeepaliveBeats()
-	require.Equal(t, before, OpenAICompactKeepaliveAdjustedWrittenSize(c), "仅心跳字节不得改变判定口径")
+	require.Equal(t, before, HeartbeatAdjustedWrittenSize(c), "仅心跳字节不得改变判定口径")
 
 	// Take over through wrapper Write before measuring data. The stored heartbeat
 	// count must stay subtracted after normal bytes increase the captured writer's size.
 	_, err := c.Writer.Write([]byte("real-bytes"))
 	require.NoError(t, err)
-	require.Equal(t, len("real-bytes"), OpenAICompactKeepaliveAdjustedWrittenSize(c))
+	require.Equal(t, len("real-bytes"), HeartbeatAdjustedWrittenSize(c))
 	require.Contains(t, rec.Body.String(), ": keepalive\n\n")
 }
 

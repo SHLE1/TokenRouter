@@ -433,7 +433,7 @@ func (s *OpenAIImagesExecutor) handleOpenAIImagesOAuthResponseError(
 	writerSizeBeforeResponse int,
 	err error,
 ) error {
-	responseWritten := c != nil && c.Writer != nil && OpenAIImagesAdjustedWrittenSize(c) != writerSizeBeforeResponse
+	responseWritten := c != nil && c.Writer != nil && HeartbeatAdjustedWrittenSize(c) != writerSizeBeforeResponse
 	if code, message, ok := openai.OpenAIUpstreamStreamReadErrorDetails(err); ok {
 		// A classified body failure supplies status-502 recovery evidence separately
 		// from HTTP success. Clone headers before response cleanup for later diagnostics.

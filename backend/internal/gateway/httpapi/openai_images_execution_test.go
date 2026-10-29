@@ -421,7 +421,7 @@ func TestForwardImagesAdmissionHeartbeatPreservesErrorFraming(t *testing.T) {
 				observer := WaitObserver(c, SSEPingFormatComment, time.Second, true, &started, true)
 				require.NoError(t, observer.Begin())
 				require.NoError(t, observer.Heartbeat())
-				before := OpenAIImagesAdjustedWrittenSize(c)
+				before := HeartbeatAdjustedWrittenSize(c)
 				status := http.StatusOK
 				responseBody := `{"data":{"b64_json":"must-not-be-delivered"}}`
 				if failure == "policy" {
@@ -534,7 +534,7 @@ func TestForwardImagesHeartbeatOnlyRetryKeepsOutputUnstarted(t *testing.T) {
 					require.Nil(t, result)
 					var retry *forwardcore.UpstreamFailoverError
 					require.ErrorAs(t, err, &retry)
-					require.Equal(t, -1, OpenAIImagesAdjustedWrittenSize(c))
+					require.Equal(t, -1, HeartbeatAdjustedWrittenSize(c))
 					require.NotContains(t, rec.Body.String(), "event: error")
 					if heartbeat == "headers" {
 						require.Contains(t, rec.Body.String(), ": keepalive")

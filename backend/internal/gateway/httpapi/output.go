@@ -41,6 +41,9 @@ type MessagesOutput struct {
 // ResponseSink writes synchronous upstream events to the client and flushes when requested.
 type ResponseSink struct {
 	Writer http.ResponseWriter // required downstream HTTP writer
+	// ctx enables heartbeat-adjusted commitment for live HTTP requests. Literal
+	// sinks without a context retain their existing HTTP commitment semantics.
+	ctx *gin.Context
 	// timing identifies the final writer beneath optional HTTP wrappers. Nil
 	// disables source observation for requests outside HTTP text timing scope.
 	timing *timingWriter
@@ -52,7 +55,7 @@ type ResponseSink struct {
 func NewResponseSink(c *gin.Context) ResponseSink {
 	value, _ := c.Get(requestTimingWriterKey)
 	writer, _ := value.(*timingWriter)
-	return ResponseSink{Writer: c.Writer, timing: writer}
+	return ResponseSink{Writer: c.Writer, timing: writer, ctx: c}
 }
 
 // Begin copies response header value slices and writes the supplied status
@@ -109,7 +112,8 @@ func (s ResponseSink) InitialOutput() upstream.OutputHead {
 // OutputState reads optional Written and Status interfaces from the bound
 // writer. Missing interfaces leave zero state fields, and this operation avoids
 // Header access so a waiting keepalive can continue until an output handoff is
-// requested.
+// requested. Content commitment excludes all recorded heartbeats when the sink
+// has a request context; literal sinks retain their HTTP commitment behavior.
 func (s ResponseSink) OutputState() upstream.OutputHead {
 	h := upstream.OutputHead{}
 	if w, ok := s.Writer.(interface {
@@ -123,6 +127,10 @@ func (s ResponseSink) OutputState() upstream.OutputHead {
 		Status() int
 	}); ok {
 		h.Status = w.Status()
+	}
+	h.ContentCommitted = h.Committed
+	if s.ctx != nil {
+		h.ContentCommitted = h.Committed && HeartbeatAdjustedWrittenSize(s.ctx) > 0
 	}
 	return h
 }

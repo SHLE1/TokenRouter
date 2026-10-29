@@ -483,7 +483,7 @@ func ReadChatStreaming(resp *http.Response, c *upstream.OutputContext, options C
 			return resultWithUsage(), cyberPolicyErr
 		}
 		if streamFailoverErr != nil {
-			if c == nil || c.Writer == nil || !c.Writer.Written() {
+			if c == nil || c.Writer == nil || !c.Writer.ContentWritten() {
 				return nil, streamFailoverErr
 			}
 			return resultWithUsage(), streamFailoverErr
