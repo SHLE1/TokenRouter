@@ -248,7 +248,7 @@ Qoder 流式请求进入上游后采用完成后释放：客户端断开时停�
 - 上游等待：流式文本请求经 `timing.Do` 发起 HTTP 交换后，响应尚未提交且空闲满一个间隔时，提交 `200` 和 `text/event-stream`，发送心跳并 Flush。handler 获取可修改 Header 或开始输出时关闭这个等待窗口。读取器初始化的只读 Header 快照不会关闭窗口，因此上游已经返回响应头、首个业务事件仍在等待或暂存时也能保活。非流式请求、明确的非 200 状态或非 SSE 内容类型不会提前提交。
 - 已提交 SSE：状态为 2xx、内容类型为 `text/event-stream`，且输出停在完整帧边界时，按下游空闲时间发送心跳。半帧期间不插入字节；LF 和 CRLF 分隔符可以跨多次 Write。普通正文和排队心跳都会重置下游时钟，上游心跳不会重置它。
 
-Messages 默认发送 `event: ping` 加 `data: {"type": "ping"}`。Claude Code UA 版本至少为 2.1.193 且存在打开的受支持内容块时，发送对应的空 delta；工具块使用空的 `input_json_delta.partial_json`，块关闭后恢复 ping。其他文本协议发送 `: keepalive` 注释。识别到 `[DONE]`、`message_stop`、`error`、`response.completed`、`response.failed` 或 `response.incomplete` 终止帧后停止心跳。事件识别只保留每帧前 4096 字节，较大的帧继续跟踪边界，并可用前缀中的 event 名识别终态。LF 与 CRLF 可以混用。
+Messages 默认发送 `event: ping` 加 `data: {"type": "ping"}`。Claude Code UA 版本至少为 2.1.193 且存在打开的受支持内容块时，发送对应的空 delta；工具块使用空的 `input_json_delta.partial_json`，块关闭后恢复 ping。Gemini 原生协议发送 `\n\n` 空事件，避免 Google SDK 将注释当作 JSON；其他文本协议发送 `: keepalive` 注释。识别到 `[DONE]`、`message_stop`、`error`、`response.completed`、`response.failed` 或 `response.incomplete` 终止帧后停止心跳。读取器也通过 `OutputEvent.Terminal` 提交整条响应的完成信息，终态字节经过现有 writer 链完整写入后才停止心跳；这段写入与终态发布共同排除定时器写入，短写返回 `io.ErrShortWrite`。文本前缀识别仍只保留每帧前 4096 字节，较大的帧继续跟踪边界；结构化终态通知不受此前缀限制。LF 与 CRLF 可以混用。
 
 等待上游响应头期间不应用 `gateway.stream_data_interval_timeout`：传输层的响应头超时和请求的首输出保护负责限制这段等待。`timing.Do` 单独记录尚未返回响应头或错误的请求数，所以心跳提前提交下游 200 不会被误当成上游响应头已经返回；并发交换也分别结束各自的等待。
 
@@ -258,9 +258,11 @@ HTTP 提交与业务输出分别判断。`StreamHeartbeatBytes` 汇总排队、�
 
 心跳提前提交 200 后，后续错误用客户端协议的 SSE 错误结束，不能再改 HTTP 状态。后来才到达的上游响应头也无法发送，且不能上报为已经提交。响应头在读取器的私有 map 中准备，初始化和前导事件不会登记提供商归属。`ResponseSink.Begin` 应用响应头时先关闭提前提交窗口，再复查实际提交状态；只有仍可应用的响应头才触发归属登记，避免心跳在读取器检查之后抢先提交。HTTP writer 在已提交后返回 Header 副本，避免迟到的 Header 修改与心跳并发读取同一个 map。只有心跳的请求仍可在既有策略与预算内重试或切换提供商。
 
+Gemini 成功响应的请求 ID 等元数据只在 `OutputContext` 的私有 Header 中准备，不能在读取首个业务事件之前调用 Gin Header。其原生与转换读取共用有界 SSE 消费、候选完成判断和错误分类；终态后的用量尾帧最多继续收集五秒，具体规则见 [Gemini 流生命周期](../interfaces/gemini_upstream.md#gemini_stream_lifecycle)。
+
 上游的注释、`ping`／`heartbeat`／`keepalive` 和空 data 帧在读取侧消费，JSON `type` 优先于 event 名，所以 `event: ping` 搭配实际业务数据时保留该数据。逐行路径使用有界候选缓冲，最多 16 行、16 KiB；遇到未知字段、超过上限或在 EOF 留下不完整候选时，保守释放保留的非注释行。明确的错误事件继续按既有错误规则处理，不因 data 为空被忽略。上游活动计时发生在过滤之前。
 
-排队心跳继续由 `WaitObserver` 在请求 goroutine 内写入；Gemini 流式排队使用 SSE 注释。Compact 和图片保留专用控制器，统一组件不接管它们。图片错误根据已提交的 Content-Type 选择 SSE 或 JSON，JSON 空白心跳之后仍返回合法 JSON。注释、ping 和空文本、thinking、工具参数 delta 不建立 TTFT 数据事件。
+排队心跳继续由 `WaitObserver` 在请求 goroutine 内写入；Gemini 流式排队使用与中央组件相同的空 SSE 事件。Compact 和图片保留专用控制器，统一组件不接管它们。图片错误根据已提交的 Content-Type 选择 SSE 或 JSON，JSON 空白心跳之后仍返回合法 JSON。注释、ping 和空文本、thinking、工具参数 delta 不建立 TTFT 数据事件。
 
 ## 用量与结算
 

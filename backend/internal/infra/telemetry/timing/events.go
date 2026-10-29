@@ -22,9 +22,24 @@ import (
 // DataEvent excludes explicit protocol heartbeats from data event timing.
 // A payload type takes precedence over the optional SSE event name. Empty
 // Claude text, thinking and tool-input deltas remain keepalives when empty.
+// Gemini relays also emit empty candidate arrays while thinking, sometimes inside
+// a Code Assist response envelope. Those placeholders contain no model metadata
+// and cannot establish a first event. Additional response fields remain eligible
+// metadata, and real Gemini payloads take precedence over mislabeled ping events.
 func DataEvent(data, event string) bool {
 	if strings.TrimSpace(data) == "" {
 		return false
+	}
+	value := gjson.Parse(data)
+	if wrapped := value.Get("response"); wrapped.IsObject() {
+		value = wrapped
+	}
+	if candidates := value.Get("candidates"); candidates.Exists() || value.Get("promptFeedback").Exists() {
+		emptyCandidates := candidates.Type == gjson.Null || (candidates.IsArray() && len(candidates.Array()) == 0)
+		if candidates.Exists() && len(value.Map()) == 1 && emptyCandidates {
+			return false
+		}
+		return true
 	}
 	kind := gjson.Get(data, "type").String()
 	// Payload type wins over an inconsistent event header, matching protocol

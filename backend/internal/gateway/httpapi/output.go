@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -92,12 +93,26 @@ func (s ResponseSink) Begin(head upstream.OutputHead) error {
 }
 
 // Emit writes nonempty event bytes and returns a writer error before flushing.
-// It ignores the returned byte count, so a short write with nil error is not
-// detected here. A requested flush requires http.Flusher; callers retain event
-// storage and choose how a failed write affects upstream consumption.
+// A short write becomes io.ErrShortWrite. Terminal events exclude timer output
+// across the existing writer chain and publish completion only after successful
+// delivery. A requested flush requires http.Flusher; callers retain event storage.
 // The timing source scope lasts only for this emission; later local errors
 // cannot inherit it, even after an upstream write or flush fails.
 func (s ResponseSink) Emit(event upstream.OutputEvent) error {
+	if event.Terminal && s.ctx != nil {
+		if value, ok := s.ctx.Get(sseKeepaliveWriterKey); ok {
+			if writer, ok := value.(*sseKeepaliveWriter); ok {
+				return writer.emitTerminal(func() error { return s.emit(event) })
+			}
+		}
+	}
+	return s.emit(event)
+}
+
+// emit scopes upstream observations around checked delivery through all HTTP wrappers.
+// Callers retain payload storage until return. Terminal callers already hold the
+// keepalive emission lock; ordinary writer operations acquire their normal locks.
+func (s ResponseSink) emit(event upstream.OutputEvent) error {
 	if s.timing != nil {
 		// Source publication surrounds the existing writer chain rather than
 		// bypassing its transformations, capture, short-write handling or heartbeat locks.
@@ -105,8 +120,12 @@ func (s ResponseSink) Emit(event upstream.OutputEvent) error {
 		defer s.timing.upstreamWrites.Add(-1)
 	}
 	if len(event.Data) > 0 {
-		if _, err := s.Writer.Write(event.Data); err != nil {
+		n, err := s.Writer.Write(event.Data)
+		if err != nil {
 			return err
+		}
+		if n != len(event.Data) {
+			return io.ErrShortWrite
 		}
 	}
 	if event.Flush {

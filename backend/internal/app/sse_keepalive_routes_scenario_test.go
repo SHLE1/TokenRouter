@@ -3,8 +3,10 @@ package app
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,6 +38,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -53,7 +56,16 @@ type heartbeatRouteTransport struct {
 	httpclient.UpstreamTransport // unused transport interface methods
 	// pool is created per route fixture. Cleanup closes its idle connections
 	// after the downstream test server has finished all outstanding requests.
-	pool *httpclient.UpstreamPool // owned test connection pool
+	pool          *httpclient.UpstreamPool // owned test connection pool
+	headerTimeout time.Duration            // fixture response header budget
+}
+
+// heartbeatRouteOptions adjusts model and transport budgets for SDK route fixtures.
+type heartbeatRouteOptions struct {
+	FallbackURL   string        // optional second provider URL
+	Model         string        // optional fixture model
+	Stall         time.Duration // upstream idle budget
+	HeaderTimeout time.Duration // upstream header budget
 }
 
 // heartbeatRouteNoSearch disables optional search without replacing forwarding logic.
@@ -63,7 +75,7 @@ type heartbeatRouteNoSearch struct{}
 // Tests use local HTTP endpoints and own response closure, while cleanup closes
 // idle connections after the downstream request has completed.
 func (t *heartbeatRouteTransport) Do(req *http.Request, proxy string, id int64, _ int) (*http.Response, error) {
-	return t.pool.Do(req, httpclient.UpstreamRequestOptions{ProxyURL: proxy, ProviderID: id, Settings: httpclient.UpstreamSettings{ResponseHeaderTimeout: 2 * time.Second}})
+	return t.pool.Do(req, httpclient.UpstreamRequestOptions{ProxyURL: proxy, ProviderID: id, Settings: httpclient.UpstreamSettings{ResponseHeaderTimeout: t.headerTimeout}})
 }
 
 // DoWithTLS retains the same local HTTP pool for fingerprinted fixture dispatch.
@@ -77,31 +89,35 @@ func (t *heartbeatRouteTransport) DoWithTLS(req *http.Request, proxy string, id 
 func (heartbeatRouteNoSearch) Current() searchtools.Searcher { return nil }
 
 // TestGatewayRoutesKeepaliveBeforeFirstEvent registers the actual gateway routes
-// and handlers across client protocols and native upstream families. Immediate
-// upstream headers followed by twenty-five idle intervals must still produce a
-// local heartbeat before the first upstream event is released. Responses
+// and handlers across client protocols and native upstream families. Delaying
+// either headers or the first payload by twenty-five idle intervals must produce
+// a local heartbeat before upstream output is released. Responses
 // header visibility also determines the expected provider turn-state ownership.
 func TestGatewayRoutesKeepaliveBeforeFirstEvent(t *testing.T) {
-	for _, path := range []string{"/v1/messages", "/v1/chat/completions", "/v1/responses"} {
-		for _, platform := range []string{"anthropic", "openai", "gemini", "grok", "openai_passthrough", "openai_chat"} {
-			t.Run(path+"/"+platform, func(t *testing.T) { testGatewayRouteKeepalive(t, path, platform) })
-		}
-	}
-	t.Run("gemini native", func(t *testing.T) {
-		testGatewayRouteKeepalive(t, "/v1beta/models/gemini-2.5-flash:streamGenerateContent", "gemini")
-	})
-	for _, path := range []string{"/responses", "/backend-api/codex/responses", "/chat/completions"} {
-		t.Run("alias"+path, func(t *testing.T) { testGatewayRouteKeepalive(t, path, "openai") })
+	for _, phase := range []string{"headers", "body"} {
+		t.Run(phase, func(t *testing.T) {
+			for _, path := range []string{"/v1/messages", "/v1/chat/completions", "/v1/responses"} {
+				for _, platform := range []string{"anthropic", "openai", "gemini", "grok", "openai_passthrough", "openai_chat"} {
+					t.Run(path+"/"+platform, func(t *testing.T) { testGatewayRouteKeepalive(t, path, platform, phase == "headers") })
+				}
+			}
+			t.Run("gemini native", func(t *testing.T) {
+				testGatewayRouteKeepalive(t, "/v1beta/models/gemini-2.5-flash:streamGenerateContent", "gemini", phase == "headers")
+			})
+			for _, path := range []string{"/responses", "/backend-api/codex/responses", "/chat/completions"} {
+				t.Run("alias"+path, func(t *testing.T) { testGatewayRouteKeepalive(t, path, "openai", phase == "headers") })
+			}
+		})
 	}
 }
 
 // testGatewayRouteKeepalive holds upstream events while a real downstream reads.
-// The server publishes headers immediately, then waits twenty-five heartbeat
-// intervals. A heartbeat observed only after payload release cannot pass this
+// The selected phase delays either response headers or the first payload by
+// twenty-five heartbeat intervals. A beat observed only after release cannot pass this
 // test, even if the final response content otherwise looks correct. Successful
 // cases keep both servers alive until the client consumes terminal output;
 // failures release the client and servers through the registered cleanup.
-func testGatewayRouteKeepalive(t *testing.T, path, kind string) {
+func testGatewayRouteKeepalive(t *testing.T, path, kind string, delayHeaders bool) {
 	t.Helper()
 	const interval = 10 * time.Millisecond
 	var released atomic.Bool
@@ -115,7 +131,17 @@ func testGatewayRouteKeepalive(t *testing.T, path, kind string) {
 		// Read request content before flushing HTTP/1 response headers, which may
 		// otherwise discard the unread body before the protocol fixture inspects it.
 		r.Body = io.NopCloser(bytes.NewReader(requestBody))
+		if delayHeaders {
+			select {
+			case <-time.After(25 * interval):
+			case <-r.Context().Done():
+				return
+			}
+			released.Store(true)
+		}
 		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("X-Request-ID", "route-upstream-request")
+		w.Header().Set("Request-ID", "route-anthropic-request")
 		w.Header().Set(gatewayhttp.CodexTurnStateHeader, "route-state")
 		w.WriteHeader(http.StatusOK)
 		flusher, ok := w.(http.Flusher)
@@ -124,12 +150,14 @@ func testGatewayRouteKeepalive(t *testing.T, path, kind string) {
 			return
 		}
 		flusher.Flush()
-		select {
-		case <-time.After(25 * interval):
-		case <-r.Context().Done():
-			return
+		if !delayHeaders {
+			select {
+			case <-time.After(25 * interval):
+			case <-r.Context().Done():
+				return
+			}
+			released.Store(true)
 		}
-		released.Store(true)
 		if strings.Contains(r.URL.Path, "chat/completions") {
 			_, _ = io.WriteString(w, "data: {\"id\":\"chat-route\",\"model\":\"gpt-5.4\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok-mixed\"},\"finish_reason\":\"stop\"}]}\n\ndata: {\"id\":\"chat-route\",\"choices\":[],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":3,\"total_tokens\":13}}\n\ndata: [DONE]\n\n")
 			return
@@ -163,7 +191,7 @@ func testGatewayRouteKeepalive(t *testing.T, path, kind string) {
 	for !heartbeat {
 		line, readErr := reader.ReadString('\n')
 		_, _ = received.WriteString(line)
-		if line == ": keepalive\n" || line == "event: ping\n" {
+		if line == ": keepalive\n" || line == "event: ping\n" || (strings.Contains(path, "streamGenerateContent") && received.String() == "\n\n") {
 			heartbeat = true
 			require.False(t, released.Load(), "heartbeat arrived only after the first upstream event")
 			break
@@ -196,13 +224,29 @@ func testGatewayRouteKeepalive(t *testing.T, path, kind string) {
 // Only authentication, persistent stores and timer durations are substituted;
 // route admission, handler preparation, provider execution and output wrappers
 // use the same registration and construction paths as the running application.
-func newHeartbeatRouteRouter(t *testing.T, url, kind string, interval time.Duration) (*gin.Engine, *session.CodexTurnOrigins) {
+// Positive overrides replace model and transport defaults. An optional fallback
+// receives priority one after the primary provider's priority zero.
+func newHeartbeatRouteRouter(t *testing.T, url, kind string, interval time.Duration, overrides ...heartbeatRouteOptions) (*gin.Engine, *session.CodexTurnOrigins) {
 	t.Helper()
 	platform := kind
 	if strings.HasPrefix(kind, "openai_") {
 		platform = capability.PlatformOpenAI
 	}
 	model := map[string]string{"anthropic": "claude-sonnet-4-5-20250929", "openai": "gpt-5.4", "gemini": "gemini-2.5-flash", "grok": "grok-4.5"}[platform]
+	limits := heartbeatRouteOptions{Model: model, Stall: time.Second, HeaderTimeout: 2 * time.Second}
+	if len(overrides) > 0 {
+		limits.FallbackURL = overrides[0].FallbackURL
+		if overrides[0].Model != "" {
+			limits.Model = overrides[0].Model
+		}
+		if overrides[0].Stall > 0 {
+			limits.Stall = overrides[0].Stall
+		}
+		if overrides[0].HeaderTimeout > 0 {
+			limits.HeaderTimeout = overrides[0].HeaderTimeout
+		}
+	}
+	model = limits.Model
 	groupID := int64(42)
 	group := &routing.Group{ID: groupID, Hydrated: true, Name: "heartbeat", Status: "active", RateMultiplier: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions, protocol.ProtocolGeminiGenerateContent}}
 	cfg := &config.Config{}
@@ -220,7 +264,16 @@ func newHeartbeatRouteRouter(t *testing.T, url, kind string, interval time.Durat
 		record.Extra = map[string]any{"openai_text_route_mode": "force_chat_completions"}
 	}
 	providers := &mixedHTTPProviders{values: []gatewayprovider.ExecutionProvider{*gatewayprovider.NewExecutionProvider(record)}}
-	transport := &heartbeatRouteTransport{pool: httpclient.NewUpstreamPool()}
+	if limits.FallbackURL != "" {
+		fallback := *record
+		fallback.ID = 2
+		fallback.Name = platform + "-fallback"
+		fallback.Priority = 1
+		fallback.Credentials = maps.Clone(record.Credentials)
+		fallback.Credentials["base_url"] = limits.FallbackURL
+		providers.values = append(providers.values, *gatewayprovider.NewExecutionProvider(&fallback))
+	}
+	transport := &heartbeatRouteTransport{pool: httpclient.NewUpstreamPool(), headerTimeout: limits.HeaderTimeout}
 	t.Cleanup(transport.pool.CloseIdleConnections)
 	source, choices, credentials := newOpenAIExecutionAndSelectionFixture(providers, nil, cfg, nil, nil, nil, transport, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	origins := session.NewCodexTurnOrigins(time.Now)
@@ -235,7 +288,7 @@ func newHeartbeatRouteRouter(t *testing.T, url, kind string, interval time.Durat
 	recording.Dependencies.Calculator = calculator
 	recording.Dependencies.Prices = prices
 	source.Recorder = recording.Core(nil, true)
-	native := &gatewayhttp.UnifiedTextExecutor{OpenAI: source.Responses, Anthropic: gatewayhttp.NewMessagesExecutor(messageforward.NewRuntime(messageforward.Dependencies{Credentials: &providercore.MessageCredentialSource{}, Transport: transport, Deferred: &providercore.DeferredService{}, Search: searchtools.NewEmulator(heartbeatRouteNoSearch{}, nil, nil, nil, nil, nil)}, messageforward.Options{Configured: true, AllowInsecureHTTP: true, ResponseReadLimit: 1 << 20}), nil), Gemini: &gatewayhttp.GeminiExecutor{Runtime: &googleforward.Gemini{Transport: transport, Options: googleforward.Options{Configured: true, AllowInsecureHTTP: true, ResponseReadLimit: 1 << 20}}}}
+	native := &gatewayhttp.UnifiedTextExecutor{OpenAI: source.Responses, Anthropic: gatewayhttp.NewMessagesExecutor(messageforward.NewRuntime(messageforward.Dependencies{Credentials: &providercore.MessageCredentialSource{}, Transport: transport, Deferred: &providercore.DeferredService{}, Search: searchtools.NewEmulator(heartbeatRouteNoSearch{}, nil, nil, nil, nil, nil)}, messageforward.Options{Configured: true, AllowInsecureHTTP: true, ResponseReadLimit: 1 << 20}), nil), Gemini: &gatewayhttp.GeminiExecutor{Runtime: &googleforward.Gemini{Transport: transport, Errors: &provideradapter.GeminiErrorObserver{SetRateLimited: func(context.Context, int64, time.Time) error { return nil }, ResetTime: func([]byte) *int64 { return nil }, DailyReset: func() *int64 { return nil }}, Options: googleforward.Options{Configured: true, AllowInsecureHTTP: true, ResponseReadLimit: 1 << 20, StreamInterval: int(limits.Stall / time.Second)}}}}
 	eligibility := newBillingEligibilityFixture(cfg)
 	t.Cleanup(eligibility.Stop)
 	funding := newFundingAdmissionFixture(eligibility, cfg)
@@ -253,7 +306,7 @@ func newHeartbeatRouteRouter(t *testing.T, url, kind string, interval time.Durat
 	})
 	middleware := legacyRouteMiddleware(auth, keys, nil, nil, nil, cfg)
 	middleware.GoogleAPIKeyAuth = gin.HandlerFunc(auth)
-	middleware.DownstreamKeepalive = gatewayhttp.DownstreamSSEKeepalive(interval, time.Second)
+	middleware.DownstreamKeepalive = gatewayhttp.DownstreamSSEKeepalive(interval, limits.Stall)
 	generic := selection.NewGeneric(selection.GenericDependencies{Reads: selection.Reads{Providers: providers}, Shared: selection.Shared{Concurrency: concurrency}}, selection.DefaultOptions())
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("heartbeat-route-fixture")}
 	planner := gatewayprovider.NewRoutePlanner(nil)

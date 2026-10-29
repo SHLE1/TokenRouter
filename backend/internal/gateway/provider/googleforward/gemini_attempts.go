@@ -274,9 +274,6 @@ func (s *Gemini) Forward(ctx context.Context, output Output, provider *gatewaypr
 			if requestID == "" {
 				requestID = resp.Header.Get("x-goog-request-id")
 			}
-			if requestID != "" {
-				c.Header("x-request-id", requestID)
-			}
 
 			return nil, nil
 		}()
@@ -294,7 +291,12 @@ func (s *Gemini) Forward(ctx context.Context, output Output, provider *gatewaypr
 		return compatibilityResult, executeErr
 	}
 	if executeErr != nil {
-		return nil, executeErr
+		executeErr = s.streamFailure(ctx, c, provider, result, executeErr, func(status int, body []byte) error {
+			return c.GeminiMappedError(provider, status, result.RequestID, body)
+		})
+		if !result.HasUsage && !result.Served {
+			return nil, executeErr
+		}
 	}
 	requestID = result.RequestID
 	usage := &result.Usage
@@ -316,10 +318,11 @@ func (s *Gemini) Forward(ctx context.Context, output Output, provider *gatewaypr
 		Stream:                req.Stream,
 		Duration:              result.Duration,
 		Timings:               result.Timings,
+		ClientDisconnect:      result.ClientDisconnect,
 		ImageCount:            imageCount,
 		ImageSize:             imageSize,
 		ImageInputSize:        imageInputSize,
-	}, nil
+	}, executeErr
 }
 
 // ForwardNative executes generateContent, streamGenerateContent, or countTokens
@@ -435,9 +438,6 @@ func (s *Gemini) ForwardNative(ctx context.Context, output Output, provider *gat
 			if requestID == "" {
 				requestID = resp.Header.Get("x-goog-request-id")
 			}
-			if requestID != "" {
-				c.Header("x-request-id", requestID)
-			}
 
 			isOAuth := provider.Record.Type == capability.ProviderTypeOAuth
 
@@ -450,6 +450,9 @@ func (s *Gemini) ForwardNative(ctx context.Context, output Output, provider *gat
 				// upstream token observation.
 				if action == "countTokens" && isOAuth && gemininative.IsGeminiInsufficientScope(resp.Header, respBody) {
 					estimated := gemininative.EstimateGeminiCountTokens(body)
+					if requestID != "" {
+						c.Header("x-request-id", requestID)
+					}
 					c.Count(estimated)
 					return &forwardcore.MessagesResult{
 						RequestID:       requestID,
@@ -510,7 +513,12 @@ func (s *Gemini) ForwardNative(ctx context.Context, output Output, provider *gat
 		return compatibilityResult, executeErr
 	}
 	if executeErr != nil {
-		return nil, executeErr
+		executeErr = s.streamFailure(ctx, c, provider, result, executeErr, func(status int, body []byte) error {
+			return c.GeminiNativeUpstreamError(provider, &http.Response{StatusCode: status, Header: result.UpstreamHeaders}, body, result.RequestID, false)
+		})
+		if !result.HasUsage && !result.Served {
+			return nil, executeErr
+		}
 	}
 	if result.EstimatedTokenCount != nil {
 		return &forwardcore.MessagesResult{
@@ -541,10 +549,11 @@ func (s *Gemini) ForwardNative(ctx context.Context, output Output, provider *gat
 		Stream:                result.Stream,
 		Duration:              result.Duration,
 		Timings:               result.Timings,
+		ClientDisconnect:      result.ClientDisconnect,
 		ImageCount:            imageCount,
 		ImageSize:             imageSize,
 		ImageInputSize:        imageInputSize,
-	}, nil
+	}, executeErr
 }
 
 // checkErrorPolicyInLoop inspects failures before another Gemini retry and

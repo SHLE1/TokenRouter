@@ -53,7 +53,7 @@ func TestDownstreamSSEKeepaliveFraming(t *testing.T) {
 	}{
 		{"responses", protocol.ProtocolOpenAIResponses, []string{"data: {}\n\n"}, ": keepalive\n\n"},
 		{"chat", protocol.ProtocolOpenAIChatCompletions, []string{"data: {}\n\n"}, ": keepalive\n\n"},
-		{"gemini", protocol.ProtocolGeminiGenerateContent, []string{"data: {}\n\n"}, ": keepalive\n\n"},
+		{"gemini", protocol.ProtocolGeminiGenerateContent, []string{"data: {}\n\n"}, "\n\n"},
 		{"qoder", protocol.ProtocolQoderChat, []string{"data: {}\n\n"}, ": keepalive\n\n"},
 		{"messages", protocol.ProtocolAnthropicMessages, []string{"data: {}\n\n"}, "event: ping\ndata: {\"type\": \"ping\"}\n\n"},
 		{"compact excluded", protocol.ProtocolResponsesCompact, []string{"data: {}\n\n"}, ""},
@@ -318,7 +318,7 @@ func TestDownstreamSSEKeepaliveHTTPFailover(t *testing.T) {
 		{"/v1/messages", protocol.ProtocolAnthropicMessages, "event: ping\ndata: {\"type\": \"ping\"}\n\n"},
 		{"/v1/chat/completions", protocol.ProtocolOpenAIChatCompletions, ": keepalive\n\n"},
 		{"/v1/responses", protocol.ProtocolOpenAIResponses, ": keepalive\n\n"},
-		{"/v1beta/models/test:streamGenerateContent", protocol.ProtocolGeminiGenerateContent, ": keepalive\n\n"},
+		{"/v1beta/models/test:streamGenerateContent", protocol.ProtocolGeminiGenerateContent, "\n\n"},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			releaseHeaders := make(chan struct{}, 1)

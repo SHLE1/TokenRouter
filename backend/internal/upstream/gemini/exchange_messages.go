@@ -102,6 +102,8 @@ type ExchangeOptions struct {
 // ExchangeResult carries a selected response or a separate native token
 // estimate.
 type ExchangeResult struct {
+	CandidateCount int // final request candidate count
+
 	// Response and EstimatedTokens represent alternative outcomes. A nonnil
 	// response body belongs to the caller; a native estimate outcome has no
 	// response body to close.
@@ -129,6 +131,7 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 	}
 	requestIDHeader := options.RequestIDHeader
 	var resp *http.Response
+	candidateCount := 1
 	signatureRetryStage := 0
 	// Rebuild the request and its ID-header selection for every attempt,
 	// including after caller body replacement. Captured HTTP error bytes survive
@@ -145,6 +148,7 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 			return ExchangeResult{}, options.BuildError(err)
 		}
 		requestIDHeader = idHeader
+		candidateCount = requestCandidateCount(upstreamReq)
 
 		resp, err = options.Do(upstreamReq)
 		if err != nil {
@@ -334,5 +338,5 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 		break
 	}
 
-	return ExchangeResult{Response: resp, RequestIDHeader: requestIDHeader}, nil
+	return ExchangeResult{Response: resp, RequestIDHeader: requestIDHeader, CandidateCount: candidateCount}, nil
 }

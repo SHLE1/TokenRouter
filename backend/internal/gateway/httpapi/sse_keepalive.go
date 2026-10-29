@@ -45,6 +45,9 @@ const (
 // sseKeepaliveWriter serializes text output with one downstream idle-heartbeat worker.
 type sseKeepaliveWriter struct {
 	gin.ResponseWriter // inner HTTP response writer
+	// emissionMu excludes timer output across a terminal event's complete outer
+	// writer chain. Handler methods still take mu independently, avoiding reentrancy.
+	emissionMu sync.Mutex
 	// mu protects all inner writer access and mutable stream state. bytes remains
 	// atomic for retained accounting; the snapshot path also locks mu with Size.
 	mu    sync.Mutex   // output serialization lock
@@ -352,6 +355,7 @@ func (w *sseKeepaliveWriter) loop() {
 		case <-timer.C:
 		case <-w.wake:
 		}
+		w.emissionMu.Lock()
 		w.mu.Lock()
 		now := time.Now()
 		delay := w.lastWrite.Add(w.interval).Sub(now)
@@ -360,6 +364,7 @@ func (w *sseKeepaliveWriter) loop() {
 			delay = w.interval
 		}
 		w.mu.Unlock()
+		w.emissionMu.Unlock()
 		timer.Reset(delay)
 	}
 }
@@ -439,8 +444,12 @@ func (w *sseKeepaliveWriter) beatLocked(now time.Time) {
 
 // frameLocked selects the client's heartbeat using cached state with mu held.
 // Claude Code receives an empty delta only inside a recognized open content
-// block; other Messages states use ping and other protocols use SSE comments.
+// block; other Messages states use ping. Gemini SDKs require empty SSE events,
+// while the remaining protocols accept ordinary comment heartbeats.
 func (w *sseKeepaliveWriter) frameLocked() string {
+	if w.protocol == protocol.ProtocolGeminiGenerateContent {
+		return "\n\n"
+	}
 	if w.protocol != protocol.ProtocolAnthropicMessages {
 		return ": keepalive\n\n"
 	}
@@ -450,6 +459,27 @@ func (w *sseKeepaliveWriter) frameLocked() string {
 		}
 	}
 	return "event: ping\ndata: {\"type\": \"ping\"}\n\n"
+}
+
+// emitTerminal serializes a terminal delivery against the heartbeat worker.
+// The callback uses the complete HTTP writer chain, preserving capture and model
+// restoration. Only a successful callback publishes this explicit terminal marker;
+// existing writer failure handling may independently disable heartbeat output.
+//
+// emissionMu surrounds the callback while individual writer methods retain their
+// ordinary mu locking. The worker always acquires these locks in that order, so
+// it cannot insert a heartbeat between accepted terminal bytes and publication
+// of terminal state. A failed callback leaves failure handling to the caller.
+func (w *sseKeepaliveWriter) emitTerminal(write func() error) error {
+	w.emissionMu.Lock()
+	defer w.emissionMu.Unlock()
+	if err := write(); err != nil {
+		return err
+	}
+	w.mu.Lock()
+	w.terminal = true
+	w.mu.Unlock()
+	return nil
 }
 
 // observeLocked tracks SSE separators and bounded metadata across accepted writes.

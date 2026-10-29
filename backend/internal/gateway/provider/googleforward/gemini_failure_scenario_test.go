@@ -173,12 +173,9 @@ func TestGeminiFinalFailureProtocols(t *testing.T) {
 				if scenario.health != "" && (client == "messages" || scenario.name == "temporary") {
 					wantSteps = append(wantSteps, scenario.health)
 				}
-				if client != "messages" {
-					wantSteps = append(wantSteps, "header:x-request-id")
-					require.Equal(t, "failure-request", recorder.Header().Get("X-Request-Id"))
-				} else {
-					require.Empty(t, recorder.Header().Get("X-Request-Id"))
-				}
+				// A failed attempt retains correlation in its retry evidence without
+				// taking ownership of client headers before a later attempt can deliver.
+				require.Empty(t, recorder.Header().Get("X-Request-Id"))
 				if scenario.health != "" && client != "messages" && scenario.name != "temporary" {
 					wantSteps = append(wantSteps, scenario.health)
 				}

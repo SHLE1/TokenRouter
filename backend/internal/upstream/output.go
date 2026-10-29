@@ -400,6 +400,21 @@ func (c *OutputContext) NextEvent(semantic, terminal bool) {
 	}
 }
 
+// Complete notifies the sink that generation has ended without adding payload.
+// Call after a validated transport-only terminal or after converted terminal data
+// has been consumed. Existing output failures prevent additional sink activity.
+// Constructor-provided writers forward this marker; custom writers retain their
+// existing behavior, matching NextEvent.
+func (c *OutputContext) Complete() {
+	if writer, ok := c.Writer.(*deferredOutputWriter); ok {
+		(&OutputContext{Writer: writer.writer()}).Complete()
+		return
+	}
+	if writer, ok := c.Writer.(*sinkWriter); ok && writer.err == nil {
+		writer.err = writer.sink.Emit(OutputEvent{Terminal: true, Flush: true})
+	}
+}
+
 // Status delegates a pending response status update to the conversion writer.
 // It can initialize deferred output; sinkWriter accepts the value before its
 // first Begin attempt and ignores changes afterward.

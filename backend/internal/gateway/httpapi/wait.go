@@ -39,6 +39,8 @@ const (
 	SSEPingFormatNone SSEPingFormat = ""
 	// SSEPingFormatComment is an SSE comment ping for OpenAI/Codex CLI clients.
 	SSEPingFormatComment SSEPingFormat = ":\n\n"
+	// SSEPingFormatGemini keeps native SDK streams alive without JSON events or comments.
+	SSEPingFormatGemini SSEPingFormat = "\n\n"
 )
 
 // SSEPingFormat defines the wire format of a keepalive event.
