@@ -73,6 +73,16 @@ func Do(client *http.Client, req *http.Request) (*http.Response, error) {
 	if client == nil {
 		client = http.DefaultClient
 	}
+	if req != nil {
+		if s := StagesFromContext(req.Context()); s != nil {
+			// Header waiting follows every upstream exchange even when dependency
+			// timing is disabled, so metrics settings cannot disable downstream liveness.
+			s.ObserveUpstreamActivity(time.Now())
+			if fn := s.listener(); fn != nil {
+				fn(req.Context())
+			}
+		}
+	}
 	if req == nil || !Active(req.Context()) {
 		return client.Do(req)
 	}

@@ -80,8 +80,26 @@ func streamHeartbeatSnapshot(c *gin.Context) (int, int) {
 		count += k.bytes
 		writer = k.writer
 	}
-	return count + downstreamSSEHeartbeatBytes(c), writer.Size()
+	if value, ok := c.Get(sseKeepaliveWriterKey); ok {
+		if w, valid := value.(*sseKeepaliveWriter); valid && w != nil {
+			// Lock beneath the waiting controllers in their write order. Read the
+			// inner size directly so a concurrent beat cannot split this observation.
+			w.mu.Lock()
+			defer w.mu.Unlock()
+			return count + downstreamSSEHeartbeatBytes(c), w.ResponseWriter.Size()
+		}
+	}
+	return count, writer.Size()
 }
 
-// downstreamSSEHeartbeatBytes reserves accounting for the downstream text controller.
-func downstreamSSEHeartbeatBytes(_ *gin.Context) int { return 0 }
+// downstreamSSEHeartbeatBytes reads accepted bytes from the retained text controller.
+// Missing or mistyped context values contribute zero; the counter remains
+// available after middleware cleanup restores the original response writer.
+func downstreamSSEHeartbeatBytes(c *gin.Context) int {
+	value, _ := c.Get(sseKeepaliveWriterKey)
+	w, _ := value.(*sseKeepaliveWriter)
+	if w == nil {
+		return 0
+	}
+	return int(w.bytes.Load())
+}

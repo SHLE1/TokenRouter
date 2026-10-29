@@ -280,9 +280,9 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 
 	subscription, _ := SubscriptionFromContext(c)
 
-	// Waiting uses the same concurrency service with heartbeat output disabled,
-	// because native Gemini consumers do not interpret Anthropic ping frames.
-	geminiConcurrency := NewConcurrencyHelper(h.concurrency.Service(), SSEPingFormatNone, 0)
+	// Streamed Gemini requests use SSE comments during admission waits, keeping
+	// their wire format compatible with native clients before any provider output.
+	geminiConcurrency := NewConcurrencyHelper(h.concurrency.Service(), SSEPingFormatComment, 0)
 
 	streamStarted := false
 	h.backend.BindErrors(c)

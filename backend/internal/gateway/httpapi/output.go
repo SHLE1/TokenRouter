@@ -16,8 +16,9 @@ import (
 // write errors to the executor; flushing requires the writer to support
 // http.Flusher.
 //
-// InitialOutput clones headers before reading status and commitment because
-// keepalive-aware Header access can stop and join a pending heartbeat.
+// InitialOutput clones headers before reading status and commitment. Text
+// keepalive snapshots preserve header waits during first-event staging; compact
+// and image Header access stops and joins their pending heartbeat.
 // Reversing those reads could pair the headers with commitment state captured
 // before that handoff completed. Later OutputState calls inspect status and
 // commitment through the writer's optional interfaces without accessing
@@ -97,13 +98,27 @@ func (s ResponseSink) Emit(event upstream.OutputEvent) error {
 }
 
 // InitialOutput clones current headers before reading writer commitment and
-// status. Header access can stop a waiting keepalive writer, so reading state
-// afterward includes that handoff's final commitment; the returned header map
-// and value slices are independent.
+// status. Text snapshots preserve header waiting; other keepalive writers stop
+// on Header access. Reading state afterward includes that handoff's final
+// commitment; the returned header map and value slices are independent.
 func (s ResponseSink) InitialOutput() upstream.OutputHead {
-	// Header access can stop and join a keepalive before returning its map.
-	// Read commitment afterward so the captured state includes that final heartbeat.
-	headers := s.Writer.Header().Clone()
+	var headers http.Header
+	if s.ctx != nil {
+		_, compact := s.ctx.Get(openAICompactSSEKeepaliveKey)
+		_, images := s.ctx.Get(openAIImagesJSONKeepaliveKey)
+		if value, ok := s.ctx.Get(sseKeepaliveWriterKey); ok && !compact && !images {
+			if w, valid := value.(*sseKeepaliveWriter); valid {
+				// Codec initialization must preserve header waiting while its first event
+				// remains staged. Begin later closes that window before editing headers.
+				headers = w.snapshotHeader()
+			}
+		}
+	}
+	if headers == nil {
+		// Compact and image wrappers require Header to stop and join their waiting
+		// controller before output takes over; retain that handoff for those formats.
+		headers = s.Writer.Header().Clone()
+	}
 	h := s.OutputState()
 	h.Header = headers
 	return h

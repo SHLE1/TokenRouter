@@ -21,7 +21,7 @@ import (
 
 // DataEvent excludes explicit protocol heartbeats from data event timing.
 // A payload type takes precedence over the optional SSE event name. Empty
-// Claude text and thinking deltas remain keepalives in either encoding.
+// Claude text, thinking and tool-input deltas remain keepalives when empty.
 func DataEvent(data, event string) bool {
 	if strings.TrimSpace(data) == "" {
 		return false
@@ -37,6 +37,9 @@ func DataEvent(data, event string) bool {
 	if kind == "content_block_delta" {
 		delta := gjson.Get(data, "delta")
 		if delta.Get("type").String() == "text_delta" && delta.Get("text").String() == "" {
+			return false
+		}
+		if delta.Get("type").String() == "input_json_delta" && delta.Get("partial_json").String() == "" {
 			return false
 		}
 		if delta.Get("type").String() == "thinking_delta" && delta.Get("thinking").String() == "" {

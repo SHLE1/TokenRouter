@@ -302,10 +302,12 @@ func WaitObserver(c *gin.Context, format SSEPingFormat, interval time.Duration, 
 		// Mark the stream before its first heartbeat write, so even a write error
 		// leaves later error output aware of attempted SSE commitment.
 		if !*started {
-			c.Header("Content-Type", "text/event-stream")
-			c.Header("Cache-Control", "no-cache")
-			c.Header("Connection", "keep-alive")
-			c.Header("X-Accel-Buffering", "no")
+			if !c.Writer.Written() {
+				c.Header("Content-Type", "text/event-stream")
+				c.Header("Cache-Control", "no-cache")
+				c.Header("Connection", "keep-alive")
+				c.Header("X-Accel-Buffering", "no")
+			}
 			*started = true
 		}
 		written, err := fmt.Fprint(c.Writer, string(format))

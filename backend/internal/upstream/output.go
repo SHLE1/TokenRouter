@@ -260,10 +260,22 @@ func NewOutputContext(sink OutputSink) *OutputContext {
 // serialize access with writes or flushes.
 func (w *sinkWriter) Header() http.Header { return w.header }
 
-// Written reports initial adapter commitment or commitment recorded by a
-// successful Begin. A later emit error leaves this flag set, so callers
-// inspect Err separately when deciding whether output succeeded.
-func (w *sinkWriter) Written() bool { return w.written }
+// Written reports HTTP commitment recorded locally or by the live output sink.
+// A downstream heartbeat can commit after codec initialization, so staged-header
+// decisions must inspect current sink state before reporting provider headers
+// as delivered. Missing state support retains the locally recorded value.
+func (w *sinkWriter) Written() bool {
+	if w.written {
+		return true
+	}
+	if state, ok := w.sink.(interface {
+		// OutputState reads current HTTP commitment without accessing response headers.
+		OutputState() OutputHead
+	}); ok {
+		return state.OutputState().Committed
+	}
+	return false
+}
 
 // WriteHeader sets the pending status until the first Begin attempt, including
 // a failed attempt. Status changes afterward are ignored; writing bytes,

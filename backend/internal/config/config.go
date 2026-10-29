@@ -881,7 +881,7 @@ type GatewayConfig struct {
 	// seconds. Zero disables the gap deadline; positive values reach the stream
 	// consumer separately from its keepalive interval.
 	StreamDataIntervalTimeout int `mapstructure:"stream_data_interval_timeout"`
-	// StreamKeepaliveInterval supplies ordinary streaming ping intervals in
+	// StreamKeepaliveInterval supplies downstream text SSE idle heartbeat intervals in
 	// seconds. Zero disables these keepalives, while the separate data-gap timeout
 	// can still bound an inactive upstream stream.
 	StreamKeepaliveInterval int `mapstructure:"stream_keepalive_interval"`
