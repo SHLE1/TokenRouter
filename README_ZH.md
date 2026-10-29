@@ -21,9 +21,6 @@ TokenRouter 是一个开源的大模型统一网关。它把 Anthropic、OpenAI�
 
 ## 界面预览
 
-<details open>
-<summary>浅色模式</summary>
-
 ### 仪表盘
 
 <img src="assets/screenshots/dashboard-light.jpg" alt="TokenRouter 仪表盘 · 浅色模式" width="1600" />
@@ -32,10 +29,8 @@ TokenRouter 是一个开源的大模型统一网关。它把 Anthropic、OpenAI�
 
 <img src="assets/screenshots/models-light.jpg" alt="TokenRouter 模型广场 · 浅色模式" width="1600" />
 
-</details>
-
 <details>
-<summary>深色模式</summary>
+<summary>深色模式截图</summary>
 
 ### 仪表盘
 
@@ -47,7 +42,7 @@ TokenRouter 是一个开源的大模型统一网关。它把 Anthropic、OpenAI�
 
 </details>
 
-TokenFlux 官方运营站点：[tokenflux.dev](https://tokenflux.dev)。
+TokenFlux 官方运营站点：[tokenflux.com](https://tokenflux.com)。
 
 ## 核心能力
 
