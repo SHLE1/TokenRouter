@@ -1,9 +1,5 @@
 <div align="center">
-  <img src="assets/logo.svg" alt="TokenRouter" width="112" />
-
-  <h1>TokenRouter</h1>
-
-  <p>An open source unified LLM gateway</p>
+  <img src="assets/readme/banner.svg" width="100%" alt="TokenRouter, an open source LLM gateway. Messages, Responses, Chat Completions, and Gemini requests enter one endpoint and are routed to upstream platforms such as Anthropic, OpenAI, and Gemini, with failover when an upstream returns an error." />
 
   <p>
     <a href="https://github.com/TokenFlux/TokenRouter/actions/workflows/ci.yml"><img src="https://github.com/TokenFlux/TokenRouter/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>

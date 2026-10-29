@@ -1,9 +1,5 @@
 <div align="center">
-  <img src="assets/logo.svg" alt="TokenRouter" width="112" />
-
-  <h1>TokenRouter</h1>
-
-  <p>开源的大模型统一网关</p>
+  <img src="assets/readme/banner-zh.svg" width="100%" alt="TokenRouter，开源的大模型统一网关。Messages、Responses、Chat Completions 和 Gemini 请求从同一个入口进入，转发到 Anthropic、OpenAI、Gemini 等上游平台，上游出错时自动切换。" />
 
   <p>
     <a href="https://github.com/TokenFlux/TokenRouter/actions/workflows/ci.yml"><img src="https://github.com/TokenFlux/TokenRouter/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
