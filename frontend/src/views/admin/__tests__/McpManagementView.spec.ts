@@ -1,8 +1,8 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import McpManagementView from '../McpManagementView.vue'
-// The compiler-enabled build renders the checked-in locale strings; production
-// uses precompiled messages with the runtime-only Vue I18n alias.
+// The compiler-enabled distribution renders checked-in locale strings directly,
+// keeping this fixture independent of the runtime alias selected by application builds.
 import { createI18n } from '../../../../node_modules/vue-i18n/dist/vue-i18n.mjs'
 import type { StepUpController } from '@/composables/useStepUp'
 import en from '@/i18n/locales/en/admin/mcp'

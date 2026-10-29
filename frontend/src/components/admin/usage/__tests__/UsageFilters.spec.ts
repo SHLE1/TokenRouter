@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-// Tests load TypeScript catalogs without Vite precompilation, so the compiler-enabled
-// build must compile the same messages before the selector can render their labels.
+// Import the compiler-enabled distribution explicitly so checked-in catalog
+// strings and selector labels are exercised independently of the application's runtime alias.
 import { createI18n } from '../../../../../node_modules/vue-i18n/dist/vue-i18n.mjs'
 
 import UsageFilters from '../UsageFilters.vue'
