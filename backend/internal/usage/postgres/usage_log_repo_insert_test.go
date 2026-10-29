@@ -183,7 +183,7 @@ func TestPrepareUsageLogInsert_UpstreamRequestIDArgWiring(t *testing.T) {
 	})
 	require.Len(t, prepared.args, len(usageLogInsert.argTypes))
 
-	idx := len(prepared.args) - 9
+	idx := len(prepared.args) - 11
 	arg, ok := prepared.args[idx].(sql.NullString)
 	require.True(t, ok, "upstream_request_id arg should be sql.NullString, got %T", prepared.args[idx])
 	require.True(t, arg.Valid)
@@ -295,6 +295,8 @@ func TestUsageLogRepositoryCreateSyncRequestTypeAndLegacyFields(t *testing.T) {
 			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			nil, // billing_key
+			"user",
+			nil, // no system execution evidence
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(99), createdAt))
 
@@ -400,6 +402,8 @@ func TestUsageLogRepositoryCreate_PersistsServiceTier(t *testing.T) {
 			sqlmock.AnyArg(),
 			sqlmock.AnyArg(),
 			nil, // billing_key
+			"user",
+			nil, // no system execution evidence
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(100), createdAt))
 
@@ -606,7 +610,7 @@ func TestBuildUsageLogBatchInsertQuery_UsesConflictDoNothing(t *testing.T) {
 // correlation ID. It checks the nullable session argument and the following
 // timestamp, reasoning, and compaction type positions.
 func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
-	require.Len(t, usageLogInsert.argTypes, 69, "arg-type table must include billing key")
+	require.Len(t, usageLogInsert.argTypes, 71, "arg-type table must include billing key")
 
 	sessionID := "sess-persisted-123"
 	prepared := prepareUsageLogInsert(newSessionIDUsageLog(&sessionID))
@@ -616,19 +620,19 @@ func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
 
 	// Assert the trailing diagnostic positions from the schema table's end, so
 	// adding a later field exposes a shift in session/timestamp wiring.
-	sessionArg := prepared.args[len(prepared.args)-8]
+	sessionArg := prepared.args[len(prepared.args)-10]
 	ns, ok := sessionArg.(sql.NullString)
 	require.True(t, ok, "session_id arg should be a sql.NullString, got %T", sessionArg)
 	require.True(t, ns.Valid)
 	require.Equal(t, sessionID, ns.String)
 
-	require.Equal(t, "text", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-8],
+	require.Equal(t, "text", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-10],
 		"session_id arg type must be text")
-	require.Equal(t, "timestamptz", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-7],
+	require.Equal(t, "timestamptz", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-9],
 		"created_at arg type must remain timestamptz")
-	require.Equal(t, "text", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-6],
+	require.Equal(t, "text", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-8],
 		"requested reasoning effort arg type must be text")
-	require.Equal(t, "boolean", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-5],
+	require.Equal(t, "boolean", usageLogInsert.argTypes[len(usageLogInsert.argTypes)-7],
 		"native compaction arg type must be boolean")
 }
 
@@ -637,14 +641,14 @@ func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
 // strings rather than populated empty persistence values.
 func TestPrepareUsageLogInsert_SessionIDNullWhenAbsent(t *testing.T) {
 	prepared := prepareUsageLogInsert(newSessionIDUsageLog(nil))
-	sessionArg := prepared.args[len(prepared.args)-8]
+	sessionArg := prepared.args[len(prepared.args)-10]
 	ns, ok := sessionArg.(sql.NullString)
 	require.True(t, ok, "session_id arg should be a sql.NullString, got %T", sessionArg)
 	require.False(t, ns.Valid, "absent session id must be NULL, not empty string")
 
 	empty := ""
 	preparedEmpty := prepareUsageLogInsert(newSessionIDUsageLog(&empty))
-	nsEmpty := testassert.MustType[sql.NullString](preparedEmpty.args[len(preparedEmpty.args)-8])
+	nsEmpty := testassert.MustType[sql.NullString](preparedEmpty.args[len(preparedEmpty.args)-10])
 	require.False(t, nsEmpty.Valid, "empty session id must also be NULL")
 }
 
@@ -687,7 +691,7 @@ func TestPrepareUsageLogInsert_RequestedReasoningEffortArgWiring(t *testing.T) {
 		UserID: 1, APIKeyID: 2, ProviderID: 3, RequestID: "req-effort", Model: "gpt-5",
 		RequestedReasoningEffort: &requested,
 	})
-	value, ok := prepared.args[len(prepared.args)-6].(sql.NullString)
+	value, ok := prepared.args[len(prepared.args)-8].(sql.NullString)
 	require.True(t, ok)
 	require.True(t, value.Valid)
 	require.Equal(t, requested, value.String)

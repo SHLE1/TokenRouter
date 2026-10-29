@@ -107,7 +107,7 @@ github.com/stretchr/testify/suite`},
 	moduleDependencies = map[string]dependencySet{
 		"internal/mcp": {Production: `internal/mcp/... internal/identity internal/identity/provider internal/identity/httpapi internal/identity/httpapi/authctx
 internal/audit internal/server/adminapi internal/server/httpx`, Tests: `ent ent/runtime internal/identity/postgres internal/infra/crypto internal/testutil/postgrescontainer migrations`},
-		"internal/requestlog": {Production: `internal/requestlog/... internal/infra/telemetry/... internal/identity/httpapi/authctx internal/server/httpx`, Tests: `internal/testutil/postgrescontainer migrations`},
+		"internal/requestlog": {Production: `internal/usage internal/requestlog/... internal/infra/telemetry/... internal/identity/httpapi/authctx internal/server/httpx`, Tests: `internal/testutil/postgrescontainer migrations`},
 		"internal/modelcatalog": {Production: `internal/pkg/locale internal/modelcatalog internal/modelcatalog/provider internal/billing/pricing
 internal/egress internal/infra/httpclient/... internal/infra/telemetry/...`, Tests: `internal/billing internal/billing/provider
 internal/gateway/media internal/gateway/provider/modelidentity internal/routing/capability
@@ -116,7 +116,7 @@ internal/upstream/grok internal/upstream/openai`},
 internal/promotion internal/protocol internal/routing internal/routing/accessview
 internal/routing/capability internal/scheduler/policy internal/site`, Tests: ""},
 		"internal/provider": {Production: `internal/server/adminapi internal/modelcatalog ent/... internal/provider/... internal/billing internal/egress internal/egress/httpapi/dto
-internal/egress/provider internal/idempotency internal/idempotency/httpapi internal/identity/contact
+internal/egress/provider internal/idempotency internal/idempotency/httpapi internal/identity/contact internal/identity/httpapi/authctx
 internal/infra/httpclient/... internal/infra/postgres/... internal/infra/redis/...
 internal/infra/telemetry/... internal/pkg/ internal/protocol internal/protocol/anthropic
 internal/protocol/gemini internal/protocol/google internal/protocol/grok internal/protocol/openai internal/protocol/systemone

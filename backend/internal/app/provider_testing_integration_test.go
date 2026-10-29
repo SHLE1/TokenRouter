@@ -38,7 +38,7 @@ func TestNativeProviderTestAssembly(t *testing.T) {
 	store := providerpostgres.NewProviderStore(f.client, f.db, providerpostgres.ProviderStoreOptions{})
 	transport := &nativeProviderTestTransport{}
 	manager := lifecycle.New()
-	core := NewProviderTestsForTest(store, nil, nil, nil, nil, transport, &config.Config{}, nil, nil, nil, nil, manager, nil, nil)
+	core := NewProviderTestsForTest(store, nil, nil, nil, nil, transport, &config.Config{}, nil, nil, nil, nil, manager, nil, nil, nil)
 	require.Empty(t, transport.requests, "构造不请求供应商")
 	for _, test := range []struct {
 		platform, model, path, body string // platform: tested provider platform; model: requested test model; path: expected upstream path; body: supplied protocol stream
@@ -83,7 +83,7 @@ func TestProviderTestAssemblyUsesGroupAttributes(t *testing.T) {
 	outputs := []string{"image"}
 	repo := &probeAttributeRepository{config: &routing.ModelAttributeConfig{Status: "active", Rules: []routing.ModelAttributeRule{{Models: []string{"custom-image-final"}, Attributes: modelcatalog.Attributes{OutputModalities: &outputs}}}}}
 	attributes := &routing.ModelAttributeService{Repo: repo, Catalog: routing.ModelAttributeCatalog{View: testkit.OfflineView}}
-	core := provideProviderTests(store, nil, nil, &provider.GrokTokenSource{}, nil, transport, &config.Config{}, nil, nil, nil, nil, manager, nil, attributes)
+	core := provideProviderTests(store, nil, nil, &provider.GrokTokenSource{}, nil, transport, &config.Config{}, nil, nil, nil, nil, manager, nil, attributes, nil)
 	for _, credential := range []struct {
 		platform string // selected platform executor
 		kind     string // provider credential kind
@@ -162,7 +162,7 @@ func TestProviderTestAssemblyMatchesTextAttributeProtocol(t *testing.T) {
 	repo := &probeAttributeRepository{config: &routing.ModelAttributeConfig{Status: "active", Rules: []routing.ModelAttributeRule{{Models: []string{"custom-text-final"}, Attributes: modelcatalog.Attributes{OutputModalities: &outputs}}}}}
 	attributes := &routing.ModelAttributeService{Repo: repo, Catalog: routing.ModelAttributeCatalog{View: testkit.OfflineView}}
 	transport := &nativeProviderTestTransport{}
-	core := provideProviderTests(store, nil, nil, nil, nil, transport, &config.Config{}, nil, nil, nil, nil, manager, nil, attributes)
+	core := provideProviderTests(store, nil, nil, nil, nil, transport, &config.Config{}, nil, nil, nil, nil, manager, nil, attributes, nil)
 	for _, tc := range []struct {
 		name      string                 // selected routing scenario
 		mode      provider.TextRouteMode // configured upstream text mode
@@ -216,7 +216,7 @@ func TestProviderTestAssemblyExecutesGroupProtocolRoutes(t *testing.T) {
 	disabled := false
 	repo := &probeAttributeRepository{config: &routing.ModelAttributeConfig{Status: "active", Rules: []routing.ModelAttributeRule{{Models: []string{"final-model"}, Attributes: modelcatalog.Attributes{OutputModalities: &outputs, Temperature: &disabled, TopP: &disabled}}}}}
 	attributes := &routing.ModelAttributeService{Repo: repo, Catalog: routing.ModelAttributeCatalog{View: testkit.OfflineView}}
-	core := provideProviderTests(store, nil, nil, nil, nil, transport, &config.Config{}, nil, nil, nil, nil, manager, nil, attributes)
+	core := provideProviderTests(store, nil, nil, nil, nil, transport, &config.Config{}, nil, nil, nil, nil, manager, nil, attributes, nil)
 	for _, tc := range []struct {
 		name     string // route scenario name
 		platform string // provider platform identity

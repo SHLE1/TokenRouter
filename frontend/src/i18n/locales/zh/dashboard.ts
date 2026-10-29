@@ -432,6 +432,8 @@ export default {
     totalCost: '总消费',
     standardCost: '标准',
     actualCost: '实际',
+    costUnknown: '费用未知',
+    costPartial: '（部分成本）',
     providerCost: '成本',
     actualDescription:
       '用户实际消耗的费用。按分组倍率和用户专属倍率计算，用于扣减用户余额或订阅配额。',

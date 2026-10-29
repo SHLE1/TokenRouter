@@ -34,8 +34,11 @@
             :class="compactUserColumn ? 'min-w-0 justify-end gap-1 md:w-32 md:justify-start' : ''"
             data-test="usage-user-cell"
           >
+            <span v-if="row.system_usage" class="font-medium text-gray-900 dark:text-white">
+              {{ t(`admin.usage.requestSources.${row.request_source}`) }}
+            </span>
             <button
-              v-if="usageUserDisplayName(row) && userClickable"
+              v-else-if="usageUserDisplayName(row) && userClickable && row.user_id"
               class="font-medium text-primary-600 underline decoration-dashed underline-offset-2 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
               :class="compactUserColumn ? 'min-w-0 truncate' : ''"
               @click="$emit('userClick', row.user_id, row.user?.email)"
@@ -60,7 +63,9 @@
             >
               {{ t('admin.usage.userDeletedBadge') }}
             </span>
-            <span class="ml-1 shrink-0 text-gray-500 dark:text-gray-400">#{{ row.user_id }}</span>
+            <span v-if="row.user_id" class="ml-1 shrink-0 text-gray-500 dark:text-gray-400"
+              >#{{ row.user_id }}</span
+            >
           </div>
         </template>
 
@@ -285,7 +290,14 @@
         <template #cell-cost="{ row }">
           <div class="text-sm">
             <div class="flex items-center gap-1.5">
-              <span class="font-medium text-green-600 dark:text-green-400">{{
+              <span v-if="row.system_usage" class="font-medium text-gray-900 dark:text-white">
+                {{
+                  row.system_usage.cost_state === 'unknown'
+                    ? t('usage.costUnknown')
+                    : formatDetailedUsdAmount(providerBilled(row))
+                }}
+              </span>
+              <span v-else class="font-medium text-green-600 dark:text-green-400">{{
                 formatDetailedBalance(row.actual_cost)
               }}</span>
               <!-- L identifies applied long-context billing; the recorded multiplier determines its charge rather than a fixed doubling. -->
@@ -312,8 +324,14 @@
                 </div>
               </div>
             </div>
+            <div v-if="row.system_usage" class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('usage.providerCost') }}
+              <span v-if="row.system_usage.cost_state === 'partial'">{{
+                t('usage.costPartial')
+              }}</span>
+            </div>
             <div
-              v-if="showProviderBilling && row.provider_rate_multiplier != null"
+              v-else-if="showProviderBilling && row.provider_rate_multiplier != null"
               class="mt-0.5 text-xs text-orange-500 dark:text-orange-400"
             >
               A {{ formatDetailedUsdAmount(providerBilled(row)) }}

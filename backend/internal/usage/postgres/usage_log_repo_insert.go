@@ -125,6 +125,8 @@ var (
 		{name: "upstream_response_model", dataType: "text"},
 		{name: "upstream_model_mismatch", dataType: "boolean"},
 		{name: "billing_key", dataType: "text"},
+		{name: "request_source", dataType: "text"},
+		{name: "system_usage", dataType: "jsonb"},
 	}
 
 	// usageLogInsert caches fixed SQL metadata once for the direct and batch
@@ -290,6 +292,12 @@ func (r *Store) Create(ctx context.Context, log *usage.UsageLog) (bool, error) {
 	if tx := dbent.TxFromContext(ctx); tx != nil {
 		return r.createSingle(ctx, tx.Client(), log)
 	}
+	if log.EffectiveRequestSource() != usage.SourceUser {
+		// System attribution has no API-key identity, so customer-key batch
+		// recovery cannot correlate it. Provider-only settlement supplies its own
+		// transaction and the direct writer retains that connection.
+		return r.createSingle(ctx, r.sql, log)
+	}
 	requestID := strings.TrimSpace(log.RequestID)
 	if requestID == "" {
 		return r.createSingle(ctx, r.sql, log)
@@ -309,6 +317,11 @@ func (r *Store) Create(ctx context.Context, log *usage.UsageLog) (bool, error) {
 // persistence unresolved. Queued acknowledgements do not populate row identity,
 // and callers keep retained argument pointers stable until processing finishes.
 func (r *Store) CreateBestEffort(ctx context.Context, log *usage.UsageLog) error {
+	if log != nil && log.EffectiveRequestSource() != usage.SourceUser {
+		_, err := r.Create(ctx, log)
+		return err
+	}
+
 	// Hold admission open through the caller wait, so shutdown closes initialized
 	// channels only after active writers have stopped sending or awaiting results.
 	r.batchLifecycleMu.RLock()
@@ -398,7 +411,12 @@ func (r *Store) createSingle(ctx context.Context, sqlq sqlExecutor, log *usage.U
 				billingKey = prepared.requestID
 			}
 			selectQuery := "SELECT id, created_at FROM usage_logs WHERE (request_id = $1 OR COALESCE(billing_key, request_id) = $3) AND api_key_id = $2"
-			if err := scanSingleRow(ctx, sqlq, selectQuery, []any{prepared.requestID, log.APIKeyID, billingKey}, &log.ID, &log.CreatedAt); err != nil {
+			selectArgs := []any{prepared.requestID, log.APIKeyID, billingKey}
+			if log.EffectiveRequestSource() != usage.SourceUser {
+				selectQuery = "SELECT id, created_at FROM usage_logs WHERE request_id=$1 AND request_source=$2"
+				selectArgs = []any{prepared.requestID, log.RequestSource}
+			}
+			if err := scanSingleRow(ctx, sqlq, selectQuery, selectArgs, &log.ID, &log.CreatedAt); err != nil {
 				return false, err
 			}
 			log.RateMultiplier = prepared.rateMultiplier
@@ -1188,6 +1206,13 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 	if requestID != "" {
 		requestIDArg = requestID
 	}
+	systemJSON, _ := json.Marshal(log.SystemUsage)
+	var systemArg any
+	if log.SystemUsage != nil {
+		systemArg = systemJSON
+	}
+	var userIDArg, keyIDArg, payerIDArg any
+	userIDArg, keyIDArg = log.UserID, log.APIKeyID
 	billingUserID := log.BillingUserID
 	// Missing payer identity attributes historical personal records to their actor;
 	// a supplied positive billing identity remains available for team-owner ranking.
@@ -1195,16 +1220,20 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 		billingUserID = log.UserID
 	}
 
+	payerIDArg = billingUserID
+	if log.EffectiveRequestSource() != usage.SourceUser {
+		userIDArg, keyIDArg, payerIDArg = nil, nil, nil
+	}
 	return usageLogInsertPrepared{
 		createdAt:      createdAt,
 		requestID:      requestID,
 		rateMultiplier: rateMultiplier,
 		requestType:    requestType,
 		args: []any{
-			log.UserID,
-			billingUserID,
+			userIDArg,
+			payerIDArg,
 			nullInt64(log.TeamID),
-			log.APIKeyID,
+			keyIDArg,
 			log.ProviderID,
 			requestIDArg,
 			log.Model,
@@ -1270,6 +1299,8 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 			nullString(log.UpstreamResponseModel),
 			log.UpstreamModelMismatch,
 			nullStringValue(log.BillingKey),
+			log.EffectiveRequestSource(),
+			systemArg,
 		},
 	}
 }

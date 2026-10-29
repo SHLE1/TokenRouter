@@ -692,3 +692,17 @@ func (r *Store) StopUsageBatchers() {
 	r.batchLifecycleMu.Unlock()
 	r.batchWG.Wait()
 }
+
+// appendRequestSourceCondition adds a parameterized source restriction to SQL.
+// Empty source retains all records; system selects every internal source without
+// mixing that classification with the transport-oriented request_type column.
+func appendRequestSourceCondition(conditions []string, args []any, source, prefix string) ([]string, []any) {
+	if source == "" || source == "all" {
+		return conditions, args
+	}
+	if source == "system" {
+		return append(conditions, prefix+"request_source <> 'user'"), args
+	}
+	conditions = append(conditions, fmt.Sprintf("%srequest_source = $%d", prefix, len(args)+1))
+	return conditions, append(args, source)
+}

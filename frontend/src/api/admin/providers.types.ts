@@ -872,6 +872,7 @@ export interface ProviderUsageHistory {
 // ProviderUsageSummary aggregates provider activity and identifies the highest-cost and
 // busiest days.
 export interface ProviderUsageSummary {
+  incomplete_cost_requests?: number // Requests with unknown or partial expense.
   days: number // Requested reporting duration days.
   actual_days_used: number // Days with observed usage.
   total_cost: number // Provider cost (provider multiplier)

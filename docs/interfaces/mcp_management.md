@@ -21,6 +21,8 @@ TokenRouter 在主 HTTP 服务的 `/mcp` 提供 Streamable HTTP MCP，支持专�
 
 请求结构复用 HTTP handler 解码的 Go 类型。`binding:"required"` 决定必填字段，指针允许显式 `null`，动态 map 保持开放的键空间，业务校验继续由原 handler 和服务执行。查询参数单独声明为字符串，路径参数按名称提交。新增结构体字段会进入 schema；新增手工读取的查询参数要同步登记。`omitempty` 位于 `oneof` 前时，字符串枚举保留空串。使用原始 JSON 成员存在性区分默认值的接口需要补充声明，例如告警规则显式允许 `enabled:null` 表示 false，省略则仍由 HTTP handler 默认启用。
 
+使用记录列表、统计和清理，以及用量趋势、模型、分组与组合快照，支持与 HTTP 相同的 `request_source` 选择。`system` 汇总全部系统模型调用，也可以选择 `group_probe`、`provider_test`、`scheduled_test` 或 `quota_probe`。使用记录列表和统计默认包含全部来源；仪表盘图表默认统计用户流量，显式传 `all` 才合并系统请求。
+
 新增接口时，在所属模块补一条描述并使用共享注册函数。读写属性按业务行为填写；POST 查询可以声明为只读，连接测试等会调用真实上游的动作使用执行工具。有限 SSE 声明终态事件；特殊交互填写浏览器入口。覆盖测试检查实际路由、目录、重复 ID 和查询别名，禁止未知接口自动获得通用调用入口。
 
 目录同时供 MCP 发现、管理页面权限选择和 OpenAPI 导出使用。前端的模块译名属于展示文本，操作权限仍使用后端提供的 ID。WebSocket 原路由通过 `http_upgrade` 声明升级要求，OpenAPI 输出 101 响应；`x-tokenrouter-mcp-alias` 标明 MCP 实际使用的等效查询操作。

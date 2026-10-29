@@ -91,6 +91,7 @@ var providerAssemblyProviders = wire.NewSet(
 	provideProviderTestHTTP,
 	provideUpstreamUsageHTTP,
 	provideUpstreamUsage,
+	provideSystemUsageTransport,
 	provideProviderTests,
 	provideAntigravityRetry,
 	provideAntigravityProbe,

@@ -76,7 +76,7 @@ func TestProbeSelectPreservesGroupMappedModel(t *testing.T) {
 				target, err := probe.Select(context.Background(), routing.GroupAvailabilityProbeDueGroup{GroupID: group.ID}, requested)
 				require.NoError(t, err)
 				// The testing service applies provider mapping after group selection.
-				require.Equal(t, routing.GroupProbeTarget{GroupID: group.ID, ProviderID: 3678, ModelID: groupModel}, target)
+				require.Equal(t, routing.GroupProbeTarget{RequestedModel: requested, GroupID: group.ID, ProviderID: 3678, ModelID: groupModel}, target)
 				if mapped {
 					_, err = probe.Select(context.Background(), routing.GroupAvailabilityProbeDueGroup{GroupID: group.ID}, groupModel)
 					require.Error(t, err)
@@ -110,7 +110,7 @@ func TestProbeTestPreservesGroup(t *testing.T) {
 	require.Same(t, session, recorder.attributes)
 	require.NoError(t, err)
 	require.Equal(t, "success", result.Status)
-	require.Equal(t, providercore.TestRequest{GroupID: 59, ProviderID: 3678, Model: "mapped-model", Prompt: "draw", UserAgent: "probe-client"}, recorder.request)
+	require.Equal(t, providercore.TestRequest{RequestSource: "group_probe", GroupID: 59, ProviderID: 3678, Model: "mapped-model", Prompt: "draw", UserAgent: "probe-client"}, recorder.request)
 }
 
 // TestProbeSelectUsesEntryRoute exercises both scheduler modes with mapped models and conversion policy.

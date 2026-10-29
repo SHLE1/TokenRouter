@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
 // testing.go normalizes provider test requests, coordinates guarded execution,
@@ -77,6 +78,9 @@ type TestEvent struct {
 // test. Its pointed kind and SystemOne bytes remain caller-owned and stable
 // until Test returns.
 type TestRequest struct {
+	RequestSource  string // internal caller source, never upstream controlled
+	RequestedModel string // original model before group mapping
+	OperatorUserID *int64 // optional initiating administrator identifier
 	// ProtocolRoute fixes a group probe's entry and upstream endpoint together.
 	// Its zero value retains the standalone Protocol selector and type inference.
 	ProtocolRoute TestProtocolRoute
@@ -320,6 +324,21 @@ func NewTestService(loader TestLoader, options TestOptions) *TestService {
 // cannot match the retained write error in the target result, Test joins that
 // error into the returned chain; a matching target result is returned unchanged.
 func (s *TestService) Test(ctx context.Context, request TestRequest, sink TestEventSink) error {
+	if _, exists := usage.SystemRequestFromContext(ctx); !exists {
+		source := request.RequestSource
+		if source == "" {
+			source = usage.SourceProviderTest
+			if request.Automatic {
+				source = usage.SourceScheduledTest
+			}
+		}
+		requestedModel := request.RequestedModel
+		if requestedModel == "" {
+			requestedModel = request.Model
+		}
+		ctx = usage.WithSystemRequest(ctx, usage.SystemRequest{MappedModel: request.Model, Source: source, OperatorUserID: request.OperatorUserID, GroupID: request.GroupID, RequestedModel: requestedModel, Automatic: request.Automatic})
+	}
+
 	if s.options.PrepareContext != nil {
 		ctx = s.options.PrepareContext(ctx)
 	}

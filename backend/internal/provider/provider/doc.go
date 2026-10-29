@@ -1,7 +1,7 @@
 // Package provider adapts provider records and runtime dependencies to upstream
 // clients for management, probes, and health updates. Platform responses become
-// observations consumed by provider services; those services own persistence,
-// credential coordination, and the recovery of schedulable state.
+// observations consumed by domain services. Provider services own credential
+// coordination and health persistence; usage owns internal model accounting.
 //
 // Entry points:
 //   - test_targets.go selects platform probe executors.
@@ -14,6 +14,7 @@
 //   - grok*.go and qoder*.go handle platform authorization, quota, and probes.
 //   - text_apikey_test*.go select and execute Kimi, Zhipu, and DeepSeek probes.
 //   - test*.go manages probe state, events, and stream output.
+//   - system_usage*.go observes internal model exchanges and submits their expenses through the application lifecycle.
 //   - native_test_execution.go runs prepared protocol probes; opencode_test_target.go selects OpenCode model routes and authentication.
 //   - model*.go and default_models.go handle model catalogues, mappings, and health.
 //   - oauth_usage.go, ollama_usage.go, upstream_usage.go, and usage*.go query and parse usage.

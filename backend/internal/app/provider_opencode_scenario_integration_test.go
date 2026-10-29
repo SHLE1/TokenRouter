@@ -47,7 +47,7 @@ func TestOpenCodePersistedProbeAssembly(t *testing.T) {
 	attributes := &routing.ModelAttributeService{Repo: profiles, Catalog: routing.ModelAttributeCatalog{View: testkit.OfflineView}}
 	core := provideProviderTests(
 		store, nil, nil, nil, nil, transport, &config.Config{},
-		nil, nil, nil, nil, manager, nil, attributes,
+		nil, nil, nil, nil, manager, nil, attributes, nil,
 	)
 	for _, tc := range []struct {
 		name     string              // persisted configuration case name

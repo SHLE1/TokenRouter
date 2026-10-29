@@ -163,9 +163,9 @@ func TestFindUsagePerformanceUsesOneBatch(t *testing.T) {
 	second, err := json.Marshal(p)
 	require.NoError(t, err)
 	ids := []string{"first", "second"}
-	rows := sqlmock.NewRows([]string{"id", "request_id", "created_at", "user_id", "team_id", "api_key_id", "model", "input_tokens", "output_tokens", "actual_cost", "duration_ms", "timings"}).
-		AddRow(1, "first", time.Now(), 101, 0, 201, "model", 20, 10, 0.5, 1000, first).
-		AddRow(2, "second", time.Now(), 101, 0, 201, "model", 20, 10, 0.5, 1000, second)
+	rows := sqlmock.NewRows([]string{"id", "request_id", "created_at", "user_id", "team_id", "api_key_id", "model", "input_tokens", "output_tokens", "actual_cost", "duration_ms", "timings", "request_source", "system_usage", "provider_cost"}).
+		AddRow(1, "first", time.Now(), 101, 0, 201, "model", 20, 10, 0.5, 1000, first, "user", nil, 0.5).
+		AddRow(2, "second", time.Now(), 101, 0, 201, "model", 20, 10, 0.5, 1000, second, "user", nil, 0.5)
 	mock.ExpectQuery("SELECT id,COALESCE\\(request_id").WithArgs(pq.Array(ids), int64(101), true, "first", true).WillReturnRows(rows)
 	result := []requestlog.Detail{
 		{RequestRecord: telemetry.RequestRecord{RequestID: "first", DurationMs: 3000}},
@@ -180,4 +180,26 @@ func TestFindUsagePerformanceUsesOneBatch(t *testing.T) {
 	require.Equal(t, int64(1000), *result[0].Usage[0].DurationMs)
 	require.Equal(t, int64(3000), result[0].DurationMs)
 	require.Nil(t, result[0].FailureTimings)
+}
+
+// TestRequestUsageRestrictsProviderCost reads the same customer record as an
+// administrator and as its owner. Provider expense must remain administrator-only
+// even though both callers can inspect their permitted request and user charge.
+func TestRequestUsageRestrictsProviderCost(t *testing.T) {
+	for _, admin := range []bool{false, true} {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = db.Close() })
+		ids := []string{"cost-visibility"}
+		rows := sqlmock.NewRows([]string{"id", "request_id", "created_at", "user_id", "team_id", "api_key_id", "model", "input_tokens", "output_tokens", "actual_cost", "duration_ms", "timings", "request_source", "system_usage", "provider_cost"}).AddRow(1, ids[0], time.Now(), 101, 0, 201, "model", 20, 10, 0.5, 1000, nil, "user", nil, 0.25)
+		mock.ExpectQuery("SELECT id,COALESCE").WithArgs(pq.Array(ids), int64(101), admin, ids[0], true).WillReturnRows(rows)
+		result := []requestlog.Detail{{RequestRecord: telemetry.RequestRecord{RequestID: ids[0]}}}
+		require.NoError(t, NewStore(db).findUsage(t.Context(), ids, ids[0], 101, admin, true, &result, map[string]int{ids[0]: 0}))
+		require.NoError(t, mock.ExpectationsWereMet())
+		if admin {
+			require.NotNil(t, result[0].Usage[0].ProviderCost)
+		} else {
+			require.Nil(t, result[0].Usage[0].ProviderCost)
+		}
+	}
 }

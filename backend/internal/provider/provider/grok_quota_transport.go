@@ -16,6 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
 // grok_quota_transport.go validates endpoints and binds provider transport for
@@ -159,6 +160,8 @@ func GrokQuotaProbeBody(model string) ([]byte, error) {
 // OAuth CLI headers precede provider overrides, and the platform closes the
 // response.
 func (s *GrokQuotaTransport) ActiveQuota(ctx context.Context, value *provider.Record, token, proxy, model string, observe func(*grok.QuotaSnapshot, int)) error {
+	ctx = usage.WithSystemRequest(ctx, usage.SystemRequest{Source: usage.SourceQuotaProbe, RequestedModel: model, Automatic: true})
+
 	body, err := GrokQuotaProbeBody(model)
 	if err != nil {
 		return apperror.Newf(http.StatusBadRequest, "GROK_QUOTA_PROBE_BODY_ERROR", "failed to build probe body: %v", err)

@@ -72,6 +72,8 @@ request_log:
 `client:`、`local:` 和 `generated:` 等历史形式由查询兼容处理。历史 ID 之间的对应关系从尚存的系统日志和错误记录读取，缺失的对应关系不会通过字符串相似度补全。
 
 <a id="request_query"></a>
+系统模型请求也可通过各自的请求 ID 查询，管理员可用父测试 ID 关联同一轮的多个上游尝试。详情返回请求来源、系统用量完整性和已知提供商成本；系统记录没有用户或 Key 归属，普通用户无法读取。
+
 ## 查询与权限
 
 - 管理员入口：`GET /api/v1/admin/requests?request_id=...`，或 `/api/v1/admin/requests/:request_id`。

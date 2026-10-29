@@ -160,6 +160,7 @@ const { formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const totalProviderCost = computed(() => {
   const stats = props.stats as
     | (AdminUsageStatsResponse & {
+        incomplete_cost_requests?: number // Partial or unknown cost request count.
         total_provider_cost?: number // optional aggregate provider charge
       })
     | null
