@@ -406,7 +406,8 @@ internal/upstream/zhipu/...`, Tests: ""},
 		"internal/usage/httpapi/admin/usage_handler_test.go": "database/sql",
 	}
 
-	// 窄权限属于指定文件，不能由相邻文件或目标子包继承。
+	// File permissions bind imports to reviewed source files; neighboring files
+	// and target subpackages do not inherit these permissions.
 	filePermissions = []filePermission{
 		// OAuth registration hashes confidential-client secrets; revocation tests verify their authentication behavior.
 		{Scope: "internal/identity/provider", Imports: "golang.org/x/crypto/bcrypt", Files: "mcp_oauth_clients.go mcp_oauth_test.go"},
@@ -415,12 +416,13 @@ internal/upstream/zhipu/...`, Tests: ""},
 		// Creative's OpenAI adapter uses the shared native Images reader for mode
 		// conversion; adjacent creative files retain their existing dependency limits.
 		{Scope: "internal/creative", Imports: "internal/upstream/openai", Files: "provider/openai.go"},
-		{Scope: "internal/gateway", Imports: "internal/modelcatalog/testkit", Files: "httpapi/grok_media_execution_test.go httpapi/helpers_test.go provider/creative_catalog_test.go provider/googleforward/gemini_attempts_external_test.go provider/googleforward/gemini_openai_external_test.go provider/googleforward/helpers_external_test.go provider/grok_codec_test.go provider/model_attributes_test.go provider/model_qualification_test.go provider/selection/candidate_policy_test.go testkit/runtime_settings.go ws/httpapi/openai_ws_http_bridge_test.go"},
+		{Scope: "internal/gateway", Imports: "internal/modelcatalog/testkit", Files: "httpapi/grok_media_execution_test.go httpapi/helpers_test.go provider/creative_catalog_test.go provider/googleforward/gemini_attempts_external_test.go provider/googleforward/gemini_openai_external_test.go provider/googleforward/helpers_external_test.go provider/grok_codec_test.go provider/model_attributes_test.go provider/model_qualification_test.go provider/selection/candidate_policy_test.go provider/selection/probes_test.go testkit/runtime_settings.go ws/httpapi/openai_ws_http_bridge_test.go"},
 		// Timing observers and response-body decoding tests inspect protocol events through these permitted files.
 		{Scope: "internal/infra", Imports: "github.com/tidwall/gjson", Files: "telemetry/timing/events.go telemetry/timing/performance.go httpclient/response_body_test.go"},
-		// 目录读取与测试数据构造按实际调用文件登记。
+		// Catalogue readers and offline capability fixtures receive permissions only
+		// in the production or test files that consume them.
 		{Scope: "internal/gateway/provider", Imports: "internal/modelcatalog", Files: "selection/candidate_policy_test.go model_qualification_test.go model_display.go model_attributes.go model_catalogue.go creative_catalog.go execution_provider.go qoder_runtime.go responses_effort.go grok_codec_test.go model_attributes_test.go googleforward/antigravity_openai.go googleforward/model_attributes.go googleforward/gemini_attempts_external_test.go googleforward/gemini_openai_external_test.go grokforward/contracts.go grokforward/responses.go openaiforward/transform_ports.go openaiforward/passthrough_ports.go messageforward/bedrock.go modelidentity/thinking.go"},
-		{Scope: "internal/gateway/provider", Imports: "internal/modelcatalog/testkit", Files: "grok_codec_test.go model_attributes_test.go creative_catalog_test.go model_qualification_test.go selection/candidate_policy_test.go googleforward/gemini_openai_external_test.go googleforward/gemini_attempts_external_test.go googleforward/helpers_external_test.go"},
+		{Scope: "internal/gateway/provider", Imports: "internal/modelcatalog/testkit", Files: "grok_codec_test.go model_attributes_test.go creative_catalog_test.go model_qualification_test.go selection/candidate_policy_test.go selection/probes_test.go googleforward/gemini_openai_external_test.go googleforward/gemini_attempts_external_test.go googleforward/helpers_external_test.go"},
 		{Scope: "internal/provider/httpapi", Imports: "internal/modelcatalog/testkit", Files: "management_catalog_test.go provider_probe_scenario_test.go"},
 		// Token persistence tests round-trip real ciphertext through the migrated store and identity service.
 		{Scope: "internal/identity/postgres", Imports: "internal/infra/crypto", Files: "mcp_tokens_integration_test.go"},
