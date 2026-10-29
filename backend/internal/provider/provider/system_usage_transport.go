@@ -181,6 +181,13 @@ func (t *SystemUsageTransport) exchange(req *http.Request, id int64, send func(*
 		body.observer.sse = false
 	}
 	body.observer.platform = value.Platform
+	// Cache fields also occur in OpenAI-compatible replies. Request endpoints
+	// identify Messages semantics even when a JSON error omits its message type.
+	body.observer.messages = strings.Contains(endpoint, "/messages") ||
+		strings.Contains(endpoint, "rawPredict") ||
+		strings.Contains(endpoint, "RawPredict") ||
+		strings.Contains(endpoint, "/invoke") ||
+		req.Header.Get("anthropic-version") != ""
 	body.observer.image = strings.Contains(endpoint, "/images/") || imageModel != ""
 	response.Body = body
 	return response, nil

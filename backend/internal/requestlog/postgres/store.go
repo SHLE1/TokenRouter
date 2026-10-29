@@ -205,12 +205,13 @@ func (s *Store) Find(ctx context.Context, id string, userID int64, admin bool) (
 // request ID and usage_recorded state, which does not establish HTTP success.
 // Requested model wins when nonnull. ensureDetail leaves its input index
 // unchanged, so repeated historical rows without a stored summary can create
-// separate details.
+// separate details. The parent-run branch explicitly requires system metadata
+// to match the partial parent index used for internal-request searches.
 func (s *Store) findUsage(ctx context.Context, ids []string, searchID string, userID int64, admin, exact bool, result *[]requestlog.Detail, index map[string]int) error {
 	rows, err := s.db.QueryContext(ctx, `SELECT id,COALESCE(request_id,''),created_at,COALESCE(user_id,0),COALESCE(team_id,0),COALESCE(api_key_id,0),
  COALESCE(requested_model,model),input_tokens,output_tokens,actual_cost,duration_ms,timings,request_source,system_usage,
  CASE WHEN system_usage->>'cost_state' = 'unknown' THEN NULL ELSE COALESCE(provider_stats_cost,total_cost)*COALESCE(provider_rate_multiplier,1) END
- FROM usage_logs WHERE (request_id = ANY($1::text[]) OR (NOT $5 AND upstream_request_id=$4) OR system_usage->>'parent_request_id'=$4)
+ FROM usage_logs WHERE (request_id = ANY($1::text[]) OR (NOT $5 AND upstream_request_id=$4) OR (system_usage IS NOT NULL AND system_usage->>'parent_request_id'=$4))
  AND ($3 OR user_id=$2 OR team_id IN (SELECT team_id FROM team_memberships WHERE user_id=$2 AND role='owner' AND left_at IS NULL))
  ORDER BY created_at DESC LIMIT 101`, pq.Array(ids), userID, admin, searchID, exact)
 	if err != nil {

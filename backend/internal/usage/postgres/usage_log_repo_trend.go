@@ -868,7 +868,8 @@ func (r *Store) getGroupStatsWithFilters(ctx context.Context, startTime, endTime
 // before payer grouping, so a member's selected activity can appear under its
 // owner. RequestType and Stream both apply when supplied here. Current email
 // belongs to the payer, and base cost, user charges, and provider expense retain
-// separate result columns.
+// separate result columns. System requests have no payer and are excluded from
+// both raw and aggregated rankings, including when no identity filter is set.
 func (r *Store) GetUserBreakdownStats(ctx context.Context, startTime, endTime time.Time, dim usage.UserBreakdownDimension, limit int) (results []usage.UserBreakdownItem, err error) {
 	// Failed or unusable multidimensional analytics is discarded before the later
 	// source executes, keeping partial aggregate data out of raw report totals.
@@ -892,6 +893,7 @@ func (r *Store) GetUserBreakdownStats(ctx context.Context, startTime, endTime ti
 		FROM usage_logs ul
 		LEFT JOIN users u ON u.id = COALESCE(ul.billing_user_id, ul.user_id)
 		WHERE ul.created_at >= $1 AND ul.created_at < $2
+		  AND ul.request_source = 'user'
 	`
 	args := []any{startTime, endTime}
 

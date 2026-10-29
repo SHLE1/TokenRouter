@@ -34,7 +34,7 @@
             :class="compactUserColumn ? 'min-w-0 justify-end gap-1 md:w-32 md:justify-start' : ''"
             data-test="usage-user-cell"
           >
-            <span v-if="row.system_usage" class="font-medium text-gray-900 dark:text-white">
+            <span v-if="row.system_usage">
               {{ t(`admin.usage.requestSources.${row.request_source}`) }}
             </span>
             <button
@@ -290,16 +290,24 @@
         <template #cell-cost="{ row }">
           <div class="text-sm">
             <div class="flex items-center gap-1.5">
-              <span v-if="row.system_usage" class="font-medium text-gray-900 dark:text-white">
+              <span
+                v-if="row.system_usage?.cost_state === 'unknown'"
+                class="text-gray-500 dark:text-gray-400"
+              >
+                {{ t('usage.costUnknown') }}
+              </span>
+              <!-- System costs and customer charges share amount styling while retaining their recorded USD or configured balance unit. -->
+              <span
+                v-else
+                class="font-medium text-green-600 dark:text-green-400"
+                :title="row.system_usage ? t('usage.providerCost') : undefined"
+              >
                 {{
-                  row.system_usage.cost_state === 'unknown'
-                    ? t('usage.costUnknown')
-                    : formatDetailedUsdAmount(providerBilled(row))
+                  row.system_usage
+                    ? formatDetailedUsdAmount(providerBilled(row))
+                    : formatDetailedBalance(row.actual_cost)
                 }}
               </span>
-              <span v-else class="font-medium text-green-600 dark:text-green-400">{{
-                formatDetailedBalance(row.actual_cost)
-              }}</span>
               <!-- L identifies applied long-context billing; the recorded multiplier determines its charge rather than a fixed doubling. -->
               <span
                 v-if="row.long_context_billing_applied"
@@ -324,14 +332,16 @@
                 </div>
               </div>
             </div>
-            <div v-if="row.system_usage" class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('usage.providerCost') }}
-              <span v-if="row.system_usage.cost_state === 'partial'">{{
-                t('usage.costPartial')
-              }}</span>
+            <div
+              v-if="row.system_usage?.cost_state === 'partial'"
+              class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+            >
+              {{ t('usage.costPartial') }}
             </div>
             <div
-              v-else-if="showProviderBilling && row.provider_rate_multiplier != null"
+              v-else-if="
+                !row.system_usage && showProviderBilling && row.provider_rate_multiplier != null
+              "
               class="mt-0.5 text-xs text-orange-500 dark:text-orange-400"
             >
               A {{ formatDetailedUsdAmount(providerBilled(row)) }}

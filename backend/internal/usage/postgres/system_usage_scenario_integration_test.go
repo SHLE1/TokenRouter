@@ -85,7 +85,16 @@ func TestSystemUsageRawAndAnalyticsParity(t *testing.T) {
 			require.NotNil(t, stats.TotalProviderCost)
 			require.InDelta(t, want.cost, *stats.TotalProviderCost, 1e-9, source)
 		}
+		ranking, err := repo.GetUserBreakdownStats(t.Context(), start, end, usage.UserBreakdownDimension{Model: suffix}, 10)
+		require.NoError(t, err)
+		require.Len(t, ranking, 1)
+		require.Equal(t, user.ID, ranking[0].UserID)
+		require.EqualValues(t, 1, ranking[0].Requests)
 	}
+	public := &usage.DashboardPublicStats{}
+	require.NoError(t, repo.fillDashboardPublicTokenStatsFromUsageLogs(t.Context(), public, start, end, start))
+	require.EqualValues(t, 12, public.TotalTokens)
+	require.EqualValues(t, 12, public.TodayTokens)
 	// Legacy dashboard buckets keep customer traffic separate from total
 	// provider expense. System rows must not create nullable user memberships.
 	legacy := NewAggregationStoreWithSQL(tx, calendar)

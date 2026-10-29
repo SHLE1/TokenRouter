@@ -96,6 +96,12 @@
               }}</span>
             </span>
           </div>
+          <p
+            v-if="showProviderCost && incompleteCostRequests > 0"
+            class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+          >
+            {{ t('usage.incompleteCosts', { count: incompleteCostRequests }) }}
+          </p>
         </div>
       </div>
     </div>
@@ -160,12 +166,14 @@ const { formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const totalProviderCost = computed(() => {
   const stats = props.stats as
     | (AdminUsageStatsResponse & {
-        incomplete_cost_requests?: number // Partial or unknown cost request count.
         total_provider_cost?: number // optional aggregate provider charge
       })
     | null
   return stats?.total_provider_cost ?? null
 })
+// incompleteCostRequests identifies totals that omit some provider expense. An absent
+// count retains the complete presentation used by summaries without system records.
+const incompleteCostRequests = computed(() => props.stats?.incomplete_cost_requests ?? 0)
 // The visibility computeds follow parent prop changes so each summary card updates its cost
 // presentation reactively.
 const showProviderCost = computed(() => props.showProviderCost)

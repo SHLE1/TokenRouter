@@ -137,13 +137,13 @@ func TestSystemRecorderRejectsUnconfiguredVendorAlias(t *testing.T) {
 
 // TestSystemRecorderOperationCostWithoutTokens supplies successful operation
 // results without token counters. Configured request prices remain usable,
-// while an image price requires an observed image rather than an invented unit.
+// while image pricing requires an image and token pricing requires counters.
 func TestSystemRecorderOperationCostWithoutTokens(t *testing.T) {
 	for _, test := range []struct {
 		mode   pricing.BillingMode // configured provider price unit
 		images int                 // observed generated image count
 		priced bool                // expected known provider cost
-	}{{pricing.BillingModePerRequest, 0, true}, {pricing.BillingModeImage, 1, true}, {pricing.BillingModeImage, 0, false}} {
+	}{{pricing.BillingModeToken, 0, false}, {pricing.BillingModePerRequest, 0, true}, {pricing.BillingModeImage, 1, true}, {pricing.BillingModeImage, 0, false}} {
 		calculator := billing.NewCalculator(systemPriceCatalog{}, billing.CalculatorOptions{})
 		recorder := &SystemRecorder{Calculator: calculator, Resolver: billing.NewPriceResolver(nil, calculator, nil, nil, systemStatsPrices{test.mode}), Save: func(context.Context, *UsageLog, string) error { return nil }}
 		row := &UsageLog{RequestID: "operation", RequestSource: SourceProviderTest, ProviderID: 1, Model: "paid", ImageCount: test.images, CreatedAt: time.Now(), SystemUsage: &SystemUsage{Outcome: "success", UsageState: "missing"}}

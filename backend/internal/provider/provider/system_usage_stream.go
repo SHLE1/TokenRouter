@@ -35,6 +35,8 @@ import (
 type systemUsageObserver struct {
 	buffer        []byte              // incomplete transient frame bytes
 	sse           bool                // response uses SSE framing
+	messages      bool                // request uses Messages semantics
+	discarding    bool                // current frame exceeded limit
 	platform      string              // provider parsing family
 	image         bool                // dedicated image generation endpoint
 	ended         bool                // original reader reached EOF or error
@@ -56,34 +58,50 @@ type systemUsageObserver struct {
 // The caller serializes reads and invokes finish when the original reader ends;
 // nonstreaming JSON stays buffered until that completion step. A frame can span
 // several reads without losing its prefix or merging separate newline frames.
-// Oversized data stops accounting parsing while the preview still receives its
-// original bytes. Previously observed counters survive that limit, but cannot
-// establish a complete usage record.
+// An oversized SSE line is discarded through its newline, allowing later usage
+// to survive while marking the observation partial. Nonstreaming JSON has no
+// recovery boundary and is discarded as a whole if it exceeds the limit.
 func (o *systemUsageObserver) consume(data []byte) {
-	if o.truncated {
+	if !o.sse {
+		if o.discarding {
+			return
+		}
+		if len(o.buffer)+len(data) > systemUsageFrameLimit {
+			// A single JSON document cannot resume at an interior byte boundary;
+			// release its content while keeping already observed numeric evidence.
+			o.truncated, o.discarding = true, true
+			o.buffer = nil
+			return
+		}
+		o.buffer = append(o.buffer, data...)
 		return
 	}
-	o.buffer = append(o.buffer, data...)
-	if o.sse {
-		for {
-			index := bytes.IndexByte(o.buffer, '\n')
-			if index < 0 {
-				break
-			}
-			line := o.buffer[:index]
-			if len(line) > systemUsageFrameLimit {
-				o.truncated = true
-				break
-			}
-			o.frame(systemDataPayload(line))
-			o.buffer = o.buffer[index+1:]
+	for len(data) > 0 {
+		index := bytes.IndexByte(data, '\n')
+		line := data
+		if index >= 0 {
+			line = data[:index]
 		}
-	}
-	if len(o.buffer) > systemUsageFrameLimit || o.truncated {
-		// Discard over-limit content instead of retaining a response indefinitely.
-		// Known measurements survive, but their completeness cannot be established.
-		o.truncated = true
-		o.buffer = nil
+		if !o.discarding {
+			if len(o.buffer)+len(line) > systemUsageFrameLimit {
+				// Discard the entire oversized line, including prefixes received
+				// earlier, so a suffix cannot masquerade as a new usage event.
+				o.truncated = true
+				o.discarding = true
+				o.buffer = nil
+			} else {
+				o.buffer = append(o.buffer, line...)
+			}
+		}
+		if index < 0 {
+			return
+		}
+		if !o.discarding {
+			o.frame(systemDataPayload(o.buffer))
+		}
+		o.buffer = o.buffer[:0]
+		o.discarding = false
+		data = data[index+1:]
 	}
 }
 
@@ -99,7 +117,7 @@ func (o *systemUsageObserver) finish(err error) {
 	if !errors.Is(err, io.EOF) {
 		o.truncated = true
 	}
-	if !o.truncated && len(bytes.TrimSpace(o.buffer)) > 0 {
+	if errors.Is(err, io.EOF) && !o.discarding && len(bytes.TrimSpace(o.buffer)) > 0 {
 		if o.sse {
 			o.frame(systemDataPayload(o.buffer))
 		} else {
@@ -192,7 +210,7 @@ func (o *systemUsageObserver) frame(raw []byte) {
 		})
 		return true
 	})
-	if typeName == "message_start" || typeName == "message_delta" || data.Get("type").String() == "message" || data.Get("usage.cache_creation_input_tokens").Exists() {
+	if o.messages || typeName == "message_start" || typeName == "message_delta" || typeName == "message" {
 		value := data.Get("usage")
 		if typeName == "message_start" {
 			value = data.Get("message.usage")
@@ -205,15 +223,21 @@ func (o *systemUsageObserver) frame(raw []byte) {
 		}
 		if value.Get("input_tokens").Exists() || value.Get("prompt_tokens").Exists() || value.Get("output_tokens").Exists() || value.Get("completion_tokens").Exists() {
 			if parsed, ok := openai.ExtractOpenAIUsageFromJSONBytes(raw); ok && systemValidTokenCounts(value) {
-				o.tokens.InputTokens = parsed.InputTokens
-				o.tokens.OutputTokens = parsed.OutputTokens
-				o.tokens.CacheReadInputTokens = parsed.CacheReadInputTokens
-				o.tokens.CacheCreationInputTokens = parsed.CacheCreationInputTokens
-				o.tokens.ImageOutputTokens = parsed.ImageOutputTokens
-				o.imageInput = parsed.ImageInputTokens
+				// Sparse output snapshots must preserve the previously observed input
+				// and its cache buckets; explicit totals still replace that dimension.
+				if value.Get("input_tokens").Exists() || value.Get("prompt_tokens").Exists() {
+					o.tokens.InputTokens = parsed.InputTokens
+					o.tokens.CacheReadInputTokens = parsed.CacheReadInputTokens
+					o.tokens.CacheCreationInputTokens = parsed.CacheCreationInputTokens
+					o.imageInput = parsed.ImageInputTokens
+					o.seenInput = true
+				}
+				if value.Get("output_tokens").Exists() || value.Get("completion_tokens").Exists() {
+					o.tokens.OutputTokens = parsed.OutputTokens
+					o.tokens.ImageOutputTokens = parsed.ImageOutputTokens
+					o.seenOutput = true
+				}
 				o.openAI, o.seenUsage = true, true
-				o.seenInput = value.Get("input_tokens").Exists() || value.Get("prompt_tokens").Exists()
-				o.seenOutput = value.Get("output_tokens").Exists() || value.Get("completion_tokens").Exists()
 			}
 		}
 	}

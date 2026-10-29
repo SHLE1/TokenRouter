@@ -656,7 +656,8 @@ func (r *Store) getUsageRankingFromAnalytics(ctx context.Context, start, end tim
 // grouping. The fixed sort allowlist selects a metric, with actual_cost for
 // unknown labels; positive limits append a bound row cap and nonpositive limits
 // leave results unlimited. Current email is joined for the grouped payer, while
-// provider cost stays separate from the user-charge ordering.
+// provider cost stays separate from the user-charge ordering. Only customer
+// sources participate, preventing internal work from producing a user-zero row.
 func (r *Store) getUserBreakdownStatsFromAnalytics(ctx context.Context, start, end time.Time, dim usage.UserBreakdownDimension, limit int) ([]usage.UserBreakdownItem, bool, error) {
 	modelSource := usage.NormalizeModelSource(dim.ModelType)
 	if dim.ProviderID > 0 || dim.NativeCompactionV2 != nil || (dim.Model != "" && modelSource != usage.ModelSourceRequested) {
@@ -667,7 +668,8 @@ func (r *Store) getUserBreakdownStatsFromAnalytics(ctx context.Context, start, e
 	}
 	filters := UsageLogFilters{
 		UserID: dim.UserID, APIKeyID: dim.APIKeyID, GroupID: dim.GroupID,
-		Model: dim.Model, ModelFilterSource: modelSource,
+		RequestSource: usage.SourceUser,
+		Model:         dim.Model, ModelFilterSource: modelSource,
 		RequestType: dim.RequestType, Stream: dim.Stream, BillingType: dim.BillingType,
 	}
 	query, ok, err := r.buildUsageAnalyticsQuery(ctx, filters, start, end, true)

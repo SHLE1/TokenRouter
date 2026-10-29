@@ -72,6 +72,10 @@ func TestSystemUsageTransportProtocols(t *testing.T) {
 		{"json error for stream", "openai", "/v1/responses", `{"error":{"message":"rejected"},"usage":{"input_tokens":8,"output_tokens":0}}`, true, 8, 0, 0, "complete"},
 		{"missing", "openai", "/v1/responses", "data: {\"type\":\"response.completed\",\"response\":{}}\n\n", true, 0, 0, 0, "missing"},
 		{"explicit zero", "openai", "/v1/responses", "data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":0,\"output_tokens\":0}}}\n\n", true, 0, 0, 0, "complete"},
+		{"chat cache write", "openai", "/v1/chat/completions", `{"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":3,"cache_creation_input_tokens":4}}`, false, 8, 3, 0, "complete"},
+		{"responses cache write", "openai", "/v1/responses", `{"output":[],"usage":{"input_tokens":12,"output_tokens":3,"cache_creation_input_tokens":4}}`, false, 8, 3, 0, "complete"},
+		{"messages error cache", "anthropic", "/v1/messages", `{"error":{},"usage":{"input_tokens":8,"output_tokens":3,"cache_read_input_tokens":4}}`, false, 8, 3, 4, "complete"},
+		{"sparse chat usage", "openai", "/v1/chat/completions", "data: {\"usage\":{\"prompt_tokens\":12,\"prompt_tokens_details\":{\"cached_tokens\":4}}}\n\ndata: {\"usage\":{\"completion_tokens\":3}}\n\ndata: [DONE]\n\n", true, 8, 3, 4, "complete"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -115,6 +119,9 @@ func TestSystemUsageTransportProtocols(t *testing.T) {
 				require.Equal(t, test.output, row.OutputTokens)
 				require.Equal(t, test.cache, row.CacheReadTokens)
 				require.Equal(t, test.state, row.SystemUsage.UsageState)
+				if strings.HasSuffix(test.name, "cache write") {
+					require.Equal(t, 4, row.CacheCreationTokens)
+				}
 				if test.name == "json error for stream" {
 					require.Equal(t, "failed", row.SystemUsage.Outcome)
 				}

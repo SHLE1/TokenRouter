@@ -253,14 +253,15 @@ func (r *Store) ListWithFilters(ctx context.Context, params pagination.Paginatio
 // that incoming text. For example, local req-1 keeps a different row whose
 // upstream alias is req-1 out of the direct alias branch. When no local record
 // exists, that branch also finds older usage rows with a missing local request
-// ID.
+// ID. Parent-run matches require system metadata explicitly, allowing the
+// partial parent index to participate even in generic prepared plans.
 func usageRequestIDCondition(prefix string, parameter int) string {
 	lookup := fmt.Sprintf("ARRAY(SELECT id FROM request_lookup_ids($%d))", parameter)
 	// Guard the direct upstream comparison with saved-local existence so external
 	// evidence sharing that text cannot enlarge the exact local lookup.
 	return fmt.Sprintf("(%srequest_id = ANY(%s) OR (%supstream_request_id = $%d"+
-		" AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)) OR %ssystem_usage->>'parent_request_id' = $%d)",
-		prefix, lookup, prefix, parameter, parameter, prefix, parameter)
+		" AND NOT EXISTS (SELECT 1 FROM request_records exact_request WHERE exact_request.request_id=$%d)) OR (%ssystem_usage IS NOT NULL AND %ssystem_usage->>'parent_request_id' = $%d))",
+		prefix, lookup, prefix, parameter, parameter, prefix, prefix, parameter)
 }
 
 // buildUsageLogScopeSource returns a raw source, an optional scope predicate,

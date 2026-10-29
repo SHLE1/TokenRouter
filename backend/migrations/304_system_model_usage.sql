@@ -6,16 +6,23 @@ ALTER TABLE usage_logs
     ALTER COLUMN user_id DROP NOT NULL,
     ALTER COLUMN billing_user_id DROP NOT NULL,
     ALTER COLUMN api_key_id DROP NOT NULL;
+-- Historical rows already have nonnull funding IDs, the constant user source,
+-- and null system metadata. Enforce new writes without rescanning that history;
+-- VALIDATE CONSTRAINT can run separately if a validated catalog flag is needed.
 ALTER TABLE usage_logs ADD CONSTRAINT usage_logs_source_attribution_check CHECK (
     (request_source = 'user' AND user_id IS NOT NULL AND billing_user_id IS NOT NULL AND api_key_id IS NOT NULL AND system_usage IS NULL)
     OR (request_source IN ('group_probe', 'provider_test', 'scheduled_test', 'quota_probe')
         AND user_id IS NULL AND billing_user_id IS NULL AND api_key_id IS NULL
         AND team_id IS NULL AND subscription_id IS NULL AND actual_cost = 0
         AND subscription_amount_usd = 0 AND balance_amount_usd = 0 AND system_usage IS NOT NULL)
-);
+) NOT VALID;
 CREATE UNIQUE INDEX idx_usage_logs_system_request ON usage_logs (request_id) WHERE request_source <> 'user';
-CREATE INDEX idx_usage_logs_system_parent ON usage_logs ((system_usage->>'parent_request_id'));
-CREATE INDEX idx_usage_logs_source_created ON usage_logs (request_source, created_at DESC);
+-- These indexes still scan the heap, but exclude all historical customer rows
+-- from sorting and storage. Customer time queries retain their existing indexes.
+CREATE INDEX idx_usage_logs_system_parent ON usage_logs ((system_usage->>'parent_request_id'))
+    WHERE system_usage IS NOT NULL;
+CREATE INDEX idx_usage_logs_source_created ON usage_logs (request_source, created_at DESC)
+    WHERE request_source <> 'user';
 
 -- This ledger survives analytical cleanup, preventing a replay from charging
 -- provider spending again after its usage row has been deliberately removed.

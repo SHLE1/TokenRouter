@@ -452,6 +452,7 @@ export default {
     actualCost: 'Actual',
     costUnknown: 'Cost unknown',
     costPartial: '(partial)',
+    incompleteCosts: '{count} requests have incomplete costs',
     providerCost: 'Cost',
     actualDescription:
       'The amount actually charged to the user. Calculated with the group multiplier and any user-specific multiplier, and used to deduct user balance or subscription quota.',
