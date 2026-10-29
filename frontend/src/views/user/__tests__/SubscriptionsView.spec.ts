@@ -347,7 +347,7 @@ describe('SubscriptionsView', () => {
     await flushPromises()
     await wrapper.get('[data-testid="revoke-subscription"]').trigger('click')
     const dialog = wrapper.get('[data-testid="revoke-dialog"]')
-    expect(dialog.text()).toContain('userSubscriptions.revokeConfirmWithoutReplacement')
+    expect(dialog.text()).toContain('No queued pack will replace this plan.')
 
     await wrapper.get('[data-testid="revoke-dialog-confirm"]').trigger('click')
     await wrapper.vm.$nextTick()
