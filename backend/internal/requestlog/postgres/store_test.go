@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/requestlog"
 )
 
-// SQL-mock cases check permanent snapshot classification and the arguments
+// store_test.go checks permanent snapshot classification and the arguments
 // shared by sequential detail queries. They isolate transaction rollback,
 // unencodable timestamps, administrator versus ordinary lookup, and exact-local
 // flags without executing PostgreSQL's lookup function or planner.
@@ -110,7 +110,7 @@ func TestFindResolvesIDsOnce(t *testing.T) {
 				WithArgs("external-id").WillReturnRows(sqlmock.NewRows([]string{"ids", "exact"}).AddRow(`{"local-request","client:legacy"}`, test.exact))
 			mock.ExpectQuery(`SELECT record FROM request_records`).WithArgs(ids, int64(42), test.admin).
 				WillReturnRows(sqlmock.NewRows([]string{"record"}))
-			mock.ExpectQuery(`SELECT .* FROM usage_logs`).WithArgs(ids, int64(42), test.admin, "external-id", test.exact).
+			mock.ExpectQuery(`WITH selected_usage AS MATERIALIZED`).WithArgs(ids, int64(42), test.admin, "external-id", test.exact).
 				WillReturnRows(sqlmock.NewRows([]string{"id"}))
 			mock.ExpectQuery(`SELECT .* FROM ops_error_logs`).WithArgs(ids, int64(42), test.admin, test.exact).
 				WillReturnRows(sqlmock.NewRows([]string{"id"}))
@@ -166,7 +166,7 @@ func TestFindUsagePerformanceUsesOneBatch(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"id", "request_id", "created_at", "user_id", "team_id", "api_key_id", "model", "input_tokens", "output_tokens", "actual_cost", "duration_ms", "timings", "request_source", "system_usage", "provider_cost"}).
 		AddRow(1, "first", time.Now(), 101, 0, 201, "model", 20, 10, 0.5, 1000, first, "user", nil, 0.5).
 		AddRow(2, "second", time.Now(), 101, 0, 201, "model", 20, 10, 0.5, 1000, second, "user", nil, 0.5)
-	mock.ExpectQuery("SELECT id,COALESCE\\(request_id").WithArgs(pq.Array(ids), int64(101), true, "first", true).WillReturnRows(rows)
+	mock.ExpectQuery("WITH selected_usage AS MATERIALIZED").WithArgs(pq.Array(ids), int64(101), true, "first", true).WillReturnRows(rows)
 	result := []requestlog.Detail{
 		{RequestRecord: telemetry.RequestRecord{RequestID: "first", DurationMs: 3000}},
 		{RequestRecord: telemetry.RequestRecord{RequestID: "second", DurationMs: 4000}},
@@ -192,7 +192,7 @@ func TestRequestUsageRestrictsProviderCost(t *testing.T) {
 		t.Cleanup(func() { _ = db.Close() })
 		ids := []string{"cost-visibility"}
 		rows := sqlmock.NewRows([]string{"id", "request_id", "created_at", "user_id", "team_id", "api_key_id", "model", "input_tokens", "output_tokens", "actual_cost", "duration_ms", "timings", "request_source", "system_usage", "provider_cost"}).AddRow(1, ids[0], time.Now(), 101, 0, 201, "model", 20, 10, 0.5, 1000, nil, "user", nil, 0.25)
-		mock.ExpectQuery("SELECT id,COALESCE").WithArgs(pq.Array(ids), int64(101), admin, ids[0], true).WillReturnRows(rows)
+		mock.ExpectQuery("WITH selected_usage AS MATERIALIZED").WithArgs(pq.Array(ids), int64(101), admin, ids[0], true).WillReturnRows(rows)
 		result := []requestlog.Detail{{RequestRecord: telemetry.RequestRecord{RequestID: ids[0]}}}
 		require.NoError(t, NewStore(db).findUsage(t.Context(), ids, ids[0], 101, admin, true, &result, map[string]int{ids[0]: 0}))
 		require.NoError(t, mock.ExpectationsWereMet())
