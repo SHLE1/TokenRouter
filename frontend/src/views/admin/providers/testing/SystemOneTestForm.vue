@@ -67,56 +67,80 @@
         <div
           v-for="image in images"
           :key="image.reference"
-          class="flex items-start gap-3 rounded-control border border-gray-200 p-3 dark:border-dark-600"
+          class="space-y-3 rounded-control border border-gray-200 p-3 dark:border-dark-600"
           data-testid="decision-image"
         >
-          <img
-            :src="image.src"
-            :alt="image.name"
-            class="h-16 w-16 shrink-0 rounded-compact object-contain"
-          />
-          <div class="min-w-0 flex-1 space-y-1">
-            <p class="break-all text-sm text-gray-900 dark:text-dark-50">{{ image.name }}</p>
-            <p class="text-xs text-gray-500 dark:text-dark-400"
-              >{{ image.width }} × {{ image.height }}</p
-            >
-            <code class="block break-all text-xs text-gray-500 dark:text-dark-400">{{
-              image.reference
-            }}</code>
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm"
-                :disabled="disabled || (stateFormat === 'json' && !focusedField)"
-                @click="insertReference(image.reference)"
-              >
-                {{ t('admin.providers.decisionTest.insertReference') }}
-              </button>
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm"
-                :disabled="disabled"
-                @click="copyReference(image.reference)"
-              >
-                {{
-                  t(
-                    copiedReference === image.reference
-                      ? 'admin.providers.decisionTest.referenceCopied'
-                      : 'admin.providers.decisionTest.copyReference',
-                  )
-                }}
-              </button>
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm"
-                :disabled="disabled"
-                :aria-label="t('admin.providers.decisionTest.removeImage', { name: image.name })"
-                @click="removeImage(image.reference)"
-              >
-                {{ t('admin.providers.decisionTest.remove') }}
-              </button>
+          <!-- Metadata and reference actions use separate rows so the narrow settings column
+               does not force buttons to wrap in the space beside the thumbnail. -->
+          <div class="flex items-start gap-2">
+            <img
+              :src="image.src"
+              :alt="image.name"
+              class="h-16 w-16 shrink-0 rounded-compact object-contain"
+            />
+            <div class="min-w-0 flex-1 space-y-1 py-1">
+              <p class="truncate text-sm text-gray-900 dark:text-dark-50" :title="image.name">
+                {{ image.name }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-dark-400">
+                {{ image.width }} × {{ image.height }}
+              </p>
             </div>
+            <button
+              type="button"
+              class="btn-icon-sm shrink-0 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400 dark:text-dark-400 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+              :disabled="disabled"
+              :title="t('admin.providers.decisionTest.removeImage', { name: image.name })"
+              :aria-label="t('admin.providers.decisionTest.removeImage', { name: image.name })"
+              data-testid="decision-image-remove"
+              @click="removeImage(image.reference)"
+            >
+              <Icon name="trash" size="sm" />
+            </button>
           </div>
+          <div class="flex min-w-0 items-center gap-2">
+            <code
+              class="min-w-0 flex-1 truncate text-xs text-gray-500 dark:text-dark-400"
+              :title="image.reference"
+              >{{ image.reference }}</code
+            >
+            <button
+              type="button"
+              class="btn-icon-sm shrink-0 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-40 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-100"
+              :disabled="disabled"
+              :title="
+                t(
+                  copiedReference === image.reference
+                    ? 'admin.providers.decisionTest.referenceCopied'
+                    : 'admin.providers.decisionTest.copyReference',
+                )
+              "
+              :aria-label="
+                t(
+                  copiedReference === image.reference
+                    ? 'admin.providers.decisionTest.referenceCopied'
+                    : 'admin.providers.decisionTest.copyReference',
+                )
+              "
+              data-testid="decision-image-copy"
+              @click="copyReference(image.reference)"
+            >
+              <Icon
+                :name="copiedReference === image.reference ? 'check' : 'copy'"
+                size="sm"
+                :animate-on-hover="false"
+              />
+            </button>
+          </div>
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm w-full"
+            :disabled="disabled || (stateFormat === 'json' && !focusedField)"
+            data-testid="decision-image-insert"
+            @click="insertReference(image.reference)"
+          >
+            {{ t('admin.providers.decisionTest.insertReference') }}
+          </button>
         </div>
       </TransitionGroup>
       <p v-if="images.length" class="input-hint">{{
@@ -276,6 +300,7 @@ import { useI18n } from 'vue-i18n'
 import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import Select from '@/components/common/Select.vue'
 import TextArea from '@/components/common/TextArea.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { vSegmented } from '@/directives/segmented'
 import type { SystemOneTestPayload, SystemOneTestPreview } from './systemOneTest'
 import {
@@ -297,6 +322,8 @@ import {
  * keep a deleted question from causing a later generated collision. Image reads publish only
  * while this form remains mounted; submitted previews and Box targets are separate from the
  * wire payload, allowing completed results to retain the image that was actually evaluated.
+ * Image names and references keep their full values for tooltips, copying, and submission;
+ * single-line summaries leave separate rows for actions in the narrow settings column.
  */
 
 defineProps<{

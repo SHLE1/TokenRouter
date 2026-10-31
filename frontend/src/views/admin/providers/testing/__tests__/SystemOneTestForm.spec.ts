@@ -104,7 +104,7 @@ describe('SystemOne images form', () => {
     expect(payload?.assets?.['<photo>'].data_base64).toBe('aW1hZ2U=')
     expect(preview.boxImages.available).toBe('<photo>')
     expect(preview.images['<photo>'].name).toBe('photo.png')
-    await wrapper.get('[data-testid="decision-image"] button[aria-label]').trigger('click')
+    await wrapper.get('[data-testid="decision-image-remove"]').trigger('click')
     expect(submitted(wrapper)[0]).toBeNull()
     expect(preview.images['<photo>'].name).toBe('photo.png')
     wrapper.unmount()
@@ -119,9 +119,9 @@ describe('SystemOne images form', () => {
     await state.setValue('before after')
     state.element.focus()
     state.element.setSelectionRange(7, 7)
-    await wrapper.get('[data-testid="decision-image"] button').trigger('click')
+    await wrapper.get('[data-testid="decision-image-insert"]').trigger('click')
     expect(submitted(wrapper)[0]?.state).toBe('before <photo>after')
-    await wrapper.get('[data-testid="decision-image"] button[aria-label]').trigger('click')
+    await wrapper.get('[data-testid="decision-image-remove"]').trigger('click')
     expect(submitted(wrapper)[0]).toBeNull()
     expect(wrapper.text()).toContain('removedImageReference')
     await state.setValue('repaired')
@@ -141,7 +141,7 @@ describe('SystemOne images form', () => {
       .findAll('[role="radio"]')
       .find((button) => button.text() === 'JSON')!
       .trigger('click')
-    const insert = wrapper.get('[data-testid="decision-image"] button')
+    const insert = wrapper.get('[data-testid="decision-image-insert"]')
     expect(insert.attributes('disabled')).toBeDefined()
     const instructions = wrapper.get<HTMLTextAreaElement>(
       '[data-testid="decision-instructions-0"] textarea',
